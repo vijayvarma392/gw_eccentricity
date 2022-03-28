@@ -21,7 +21,8 @@ class eccDefinition:
         """
         self.dataDict = dataDict
         self.time = self.dataDict["t"]
-        self.h22 = self.dataDict["(2,2)"]
+        self.hlm = self.dataDict["hlm"]
+        self.h22 = self.hlm["(2,2)"]
         self.amp22 = np.abs(self.h22)
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.time)
@@ -95,8 +96,8 @@ class eccDefinition:
         troughs_interpolator = self.troughs_interp(order, **default_kwargs)
 
         if peaks_interpolator is None or troughs_interpolator is None:
-            print("...Sufficiemt number of peaks/troughs are not found."
-                  " Can not creator interpolator. Most probably the "
+            print("...Sufficient number of peaks/troughs are not found."
+                  " Can not create an interpolator. Most probably the "
                   "excentricity is too small. Returning eccentricity to be"
                   " zero")
             ecc_ref = 0
@@ -104,7 +105,7 @@ class eccDefinition:
             eccVals = ((np.sqrt(np.abs(peaks_interpolator(self.time)))
                         - np.sqrt(np.abs(troughs_interpolator(self.time))))
                        / (np.sqrt(np.abs(peaks_interpolator(self.time)))
-                          + np.sqrt(np.abs(troughs_interpolator(self.times)))))
+                          + np.sqrt(np.abs(troughs_interpolator(self.time)))))
             ecc_interpolator = InterpolatedUnivariateSpline(self.time, eccVals)
             ecc_ref = ecc_interpolator(t_ref)
 
