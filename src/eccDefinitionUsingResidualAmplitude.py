@@ -1,5 +1,5 @@
 """
-Find peaks and troughs using Amplitude.
+Find peaks and troughs using Residual Amplitude.
 
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
@@ -14,7 +14,7 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
     """Measure eccentricity by finding extrema from residual amplitude."""
 
     def __init__(self, dataDict):
-        """Init for measureEccentricityWithFrequency class.
+        """Init for measureEccentricityWithResidualAmplitude class.
 
         parameters:
         ----------
@@ -28,7 +28,7 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
         eccDefinition.__init__(self, dataDict)
         self.hlm0 = self.dataDict["hlm0"]
         self.time0 = self.dataDict["t0"]
-        self.h220 = self.hlm0["(2,2)"]
+        self.h220 = self.hlm0[(2, 2)]
         self.time0 = self.time0 - get_peak_via_quadratic_fit(
             self.time0,
             self.h220)
@@ -42,6 +42,10 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
         parameters:
         -----------
         order: window/width of peaks
+
+        return:
+        ------
+        indices: 1d array conndtainging the indices for location of peaks
         """
         return signal.argrelextrema(self.res_amp22, np.greater,
                                     order=order)[0]
@@ -52,6 +56,10 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
         parameters:
         -----------
         order: window/width of peaks
+
+        return:
+        ------
+        indices: 1d array conndtainging the indices for location of troughs
         """
         return signal.argrelextrema(self.res_amp22, np.less,
                                     order=order)[0]
