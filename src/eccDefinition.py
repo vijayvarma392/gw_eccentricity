@@ -114,30 +114,40 @@ class eccDefinition:
             ecc_interpolator = InterpolatedUnivariateSpline(self.time, eccVals,
                                                             **default_kwargs)
             ecc_ref = ecc_interpolator(t_ref)
-
-            idx_peaks = self.find_peaks(order)
-            meanperAnoVals = np.array([])
-            timeVals = np.array([])
-
-            idx = 0
-            while idx < len(idx_peaks) - 1:
-                orbital_period = (self.time[idx_peaks[idx + 1]]
-                                  - self.time[idx_peaks[idx]])
-                time_since_last_peak = (
-                    self.time[idx_peaks[idx]: idx_peaks[idx + 1]]
-                    - self.time[idx_peaks[idx]])
-                meanperAno = 2 * np.pi * time_since_last_peak / orbital_period
-                meanperAnoVals = np.append(meanperAnoVals, meanperAno)
-                timeVals = np.append(
-                    timeVals,
-                    self.time[idx_peaks[idx]: idx_peaks[idx + 1]])
-                idx += 1
-
-            mean_ano_interpolator = InterpolatedUnivariateSpline(
-                timeVals, meanperAnoVals, **kwargs)
-            mean_ano_ref = mean_ano_interpolator(t_ref)
+            mean_ano_ref = self.mean_anomaly(t_ref, order)
+            if isinstance(t_ref, (float, int)):
+                mean_ano_ref = mean_ano_ref[0]
+                ecc_ref = ecc_ref.item()
 
         return ecc_ref, mean_ano_ref
+
+    def mean_anomaly(self, t, order=10):
+        """Get mean anomaly at t.
+
+        parameters:
+        ----------
+        t: time to evaluate the mean anomaly at.
+        order: window to find peaks
+
+        return:
+        -------
+        mean anomaly at t
+        """
+        t_peaks = self.time[self.find_peaks(order)]
+        if isinstance(t, (int, float)):
+            t = np.array([t])
+        if any(t[0] >= t_peaks) and any(t[-1] < t_peaks):
+            mean_ano_ref = np.zeros(len(t))
+            for idx, time in enumerate(t):
+                idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
+                t_at_last_peak = t_peaks[idx_at_last_peak]
+                t_at_next_peak = t_peaks[idx_at_last_peak + 1]
+                mean_ano = time - t_at_last_peak
+                mean_ano_ref[idx] = (2 * np.pi * mean_ano
+                                     / (t_at_next_peak - t_at_last_peak))
+            return mean_ano_ref
+        else:
+            raise Exception("...reference time must be within two peaks.")
 
 
 def get_peak_via_quadratic_fit(t, func):
