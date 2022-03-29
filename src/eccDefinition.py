@@ -27,7 +27,7 @@ class eccDefinition:
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
         self.time = self.time - get_peak_via_quadratic_fit(
-            self.time, self.amp22)
+            self.time, self.amp22)[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.time)
 
@@ -121,16 +121,16 @@ class eccDefinition:
 
             idx = 0
             while idx < len(idx_peaks) - 1:
-                orbital_period = (self.times[idx_peaks[idx + 1]]
-                                  - self.times[idx_peaks[idx]])
+                orbital_period = (self.time[idx_peaks[idx + 1]]
+                                  - self.time[idx_peaks[idx]])
                 time_since_last_peak = (
-                    self.times[idx_peaks[idx]: idx_peaks[idx + 1]]
-                    - self.times[idx_peaks[idx]])
+                    self.time[idx_peaks[idx]: idx_peaks[idx + 1]]
+                    - self.time[idx_peaks[idx]])
                 meanperAno = 2 * np.pi * time_since_last_peak / orbital_period
                 meanperAnoVals = np.append(meanperAnoVals, meanperAno)
                 timeVals = np.append(
                     timeVals,
-                    self.times[idx_peaks[idx]: idx_peaks[idx + 1]])
+                    self.time[idx_peaks[idx]: idx_peaks[idx + 1]])
                 idx += 1
 
             mean_ano_interpolator = InterpolatedUnivariateSpline(
@@ -169,13 +169,13 @@ def get_peak_via_quadratic_fit(t, func):
                                                - coefs[1]**2./4/coefs[2])
 
 
-#  copied from https://github.com/sxs-collaboration/surrogate_modeling/blob/master/LALModels/LALModels.py#L111
-def generate_waveform_modes(approximant, q, chi1, chi2, deltaTOverM, Momega0,
-                            longAscNodes=0, eccentricity=0, meanPerAno=0,
-                            alignedSpin=True, lambda1=None, lambda2=None):
-    """Generate waveform modes for a given approximant using LALSuite.
+def generate_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
+                      inclination=0, phi_ref=0., longAscNodes=0,
+                      eccentricity=0, meanPerAno=0,
+                      alignedSpin=True, lambda1=None, lambda2=None):
+    """Generate waveform for a given approximant using LALSuite.
 
-    Returns dimless time and dictionary dimless complex strain modes.
+    Returns dimless time and dimless complex strain.
     parameters:
     ----------
     approximant     # str, name of approximant
@@ -184,6 +184,8 @@ def generate_waveform_modes(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     chi2            # array/list of len=3, dimensionless spin vector of smaller BH
     deltaTOverM     # float, dimensionless time step size
     Momega0          # float, dimensionless starting orbital frequency for waveform (rad/s)
+    inclination     # float, inclination angle in radians
+    phi_ref         # float, lalsim stuff
     longAscNodes    # float, Longiture of Ascending nodes
     eccentricity    # float, Eccentricity
     meanPerAno      # float, Mean anomaly of periastron
@@ -192,7 +194,6 @@ def generate_waveform_modes(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     lambda2         # tidal parameter for smaller BH
 
     return:
-    ------
     t               # array, dimensionless time
     h               # complex array, dimensionless complex strain h_{+} -i*h_{x}
     """
@@ -201,8 +202,8 @@ def generate_waveform_modes(approximant, q, chi1, chi2, deltaTOverM, Momega0,
 
     if alignedSpin:
         if np.sum(np.sqrt(chi1[:2]**2)) > 1e-5 or np.sum(np.sqrt(chi2[:2]**2)) > 1e-5:
-            raise Exception("Got precessing spins for "
-                            "aligned spin approximant.")
+            raise Exception("Got precessing spins for aligned spin "
+                            "approximant.")
         if np.sum(np.sqrt(chi1[:2]**2)) != 0:
             chi1[:2] = 0
         if np.sum(np.sqrt(chi2[:2]**2)) != 0:
@@ -239,18 +240,13 @@ def generate_waveform_modes(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     else:
         dictParams = None
 
-    lmax = 5    # This in unused
-    hmodes = lalsim.SimInspiralChooseTDModes(deltaTOverM*MT, m1_kg, m2_kg,
-                                             chi1[0], chi1[1], chi1[2],
-                                             chi2[0], chi2[1], chi2[2],
-                                             f_low, f_ref, distance,
-                                             dictParams, lmax, approxTag)
+    hp, hc = lalsim.SimInspiralChooseTDWaveform(
+        m1_kg, m2_kg, chi1[0], chi1[1], chi1[2], chi2[0], chi2[1], chi2[2],
+        distance, inclination, phi_ref,
+        longAscNodes, eccentricity, meanPerAno,
+        deltaTOverM*MT, f_low, f_ref, dictParams, approxTag)
 
-    t = deltaTOverM * np.arange(len(hmodes.mode.data.data))  # dimensionless time
-    mode_dict = {}
-    while hmodes is not None:
-        mode_dict[f"({hmodes.l}, {hmodes.m})"] \
-            = hmodes.mode.data.data * distance/MT/lal.C_SI
-        hmodes = hmodes.next
+    h = np.array(hp.data.data - 1.j*hc.data.data)
+    t = deltaTOverM * np.arange(len(h))  # dimensionless time
 
-    return t, mode_dict
+    return t, h*distance/MT/lal.C_SI

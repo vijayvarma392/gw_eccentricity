@@ -31,7 +31,7 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
         self.h220 = self.hlm0[(2, 2)]
         self.time0 = self.time0 - get_peak_via_quadratic_fit(
             self.time0,
-            self.h220)
+            self.h220)[0]
         self.quasi_circ_amp_interp = InterpolatedUnivariateSpline(
             self.time0, np.abs(self.h220))
         self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.time)
