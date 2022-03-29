@@ -1,16 +1,14 @@
 """
-Find peaks and troughs using Amplitude.
+Find peaks and troughs using frequency fits.
 
 Part of Eccentricity Definition project.
-Md Arif Shaikh, Mar 28, 2022
+Md Arif Shaikh, Mar 29, 2022
 """
 from eccDefinition import eccDefinition
-from scipy import signal
-import numpy as np
 
 
-class measureEccentricityUsingAmplitude(eccDefinition):
-    """Measure eccentricity by finding extrema location from amplitude."""
+class measureEccentricityUsingFrequencyFits(eccDefinition):
+    """Measure eccentricity by finding extrema location using freq fits."""
 
     def __init__(self, dataDict):
         """Init for measureEccentricityWithFrequency class.
@@ -22,21 +20,27 @@ class measureEccentricityUsingAmplitude(eccDefinition):
         eccDefinition.__init__(self, dataDict)
 
     def find_peaks(self, order):
-        """Find the peaks in the amplitude.
+        """Find the peaks in the frequency.
 
         parameters:
         -----------
         order: window/width of peaks
+
+        return:
+        ------
+        indices for peaks.
         """
-        return signal.argrelextrema(self.amp22, np.greater,
-                                    order=order)[0]
+        print("...To be implemented by Harald.")
 
     def find_troughs(self, order):
-        """Find the troughs in the amplitude.
+        """Find the troughs in the frequency.
 
         parameters:
         -----------
         order: window/width of peaks
+
+        return:
+        ------
+        indices for troughs.
         """
-        return signal.argrelextrema(self.amp22, np.less,
-                                    order=order)[0]
+        print("...To be implemented by Harald.")
