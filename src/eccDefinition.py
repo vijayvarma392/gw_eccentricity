@@ -83,7 +83,7 @@ class eccDefinition:
         ----------
         t_ref: reference time to measure eccentricity and mean anomaly.
         see scipy.signal.find_peaks for rest or the arguments.
-        kwargs: any extra kwargs to the peak/trough findining functions.
+        kwargs: to be passed to the InterpolatedUnivariateSpline
 
         returns:
         --------

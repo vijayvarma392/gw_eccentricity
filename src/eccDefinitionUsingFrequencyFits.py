@@ -11,7 +11,7 @@ class measureEccentricityUsingFrequencyFits(eccDefinition):
     """Measure eccentricity by finding extrema location using freq fits."""
 
     def __init__(self, dataDict):
-        """Init for measureEccentricityWithFrequency class.
+        """Init for measureEccentricityWithFrequencyFits class.
 
         parameters:
         ----------
