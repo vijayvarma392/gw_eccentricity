@@ -4,7 +4,8 @@ Find peaks and troughs using Residual Amplitude.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-from eccDefinition import eccDefinition, get_peak_via_quadratic_fit
+from eccDefinition import eccDefinition
+from utils import get_peak_via_quadratic_fit
 from scipy.signal import find_peaks
 from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
@@ -25,7 +26,7 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
         for the key `hlm0` in the dataDict dictionary. Keys for the
         modes in the mode dictionary should be of the form `(l,m)`.
         """
-        eccDefinition.__init__(self, dataDict)
+        super().__init__(dataDict)
         self.hlm0 = self.dataDict["hlm0"]
         self.time0 = self.dataDict["t0"]
         self.h220 = self.hlm0[(2, 2)]

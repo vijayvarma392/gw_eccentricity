@@ -17,7 +17,7 @@ class measureEccentricityUsingFrequencyFits(eccDefinition):
         ----------
         dataDict: Dictionary containing the waveform data.
         """
-        eccDefinition.__init__(self, dataDict)
+        super().__init__(dataDict)
 
     def find_extrema(self, which="maxima", height=None, threshold=None,
                      distance=None, prominence=None, width=10, wlen=None,
