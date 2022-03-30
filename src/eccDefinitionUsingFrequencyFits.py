@@ -19,28 +19,18 @@ class measureEccentricityUsingFrequencyFits(eccDefinition):
         """
         eccDefinition.__init__(self, dataDict)
 
-    def find_peaks(self, order):
-        """Find the peaks in the frequency.
+    def find_extrema(self, which="maxima", height=None, threshold=None,
+                     distance=None, prominence=None, width=10, wlen=None,
+                     rel_height=0.5, plateau_size=None):
+        """Find the extrema in the frequency using power law fits.
 
         parameters:
         -----------
-        order: window/width of peaks
+        which: either maxima or minima
+        see scipy.signal.find_peaks for rest or the arguments.
 
-        return:
+        returns:
         ------
-        indices for peaks.
+        array of positions of extrema in the frequency.
         """
-        print("...To be implemented by Harald.")
-
-    def find_troughs(self, order):
-        """Find the troughs in the frequency.
-
-        parameters:
-        -----------
-        order: window/width of peaks
-
-        return:
-        ------
-        indices for troughs.
-        """
-        print("...To be implemented by Harald.")
+        raise NotImplementedError("...To be implemented by Harald.")

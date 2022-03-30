@@ -5,9 +5,9 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
 from eccDefinition import eccDefinition, get_peak_via_quadratic_fit
-from scipy import signal
-import numpy as np
+from scipy.signal import find_peaks
 from scipy.interpolate import InterpolatedUnivariateSpline
+import numpy as np
 
 
 class measureEccentricityUsingResidualAmplitude(eccDefinition):
@@ -36,30 +36,26 @@ class measureEccentricityUsingResidualAmplitude(eccDefinition):
             self.time0, np.abs(self.h220))
         self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.time)
 
-    def find_peaks(self, order):
-        """Find the peaks in the residual amplitude.
+    def find_extrema(self, which="maxima", height=None, threshold=None,
+                     distance=None, prominence=None, width=10, wlen=None,
+                     rel_height=0.5, plateau_size=None):
+        """Find the extrema in the residual amplitude from 22 mode.
 
         parameters:
         -----------
-        order: window/width of peaks
+        which: either maxima or minima
+        see scipy.signal.find_peaks for rest or the arguments.
 
-        return:
+        returns:
         ------
-        indices: 1d array conndtainging the indices for location of peaks
+        array of positions of extrema in residual amplitude.
         """
-        return signal.argrelextrema(self.res_amp22, np.greater,
-                                    order=order)[0]
-
-    def find_troughs(self, order):
-        """Find the troughs in the residual amplitude.
-
-        parameters:
-        -----------
-        order: window/width of peaks
-
-        return:
-        ------
-        indices: 1d array conndtainging the indices for location of troughs
-        """
-        return signal.argrelextrema(self.res_amp22, np.less,
-                                    order=order)[0]
+        if which == "maxima" or which == "peaks":
+            sign = 1
+        elif which == "minima" or which == "troughs":
+            sign = - 1
+        else:
+            raise Exception("`which` must be one of ['maxima', 'minima',"
+                            " 'peaks', 'troughs']")
+        return find_peaks(sign * self.res_amp22, height, threshold, distance,
+                          prominence, width, wlen, rel_height, plateau_size)[0]

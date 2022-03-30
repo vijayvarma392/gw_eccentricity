@@ -31,55 +31,58 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.time)
 
-    def find_peaks(self, order=10):
-        """Find the peaks in the data.
+    def find_extrema(self, which="maxima", height=None, threshold=None,
+                     distance=None, prominence=None, width=10, wlen=None,
+                     rel_height=0.5, plateau_size=None):
+        """Find the extrema in the data.
 
         parameters:
         -----------
-        order: window/width of peaks
+        which: either maxima or minima
+        see scipy.signal.find_peaks for rest or the arguments.
+
+        returns:
+        ------
+        array of positions of extrema.
         """
         raise NotImplementedError("Please override me.")
 
-    def find_troughs(self, order=10):
-        """Find the troughs in the data.
+    def interp_extrema(self, which="maxima", height=None, threshold=None,
+                       distance=None, prominence=None, width=10, wlen=None,
+                       rel_height=0.5, plateau_size=None, **kwargs):
+        """Interpolator through extrema.
 
         parameters:
         -----------
-        order: window/width of troughs
+        which: either maxima or minima
+        see scipy.signal.find_peaks for rest or the arguments.
+        **kwargs for Interpolatedunivariatespline
+
+        returns:
+        ------
+        spline through extrema, positions of extrema
         """
-        raise NotImplementedError("Please override me.")
-
-    def peaks_interp(self, order=10, **kwargs):
-        """Interpolator through peaks."""
-        peak_idx = self.find_peaks(order)
-        if len(peak_idx) >= 2:
-            return InterpolatedUnivariateSpline(self.time[peak_idx],
-                                                self.omega22[peak_idx],
-                                                **kwargs)
+        extrema_idx = self.find_extrema(which, height, threshold, distance,
+                                        prominence, width, wlen, rel_height,
+                                        plateau_size)
+        if len(extrema_idx) >= 2:
+            return InterpolatedUnivariateSpline(self.time[extrema_idx],
+                                                self.omega22[extrema_idx],
+                                                **kwargs), extrema_idx
         else:
-            print("...Number of peaks is less than 2. Not able"
+            print("...Number of extrema is less than 2. Not able"
                   " to create an interpolator.")
             return None
 
-    def troughs_interp(self, order=10, **kwargs):
-        """Interpolator through troughs."""
-        trough_idx = self.find_troughs(order)
-        if len(trough_idx) >= 2:
-            return InterpolatedUnivariateSpline(self.time[trough_idx],
-                                                self.omega22[trough_idx],
-                                                **kwargs)
-        else:
-            print("...Number of troughs is less than 2. Not able"
-                  " to create an interpolator.")
-            return None
-
-    def measure_ecc(self, t_ref, order=10, **kwargs):
+    def measure_ecc(self, t_ref, height=None, threshold=None,
+                    distance=None, prominence=None, width=10, wlen=None,
+                    rel_height=0.5, plateau_size=None, **kwargs):
         """Measure eccentricity and mean anomaly at reference time.
 
         parameters:
         ----------
         t_ref: reference time to measure eccentricity and mean anomaly.
-        order: width of peaks/troughs
+        see scipy.signal.find_peaks for rest or the arguments.
         kwargs: any extra kwargs to the peak/trough findining functions.
 
         returns:
@@ -87,6 +90,8 @@ class eccDefinition:
         ecc_ref: measured eccentricity at t_ref
         mean_ano_ref: measured mean anomaly at t_ref
         """
+        if isinstance(t_ref, (int, float)):
+            t_ref = np.array([t_ref])
         default_kwargs = {"w": None,
                           "bbox": [None, None],
                           "k": 3,
@@ -96,8 +101,16 @@ class eccDefinition:
             if kw in kwargs:
                 default_kwargs[kw] = kwargs[kw]
 
-        peaks_interpolator = self.peaks_interp(order, **default_kwargs)
-        troughs_interpolator = self.troughs_interp(order, **default_kwargs)
+        peaks_interpolator, peaks_idx = self.interp_extrema(
+            "maxima", height, threshold,
+            distance, prominence, width,
+            wlen, rel_height, plateau_size,
+            **default_kwargs)
+        troughs_interpolator = self.interp_extrema(
+            "minima", height, threshold,
+            distance, prominence, width,
+            wlen, rel_height, plateau_size,
+            **default_kwargs)[0]
 
         if peaks_interpolator is None or troughs_interpolator is None:
             print("...Sufficient number of peaks/troughs are not found."
@@ -114,40 +127,24 @@ class eccDefinition:
             ecc_interpolator = InterpolatedUnivariateSpline(self.time, eccVals,
                                                             **default_kwargs)
             ecc_ref = ecc_interpolator(t_ref)
-            mean_ano_ref = self.mean_anomaly(t_ref, order)
-            if isinstance(t_ref, (float, int)):
+
+            t_peaks = self.time[peaks_idx]
+            if any(t_ref[0] >= t_peaks) and any(t_ref[-1] < t_peaks):
+                mean_ano_ref = np.zeros(len(t_ref))
+                for idx, time in enumerate(t_ref):
+                    idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
+                    t_at_last_peak = t_peaks[idx_at_last_peak]
+                    t_at_next_peak = t_peaks[idx_at_last_peak + 1]
+                    mean_ano = time - t_at_last_peak
+                    mean_ano_ref[idx] = (2 * np.pi * mean_ano
+                                         / (t_at_next_peak - t_at_last_peak))
+            else:
+                raise Exception("...reference time must be within two peaks.")
+            if len(t_ref) == 1:
                 mean_ano_ref = mean_ano_ref[0]
-                ecc_ref = ecc_ref.item()
+                ecc_ref = ecc_ref[0]
 
         return ecc_ref, mean_ano_ref
-
-    def mean_anomaly(self, t, order=10):
-        """Get mean anomaly at t.
-
-        parameters:
-        ----------
-        t: time to evaluate the mean anomaly at.
-        order: window to find peaks
-
-        return:
-        -------
-        mean anomaly at t
-        """
-        t_peaks = self.time[self.find_peaks(order)]
-        if isinstance(t, (int, float)):
-            t = np.array([t])
-        if any(t[0] >= t_peaks) and any(t[-1] < t_peaks):
-            mean_ano_ref = np.zeros(len(t))
-            for idx, time in enumerate(t):
-                idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
-                t_at_last_peak = t_peaks[idx_at_last_peak]
-                t_at_next_peak = t_peaks[idx_at_last_peak + 1]
-                mean_ano = time - t_at_last_peak
-                mean_ano_ref[idx] = (2 * np.pi * mean_ano
-                                     / (t_at_next_peak - t_at_last_peak))
-            return mean_ano_ref
-        else:
-            raise Exception("...reference time must be within two peaks.")
 
 
 def get_peak_via_quadratic_fit(t, func):

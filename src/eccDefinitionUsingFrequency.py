@@ -5,8 +5,7 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
 """
 from eccDefinition import eccDefinition
-from scipy import signal
-import numpy as np
+from scipy.signal import find_peaks
 
 
 class measureEccentricityUsingFrequency(eccDefinition):
@@ -21,22 +20,26 @@ class measureEccentricityUsingFrequency(eccDefinition):
         """
         eccDefinition.__init__(self, dataDict)
 
-    def find_peaks(self, order):
-        """Find the peaks in the frequency.
+    def find_extrema(self, which="maxima", height=None, threshold=None,
+                     distance=None, prominence=None, width=10, wlen=None,
+                     rel_height=0.5, plateau_size=None):
+        """Find the extrema in the omega22.
 
         parameters:
         -----------
-        order: window/width of peaks
-        """
-        return signal.argrelextrema(self.omega22, np.greater,
-                                    order=order)[0]
+        which: either maxima or minima
+        see scipy.signal.find_peaks for rest or the arguments.
 
-    def find_troughs(self, order):
-        """Find the troughs in the frequency.
-
-        parameters:
-        -----------
-        order: window/width of peaks
+        returns:
+        ------
+        array of positions of extrema.
         """
-        return signal.argrelextrema(self.omega22, np.less,
-                                    order=order)[0]
+        if which == "maxima" or which == "peaks":
+            sign = 1
+        elif which == "minima" or which == "troughs":
+            sign = - 1
+        else:
+            raise Exception("`which` must be one of ['maxima', 'minima',"
+                            " 'peaks', 'troughs']")
+        return find_peaks(sign * self.omega22, height, threshold, distance,
+                          prominence, width, wlen, rel_height, plateau_size)[0]
