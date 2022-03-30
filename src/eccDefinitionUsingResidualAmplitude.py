@@ -35,4 +35,4 @@ class measureEccentricityUsingResidualAmplitude(measureEccentricityUsingAmplitud
         self.quasi_circ_amp_interp = InterpolatedUnivariateSpline(
             self.time0, np.abs(self.h220))
         self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.time)
-        self.dat_to_find_extrema = self.res_amp22
+        self.data_to_find_extrema = self.res_amp22
