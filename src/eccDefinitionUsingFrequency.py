@@ -18,4 +18,4 @@ class measureEccentricityUsingFrequency(measureEccentricityUsingAmplitude):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(dataDict)
-        self.dat_to_find_extrema = self.omega22
+        self.data_to_find_extrema = self.omega22

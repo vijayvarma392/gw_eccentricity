@@ -19,7 +19,7 @@ class measureEccentricityUsingAmplitude(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(dataDict)
-        self.dat_to_find_extrema = self.amp22
+        self.data_to_find_extrema = self.amp22
 
     def find_extrema(self, which="maxima", height=None, threshold=None,
                      distance=None, prominence=None, width=10, wlen=None,
@@ -42,6 +42,6 @@ class measureEccentricityUsingAmplitude(eccDefinition):
         else:
             raise Exception("`which` must be one of ['maxima', 'minima',"
                             " 'peaks', 'troughs']")
-        return find_peaks(sign * self.dat_to_find_extrema, height, threshold,
+        return find_peaks(sign * self.data_to_find_extrema, height, threshold,
                           distance, prominence, width, wlen, rel_height,
                           plateau_size)[0]
