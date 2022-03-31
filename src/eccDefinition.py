@@ -77,9 +77,9 @@ class eccDefinition:
                                                 self.omega22[extrema_idx],
                                                 **kwargs), extrema_idx
         else:
-            print("...Number of extrema is less than 2. Not able"
-                  " to create an interpolator.")
-            return None
+            raise Exception(
+                f"Sufficient number of {which} are not found."
+                " Can not create an interpolator.")
 
     def measure_ecc(self, t_ref, height=None, threshold=None,
                     distance=None, prominence=None, width=10, wlen=None,
@@ -118,41 +118,35 @@ class eccDefinition:
             wlen, rel_height, plateau_size,
             **default_spline_kwargs)[0]
 
-        if omega_peaks_interp is None or omega_troughs_interp is None:
-            print("...Sufficient number of peaks/troughs are not found."
-                  " Can not create an interpolator. Most probably the "
-                  "excentricity is too small. Returning eccentricity to be"
-                  " zero")
-            ecc_ref = 0
-            mean_ano_ref = 0
-        else:
-            # compute eccentricty from the value of omega_peaks_interp
-            # and omega_troughs_interp at t_ref using the fromula in
-            # ref. arXiv:2101.11798 eq. 4
-            omega_peak_at_t_ref = omega_peaks_interp(t_ref)
-            omega_trough_at_t_ref = omega_troughs_interp(t_ref)
-            ecc_ref = ((np.sqrt(omega_peak_at_t_ref)
-                        - np.sqrt(omega_trough_at_t_ref))
-                       / (np.sqrt(omega_peak_at_t_ref)
-                          + np.sqrt(omega_trough_at_t_ref)))
-            t_peaks = self.t[omega_peaks_idx]
-            # check if the t_ref has a peak before and after
-            # and compute the mean anomaly using ref. arXiv:2101.11798 eq. 7
-            # mean anomaly grows linearly from 0 to 2 pi over
-            # the range [t_at_last_peak, t_at_next_peak]
-            if t_ref[0] >= t_peaks[0] and t_ref[-1] < t_peaks[-1]:
-                mean_ano_ref = np.zeros(len(t_ref))
-                for idx, time in enumerate(t_ref):
-                    idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
-                    t_at_last_peak = t_peaks[idx_at_last_peak]
-                    t_at_next_peak = t_peaks[idx_at_last_peak + 1]
-                    mean_ano = time - t_at_last_peak
-                    mean_ano_ref[idx] = (2 * np.pi * mean_ano
-                                         / (t_at_next_peak - t_at_last_peak))
-            else:
-                raise Exception("Reference time must be within two peaks.")
-            if len(t_ref) == 1:
-                mean_ano_ref = mean_ano_ref[0]
-                ecc_ref = ecc_ref[0]
+        # check if the t_ref has a peak before and after
+        # This required to define mean anomaly.
+        t_peaks = self.t[omega_peaks_idx]
+        if t_ref[0] < t_peaks[0] or t_ref[-1] >= t_peaks[-1]:
+            raise Exception("Reference time must be within two peaks.")
+
+        # compute eccentricty from the value of omega_peaks_interp
+        # and omega_troughs_interp at t_ref using the fromula in
+        # ref. arXiv:2101.11798 eq. 4
+        omega_peak_at_t_ref = omega_peaks_interp(t_ref)
+        omega_trough_at_t_ref = omega_troughs_interp(t_ref)
+        ecc_ref = ((np.sqrt(omega_peak_at_t_ref)
+                    - np.sqrt(omega_trough_at_t_ref))
+                   / (np.sqrt(omega_peak_at_t_ref)
+                      + np.sqrt(omega_trough_at_t_ref)))
+        # and compute the mean anomaly using ref. arXiv:2101.11798 eq. 7
+        # mean anomaly grows linearly from 0 to 2 pi over
+        # the range [t_at_last_peak, t_at_next_peak]
+        mean_ano_ref = np.zeros(len(t_ref))
+        for idx, time in enumerate(t_ref):
+            idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
+            t_at_last_peak = t_peaks[idx_at_last_peak]
+            t_at_next_peak = t_peaks[idx_at_last_peak + 1]
+            mean_ano = time - t_at_last_peak
+            mean_ano_ref[idx] = (2 * np.pi * mean_ano
+                                 / (t_at_next_peak - t_at_last_peak))
+
+        if len(t_ref) == 1:
+            mean_ano_ref = mean_ano_ref[0]
+            ecc_ref = ecc_ref[0]
 
         return ecc_ref, mean_ano_ref
