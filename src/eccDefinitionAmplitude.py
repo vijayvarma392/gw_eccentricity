@@ -8,7 +8,7 @@ from eccDefinition import eccDefinition
 from scipy.signal import find_peaks
 
 
-class measureEccentricityUsingAmplitude(eccDefinition):
+class measureEccentricityAmplitude(eccDefinition):
     """Measure eccentricity by finding extrema location from amplitude."""
 
     def __init__(self, dataDict):
@@ -19,6 +19,12 @@ class measureEccentricityUsingAmplitude(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(dataDict)
+        # data_to_find_extrema is the data that will be used to find the
+        # location of the peaks and troughs. In some of the derived classes
+        # using measureEccentricityAmplitude as base class, all that is needed
+        # to do is to assign this variable to something else like omega22
+        # or residul amp22. This way, these classes do not have to define the
+        # find_extrema function again, the inherited one will work fine
         self.data_to_find_extrema = self.amp22
 
     def find_extrema(self, which="maxima", height=None, threshold=None,

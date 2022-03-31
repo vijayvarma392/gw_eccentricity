@@ -1,9 +1,17 @@
 """Simple script to use different methods and measure eccentricity."""
 
-from eccDefinitionUsingAmplitude import measureEccentricityUsingAmplitude
-from eccDefinitionUsingFrequency import measureEccentricityUsingFrequency
-from eccDefinitionUsingFrequencyFits import measureEccentricityUsingFrequencyFits
-from eccDefinitionUsingResidualAmplitude import measureEccentricityUsingResidualAmplitude
+from eccDefinitionAmplitude import measureEccentricityAmplitude
+from eccDefinitionFrequency import measureEccentricityFrequency
+from eccDefinitionFrequencyFits import measureEccentricityFrequencyFits
+from eccDefinitionResidualAmplitude import measureEccentricityResidualAmplitude
+
+
+def get_available_methods():
+    """Get dictionary of available methods."""
+    return {"Amplitude": measureEccentricityAmplitude,
+            "Frequency": measureEccentricityFrequency,
+            "ResidualAmplitude": measureEccentricityResidualAmplitude,
+            "FrequencyFits": measureEccentricityFrequencyFits}
 
 
 def measure_eccentricity(t_ref, dataDict, method="Amplitude", height=None,
@@ -29,17 +37,13 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude", height=None,
     ecc_ref: measured eccentricity at t_ref
     mean_ano_ref: measured mean anomaly at t_ref
     """
-    if method == "Amplitude":
-        ecc_method = measureEccentricityUsingAmplitude(dataDict)
-    elif method == "Frequency":
-        ecc_method = measureEccentricityUsingFrequency(dataDict)
-    elif method == "ResidualAmplitude":
-        ecc_method = measureEccentricityUsingResidualAmplitude(dataDict)
-    elif method == "FrequencyFits":
-        ecc_method = measureEccentricityUsingFrequencyFits(dataDict)
-    else:
-        raise NotImplementedError(f"{method} method is not implemented.")
+    available_methods = get_available_methods()
 
-    return ecc_method.measure_ecc(t_ref, height, threshold, distance,
-                                  prominence, width, wlen, rel_height,
-                                  plateau_size, **kwargs)
+    if method in available_methods:
+        ecc_method = available_methods[method](dataDict)
+        return ecc_method.measure_ecc(t_ref, height, threshold, distance,
+                                      prominence, width, wlen, rel_height,
+                                      plateau_size, **kwargs)
+    else:
+        raise Exception(f"Invalid method {method}, has to be one of"
+                        f" {available_methods.keys()}")

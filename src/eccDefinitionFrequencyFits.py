@@ -7,7 +7,7 @@ Md Arif Shaikh, Mar 29, 2022
 from eccDefinition import eccDefinition
 
 
-class measureEccentricityUsingFrequencyFits(eccDefinition):
+class measureEccentricityFrequencyFits(eccDefinition):
     """Measure eccentricity by finding extrema location using freq fits."""
 
     def __init__(self, dataDict):

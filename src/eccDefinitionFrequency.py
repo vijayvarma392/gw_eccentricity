@@ -4,10 +4,10 @@ Find peaks and troughs using frequency.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
 """
-from eccDefinitionUsingAmplitude import measureEccentricityUsingAmplitude
+from eccDefinitionAmplitude import measureEccentricityAmplitude
 
 
-class measureEccentricityUsingFrequency(measureEccentricityUsingAmplitude):
+class measureEccentricityFrequency(measureEccentricityAmplitude):
     """Measure eccentricity by finding extrema location from frequency."""
 
     def __init__(self, dataDict):

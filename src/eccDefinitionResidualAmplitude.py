@@ -4,13 +4,13 @@ Find peaks and troughs using Residual Amplitude.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-from eccDefinitionUsingAmplitude import measureEccentricityUsingAmplitude
+from eccDefinitionAmplitude import measureEccentricityAmplitude
 from utils import get_peak_via_quadratic_fit
 from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
 
 
-class measureEccentricityUsingResidualAmplitude(measureEccentricityUsingAmplitude):
+class measureEccentricityResidualAmplitude(measureEccentricityAmplitude):
     """Measure eccentricity by finding extrema from residual amplitude."""
 
     def __init__(self, dataDict):
@@ -26,13 +26,13 @@ class measureEccentricityUsingResidualAmplitude(measureEccentricityUsingAmplitud
         modes in the mode dictionary should be of the form `(l,m)`.
         """
         super().__init__(dataDict)
-        self.hlm0 = self.dataDict["hlm0"]
-        self.time0 = self.dataDict["t0"]
-        self.h220 = self.hlm0[(2, 2)]
-        self.time0 = self.time0 - get_peak_via_quadratic_fit(
-            self.time0,
-            self.h220)[0]
+        self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
+        self.t_zeroecc = self.dataDict["t_zeroecc"]
+        self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
+        self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
+            self.t_zeroecc,
+            self.h22_zeroecc)[0]
         self.quasi_circ_amp_interp = InterpolatedUnivariateSpline(
-            self.time0, np.abs(self.h220))
-        self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.time)
+            self.t_zeroecc, np.abs(self.h22_zeroecc))
+        self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.t)
         self.data_to_find_extrema = self.res_amp22

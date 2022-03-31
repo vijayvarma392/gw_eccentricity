@@ -17,18 +17,26 @@ class eccDefinition:
         """Init eccDefinition class.
 
         parameters:
-        ----------
-        dataDict: Dictionary conntaining time, modes, etc
+        ---------
+        dataDict: dictionary containing waveform modes dict, time etc
+        should follow the format {"t": time, "hlm": modeDict, ..}
+        and modeDict = {(l, m): hlm_mode_data}
+        for ResidualAmplitude method, provide "t_zeroecc" and "hlm_zeroecc"
+        as well in the dataDict.
         """
         self.dataDict = dataDict
-        self.time = self.dataDict["t"]
+        self.t = self.dataDict["t"]
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
-        self.time = self.time - get_peak_via_quadratic_fit(
-            self.time, self.amp22)[0]
+        # shift the time axis to make t = 0 at merger
+        # t_ref would be then negative. This helps
+        # when subtracting quasi circular amplitude from
+        # eccentric amplitude in residual amplitude method
+        self.t = self.t - get_peak_via_quadratic_fit(
+            self.t, self.amp22)[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
-        self.omega22 = np.gradient(self.phase22, self.time)
+        self.omega22 = np.gradient(self.phase22, self.t)
 
     def find_extrema(self, which="maxima", height=None, threshold=None,
                      distance=None, prominence=None, width=10, wlen=None,
@@ -65,7 +73,7 @@ class eccDefinition:
                                         prominence, width, wlen, rel_height,
                                         plateau_size)
         if len(extrema_idx) >= 2:
-            return InterpolatedUnivariateSpline(self.time[extrema_idx],
+            return InterpolatedUnivariateSpline(self.t[extrema_idx],
                                                 self.omega22[extrema_idx],
                                                 **kwargs), extrema_idx
         else:
@@ -90,25 +98,25 @@ class eccDefinition:
         mean_ano_ref: measured mean anomaly at t_ref
         """
         t_ref = np.atleast_1d(t_ref)
-        default_kwargs = {"w": None,
-                          "bbox": [None, None],
-                          "k": 3,
-                          "ext": 0,
-                          "check_finite": False}
-        for kw in default_kwargs.keys():
+        default_spline_kwargs = {"w": None,
+                                 "bbox": [None, None],
+                                 "k": 3,
+                                 "ext": 0,
+                                 "check_finite": False}
+        for kw in default_spline_kwargs.keys():
             if kw in kwargs:
-                default_kwargs[kw] = kwargs[kw]
+                default_spline_kwargs[kw] = kwargs[kw]
 
-        omega_peaks_interp, peaks_idx = self.interp_extrema(
+        omega_peaks_interp, omega_peaks_idx = self.interp_extrema(
             "maxima", height, threshold,
             distance, prominence, width,
             wlen, rel_height, plateau_size,
-            **default_kwargs)
+            **default_spline_kwargs)
         omega_troughs_interp = self.interp_extrema(
             "minima", height, threshold,
             distance, prominence, width,
             wlen, rel_height, plateau_size,
-            **default_kwargs)[0]
+            **default_spline_kwargs)[0]
 
         if omega_peaks_interp is None or omega_troughs_interp is None:
             print("...Sufficient number of peaks/troughs are not found."
@@ -118,15 +126,21 @@ class eccDefinition:
             ecc_ref = 0
             mean_ano_ref = 0
         else:
-            # compute ecc from omega ref. arXiv:2101.11798 eq. 4
-            ecc_ref = ((np.sqrt(np.abs(omega_peaks_interp(t_ref)))
-                        - np.sqrt(np.abs(omega_troughs_interp(t_ref))))
-                       / (np.sqrt(np.abs(omega_peaks_interp(t_ref)))
-                          + np.sqrt(np.abs(omega_troughs_interp(t_ref)))))
-            t_peaks = self.time[peaks_idx]
+            # compute eccentricty from the value of omega_peaks_interp
+            # and omega_troughs_interp at t_ref using the fromula in
+            # ref. arXiv:2101.11798 eq. 4
+            omega_peak_at_t_ref = omega_peaks_interp(t_ref)
+            omega_trough_at_t_ref = omega_troughs_interp(t_ref)
+            ecc_ref = ((np.sqrt(omega_peak_at_t_ref)
+                        - np.sqrt(omega_trough_at_t_ref))
+                       / (np.sqrt(omega_peak_at_t_ref)
+                          + np.sqrt(omega_trough_at_t_ref)))
+            t_peaks = self.t[omega_peaks_idx]
             # check if the t_ref has a peak before and after
             # and compute the mean anomaly using ref. arXiv:2101.11798 eq. 7
-            if any(t_ref[0] >= t_peaks) and any(t_ref[-1] < t_peaks):
+            # mean anomaly goes from 0 to 2 pi over
+            # the range [t_at_last_peak, t_at_next_peak]
+            if t_ref[0] >= t_peaks[0] and t_ref[-1] < t_peaks[-1]:
                 mean_ano_ref = np.zeros(len(t_ref))
                 for idx, time in enumerate(t_ref):
                     idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
@@ -136,7 +150,7 @@ class eccDefinition:
                     mean_ano_ref[idx] = (2 * np.pi * mean_ano
                                          / (t_at_next_peak - t_at_last_peak))
             else:
-                raise Exception("...reference time must be within two peaks.")
+                raise Exception("Reference time must be within two peaks.")
             if len(t_ref) == 1:
                 mean_ano_ref = mean_ano_ref[0]
                 ecc_ref = ecc_ref[0]
