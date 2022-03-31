@@ -138,7 +138,7 @@ class eccDefinition:
             t_peaks = self.t[omega_peaks_idx]
             # check if the t_ref has a peak before and after
             # and compute the mean anomaly using ref. arXiv:2101.11798 eq. 7
-            # mean anomaly goes from 0 to 2 pi over
+            # mean anomaly grows linearly from 0 to 2 pi over
             # the range [t_at_last_peak, t_at_next_peak]
             if t_ref[0] >= t_peaks[0] and t_ref[-1] < t_peaks[-1]:
                 mean_ano_ref = np.zeros(len(t_ref))

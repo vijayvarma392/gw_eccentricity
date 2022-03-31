@@ -26,6 +26,9 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         modes in the mode dictionary should be of the form `(l,m)`.
         """
         super().__init__(dataDict)
+
+    def get_data_for_finding_extrema(self):
+        """Get the data for extrema finding."""
         self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
         self.t_zeroecc = self.dataDict["t_zeroecc"]
         self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
@@ -35,7 +38,4 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         self.quasi_circ_amp_interp = InterpolatedUnivariateSpline(
             self.t_zeroecc, np.abs(self.h22_zeroecc))
         self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.t)
-
-    def set_data_for_finding_extrema(self):
-        """Set the data for extrema finding."""
         return self.res_amp22

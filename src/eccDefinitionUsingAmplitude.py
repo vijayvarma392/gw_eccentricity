@@ -20,8 +20,8 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         super().__init__(dataDict)
 
-    def set_data_for_finding_extrema(self):
-        """Set data to be used for finding extrema location.
+    def get_data_for_finding_extrema(self):
+        """Get data to be used for finding extrema location.
 
         In the derived classes, one need to override this function
         to return the appropriate data that is to be used. For example,
@@ -45,7 +45,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
-        data_to_find_extrema = self.set_data_for_finding_extrema()
+        data_to_find_extrema = self.get_data_for_finding_extrema()
         if which == "maxima" or which == "peaks":
             sign = 1
         elif which == "minima" or which == "troughs":

@@ -19,6 +19,6 @@ class eccDefinitionUsingFrequency(eccDefinitionUsingAmplitude):
         """
         super().__init__(dataDict)
 
-    def set_data_for_finding_extrema(self):
-        """Set the data for extrema finding."""
+    def get_data_for_finding_extrema(self):
+        """Get the data for extrema finding."""
         return self.omega22
