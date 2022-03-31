@@ -4,17 +4,17 @@ Find peaks and troughs using Residual Amplitude.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-from eccDefinitionAmplitude import measureEccentricityAmplitude
+from eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from utils import get_peak_via_quadratic_fit
 from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
 
 
-class measureEccentricityResidualAmplitude(measureEccentricityAmplitude):
+class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
     """Measure eccentricity by finding extrema from residual amplitude."""
 
     def __init__(self, dataDict):
-        """Init for measureEccentricityWithResidualAmplitude class.
+        """Init for eccDefinitionUsingResidualAmplitude class.
 
         parameters:
         ----------
@@ -35,4 +35,7 @@ class measureEccentricityResidualAmplitude(measureEccentricityAmplitude):
         self.quasi_circ_amp_interp = InterpolatedUnivariateSpline(
             self.t_zeroecc, np.abs(self.h22_zeroecc))
         self.res_amp22 = self.amp22 - self.quasi_circ_amp_interp(self.t)
-        self.data_to_find_extrema = self.res_amp22
+
+    def set_data_for_finding_extrema(self):
+        """Set the data for extrema finding."""
+        return self.res_amp22

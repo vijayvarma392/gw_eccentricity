@@ -1,17 +1,17 @@
 """Simple script to use different methods and measure eccentricity."""
 
-from eccDefinitionAmplitude import measureEccentricityAmplitude
-from eccDefinitionFrequency import measureEccentricityFrequency
-from eccDefinitionFrequencyFits import measureEccentricityFrequencyFits
-from eccDefinitionResidualAmplitude import measureEccentricityResidualAmplitude
+from eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
+from eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
+from eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
+from eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 
 
 def get_available_methods():
     """Get dictionary of available methods."""
-    return {"Amplitude": measureEccentricityAmplitude,
-            "Frequency": measureEccentricityFrequency,
-            "ResidualAmplitude": measureEccentricityResidualAmplitude,
-            "FrequencyFits": measureEccentricityFrequencyFits}
+    return {"Amplitude": eccDefinitionUsingAmplitude,
+            "Frequency": eccDefinitionUsingFrequency,
+            "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
+            "FrequencyFits": eccDefinitionUsingFrequencyFits}
 
 
 def measure_eccentricity(t_ref, dataDict, method="Amplitude", height=None,

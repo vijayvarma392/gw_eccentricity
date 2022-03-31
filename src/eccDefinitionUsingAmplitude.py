@@ -8,24 +8,28 @@ from eccDefinition import eccDefinition
 from scipy.signal import find_peaks
 
 
-class measureEccentricityAmplitude(eccDefinition):
-    """Measure eccentricity by finding extrema location from amplitude."""
+class eccDefinitionUsingAmplitude(eccDefinition):
+    """Define eccentricity by finding extrema location from amplitude."""
 
     def __init__(self, dataDict):
-        """Init for measureEccentricityWithAmplitude class.
+        """Init for eccDefinitionUsingAmplitude class.
 
         parameters:
         ----------
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(dataDict)
-        # data_to_find_extrema is the data that will be used to find the
-        # location of the peaks and troughs. In some of the derived classes
-        # using measureEccentricityAmplitude as base class, all that is needed
-        # to do is to assign this variable to something else like omega22
-        # or residul amp22. This way, these classes do not have to define the
-        # find_extrema function again, the inherited one will work fine
-        self.data_to_find_extrema = self.amp22
+
+    def set_data_for_finding_extrema(self):
+        """Set data to be used for finding extrema location.
+
+        In the derived classes, one need to override this function
+        to return the appropriate data that is to be used. For example,
+        in residual amplitude method, this function would return
+        residual amp22, whereas for frequency method, it would
+        return omega22 and so on.
+        """
+        return self.amp22
 
     def find_extrema(self, which="maxima", height=None, threshold=None,
                      distance=None, prominence=None, width=10, wlen=None,
@@ -41,6 +45,7 @@ class measureEccentricityAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
+        data_to_find_extrema = self.set_data_for_finding_extrema()
         if which == "maxima" or which == "peaks":
             sign = 1
         elif which == "minima" or which == "troughs":
@@ -48,6 +53,6 @@ class measureEccentricityAmplitude(eccDefinition):
         else:
             raise Exception("`which` must be one of ['maxima', 'minima',"
                             " 'peaks', 'troughs']")
-        return find_peaks(sign * self.data_to_find_extrema, height, threshold,
+        return find_peaks(sign * data_to_find_extrema, height, threshold,
                           distance, prominence, width, wlen, rel_height,
                           plateau_size)[0]
