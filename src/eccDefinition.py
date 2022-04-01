@@ -98,6 +98,9 @@ class eccDefinition:
         mean_ano_ref: measured mean anomaly at t_ref
         """
         t_ref = np.atleast_1d(t_ref)
+        if any(t_ref >= 0):
+            raise Exception("Reference time must be negative. Merger being"
+                            " at t = 0.")
         default_spline_kwargs = {"w": None,
                                  "bbox": [None, None],
                                  "k": 3,
@@ -141,9 +144,11 @@ class eccDefinition:
             idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
             t_at_last_peak = t_peaks[idx_at_last_peak]
             t_at_next_peak = t_peaks[idx_at_last_peak + 1]
-            mean_ano = time - t_at_last_peak
-            mean_ano_ref[idx] = (2 * np.pi * mean_ano
-                                 / (t_at_next_peak - t_at_last_peak))
+            t_since_last_peak = time - t_at_last_peak
+            current_period = (t_at_next_peak - t_at_last_peak)
+            mean_ano_ref[idx] = (2 * np.pi
+                                 * t_since_last_peak
+                                 / current_period)
 
         if len(t_ref) == 1:
             mean_ano_ref = mean_ano_ref[0]
