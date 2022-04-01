@@ -74,7 +74,8 @@ class eccDefinitionUsingAmplitude(eccDefinition):
                     = extrema_finding_keywords[keyword]
 
         # If width is None, make a reasonable guess
-        default_extrema_finding_keywords["width"] = 10
+        if default_extrema_finding_keywords["width"] is None:
+            default_extrema_finding_keywords["width"] = 10
 
         if which == "maxima" or which == "peaks":
             sign = 1
