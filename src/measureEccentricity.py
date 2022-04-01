@@ -14,10 +14,9 @@ def get_available_methods():
             "FrequencyFits": eccDefinitionUsingFrequencyFits}
 
 
-def measure_eccentricity(t_ref, dataDict, method="Amplitude", height=None,
-                         threshold=None, distance=None, prominence=None,
-                         width=10, wlen=None, rel_height=0.5,
-                         plateau_size=None, **kwargs):
+def measure_eccentricity(t_ref, dataDict, method="Amplitude",
+                         extrema_finding_keywords=None,
+                         spline_keywords=None):
     """Measure eccentricity and mean anomaly at reference time.
 
     parameters:
@@ -29,8 +28,9 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude", height=None,
     for ResidualAmplitude method, provide "t0" and "hlm0" as well
     in the dataDict.
 
-    see scipy.signal.find_peaks for rest or the arguments.
-    kwargs: to be passed to the InterpolatedUnivariateSpline
+    extrema_finding_keywords: Dictionary of arguments to be passed to the
+    peak finding function.
+    spline_keywords: arguments to be passed to InterpolatedUnivariateSpline
 
     returns:
     --------
@@ -41,9 +41,8 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude", height=None,
 
     if method in available_methods:
         ecc_method = available_methods[method](dataDict)
-        return ecc_method.measure_ecc(t_ref, height, threshold, distance,
-                                      prominence, width, wlen, rel_height,
-                                      plateau_size, **kwargs)
+        return ecc_method.measure_ecc(t_ref, extrema_finding_keywords,
+                                      spline_keywords)
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {available_methods.keys()}")

@@ -38,15 +38,14 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.t)
 
-    def find_extrema(self, which="maxima", height=None, threshold=None,
-                     distance=None, prominence=None, width=10, wlen=None,
-                     rel_height=0.5, plateau_size=None):
+    def find_extrema(self, which="maxima", extrema_finding_keywords=None):
         """Find the extrema in the data.
 
         parameters:
         -----------
-        which: either maxima or minima
-        see scipy.signal.find_peaks for rest or the arguments.
+        which: either maxima, peaks, minima or troughs
+        extrema_finding_keywords: Dictionary of arguments to be passed to the
+        peak finding function.
 
         returns:
         ------
@@ -54,43 +53,41 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def interp_extrema(self, which="maxima", height=None, threshold=None,
-                       distance=None, prominence=None, width=10, wlen=None,
-                       rel_height=0.5, plateau_size=None, **kwargs):
+    def interp_extrema(self, which="maxima", extrema_finding_keywords=None,
+                       spline_keywords=None):
         """Interpolator through extrema.
 
         parameters:
         -----------
-        which: either maxima or minima
-        see scipy.signal.find_peaks for rest or the arguments.
-        **kwargs for Interpolatedunivariatespline
+        which: either maxima, peaks, minima or troughs
+        extrema_finding_keywords: Dictionary of arguments to be passed to the
+        peak finding function.
+        spline_keywords: arguments to be passed to InterpolatedUnivariateSpline
 
         returns:
         ------
         spline through extrema, positions of extrema
         """
-        extrema_idx = self.find_extrema(which, height, threshold, distance,
-                                        prominence, width, wlen, rel_height,
-                                        plateau_size)
+        extrema_idx = self.find_extrema(which, extrema_finding_keywords)
         if len(extrema_idx) >= 2:
             return InterpolatedUnivariateSpline(self.t[extrema_idx],
                                                 self.omega22[extrema_idx],
-                                                **kwargs), extrema_idx
+                                                **spline_keywords), extrema_idx
         else:
             raise Exception(
                 f"Sufficient number of {which} are not found."
                 " Can not create an interpolator.")
 
-    def measure_ecc(self, t_ref, height=None, threshold=None,
-                    distance=None, prominence=None, width=10, wlen=None,
-                    rel_height=0.5, plateau_size=None, **kwargs):
+    def measure_ecc(self, t_ref, extrema_finding_keywords=None,
+                    spline_keywords=None):
         """Measure eccentricity and mean anomaly at reference time.
 
         parameters:
         ----------
         t_ref: reference time to measure eccentricity and mean anomaly.
-        see scipy.signal.find_peaks for rest or the arguments.
-        kwargs: to be passed to the InterpolatedUnivariateSpline
+        extrema_finding_keywords: Dictionary of arguments to be passed to the
+        peak finding function.
+        spline_keywords: arguments to be passed to InterpolatedUnivariateSpline
 
         returns:
         --------
@@ -101,25 +98,29 @@ class eccDefinition:
         if any(t_ref >= 0):
             raise Exception("Reference time must be negative. Merger being"
                             " at t = 0.")
-        default_spline_kwargs = {"w": None,
-                                 "bbox": [None, None],
-                                 "k": 3,
-                                 "ext": 0,
-                                 "check_finite": False}
-        for kw in default_spline_kwargs.keys():
-            if kw in kwargs:
-                default_spline_kwargs[kw] = kwargs[kw]
+        default_spline_keywords = {"w": None,
+                                   "bbox": [None, None],
+                                   "k": 3,
+                                   "ext": 0,
+                                   "check_finite": False}
+        if spline_keywords is None:
+            spline_keywords = {}
+
+        # Sanity check for spline keywords
+        for keyword in spline_keywords:
+            if keyword not in default_spline_keywords:
+                raise ValueError(f"Invalid key {keyword} in spline_keywords."
+                                 " Should be one of "
+                                 f"{default_spline_keywords.keys()}")
+        # Update spline keyword if given by user
+        for keyword in default_spline_keywords.keys():
+            if keyword in spline_keywords:
+                default_spline_keywords[keyword] = spline_keywords[keyword]
 
         omega_peaks_interp, omega_peaks_idx = self.interp_extrema(
-            "maxima", height, threshold,
-            distance, prominence, width,
-            wlen, rel_height, plateau_size,
-            **default_spline_kwargs)
+            "maxima", extrema_finding_keywords, default_spline_keywords)
         omega_troughs_interp = self.interp_extrema(
-            "minima", height, threshold,
-            distance, prominence, width,
-            wlen, rel_height, plateau_size,
-            **default_spline_kwargs)[0]
+            "minima", extrema_finding_keywords, default_spline_keywords)[0]
 
         # check if the t_ref has a peak before and after
         # This required to define mean anomaly.
