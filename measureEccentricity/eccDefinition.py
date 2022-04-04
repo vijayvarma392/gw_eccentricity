@@ -137,19 +137,26 @@ class eccDefinition:
                     - np.sqrt(omega_trough_at_t_ref))
                    / (np.sqrt(omega_peak_at_t_ref)
                       + np.sqrt(omega_trough_at_t_ref)))
-        # and compute the mean anomaly using ref. arXiv:2101.11798 eq. 7
-        # mean anomaly grows linearly from 0 to 2 pi over
-        # the range [t_at_last_peak, t_at_next_peak]
-        mean_ano_ref = np.zeros(len(t_ref))
-        for idx, time in enumerate(t_ref):
+
+        @np.vectorize
+        def compute_mean_ano(time):
+            """
+            Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
+            Mean anomaly grows linearly in time from 0 to 2 pi over
+            the range [t_at_last_peak, t_at_next_peak], where t_at_last_peak
+            is the time at the previous periastron, and t_at_next_peak is
+            the time at the next periastron.
+            """
             idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
             t_at_last_peak = t_peaks[idx_at_last_peak]
             t_at_next_peak = t_peaks[idx_at_last_peak + 1]
             t_since_last_peak = time - t_at_last_peak
-            current_period = (t_at_next_peak - t_at_last_peak)
-            mean_ano_ref[idx] = (2 * np.pi
-                                 * t_since_last_peak
-                                 / current_period)
+            current_period = t_at_next_peak - t_at_last_peak
+            mean_ano_ref = 2 * np.pi * t_since_last_peak / current_period
+            return mean_ano_ref
+
+        # Compute mean anomaly at t_ref
+        mean_ano_ref = compute_mean_ano(t_ref)
 
         if len(t_ref) == 1:
             mean_ano_ref = mean_ano_ref[0]
