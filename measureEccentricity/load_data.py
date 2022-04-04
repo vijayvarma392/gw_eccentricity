@@ -32,9 +32,6 @@ def load_waveform(**kwargs):
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
         hlm_zeroecc = dataDict_zero_ecc['hlm']
-        t_zeroecc = t_zeroecc - get_peak_via_quadratic_fit(
-            t_zeroecc,
-            np.abs(hlm_zeroecc[(2, 2)]))[0]
         dataDict.update({'t_zeroecc': t_zeroecc,
                          'hlm_zeroecc': hlm_zeroecc})
     return dataDict
