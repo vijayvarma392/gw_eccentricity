@@ -19,6 +19,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(dataDict)
+        self.data_for_finding_extrema = self.get_data_for_finding_extrema()
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
@@ -45,8 +46,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
-        data_to_find_extrema = self.get_data_for_finding_extrema()
-
         default_extrema_finding_keywords = {"height": None,
                                             "threshold": None,
                                             "distance": None,
@@ -86,4 +85,5 @@ class eccDefinitionUsingAmplitude(eccDefinition):
                             " 'peaks', 'troughs']")
 
         return find_peaks(
-            sign * data_to_find_extrema, **default_extrema_finding_keywords)[0]
+            sign * self.data_for_finding_extrema,
+            **default_extrema_finding_keywords)[0]
