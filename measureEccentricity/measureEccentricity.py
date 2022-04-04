@@ -52,21 +52,35 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
 
     parameters:
     ----------
-    t_ref: reference time to measure eccentricity and mean anomaly.
-    dataDict: dictionary containing waveform modes dict, time etc
-    should follow the format {"t": time, "hlm": modeDict, ..}
-    and modeDict = {(l, m): hlm_mode_data}
-    for ResidualAmplitude method, provide "t_zeroecc" and "hlm_zeroecc" as well
-    in the dataDict.
+    t_ref:
+        Reference time at which to measure eccentricity and mean anomaly.
+        Can be a single float or an array.
 
-    extrema_finding_keywords: Dictionary of arguments to be passed to the
-    peak finding function.
-    spline_keywords: arguments to be passed to InterpolatedUnivariateSpline
+    dataDict:
+        Dictionary containing waveform modes dict, time etc.
+        Should follow the format:
+            {"t": time, "hlm": modeDict, ...}
+            with modeDict = {(l1, m1): h_{l1, m1},
+                             (l2, m2): h_{l2, m2}, ...
+                            }.
+        Some methods may need extra data. For example, the ResidualAmplitude
+        method, requires "t_zeroecc" and "hlm_zeroecc" as well in dataDict.
+
+    extrema_finding_keywords:
+        Dictionary of arguments to be passed to the peak finding function,
+        where it will be passed to scipy.signal.find_peaks.
+
+    spline_keywords:
+        Dictionary of arguments to be passed to
+        scipy.interpolate.InterpolatedUnivariateSpline.
 
     returns:
     --------
-    ecc_ref: measured eccentricity at t_ref
-    mean_ano_ref: measured mean anomaly at t_ref
+    ecc_ref:
+        Measured eccentricity at t_ref. Same type as t_ref.
+
+    mean_ano_ref:
+        Measured mean anomaly at t_ref. Same type as t_ref.
     """
     available_methods = get_available_methods()
 

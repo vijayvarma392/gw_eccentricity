@@ -4,6 +4,8 @@ from .utils import generate_waveform
 from .utils import get_peak_via_quadratic_fit
 
 def load_waveform(**kwargs):
+    """ FIXME add some documentation.
+    """
     # FIXME: Generalize this
     if 'deltaTOverM' not in kwargs:
         kwargs['deltaTOverM'] = 0.1
