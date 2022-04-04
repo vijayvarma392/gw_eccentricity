@@ -8,10 +8,13 @@ from eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplit
 
 def get_available_methods():
     """Get dictionary of available methods."""
-    return {"Amplitude": eccDefinitionUsingAmplitude,
+    models = {
+            "Amplitude": eccDefinitionUsingAmplitude,
             "Frequency": eccDefinitionUsingFrequency,
             "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
-            "FrequencyFits": eccDefinitionUsingFrequencyFits}
+            #"FrequencyFits": eccDefinitionUsingFrequencyFits
+            }
+    return models
 
 
 def measure_eccentricity(t_ref, dataDict, method="Amplitude",
