@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          pip install pytest numpy scipy h5py gwtools lalsuite
+          pip install pytest
 
       - name: Install pipenv
         shell: bash -l {0}
