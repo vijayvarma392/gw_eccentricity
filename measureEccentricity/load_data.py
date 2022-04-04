@@ -1,10 +1,9 @@
 import numpy as np
 import gwtools
 from .utils import generate_waveform
-
+from .utils import get_peak_via_quadratic_fit
 
 def load_waveform(**kwargs):
-
     # FIXME: Generalize this
     if 'deltaTOverM' not in kwargs:
         kwargs['deltaTOverM'] = 0.1
@@ -31,14 +30,18 @@ def load_waveform(**kwargs):
         zero_ecc_kwargs['ecc'] = 1e-5
         zero_ecc_kwargs['include_zero_ecc'] = False   # to avoid infinite loops
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-        dataDict.update({'t_zeroecc': dataDict_zero_ecc['t'],
-                         'hlm_zeroecc': dataDict_zero_ecc['hlm']})
-
+        t_zeroecc = dataDict_zero_ecc['t']
+        hlm_zeroecc = dataDict_zero_ecc['hlm']
+        t_zeroecc = t_zeroecc - get_peak_via_quadratic_fit(
+            t_zeroecc,
+            np.abs(hlm_zeroecc[(2, 2)]))[0]
+        dataDict.update({'t_zeroecc': t_zeroecc,
+                         'hlm_zeroecc': hlm_zeroecc})
     return dataDict
 
-def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
-                      Momega0, deltaTOverM):
 
+def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
+                                 Momega0, deltaTOverM):
     # Many LAL models don't return the modes. So, to get h22 we evaluate the
     # strain at (incl, phi)=(0,0) and divide by Ylm(0,0).  NOTE: This only
     # works if the only mode is the (2,2) mode.
@@ -52,6 +55,7 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
 
     Ylm = gwtools.harmonics.sYlm(-2, 2, 2, inclination, phi_ref)
     mode_dict = {(2, 2): h/Ylm}
+    t = t - get_peak_via_quadratic_fit(t, np.abs(h))[0]
 
     dataDict = {"t": t, "hlm": mode_dict}
     return dataDict

@@ -1,6 +1,6 @@
-"""measureEccentricity
-========
+"""measureEccentricity.
 
+========
 Measure eccentricity and mean anomaly from gravitational waves.
 """
 __copyright__ = "Copyright (C) 2021 Md Arif Shaikh, Vijay Varma"
@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
-from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
+# from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 
 
@@ -40,7 +40,7 @@ def get_available_methods():
             "Amplitude": eccDefinitionUsingAmplitude,
             "Frequency": eccDefinitionUsingFrequency,
             "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
-            #"FrequencyFits": eccDefinitionUsingFrequencyFits
+            # "FrequencyFits": eccDefinitionUsingFrequencyFits
             }
     return models
 
@@ -56,7 +56,7 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
     dataDict: dictionary containing waveform modes dict, time etc
     should follow the format {"t": time, "hlm": modeDict, ..}
     and modeDict = {(l, m): hlm_mode_data}
-    for ResidualAmplitude method, provide "t0" and "hlm0" as well
+    for ResidualAmplitude method, provide "t_zeroecc" and "hlm_zeroecc" as well
     in the dataDict.
 
     extrema_finding_keywords: Dictionary of arguments to be passed to the
