@@ -7,7 +7,7 @@ Md Arif Shaikh, Mar 29, 2022
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-from utils import get_peak_via_quadratic_fit
+from .utils import get_peak_via_quadratic_fit
 
 
 class eccDefinition:

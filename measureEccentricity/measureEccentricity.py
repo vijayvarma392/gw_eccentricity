@@ -28,10 +28,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
-from eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
-from eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
-from eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
+from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
+from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
+from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
+from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 
 
 def get_available_methods():

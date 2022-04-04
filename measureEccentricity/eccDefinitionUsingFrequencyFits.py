@@ -4,7 +4,7 @@ Find peaks and troughs using frequency fits.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-from eccDefinition import eccDefinition
+from .eccDefinition import eccDefinition
 
 
 class eccDefinitionUsingFrequencyFits(eccDefinition):

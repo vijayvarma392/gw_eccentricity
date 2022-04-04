@@ -4,8 +4,8 @@ Find peaks and troughs using Residual Amplitude.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-from eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
-from utils import get_peak_via_quadratic_fit
+from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
+from .utils import get_peak_via_quadratic_fit
 from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
 

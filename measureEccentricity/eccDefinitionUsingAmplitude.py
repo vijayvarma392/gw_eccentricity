@@ -4,7 +4,7 @@ Find peaks and troughs using Amplitude.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
 """
-from eccDefinition import eccDefinition
+from .eccDefinition import eccDefinition
 from scipy.signal import find_peaks
 
 
