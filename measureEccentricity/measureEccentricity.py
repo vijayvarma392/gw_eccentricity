@@ -89,6 +89,9 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
 
     mean_ano_ref:
         Measured mean anomaly at t_ref. Same type as t_ref.
+
+    ecc_method:
+       method object used to compute eccentricity only if return_ecc_method is True
     """
     available_methods = get_available_methods()
 
