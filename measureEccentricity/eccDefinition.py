@@ -117,26 +117,27 @@ class eccDefinition:
             if keyword in spline_keywords:
                 default_spline_keywords[keyword] = spline_keywords[keyword]
 
-        omega_peaks_interp, omega_peaks_idx = self.interp_extrema(
+        self.spline_keywords = default_spline_keywords
+        omega_peaks_interp, self.peaks_location = self.interp_extrema(
             "maxima", extrema_finding_keywords, default_spline_keywords)
-        omega_troughs_interp = self.interp_extrema(
-            "minima", extrema_finding_keywords, default_spline_keywords)[0]
+        omega_troughs_interp, self.troughs_location = self.interp_extrema(
+            "minima", extrema_finding_keywords, default_spline_keywords)
 
         # check if the t_ref has a peak before and after
         # This required to define mean anomaly.
-        t_peaks = self.t[omega_peaks_idx]
+        t_peaks = self.t[self.peaks_location]
         if t_ref[0] < t_peaks[0] or t_ref[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
         # compute eccentricty from the value of omega_peaks_interp
         # and omega_troughs_interp at t_ref using the fromula in
         # ref. arXiv:2101.11798 eq. 4
-        omega_peak_at_t_ref = omega_peaks_interp(t_ref)
-        omega_trough_at_t_ref = omega_troughs_interp(t_ref)
-        ecc_ref = ((np.sqrt(omega_peak_at_t_ref)
-                    - np.sqrt(omega_trough_at_t_ref))
-                   / (np.sqrt(omega_peak_at_t_ref)
-                      + np.sqrt(omega_trough_at_t_ref)))
+        self.omega_peak_at_t_ref = omega_peaks_interp(t_ref)
+        self.omega_trough_at_t_ref = omega_troughs_interp(t_ref)
+        ecc_ref = ((np.sqrt(self.omega_peak_at_t_ref)
+                    - np.sqrt(self.omega_trough_at_t_ref))
+                   / (np.sqrt(self.omega_peak_at_t_ref)
+                      + np.sqrt(self.omega_trough_at_t_ref)))
 
         @np.vectorize
         def compute_mean_ano(time):
