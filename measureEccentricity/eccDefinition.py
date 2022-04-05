@@ -134,12 +134,12 @@ class eccDefinition:
         # compute eccentricty from the value of omega_peaks_interp
         # and omega_troughs_interp at t_ref using the fromula in
         # ref. arXiv:2101.11798 eq. 4
-        omega_peak_at_t_ref = omega_peaks_interp(t_ref)
-        omega_trough_at_t_ref = omega_troughs_interp(t_ref)
-        ecc_ref = ((np.sqrt(omega_peak_at_t_ref)
-                    - np.sqrt(omega_trough_at_t_ref))
-                   / (np.sqrt(omega_peak_at_t_ref)
-                      + np.sqrt(omega_trough_at_t_ref)))
+        self.omega_peak_at_t_ref = omega_peaks_interp(t_ref)
+        self.omega_trough_at_t_ref = omega_troughs_interp(t_ref)
+        ecc_ref = ((np.sqrt(self.omega_peak_at_t_ref)
+                    - np.sqrt(self.omega_trough_at_t_ref))
+                   / (np.sqrt(self.omega_peak_at_t_ref)
+                      + np.sqrt(self.omega_trough_at_t_ref)))
         # and compute the mean anomaly using ref. arXiv:2101.11798 eq. 7
         # mean anomaly grows linearly from 0 to 2 pi over
         # the range [t_at_last_peak, t_at_next_peak]
