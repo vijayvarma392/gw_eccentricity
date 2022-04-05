@@ -3,7 +3,13 @@ import gwtools
 from .utils import generate_waveform
 from .utils import get_peak_via_quadratic_fit
 
-def load_waveform(**kwargs):
+
+def load_waveform(catalog="LAL", sim=None, path_to_file=None, **kwargs):
+    if catalog == "LAL":
+        return load_LAL_waveform(**kwargs)
+
+
+def load_LAL_waveform(**kwargs):
     """ FIXME add some documentation.
     """
     # FIXME: Generalize this
