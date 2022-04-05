@@ -117,10 +117,13 @@ class eccDefinition:
             if keyword in spline_keywords:
                 default_spline_keywords[keyword] = spline_keywords[keyword]
 
+        self.spline_keywords = default_spline_keywords
         omega_peaks_interp, omega_peaks_idx = self.interp_extrema(
             "maxima", extrema_finding_keywords, default_spline_keywords)
-        omega_troughs_interp = self.interp_extrema(
-            "minima", extrema_finding_keywords, default_spline_keywords)[0]
+        omega_troughs_interp, omega_troughs_idx = self.interp_extrema(
+            "minima", extrema_finding_keywords, default_spline_keywords)
+        self.peaks_location = omega_peaks_idx
+        self.troughs_location = omega_troughs_idx
 
         # check if the t_ref has a peak before and after
         # This required to define mean anomaly.

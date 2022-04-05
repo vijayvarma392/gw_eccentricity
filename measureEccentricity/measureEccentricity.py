@@ -46,6 +46,7 @@ def get_available_methods():
 
 
 def measure_eccentricity(t_ref, dataDict, method="Amplitude",
+                         return_ecc_method=False,
                          extrema_finding_keywords=None,
                          spline_keywords=None):
     """Measure eccentricity and mean anomaly at reference time.
@@ -65,6 +66,13 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
                             }.
         Some methods may need extra data. For example, the ResidualAmplitude
         method, requires "t_zeroecc" and "hlm_zeroecc" as well in dataDict.
+
+    method:
+        method to define eccentricity. See get_available_methods for available
+        methods.
+
+    return_ecc_method:
+        If true, returns the method object used to compute the eccentricity.
 
     extrema_finding_keywords:
         Dictionary of arguments to be passed to the peak finding function,
@@ -86,8 +94,14 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
 
     if method in available_methods:
         ecc_method = available_methods[method](dataDict)
-        return ecc_method.measure_ecc(t_ref, extrema_finding_keywords,
-                                      spline_keywords)
+        ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+            t_ref,
+            extrema_finding_keywords,
+            spline_keywords)
+        if not return_ecc_method:
+            return ecc_ref, mean_ano_ref
+        else:
+            return ecc_ref, mean_ano_ref, ecc_method
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {available_methods.keys()}")
