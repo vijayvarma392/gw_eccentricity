@@ -84,12 +84,12 @@ class eccDefinition:
             phase22_at_merger = self.phase22[merger_idx]
             # one orbit changes the 22 mode phase by 4 pi since
             # omega22 = 2 omega_orb
-            phase22_num_orbit_earlier_than_merger = (
+            phase22_num_orbits_earlier_than_merger = (
                 phase22_at_merger
                 - 4 * np.pi
                 * exclude_num_orbits_before_merger)
             idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
-                self.phase22 - phase22_num_orbit_earlier_than_merger))
+                self.phase22 - phase22_num_orbits_earlier_than_merger))
             # use only the extrema those are atleast num_orbits away from the
             # merger to avoid overfitting in the spline through the exrema
             extrema_idx = extrema_idx[extrema_idx
@@ -104,13 +104,13 @@ class eccDefinition:
                 f"Sufficient number of {which} are not found."
                 " Can not create an interpolator.")
 
-    def do_sanity_check(user_keywords, default_keywords, name):
+    def do_sanity_check(name, user_keywords, default_keywords):
         """Sanity check for user given dicionary of keywords.
 
         parameters:
+        name: string to represnt the dictionary
         user_keywords: Dictionary of keywords by user
         default_keywords: Dictionary of default keywords
-        name: string to represnt the dictionary
         """
         for keyword in user_keywords.keys():
             if keyword not in default_keywords:
@@ -119,7 +119,7 @@ class eccDefinition:
                                  f"{default_keywords.keys()}")
 
     def update_user_keywords_dict(user_keywords, default_keywords):
-        """Update user given dicionary of keywords by adding missing keys.
+        """Update user given dictionary of keywords by adding missing keys.
 
         parameters:
         user_keywords: Dictionary of keywords by user
@@ -188,8 +188,8 @@ class eccDefinition:
             spline_keywords = {}
 
         # Sanity check for spline keywords
-        self.do_sanity_check(spline_keywords, default_spline_keywords,
-                             "spline_keywords")
+        self.do_sanity_check("spline_keywords", spline_keywords,
+                             default_spline_keywords)
 
         # Add default value to keyword if not passed by user
         self.update_user_keywords_dict(spline_keywords,
@@ -201,8 +201,8 @@ class eccDefinition:
             extra_keywords = {}
         default_extra_keywords = {"exclude_num_orbits_before_merger": 1}
         # sanity check for extra keywords
-        self.do_sanity_check(extra_keywords, default_extra_keywords,
-                             "extra_keywords")
+        self.do_sanity_check("extra_keywords", extra_keywords,
+                             default_extra_keywords)
         # Add default value to keyword if not passed by user
         self.update_user_keywords_dict(extra_keywords, default_extra_keywords)
 
