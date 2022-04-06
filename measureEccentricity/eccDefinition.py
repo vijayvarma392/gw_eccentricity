@@ -88,12 +88,12 @@ class eccDefinition:
                 phase22_at_merger
                 - 4 * np.pi
                 * exclude_num_orbits_before_merger)
-            idx_one_orbit_earlier_than_merger = np.argmin(np.abs(
+            idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
                 self.phase22 - phase22_num_orbit_earlier_than_merger))
             # use only the extrema those are atleast num_orbits away from the
             # merger to avoid overfitting in the spline through the exrema
             extrema_idx = extrema_idx[extrema_idx
-                                      <= idx_one_orbit_earlier_than_merger]
+                                      <= idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
             spline = InterpolatedUnivariateSpline(self.t[extrema_idx],
                                                   self.omega22[extrema_idx],
@@ -104,6 +104,31 @@ class eccDefinition:
                 f"Sufficient number of {which} are not found."
                 " Can not create an interpolator.")
 
+    def do_sanity_check(user_keywords, default_keywords, name):
+        """Sanity check for user given dicionary of keywords.
+
+        parameters:
+        user_keywords: Dictionary of keywords by user
+        default_keywords: Dictionary of default keywords
+        name: string to represnt the dictionary
+        """
+        for keyword in user_keywords.keys():
+            if keyword not in default_keywords:
+                raise ValueError(f"Invalid key {keyword} in {name}."
+                                 " Should be one of "
+                                 f"{default_keywords.keys()}")
+
+    def update_user_keywords_dict(user_keywords, default_keywords):
+        """Update user given dicionary of keywords by adding missing keys.
+
+        parameters:
+        user_keywords: Dictionary of keywords by user
+        default_keywords: Dictionary of default keywords
+        """
+        for keyword in default_keywords.keys():
+            if keyword not in user_keywords:
+                user_keywords[keyword] = default_keywords[keyword]
+
     def measure_ecc(self, tref_in, extrema_finding_keywords=None,
                     spline_keywords=None, extra_keywords=None):
         """Measure eccentricity and mean anomaly at reference time.
@@ -112,14 +137,15 @@ class eccDefinition:
         ----------
         tref_in:
               Input reference time to measure eccentricity and mean anomaly.
-              This is input array provided by the user to evaluate eccenricity
-              and mean anomaly at. However, exclude_num_orbits_before_merger
-              is not None, then the interpolator used to measure eccentricty
-              is constructed using extrema only upto
-              exclude_num_orbits_before_merger and accorindly a tmax is set
-              by chosing the min of time of last peak/trough. Thus the
-              eccentricity and mean anomaly are computed only till tmax and
-              a newr time array tref_out is returned with max(tref_out) = tmax
+              This is the input array provided by the user to evaluate
+              eccenricity and mean anomaly at. However, if
+              exclude_num_orbits_before_merger is not None, then the
+              interpolator used to measure eccentricty is constructed using
+              extrema only upto exclude_num_orbits_before_merger and accorindly
+              a tmax is set by chosing the min of time of last peak/trough.
+              Thus the eccentricity and mean anomaly are computed only upto
+              tmax and a new time array tref_out is returned with
+              max(tref_out) = tmax
 
         extrema_finding_keywords:
              Dictionary of arguments to be passed to the
@@ -141,8 +167,9 @@ class eccDefinition:
         returns:
         --------
         tref_out: array of reference time where eccenricity and mean anomaly is
-              measured. This would be different than tref_in if
-              exclude_num_obrits_before_merger in the extra_keyword is not None
+              measured. This would be different from tref_in if
+              exclude_num_obrits_before_merger in the extra_keywords
+              is not None
 
         ecc_ref: measured eccentricity at tref_out
         mean_ano_ref: measured mean anomaly at tref_out
@@ -156,19 +183,17 @@ class eccDefinition:
                                    "k": 3,
                                    "ext": 0,
                                    "check_finite": False}
+        # make it iterable
         if spline_keywords is None:
             spline_keywords = {}
 
         # Sanity check for spline keywords
-        for keyword in spline_keywords:
-            if keyword not in default_spline_keywords:
-                raise ValueError(f"Invalid key {keyword} in spline_keywords."
-                                 " Should be one of "
-                                 f"{default_spline_keywords.keys()}")
+        self.do_sanity_check(spline_keywords, default_spline_keywords,
+                             "spline_keywords")
+
         # Add default value to keyword if not passed by user
-        for keyword in default_spline_keywords.keys():
-            if keyword not in spline_keywords:
-                spline_keywords[keyword] = default_spline_keywords[keyword]
+        self.update_user_keywords_dict(spline_keywords,
+                                       default_spline_keywords)
 
         self.spline_keywords = spline_keywords
 
@@ -176,15 +201,10 @@ class eccDefinition:
             extra_keywords = {}
         default_extra_keywords = {"exclude_num_orbits_before_merger": 1}
         # sanity check for extra keywords
-        for keyword in extra_keywords:
-            if keyword not in default_extra_keywords:
-                raise ValueError(f"Invalid key {keyword} in extra_keywords."
-                                 " Should be one of "
-                                 f"{default_extra_keywords.keys()}")
+        self.do_sanity_check(extra_keywords, default_extra_keywords,
+                             "extra_keywords")
         # Add default value to keyword if not passed by user
-        for keyword in default_extra_keywords.keys():
-            if keyword not in extra_keywords:
-                extra_keywords[keyword] = default_extra_keywords[keyword]
+        self.update_user_keywords_dict(extra_keywords, default_extra_keywords)
 
         omega_peaks_interp, self.peaks_location = self.interp_extrema(
             "maxima", extrema_finding_keywords, spline_keywords,

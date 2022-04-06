@@ -60,17 +60,12 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             extrema_finding_keywords = {}
 
         # Sanity check for arguments passed to the find_peak function
-        for keyword in extrema_finding_keywords:
-            if keyword not in default_extrema_finding_keywords:
-                raise ValueError(f"Invalid key {keyword} is "
-                                 "extrema_finding_keywords. Should be one of "
-                                 f"{default_extrema_finding_keywords.keys()}")
-
+        self.do_sanity_check(extrema_finding_keywords,
+                             default_extrema_finding_keywords,
+                             "extrema_finding_keywords")
         # Add default value to keyword if not passed by user
-        for keyword in default_extrema_finding_keywords:
-            if keyword not in extrema_finding_keywords:
-                extrema_finding_keywords[keyword] \
-                    = default_extrema_finding_keywords[keyword]
+        self.update_user_keywords_dict(extrema_finding_keywords,
+                                       default_extrema_finding_keywords)
 
         # If width is None, make a reasonable guess
         if extrema_finding_keywords["width"] is None:
