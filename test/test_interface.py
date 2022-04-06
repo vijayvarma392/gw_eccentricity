@@ -20,6 +20,7 @@ def test_interface():
     # List of all available methods
     available_methods = measureEccentricity.get_available_methods()
     for method in available_methods:
-        ecc_ref, mean_ano_ref = measure_eccentricity(t_ref=-14000,
-                                                     method=method,
-                                                     dataDict=dataDict)
+        tref_out, ecc_ref, mean_ano_ref = measure_eccentricity(
+            t_ref=-14000,
+            method=method,
+            dataDict=dataDict)
