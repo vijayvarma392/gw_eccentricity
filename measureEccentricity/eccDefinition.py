@@ -104,8 +104,8 @@ class eccDefinition:
                 f"Sufficient number of {which} are not found."
                 " Can not create an interpolator.")
 
-    def do_sanity_check(user_keywords=None, default_keywords=None,
-                        name="user_keyword"):
+    def do_sanity_check(self, user_keywords=None, default_keywords=None,
+                        name="user given keyword"):
         """Sanity check for user given dicionary of keywords.
 
         parameters:
@@ -119,7 +119,7 @@ class eccDefinition:
                                  " Should be one of "
                                  f"{default_keywords.keys()}")
 
-    def update_user_keywords_dict(user_keywords, default_keywords):
+    def update_user_keywords_dict(self, user_keywords, default_keywords):
         """Update user given dictionary of keywords by adding missing keys.
 
         parameters:
