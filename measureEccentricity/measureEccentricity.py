@@ -57,6 +57,12 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
     tref_in:
         Input Reference time at which to measure eccentricity and mean anomaly.
         Can be a single float or an array.
+        However, if exclude_num_orbits_before_merger is not None, then the
+        interpolator used to measure eccentricty is constructed using extrema
+        only upto exclude_num_orbits_before_merger and accorindly a tmax is
+        set by chosing the min of time of last peak/trough. Thus the
+        eccentricity and mean anomaly are computed only till tmax and
+        a newr time array tref_out is returned with max(tref_out) = tmax
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.

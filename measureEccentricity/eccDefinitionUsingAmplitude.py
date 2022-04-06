@@ -66,15 +66,15 @@ class eccDefinitionUsingAmplitude(eccDefinition):
                                  "extrema_finding_keywords. Should be one of "
                                  f"{default_extrema_finding_keywords.keys()}")
 
-        # Update keyword if passed by user
+        # Add default value to keyword if not passed by user
         for keyword in default_extrema_finding_keywords:
-            if keyword in extrema_finding_keywords:
-                default_extrema_finding_keywords[keyword] \
-                    = extrema_finding_keywords[keyword]
+            if keyword not in extrema_finding_keywords:
+                extrema_finding_keywords[keyword] \
+                    = default_extrema_finding_keywords[keyword]
 
         # If width is None, make a reasonable guess
-        if default_extrema_finding_keywords["width"] is None:
-            default_extrema_finding_keywords["width"] = 10
+        if extrema_finding_keywords["width"] is None:
+            extrema_finding_keywords["width"] = 10
 
         if which == "maxima" or which == "peaks":
             sign = 1
@@ -86,4 +86,4 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         return find_peaks(
             sign * self.data_for_finding_extrema,
-            **default_extrema_finding_keywords)[0]
+            **extrema_finding_keywords)[0]

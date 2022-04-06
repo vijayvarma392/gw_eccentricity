@@ -80,21 +80,24 @@ class eccDefinition:
         # This helps in avoiding over fitting issue in the spline
         # thorugh the extrema
         if exclude_num_orbits_before_merger is not None:
-            merger_idx = np.argmax(self.amp22)
+            merger_idx = np.argmin(np.abs(self.t))
             phase22_at_merger = self.phase22[merger_idx]
-            phase_one_orbit_earlier_than_merger = (
+            # one orbit changes the 22 mode phase by 4 pi since
+            # omega22 = 2 omega_orb
+            phase22_num_orbit_earlier_than_merger = (
                 phase22_at_merger
-                - 2 * np.pi
+                - 4 * np.pi
                 * exclude_num_orbits_before_merger)
-            idx_one_orbit_earlier_than_merger = np.where(
-                self.phase22 >= phase_one_orbit_earlier_than_merger
-            )[0][0]
+            idx_one_orbit_earlier_than_merger = np.argmin(np.abs(
+                self.phase22 - phase22_num_orbit_earlier_than_merger))
+            # use only the extrema those are atleast num_orbits away from the
+            # merger to avoid overfitting in the spline through the exrema
             extrema_idx = extrema_idx[extrema_idx
                                       <= idx_one_orbit_earlier_than_merger]
-        spline = InterpolatedUnivariateSpline(self.t[extrema_idx],
-                                              self.omega22[extrema_idx],
-                                              **spline_keywords)
         if len(extrema_idx) >= 2:
+            spline = InterpolatedUnivariateSpline(self.t[extrema_idx],
+                                                  self.omega22[extrema_idx],
+                                                  **spline_keywords)
             return spline, extrema_idx
         else:
             raise Exception(
@@ -107,11 +110,27 @@ class eccDefinition:
 
         parameters:
         ----------
-        tref_in: Input reference time to measure eccentricity and mean anomaly.
-        extrema_finding_keywords: Dictionary of arguments to be passed to the
-        peak finding function.
-        spline_keywords: arguments to be passed to InterpolatedUnivariateSpline
-        extra_keywords: any extra keywords to be passed. Allowed keywords are
+        tref_in:
+              Input reference time to measure eccentricity and mean anomaly.
+              This is input array provided by the user to evaluate eccenricity
+              and mean anomaly at. However, exclude_num_orbits_before_merger
+              is not None, then the interpolator used to measure eccentricty
+              is constructed using extrema only upto
+              exclude_num_orbits_before_merger and accorindly a tmax is set
+              by chosing the min of time of last peak/trough. Thus the
+              eccentricity and mean anomaly are computed only till tmax and
+              a newr time array tref_out is returned with max(tref_out) = tmax
+
+        extrema_finding_keywords:
+             Dictionary of arguments to be passed to the
+             peak finding function.
+
+        spline_keywords:
+             arguments to be passed to InterpolatedUnivariateSpline
+
+        extra_keywords:
+            any extra keywords to be passed. Allowed keywords are
+
             exclude_num_orbits_before_merger:
               could be either None or non negative real number. If None, then
               the full data even after merger is used but this might cause
@@ -146,12 +165,12 @@ class eccDefinition:
                 raise ValueError(f"Invalid key {keyword} in spline_keywords."
                                  " Should be one of "
                                  f"{default_spline_keywords.keys()}")
-        # Update spline keyword if given by user
+        # Add default value to keyword if not passed by user
         for keyword in default_spline_keywords.keys():
-            if keyword in spline_keywords:
-                default_spline_keywords[keyword] = spline_keywords[keyword]
+            if keyword not in spline_keywords:
+                spline_keywords[keyword] = default_spline_keywords[keyword]
 
-        self.spline_keywords = default_spline_keywords
+        self.spline_keywords = spline_keywords
 
         if extra_keywords is None:
             extra_keywords = {}
@@ -162,22 +181,23 @@ class eccDefinition:
                 raise ValueError(f"Invalid key {keyword} in extra_keywords."
                                  " Should be one of "
                                  f"{default_extra_keywords.keys()}")
-        # update extra keyword if given by the user
+        # Add default value to keyword if not passed by user
         for keyword in default_extra_keywords.keys():
-            if keyword in extra_keywords:
-                default_extra_keywords[keyword] = extra_keywords[keyword]
+            if keyword not in extra_keywords:
+                extra_keywords[keyword] = default_extra_keywords[keyword]
 
         omega_peaks_interp, self.peaks_location = self.interp_extrema(
-            "maxima", extrema_finding_keywords, default_spline_keywords,
+            "maxima", extrema_finding_keywords, spline_keywords,
             default_extra_keywords["exclude_num_orbits_before_merger"])
         omega_troughs_interp, self.troughs_location = self.interp_extrema(
-            "minima", extrema_finding_keywords, default_spline_keywords,
+            "minima", extrema_finding_keywords, spline_keywords,
             default_extra_keywords["exclude_num_orbits_before_merger"])
 
         t_peaks = self.t[self.peaks_location]
-        if default_extra_keywords["exclude_num_orbits_before_merger"] is not None:
+        if extra_keywords["exclude_num_orbits_before_merger"] is not None:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
+            # measure eccentricty and mean anomaly only upto t_max
             tref_out = tref_in[tref_in <= t_max]
         else:
             tref_out = tref_in
