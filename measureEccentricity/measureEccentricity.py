@@ -45,16 +45,17 @@ def get_available_methods():
     return models
 
 
-def measure_eccentricity(t_ref, dataDict, method="Amplitude",
+def measure_eccentricity(tref_in, dataDict, method="Amplitude",
                          return_ecc_method=False,
                          extrema_finding_keywords=None,
-                         spline_keywords=None):
+                         spline_keywords=None,
+                         extra_keywprds=None):
     """Measure eccentricity and mean anomaly at reference time.
 
     parameters:
     ----------
-    t_ref:
-        Reference time at which to measure eccentricity and mean anomaly.
+    tref_in:
+        Input Reference time at which to measure eccentricity and mean anomaly.
         Can be a single float or an array.
 
     dataDict:
@@ -82,8 +83,21 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
         Dictionary of arguments to be passed to
         scipy.interpolate.InterpolatedUnivariateSpline.
 
+    extra_keywords: any extra keywords to be passed. Allowed keywords are
+        exclude_num_orbits_before_merger:
+        could be either None or non negative real number. If None, then
+        the full data even after merger is used but this might cause
+        issues with he interpolaion trough exrema. For non negative real
+        number, that many orbits prior to merger is exculded.
+        Default is 1.
+
     returns:
     --------
+    tref_out:
+         Output reference time where eccenricity and mean anomaly is
+         measured. This would be different than tref_in if
+         exclude_num_obrits_before_merger in the extra_keyword is not None
+
     ecc_ref:
         Measured eccentricity at t_ref. Same type as t_ref.
 
@@ -91,20 +105,22 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
         Measured mean anomaly at t_ref. Same type as t_ref.
 
     ecc_method:
-       method object used to compute eccentricity only if return_ecc_method is True
+       method object used to compute eccentricity only if
+       return_ecc_method is True
     """
     available_methods = get_available_methods()
 
     if method in available_methods:
         ecc_method = available_methods[method](dataDict)
-        ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
-            t_ref,
+        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+            tref_in,
             extrema_finding_keywords,
-            spline_keywords)
+            spline_keywords,
+            extra_keywprds)
         if not return_ecc_method:
-            return ecc_ref, mean_ano_ref
+            return tref_out, ecc_ref, mean_ano_ref
         else:
-            return ecc_ref, mean_ano_ref, ecc_method
+            return tref_out, ecc_ref, mean_ano_ref, ecc_method
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {available_methods.keys()}")
