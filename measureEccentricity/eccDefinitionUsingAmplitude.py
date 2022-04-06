@@ -60,9 +60,9 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             extrema_finding_keywords = {}
 
         # Sanity check for arguments passed to the find_peak function
-        self.do_sanity_check("extrema_finding_keywords",
-                             extrema_finding_keywords,
-                             default_extrema_finding_keywords)
+        self.do_sanity_check(extrema_finding_keywords,
+                             default_extrema_finding_keywords,
+                             "extrema_finding_keywords")
         # Add default value to keyword if not passed by user
         self.update_user_keywords_dict(extrema_finding_keywords,
                                        default_extrema_finding_keywords)
