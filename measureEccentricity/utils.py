@@ -125,6 +125,9 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
     user_kwargs: Dictionary of kwargs by user
     default_kwargs: Dictionary of default kwargs
     name: string to represnt the dictionary
+
+    returns:
+    updated user_kwargs
     """
     for kw in user_kwargs.keys():
         if kw not in default_kwargs:
@@ -135,3 +138,5 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
     for kw in default_kwargs.keys():
         if kw not in user_kwargs:
             user_kwargs[kw] = default_kwargs[kw]
+
+    return user_kwargs

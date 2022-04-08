@@ -168,8 +168,9 @@ class eccDefinition:
             spline_kwargs = {}
 
         # Sanity check for spline kwargs and set default values
-        check_kwargs_and_set_defaults(spline_kwargs, default_spline_kwargs,
-                                      "spline_kwargs")
+        spline_kwargs = check_kwargs_and_set_defaults(
+            spline_kwargs, default_spline_kwargs,
+            "spline_kwargs")
 
         self.spline_kwargs = spline_kwargs
 
@@ -178,8 +179,9 @@ class eccDefinition:
         default_extra_kwargs = {"num_orbits_to_exclude_before_merger": 1,
                                 "debug": True}
         # sanity check for extra kwargs and set to default values
-        check_kwargs_and_set_defaults(extra_kwargs, default_extra_kwargs,
-                                      "extra_kwargs")
+        extra_kwargs = check_kwargs_and_set_defaults(
+            extra_kwargs, default_extra_kwargs,
+            "extra_kwargs")
         if default_extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
             raise ValueError(
                 "num_orbits_to_exclude_before_merger must be non-negative. "
@@ -257,22 +259,28 @@ class eccDefinition:
         parameters:
         tref_out: Output reference time from eccentricty measurement
         ecc_ref: measured eccentricity at tref_out
-        check_convexity: In addition to monotonicity, it will check for convexity
-        as well.
-        t_for_ecc_test: Time array to build a spline
+        check_convexity: In addition to monotonicity, it will check for
+        convexity as well. Default is False.
+        t_for_ecc_test: Time array to build a spline. If Noe, then uses
+        a new time array with delta_t = 0.1 for same range as in tref_out
+        Default is None.
         """
         spline = InterpolatedUnivariateSpline(tref_out, ecc_ref)
         if t_for_ecc_test is None:
-            t_for_ecc_test = np.linspace(tref_out[0], tref_out[-1], 5 * len(tref_out))
+            t_for_ecc_test = np.arange(tref_out[0], tref_out[-1], 0.1)
+            len_t_for_ecc_test = len(t_for_ecc_test)
+            if len_t_for_ecc_test > 100000:
+                warnings.warn("time array t_for_ecc_test is too long."
+                              f" Length is {len_t_for_ecc_test}")
         dEccDt = spline.derivative(n=1)
         dEccs = dEccDt(t_for_ecc_test)
         self.t_for_ecc_test = t_for_ecc_test
-        self.dEccs = dEccs
+        self.decc_dt = dEccs
         if any(dEccs > 0):
             warnings.warn("Eccentricity has non monotonicity.")
         if check_convexity:
             d2EccDt = spline.derivative(n=2)
             d2Eccs = d2EccDt(t_for_ecc_test)
-            self.d2Eccs = d2Eccs
+            self.d2ecc_dt = d2Eccs
             if any(d2Eccs > 0):
                 warnings.warn("Eccentricity has concavity.")

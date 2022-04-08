@@ -61,9 +61,10 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         # Sanity check for arguments passed to the find_peak function
         # and set default values of not given by user
-        check_kwargs_and_set_defaults(extrema_finding_kwargs,
-                                      default_extrema_finding_kwargs,
-                                      "extrema_finding_kwargs")
+        extrema_finding_kwargs = check_kwargs_and_set_defaults(
+            extrema_finding_kwargs,
+            default_extrema_finding_kwargs,
+            "extrema_finding_kwargs")
 
         # If width is None, make a reasonable guess
         if extrema_finding_kwargs["width"] is None:
