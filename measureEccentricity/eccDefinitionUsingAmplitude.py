@@ -47,28 +47,22 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
+        #TODO: Set width more smartly
         default_extrema_finding_kwargs = {"height": None,
                                           "threshold": None,
                                           "distance": None,
                                           "prominence": None,
-                                          "width": None,
+                                          "width": 10,
                                           "wlen": None,
                                           "rel_height": 0.5,
                                           "plateau_size": None}
-        # make it iterable
-        if extrema_finding_kwargs is None:
-            extrema_finding_kwargs = {}
 
         # Sanity check for arguments passed to the find_peak function
         # and set default values of not given by user
-        extrema_finding_kwargs = check_kwargs_and_set_defaults(
+        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             extrema_finding_kwargs,
             default_extrema_finding_kwargs,
             "extrema_finding_kwargs")
-
-        # If width is None, make a reasonable guess
-        if extrema_finding_kwargs["width"] is None:
-            extrema_finding_kwargs["width"] = 10
 
         if which == "maxima" or which == "peaks":
             sign = 1
@@ -80,4 +74,4 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         return find_peaks(
             sign * self.data_for_finding_extrema,
-            **extrema_finding_kwargs)[0]
+            **self.extrema_finding_kwargs)[0]

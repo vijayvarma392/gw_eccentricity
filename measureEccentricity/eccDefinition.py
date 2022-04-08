@@ -129,30 +129,33 @@ class eccDefinition:
              peak finding function.
 
         spline_kwargs:
-             arguments to be passed to InterpolatedUnivariateSpline
+             Arguments to be passed to InterpolatedUnivariateSpline
 
         extra_kwargs:
-            any extra kwargs to be passed. Allowed kwargs are
-
-            num_orbits_to_exclude_before_merger:
-              could be either None or non negative real number. If None, then
-              the full data even after merger is used but this might cause
-              issues with he interpolaion trough exrema. For non negative real
-              number, that many orbits prior to merger is exculded.
-              Default is 1.
-           debug:
-              Check if the measured eccentricity is monotonic and concave.
-              Default value is True
+            Any extra kwargs to be passed. Allowed kwargs are
+                num_orbits_to_exclude_before_merger:
+                  Could be either None or non negative real number. If None,
+                  then the full data even after merger is used but this might
+                  cause issues with he interpolaion trough exrema. For non
+                  negative real number, that many orbits prior to merger is
+                  exculded.
+                  Default is 1.
+               debug:
+                  Check if the measured eccentricity is monotonic and concave.
+                  Default value is True
 
         returns:
         --------
-        tref_out: array of reference time where eccenricity and mean anomaly is
-              measured. This would be different from tref_in if
-              exclude_num_obrits_before_merger in the extra_kwargs
-              is not None
+        tref_out:
+            Array of reference times where eccenricity and mean anomaly are
+            measured. This would be different from tref_in if
+            exclude_num_obrits_before_merger in the extra_kwargs is not None.
 
-        ecc_ref: measured eccentricity at tref_out
-        mean_ano_ref: measured mean anomaly at tref_out
+        ecc_ref:
+            Measured eccentricity at tref_out.
+
+        mean_ano_ref:
+            Measured mean anomaly at tref_out.
         """
         tref_in = np.atleast_1d(tref_in)
         if any(tref_in >= 0):
@@ -163,41 +166,33 @@ class eccDefinition:
                                  "k": 3,
                                  "ext": 0,
                                  "check_finite": False}
-        # make it iterable
-        if spline_kwargs is None:
-            spline_kwargs = {}
 
         # Sanity check for spline kwargs and set default values
-        spline_kwargs = check_kwargs_and_set_defaults(
+        self.spline_kwargs = check_kwargs_and_set_defaults(
             spline_kwargs, default_spline_kwargs,
             "spline_kwargs")
 
-        self.spline_kwargs = spline_kwargs
-
-        if extra_kwargs is None:
-            extra_kwargs = {}
         default_extra_kwargs = {"num_orbits_to_exclude_before_merger": 1,
                                 "debug": True}
         # sanity check for extra kwargs and set to default values
-        extra_kwargs = check_kwargs_and_set_defaults(
+        self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, default_extra_kwargs,
             "extra_kwargs")
-        if extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
             raise ValueError(
                 "num_orbits_to_exclude_before_merger must be non-negative. "
                 "Given value was "
-                f"{extra_kwargs['num_orbits_to_exclude_before_merger']}")
-        self.extra_kwargs = extra_kwargs
+                f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
 
         omega_peaks_interp, self.peaks_location = self.interp_extrema(
-            "maxima", extrema_finding_kwargs, spline_kwargs,
-            extra_kwargs["num_orbits_to_exclude_before_merger"])
+            "maxima", extrema_finding_kwargs, self.spline_kwargs,
+            self.extra_kwargs["num_orbits_to_exclude_before_merger"])
         omega_troughs_interp, self.troughs_location = self.interp_extrema(
-            "minima", extrema_finding_kwargs, spline_kwargs,
-            extra_kwargs["num_orbits_to_exclude_before_merger"])
+            "minima", extrema_finding_kwargs, self.spline_kwargs,
+            self.extra_kwargs["num_orbits_to_exclude_before_merger"])
 
         t_peaks = self.t[self.peaks_location]
-        if extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
             # measure eccentricty and mean anomaly only upto t_max
@@ -246,7 +241,7 @@ class eccDefinition:
             ecc_ref = ecc_ref[0]
 
         # check if eccenricity is monotonic and convex
-        if len(tref_out) > 1 and extra_kwargs["debug"]:
+        if len(tref_out) > 1 and self.extra_kwargs["debug"]:
             self.check_monotonicity_and_convexity(tref_out, ecc_ref)
 
         return tref_out, ecc_ref, mean_ano_ref
@@ -254,14 +249,14 @@ class eccDefinition:
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,
                                          t_for_ecc_test=None):
-        """Check if measured eccentricity is monotonic.
+        """Check if measured eccentricity is a monotonic function of time.
 
         parameters:
         tref_out: Output reference time from eccentricty measurement
         ecc_ref: measured eccentricity at tref_out
         check_convexity: In addition to monotonicity, it will check for
         convexity as well. Default is False.
-        t_for_ecc_test: Time array to build a spline. If Noe, then uses
+        t_for_ecc_test: Time array to build a spline. If None, then uses
         a new time array with delta_t = 0.1 for same range as in tref_out
         Default is None.
         """
@@ -272,15 +267,13 @@ class eccDefinition:
             if len_t_for_ecc_test > 100000:
                 warnings.warn("time array t_for_ecc_test is too long."
                               f" Length is {len_t_for_ecc_test}")
-        dEccDt = spline.derivative(n=1)
-        dEccs = dEccDt(t_for_ecc_test)
+        self.decc_dt = spline.derivative(n=1)(t_for_ecc_test)
         self.t_for_ecc_test = t_for_ecc_test
-        self.decc_dt = dEccs
-        if any(dEccs > 0):
-            warnings.warn("Eccentricity has non monotonicity.")
+        self.decc_dt = self.decc_dt
+        if any(self.decc_dt > 0):
+            warnings.warn("Ecc(t) is non monotonic.")
         if check_convexity:
-            d2EccDt = spline.derivative(n=2)
-            d2Eccs = d2EccDt(t_for_ecc_test)
-            self.d2ecc_dt = d2Eccs
-            if any(d2Eccs > 0):
-                warnings.warn("Eccentricity has concavity.")
+            self.d2ecc_dt = spline.derivative(n=2)(t_for_ecc_test)
+            self.d2ecc_dt = self.d2ecc_dt
+            if any(self.d2ecc_dt > 0):
+                warnings.warn("Ecc(t) is concave.")

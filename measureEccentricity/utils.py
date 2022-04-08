@@ -129,6 +129,11 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
     returns:
     updated user_kwargs
     """
+
+    # make user_kwargs iterable
+    if user_kwargs is None:
+        user_kwargs = {}
+
     for kw in user_kwargs.keys():
         if kw not in default_kwargs:
             raise ValueError(f"Invalid key {kw} in {name}."
