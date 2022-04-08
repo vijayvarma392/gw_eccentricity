@@ -7,7 +7,7 @@ Md Arif Shaikh, Mar 29, 2022
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-from .utils import get_peak_via_quadratic_fit
+from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
 
 
 class eccDefinition:
@@ -38,13 +38,13 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.t)
 
-    def find_extrema(self, which="maxima", extrema_finding_keywords=None):
+    def find_extrema(self, which="maxima", extrema_finding_kwargs=None):
         """Find the extrema in the data.
 
         parameters:
         -----------
         which: either maxima, peaks, minima or troughs
-        extrema_finding_keywords: Dictionary of arguments to be passed to the
+        extrema_finding_kwargs: Dictionary of arguments to be passed to the
         peak finding function.
 
         returns:
@@ -53,18 +53,18 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def interp_extrema(self, which="maxima", extrema_finding_keywords=None,
-                       spline_keywords=None,
-                       exclude_num_orbits_before_merger=1):
+    def interp_extrema(self, which="maxima", extrema_finding_kwargs=None,
+                       spline_kwargs=None,
+                       num_orbits_to_exclude_before_merger=1):
         """Interpolator through extrema.
 
         parameters:
         -----------
         which: either maxima, peaks, minima or troughs
-        extrema_finding_keywords: Dictionary of arguments to be passed to the
+        extrema_finding_kwargs: Dictionary of arguments to be passed to the
         peak finding function.
-        spline_keywords: arguments to be passed to InterpolatedUnivariateSpline
-        exclude_num_orbits_before_merger:
+        spline_kwargs: arguments to be passed to InterpolatedUnivariateSpline
+        num_orbits_to_exclude_before_merger:
               could be either None or non negative real number. If None, then
               the full data even after merger is used but this might cause
               issues with he interpolaion trough exrema. For non negative real
@@ -75,11 +75,11 @@ class eccDefinition:
         ------
         spline through extrema, positions of extrema
         """
-        extrema_idx = self.find_extrema(which, extrema_finding_keywords)
+        extrema_idx = self.find_extrema(which, extrema_finding_kwargs)
         # experimenting wih throwing away peaks too close to merger
-        # This helps in avoiding over fitting issue in the spline
+        # This helps in avoiding unwanted feature in the spline
         # thorugh the extrema
-        if exclude_num_orbits_before_merger is not None:
+        if num_orbits_to_exclude_before_merger is not None:
             merger_idx = np.argmin(np.abs(self.t))
             phase22_at_merger = self.phase22[merger_idx]
             # one orbit changes the 22 mode phase by 4 pi since
@@ -87,51 +87,26 @@ class eccDefinition:
             phase22_num_orbits_earlier_than_merger = (
                 phase22_at_merger
                 - 4 * np.pi
-                * exclude_num_orbits_before_merger)
+                * num_orbits_to_exclude_before_merger)
             idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
                 self.phase22 - phase22_num_orbits_earlier_than_merger))
             # use only the extrema those are atleast num_orbits away from the
-            # merger to avoid overfitting in the spline through the exrema
+            # merger to avoid unphysical features like nonmonotonic
+            # eccentricity near the merger
             extrema_idx = extrema_idx[extrema_idx
                                       <= idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
             spline = InterpolatedUnivariateSpline(self.t[extrema_idx],
                                                   self.omega22[extrema_idx],
-                                                  **spline_keywords)
+                                                  **spline_kwargs)
             return spline, extrema_idx
         else:
             raise Exception(
                 f"Sufficient number of {which} are not found."
                 " Can not create an interpolator.")
 
-    def do_sanity_check(self, user_keywords=None, default_keywords=None,
-                        name="user given keyword"):
-        """Sanity check for user given dicionary of keywords.
-
-        parameters:
-        user_keywords: Dictionary of keywords by user
-        default_keywords: Dictionary of default keywords
-        name: string to represnt the dictionary
-        """
-        for keyword in user_keywords.keys():
-            if keyword not in default_keywords:
-                raise ValueError(f"Invalid key {keyword} in {name}."
-                                 " Should be one of "
-                                 f"{default_keywords.keys()}")
-
-    def update_user_keywords_dict(self, user_keywords, default_keywords):
-        """Update user given dictionary of keywords by adding missing keys.
-
-        parameters:
-        user_keywords: Dictionary of keywords by user
-        default_keywords: Dictionary of default keywords
-        """
-        for keyword in default_keywords.keys():
-            if keyword not in user_keywords:
-                user_keywords[keyword] = default_keywords[keyword]
-
-    def measure_ecc(self, tref_in, extrema_finding_keywords=None,
-                    spline_keywords=None, extra_keywords=None):
+    def measure_ecc(self, tref_in, extrema_finding_kwargs=None,
+                    spline_kwargs=None, extra_kwargs=None):
         """Measure eccentricity and mean anomaly at reference time.
 
         parameters:
@@ -140,25 +115,25 @@ class eccDefinition:
               Input reference time to measure eccentricity and mean anomaly.
               This is the input array provided by the user to evaluate
               eccenricity and mean anomaly at. However, if
-              exclude_num_orbits_before_merger is not None, then the
+              num_orbits_to_exclude_before_merger is not None, then the
               interpolator used to measure eccentricty is constructed using
-              extrema only upto exclude_num_orbits_before_merger and accorindly
-              a tmax is set by chosing the min of time of last peak/trough.
-              Thus the eccentricity and mean anomaly are computed only upto
-              tmax and a new time array tref_out is returned with
+              extrema only upto num_orbits_to_exclude_before_merger and
+              accorindly a tmax is set by chosing the min of time of last
+              peak/trough. Thus the eccentricity and mean anomaly are computed
+              only upto tmax and a new time array tref_out is returned with
               max(tref_out) = tmax
 
-        extrema_finding_keywords:
+        extrema_finding_kwargs:
              Dictionary of arguments to be passed to the
              peak finding function.
 
-        spline_keywords:
+        spline_kwargs:
              arguments to be passed to InterpolatedUnivariateSpline
 
-        extra_keywords:
-            any extra keywords to be passed. Allowed keywords are
+        extra_kwargs:
+            any extra kwargs to be passed. Allowed kwargs are
 
-            exclude_num_orbits_before_merger:
+            num_orbits_to_exclude_before_merger:
               could be either None or non negative real number. If None, then
               the full data even after merger is used but this might cause
               issues with he interpolaion trough exrema. For non negative real
@@ -169,7 +144,7 @@ class eccDefinition:
         --------
         tref_out: array of reference time where eccenricity and mean anomaly is
               measured. This would be different from tref_in if
-              exclude_num_obrits_before_merger in the extra_keywords
+              exclude_num_obrits_before_merger in the extra_kwargs
               is not None
 
         ecc_ref: measured eccentricity at tref_out
@@ -179,43 +154,42 @@ class eccDefinition:
         if any(tref_in >= 0):
             raise Exception("Reference time must be negative. Merger being"
                             " at t = 0.")
-        default_spline_keywords = {"w": None,
-                                   "bbox": [None, None],
-                                   "k": 3,
-                                   "ext": 0,
-                                   "check_finite": False}
+        default_spline_kwargs = {"w": None,
+                                 "bbox": [None, None],
+                                 "k": 3,
+                                 "ext": 0,
+                                 "check_finite": False}
         # make it iterable
-        if spline_keywords is None:
-            spline_keywords = {}
+        if spline_kwargs is None:
+            spline_kwargs = {}
 
-        # Sanity check for spline keywords
-        self.do_sanity_check(spline_keywords, default_spline_keywords,
-                             "spline_keywords")
+        # Sanity check for spline kwargs and set default values
+        check_kwargs_and_set_defaults(spline_kwargs, default_spline_kwargs,
+                                      "spline_kwargs")
 
-        # Add default value to keyword if not passed by user
-        self.update_user_keywords_dict(spline_keywords,
-                                       default_spline_keywords)
+        self.spline_kwargs = spline_kwargs
 
-        self.spline_keywords = spline_keywords
-
-        if extra_keywords is None:
-            extra_keywords = {}
-        default_extra_keywords = {"exclude_num_orbits_before_merger": 1}
-        # sanity check for extra keywords
-        self.do_sanity_check(extra_keywords, default_extra_keywords,
-                             "extra_keywords")
-        # Add default value to keyword if not passed by user
-        self.update_user_keywords_dict(extra_keywords, default_extra_keywords)
+        if extra_kwargs is None:
+            extra_kwargs = {}
+        default_extra_kwargs = {"num_orbits_to_exclude_before_merger": 1}
+        # sanity check for extra kwargs and set to default values
+        check_kwargs_and_set_defaults(extra_kwargs, default_extra_kwargs,
+                                      "extra_kwargs")
+        if default_extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
+            raise ValueError(
+                "num_orbits_to_exclude_before_merger must be non-negative. "
+                "Given value was "
+                f"{default_extra_kwargs['num_orbits_to_exclude_before_merger']}")
 
         omega_peaks_interp, self.peaks_location = self.interp_extrema(
-            "maxima", extrema_finding_keywords, spline_keywords,
-            default_extra_keywords["exclude_num_orbits_before_merger"])
+            "maxima", extrema_finding_kwargs, spline_kwargs,
+            default_extra_kwargs["num_orbits_to_exclude_before_merger"])
         omega_troughs_interp, self.troughs_location = self.interp_extrema(
-            "minima", extrema_finding_keywords, spline_keywords,
-            default_extra_keywords["exclude_num_orbits_before_merger"])
+            "minima", extrema_finding_kwargs, spline_kwargs,
+            default_extra_kwargs["num_orbits_to_exclude_before_merger"])
 
         t_peaks = self.t[self.peaks_location]
-        if extra_keywords["exclude_num_orbits_before_merger"] is not None:
+        if extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
             # measure eccentricty and mean anomaly only upto t_max
@@ -240,6 +214,8 @@ class eccDefinition:
         @np.vectorize
         def compute_mean_ano(time):
             """
+            Compute mean anomaly.
+
             Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
             Mean anomaly grows linearly in time from 0 to 2 pi over
             the range [t_at_last_peak, t_at_next_peak], where t_at_last_peak

@@ -114,3 +114,24 @@ def generate_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     t = deltaTOverM * np.arange(len(h))  # dimensionless time
 
     return t, h*distance/MT/lal.C_SI
+
+
+def check_kwargs_and_set_defaults(user_kwargs=None,
+                                  default_kwargs=None,
+                                  name="user given kwargs"):
+    """Sanity check user given dicionary of kwargs and set default values.
+
+    parameters:
+    user_kwargs: Dictionary of kwargs by user
+    default_kwargs: Dictionary of default kwargs
+    name: string to represnt the dictionary
+    """
+    for kw in user_kwargs.keys():
+        if kw not in default_kwargs:
+            raise ValueError(f"Invalid key {kw} in {name}."
+                             " Should be one of "
+                             f"{default_kwargs.keys()}")
+
+    for kw in default_kwargs.keys():
+        if kw not in user_kwargs:
+            user_kwargs[kw] = default_kwargs[kw]

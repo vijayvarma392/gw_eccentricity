@@ -47,9 +47,9 @@ def get_available_methods():
 
 def measure_eccentricity(tref_in, dataDict, method="Amplitude",
                          return_ecc_method=False,
-                         extrema_finding_keywords=None,
-                         spline_keywords=None,
-                         extra_keywprds=None):
+                         extrema_finding_kwargs=None,
+                         spline_kwargs=None,
+                         extra_kwargs=None):
     """Measure eccentricity and mean anomaly at reference time.
 
     parameters:
@@ -81,16 +81,16 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
     return_ecc_method:
         If true, returns the method object used to compute the eccentricity.
 
-    extrema_finding_keywords:
+    extrema_finding_kwargs:
         Dictionary of arguments to be passed to the peak finding function,
         where it will be passed to scipy.signal.find_peaks.
 
-    spline_keywords:
+    spline_kwargs:
         Dictionary of arguments to be passed to
         scipy.interpolate.InterpolatedUnivariateSpline.
 
-    extra_keywords: any extra keywords to be passed. Allowed keywords are
-        exclude_num_orbits_before_merger:
+    extra_kwargs: any extra kwargs to be passed. Allowed kwargs are
+        num_orbits_to_exclude_before_merger:
         could be either None or non negative real number. If None, then
         the full data even after merger is used but this might cause
         issues with he interpolaion trough exrema. For non negative real
@@ -120,9 +120,9 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
         ecc_method = available_methods[method](dataDict)
         tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
             tref_in,
-            extrema_finding_keywords,
-            spline_keywords,
-            extra_keywprds)
+            extrema_finding_kwargs,
+            spline_kwargs,
+            extra_kwargs)
         if not return_ecc_method:
             return tref_out, ecc_ref, mean_ano_ref
         else:
