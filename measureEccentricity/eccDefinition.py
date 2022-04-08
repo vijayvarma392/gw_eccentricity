@@ -182,11 +182,11 @@ class eccDefinition:
         extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, default_extra_kwargs,
             "extra_kwargs")
-        if default_extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
+        if extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
             raise ValueError(
                 "num_orbits_to_exclude_before_merger must be non-negative. "
                 "Given value was "
-                f"{default_extra_kwargs['num_orbits_to_exclude_before_merger']}")
+                f"{extra_kwargs['num_orbits_to_exclude_before_merger']}")
         self.extra_kwargs = extra_kwargs
 
         omega_peaks_interp, self.peaks_location = self.interp_extrema(
