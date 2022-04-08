@@ -10,27 +10,26 @@ from .eccDefinition import eccDefinition
 class eccDefinitionUsingFrequencyFits(eccDefinition):
     """Measure eccentricity by finding extrema location using freq fits."""
 
-    def __init__(self, dataDict):
+    def __init__(self, *args, **kwargs):
         """Init for eccDefinitionUsingWithFrequencyFits class.
 
         parameters:
         ----------
         dataDict: Dictionary containing the waveform data.
         """
-        super().__init__(dataDict)
+        super().__init__(*args, **kwargs)
 
-    def find_extrema(self, which="maxima", height=None, threshold=None,
-                     distance=None, prominence=None, width=10, wlen=None,
-                     rel_height=0.5, plateau_size=None):
-        """Find the extrema in the frequency using power law fits.
+
+    def find_extrema(self, which="maxima"):
+        """Find the extrema in the data.
 
         parameters:
         -----------
-        which: either maxima or minima
-        see scipy.signal.find_peaks for rest or the arguments.
+        which:
+            One of 'maxima', 'peaks', 'minima' or 'troughs'.
 
         returns:
         ------
-        array of positions of extrema in the frequency.
+        array of positions of extrema.
         """
         raise NotImplementedError("To be implemented by Harald.")

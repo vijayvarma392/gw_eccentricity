@@ -12,15 +12,39 @@ from .utils import check_kwargs_and_set_defaults
 class eccDefinitionUsingAmplitude(eccDefinition):
     """Define eccentricity by finding extrema location from amplitude."""
 
-    def __init__(self, dataDict):
+    def __init__(self, *args, **kwargs):
         """Init for eccDefinitionUsingAmplitude class.
 
         parameters:
         ----------
         dataDict: Dictionary containing the waveform data.
         """
-        super().__init__(dataDict)
+        super().__init__(*args, **kwargs)
+
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
+
+        # Sanity check extrema_finding_kwargs and set default values
+        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs['extrema_finding_kwargs'],
+            self.get_default_extrema_finding_kwargs(),
+            "extrema_finding_kwargs")
+
+
+    def get_default_extrema_finding_kwargs(self):
+        """Defaults for extrema_finding_kwargs."""
+
+        #TODO: Set width more smartly
+        default_extrema_finding_kwargs = {
+            "height": None,
+             "threshold": None,
+             "distance": None,
+             "prominence": None,
+             "width": 10,
+             "wlen": None,
+             "rel_height": 0.5,
+             "plateau_size": None
+             }
+        return default_extrema_finding_kwargs
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
@@ -33,7 +57,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         return self.amp22
 
-    def find_extrema(self, which="maxima", extrema_finding_kwargs=None):
+    def find_extrema(self, which="maxima"):
         """Find the extrema in the amp22.
 
         parameters:
@@ -47,22 +71,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
-        #TODO: Set width more smartly
-        default_extrema_finding_kwargs = {"height": None,
-                                          "threshold": None,
-                                          "distance": None,
-                                          "prominence": None,
-                                          "width": 10,
-                                          "wlen": None,
-                                          "rel_height": 0.5,
-                                          "plateau_size": None}
-
-        # Sanity check for arguments passed to the find_peak function
-        # and set default values of not given by user
-        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
-            extrema_finding_kwargs,
-            default_extrema_finding_kwargs,
-            "extrema_finding_kwargs")
 
         if which == "maxima" or which == "peaks":
             sign = 1
