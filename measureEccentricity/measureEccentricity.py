@@ -97,6 +97,10 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
         number, that many orbits prior to merger is exculded.
         Default is 1.
 
+        debug:
+        Check if the measured eccentricity is monotonic and concave.
+        Default value is True
+
     returns:
     --------
     tref_out:

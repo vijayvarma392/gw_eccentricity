@@ -8,6 +8,7 @@ Md Arif Shaikh, Mar 29, 2022
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
+import warnings
 
 
 class eccDefinition:
@@ -139,6 +140,9 @@ class eccDefinition:
               issues with he interpolaion trough exrema. For non negative real
               number, that many orbits prior to merger is exculded.
               Default is 1.
+           debug:
+              Check if the measured eccentricity is monotonic and concave.
+              Default value is True
 
         returns:
         --------
@@ -171,7 +175,8 @@ class eccDefinition:
 
         if extra_kwargs is None:
             extra_kwargs = {}
-        default_extra_kwargs = {"num_orbits_to_exclude_before_merger": 1}
+        default_extra_kwargs = {"num_orbits_to_exclude_before_merger": 1,
+                                "debug": True}
         # sanity check for extra kwargs and set to default values
         check_kwargs_and_set_defaults(extra_kwargs, default_extra_kwargs,
                                       "extra_kwargs")
@@ -180,13 +185,14 @@ class eccDefinition:
                 "num_orbits_to_exclude_before_merger must be non-negative. "
                 "Given value was "
                 f"{default_extra_kwargs['num_orbits_to_exclude_before_merger']}")
+        self.extra_kwargs = extra_kwargs
 
         omega_peaks_interp, self.peaks_location = self.interp_extrema(
             "maxima", extrema_finding_kwargs, spline_kwargs,
-            default_extra_kwargs["num_orbits_to_exclude_before_merger"])
+            extra_kwargs["num_orbits_to_exclude_before_merger"])
         omega_troughs_interp, self.troughs_location = self.interp_extrema(
             "minima", extrema_finding_kwargs, spline_kwargs,
-            default_extra_kwargs["num_orbits_to_exclude_before_merger"])
+            extra_kwargs["num_orbits_to_exclude_before_merger"])
 
         t_peaks = self.t[self.peaks_location]
         if extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
@@ -237,4 +243,36 @@ class eccDefinition:
             mean_ano_ref = mean_ano_ref[0]
             ecc_ref = ecc_ref[0]
 
+        # check if eccenricity is monotonic and convex
+        if len(tref_out) > 1 and extra_kwargs["debug"]:
+            self.check_monotonicity_and_convexity(tref_out, ecc_ref)
+
         return tref_out, ecc_ref, mean_ano_ref
+
+    def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
+                                         check_convexity=False,
+                                         t_for_ecc_test=None):
+        """Check if measured eccentricity is monotonic.
+
+        parameters:
+        tref_out: Output reference time from eccentricty measurement
+        ecc_ref: measured eccentricity at tref_out
+        check_convexity: In addition to monotonicity, it will check for convexity
+        as well.
+        t_for_ecc_test: Time array to build a spline
+        """
+        spline = InterpolatedUnivariateSpline(tref_out, ecc_ref)
+        if t_for_ecc_test is None:
+            t_for_ecc_test = np.linspace(tref_out[0], tref_out[-1], 5 * len(tref_out))
+        dEccDt = spline.derivative(n=1)
+        dEccs = dEccDt(t_for_ecc_test)
+        self.t_for_ecc_test = t_for_ecc_test
+        self.dEccs = dEccs
+        if any(dEccs > 0):
+            warnings.warn("Eccentricity has non monotonicity.")
+        if check_convexity:
+            d2EccDt = spline.derivative(n=2)
+            d2Eccs = d2EccDt(t_for_ecc_test)
+            self.d2Eccs = d2Eccs
+            if any(d2Eccs > 0):
+                warnings.warn("Eccentricity has concavity.")
