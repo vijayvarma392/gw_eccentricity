@@ -66,31 +66,30 @@ class eccDefinition:
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
             "extra_kwargs")
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
+           is not None and \
+           self.extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
             raise ValueError(
                 "num_orbits_to_exclude_before_merger must be non-negative. "
                 "Given value was "
                 f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
 
-
     def get_default_spline_kwargs(self):
-        """Defaults for spline settings"""
-
+        """Defaults for spline settings."""
         default_spline_kwargs = {
             "w": None,
-             "bbox": [None, None],
-             "k": 3,
-             "ext": 0,
-             "check_finite": False
-             }
+            "bbox": [None, None],
+            "k": 3,
+            "ext": 0,
+            "check_finite": False}
         return default_spline_kwargs
 
     def get_default_extra_kwargs(self):
-        """Defaults for additional kwargs"""
-
+        """Defaults for additional kwargs."""
         default_extra_kwargs = {
             "num_orbits_to_exclude_before_merger": 1,
-            "extrema_finding_kwargs": {},   # Gets overriden in methods like eccDefinitionUsingAmplitude
+            "extrema_finding_kwargs": {},   # Gets overriden in methods like
+                                            # eccDefinitionUsingAmplitude
             "debug": True
             }
         return default_extra_kwargs
