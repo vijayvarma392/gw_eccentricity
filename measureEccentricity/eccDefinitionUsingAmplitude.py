@@ -6,20 +6,45 @@ Md Arif Shaikh, Mar 28, 2022
 """
 from .eccDefinition import eccDefinition
 from scipy.signal import find_peaks
+from .utils import check_kwargs_and_set_defaults
 
 
 class eccDefinitionUsingAmplitude(eccDefinition):
     """Define eccentricity by finding extrema location from amplitude."""
 
-    def __init__(self, dataDict):
+    def __init__(self, *args, **kwargs):
         """Init for eccDefinitionUsingAmplitude class.
 
         parameters:
         ----------
         dataDict: Dictionary containing the waveform data.
         """
-        super().__init__(dataDict)
+        super().__init__(*args, **kwargs)
+
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
+
+        # Sanity check extrema_finding_kwargs and set default values
+        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs['extrema_finding_kwargs'],
+            self.get_default_extrema_finding_kwargs(),
+            "extrema_finding_kwargs")
+
+
+    def get_default_extrema_finding_kwargs(self):
+        """Defaults for extrema_finding_kwargs."""
+
+        #TODO: Set width more smartly
+        default_extrema_finding_kwargs = {
+            "height": None,
+             "threshold": None,
+             "distance": None,
+             "prominence": None,
+             "width": 10,
+             "wlen": None,
+             "rel_height": 0.5,
+             "plateau_size": None
+             }
+        return default_extrema_finding_kwargs
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
@@ -32,13 +57,13 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         return self.amp22
 
-    def find_extrema(self, which="maxima", extrema_finding_keywords=None):
+    def find_extrema(self, which="maxima"):
         """Find the extrema in the amp22.
 
         parameters:
         -----------
         which: either maxima, peaks, minima or troughs
-        extrema_finding_keywords: Dictionary of arguments to be passed to the
+        extrema_finding_kwargs: Dictionary of arguments to be passed to the
         peak finding function. Here we use scipy.signal.find_peaks for finding
         peaks. Hence the arguments are those that are allowed in that function
 
@@ -46,35 +71,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
-        default_extrema_finding_keywords = {"height": None,
-                                            "threshold": None,
-                                            "distance": None,
-                                            "prominence": None,
-                                            "width": None,
-                                            "wlen": None,
-                                            "rel_height": 0.5,
-                                            "plateau_size": None}
-
-        # make it iterable
-        if extrema_finding_keywords is None:
-            extrema_finding_keywords = {}
-
-        # Sanity check for arguments passed to the find_peak function
-        for keyword in extrema_finding_keywords:
-            if keyword not in default_extrema_finding_keywords:
-                raise ValueError(f"Invalid key {keyword} is "
-                                 "extrema_finding_keywords. Should be one of "
-                                 f"{default_extrema_finding_keywords.keys()}")
-
-        # Update keyword if passed by user
-        for keyword in default_extrema_finding_keywords:
-            if keyword in extrema_finding_keywords:
-                default_extrema_finding_keywords[keyword] \
-                    = extrema_finding_keywords[keyword]
-
-        # If width is None, make a reasonable guess
-        if default_extrema_finding_keywords["width"] is None:
-            default_extrema_finding_keywords["width"] = 10
 
         if which == "maxima" or which == "peaks":
             sign = 1
@@ -86,4 +82,4 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         return find_peaks(
             sign * self.data_for_finding_extrema,
-            **default_extrema_finding_keywords)[0]
+            **self.extrema_finding_kwargs)[0]

@@ -117,7 +117,7 @@ def load_from_NR_file(NR_file, ModeList, sim_type='SXS'):
 
         tNR = fp['NRtimes'][:]
         iAlm = InterpolatedUnivariateSpline(tAlm, Alm)
-        iphilm = InterpolatedUnivariateSpline(tphilm, -philm)
+        iphilm = InterpolatedUnivariateSpline(tphilm, philm)
 
         amplm[(l, m)] = iAlm(tNR)
         phaselm[(l, m)] = iphilm(tNR)

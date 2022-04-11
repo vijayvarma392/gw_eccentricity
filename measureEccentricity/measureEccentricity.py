@@ -45,17 +45,23 @@ def get_available_methods():
     return models
 
 
-def measure_eccentricity(t_ref, dataDict, method="Amplitude",
+def measure_eccentricity(tref_in, dataDict, method="Amplitude",
                          return_ecc_method=False,
-                         extrema_finding_keywords=None,
-                         spline_keywords=None):
+                         spline_kwargs=None,
+                         extra_kwargs=None):
     """Measure eccentricity and mean anomaly at reference time.
 
     parameters:
     ----------
-    t_ref:
-        Reference time at which to measure eccentricity and mean anomaly.
+    tref_in:
+        Input Reference time at which to measure eccentricity and mean anomaly.
         Can be a single float or an array.
+        However, if exclude_num_orbits_before_merger in extra_kwargs is not
+        None, the interpolator used to measure eccentricty is constructed using
+        extrema only upto exclude_num_orbits_before_merger and accorindly a
+        tmax is set by chosing the min of time of last peak/trough. Thus the
+        eccentricity and mean anomaly are computed only till tmax and a newr
+        time array tref_out is returned with max(tref_out) = tmax.
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
@@ -68,22 +74,39 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
         method, requires "t_zeroecc" and "hlm_zeroecc" as well in dataDict.
 
     method:
-        method to define eccentricity. See get_available_methods for available
-        methods.
+        Method to define eccentricity. See get_available_methods() for
+        available methods.
 
     return_ecc_method:
         If true, returns the method object used to compute the eccentricity.
 
-    extrema_finding_keywords:
-        Dictionary of arguments to be passed to the peak finding function,
-        where it will be passed to scipy.signal.find_peaks.
 
-    spline_keywords:
+    spline_kwargs:
         Dictionary of arguments to be passed to
         scipy.interpolate.InterpolatedUnivariateSpline.
 
+    extra_kwargs: Any extra kwargs to be passed. Allowed kwargs are
+        num_orbits_to_exclude_before_merger:
+            Could be either None or non negative real number. If None, then
+            the full data even after merger is used but this might cause
+            issues with the interpolaion trough exrema. For non negative real
+            number, that many orbits prior to merger are exculded when
+            finding extrema.
+            Default: 1.
+        extrema_finding_kwargs:
+            Dictionary of arguments to be passed to the peak finding function,
+            where it will be (typically) passed to scipy.signal.find_peaks.
+        debug:
+            Run additional sanity checks if debug is True.
+            Default: True.
+
     returns:
     --------
+    tref_out:
+         Output reference time where eccenricity and mean anomaly is
+         measured. This would be different than tref_in if
+         exclude_num_obrits_before_merger in the extra_kwargs is not None
+
     ecc_ref:
         Measured eccentricity at t_ref. Same type as t_ref.
 
@@ -91,20 +114,21 @@ def measure_eccentricity(t_ref, dataDict, method="Amplitude",
         Measured mean anomaly at t_ref. Same type as t_ref.
 
     ecc_method:
-       method object used to compute eccentricity only if return_ecc_method is True
+       method object used to compute eccentricity only if
+       return_ecc_method is True
     """
     available_methods = get_available_methods()
 
     if method in available_methods:
-        ecc_method = available_methods[method](dataDict)
-        ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
-            t_ref,
-            extrema_finding_keywords,
-            spline_keywords)
+        ecc_method = available_methods[method](dataDict,
+                                               spline_kwargs=spline_kwargs,
+                                               extra_kwargs=extra_kwargs)
+
+        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(tref_in)
         if not return_ecc_method:
-            return ecc_ref, mean_ano_ref
+            return tref_out, ecc_ref, mean_ano_ref
         else:
-            return ecc_ref, mean_ano_ref, ecc_method
+            return tref_out, ecc_ref, mean_ano_ref, ecc_method
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {available_methods.keys()}")

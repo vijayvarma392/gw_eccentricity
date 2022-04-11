@@ -13,7 +13,7 @@ import numpy as np
 class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
     """Measure eccentricity by finding extrema from residual amplitude."""
 
-    def __init__(self, dataDict):
+    def __init__(self, *args, **kwargs):
         """Init for eccDefinitionUsingResidualAmplitude class.
 
         parameters:
@@ -26,7 +26,7 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         Keys for the modes in the mode dictionary should be
         of the form `(l, m)`.
         """
-        super().__init__(dataDict)
+        super().__init__(*args, **kwargs)
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
