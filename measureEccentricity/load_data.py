@@ -3,6 +3,7 @@ import numpy as np
 import gwtools
 from .utils import generate_waveform
 from .utils import get_peak_via_quadratic_fit
+from .utils import check_kwargs_and_set_defaults
 import h5py
 import lal
 import lalsimulation as lalsim
@@ -124,12 +125,12 @@ def amp_to_physical(M, D):
     return lal.G_SI * M * lal.MSUN_SI / (lal.C_SI**2 * D * 1e6 * lal.PC_SI)
 
 
-def load_lvcnr_waveform(filepath, M=50, dt=1/4096,
-                        dist_mpc=1, f_low=0, dimensionless=True):
+def load_lvcnr_waveform(**kwargs):
     """Load modes from lvcnr files.
 
     parameters:
     ----------
+    kwargs: Could be the followings
     filepath: str
         Path to lvcnr file.
 
@@ -162,6 +163,23 @@ def load_lvcnr_waveform(filepath, M=50, dt=1/4096,
     flow: flow
     f_ref: reference frequency
     """
+    default_kwargs = {"filepath": None,
+                      "M": 50,
+                      "dt": 1/4096,
+                      "dist_mpc": 1,
+                      "f_low": 0,
+                      "dimensionless": True,
+                      "include_zero_ecc": True}
+
+    kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
+                                           "lvcnr kwargs")
+    filepath = kwargs["filepath"]
+    M = kwargs["M"]
+    dt = kwargs["dt"]
+    dist_mpc = kwargs["dist_mpc"]
+    f_low = kwargs["f_low"]
+    dimensionless = kwargs["dimensionless"]
+
     NRh5File = h5py.File(filepath, 'r')
 
     # set mode for NR data
@@ -245,6 +263,29 @@ def load_lvcnr_waveform(filepath, M=50, dt=1/4096,
                    "spins": [s1x, s1y, s1z, s2x, s2y, s2z],
                    "flow": f_low,
                    "f_ref": f_ref}
+
+    if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
+        # Keep all other params fixed but set ecc = 0 and generate IMRPhenom
+        # waveform
+        zero_ecc_kwargs = {"approximant": "IMRPhenomXP",
+                           "q": q,
+                           "chi1": [s1x, s1y, s1z],
+                           "chi2": [s2x, s2z, s2z],
+                           "deltaTOverM": t[1] - t[0],
+                           "Momega0": (
+                               f_low
+                               * np.pi
+                               / factor_to_convert_time_to_dimensionless),
+                           "ecc": 0.0,
+                           "mean_ano": 0,
+                           "phi_ref": 0,
+                           "inclination": 0}
+        zero_ecc_kwargs['include_zero_ecc'] = False   # to avoid infinite loops
+        dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
+        t_zeroecc = dataDict_zero_ecc['t']
+        hlm_zeroecc = dataDict_zero_ecc['hlm']
+        return_dict.update({'t_zeroecc': t_zeroecc,
+                            'hlm_zeroecc': hlm_zeroecc})
     return return_dict
 
 
