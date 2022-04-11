@@ -1,46 +1,50 @@
+"""Utility to load waveform data from lvcnr files or LAL."""
 import numpy as np
 import gwtools
 from .utils import generate_waveform
 from .utils import get_peak_via_quadratic_fit
 import h5py
-from scipy.interpolate import InterpolatedUnivariateSpline
+import lal
+import lalsimulation as lalsim
+from pycbc.pnutils import mtotal_eta_to_mass1_mass2
 
 
-def load_waveform(catalog="LAL", file=None, nr_modelist=[[2, 2]], **kwargs):
-    """Load waveform from file or LAL
+def load_waveform(catalog="LAL",
+                  lvcnr_kwargs=None,
+                  lal_kwargs=None,
+                  eob_kwargs=None):
+    """Load waveform from lvcnr file or LAL.
 
     parameters:
     ----------
     catalog:
-          Waveform type. could be one of 'LAL', 'EOB', 'SXS', 'ET'
+          Waveform type. could be one of 'LAL', 'LVCNR', EOB
 
-    file:
-         Path to file for waveform to be read from a file. This is required for
-         catalog other than 'LAL'
+    lvcnr_kwargs:
+         kwargs to be passed to load lvcnr files.
 
-    nr_modelist:
-        List of modes to include when loading NR data from 'SXS' or 'ET'
+    lal_kwargs:
+        kwargs to generate LAL waveform.
 
-    **kwargs:
-        Keywords to generate LAL waveform.
+    eob_kwargs:
+        kwargs to load EOB waveforms
     """
     if catalog == "LAL":
-        return load_LAL_waveform(**kwargs)
-    elif catalog in ["SXS", "ET"]:
-        if file is None:
+        return load_LAL_waveform(**lal_kwargs)
+    elif catalog == "LVCNR":
+        if lvcnr_kwargs["path_to_file"] is None:
             raise Exception("Must provide file path to NR waveform")
-        return load_from_NR_file(file, nr_modelist, sim_type=catalog)
+        return load_from_lvcnr_file(**lvcnr_kwargs)
     elif catalog == "EOB":
-        if file is None:
+        if eob_kwargs["path_to_file"] is None:
             raise Exception("Must provide file path to EOB waveform")
-        return load_h22_from_EOBfile(file)
+        return load_h22_from_EOBfile(**eob_kwargs)
     else:
         raise Exception(f"Unknown catalog {catalog}")
 
 
 def load_LAL_waveform(**kwargs):
-    """ FIXME add some documentation.
-    """
+    """FIXME add some documentation."""
     # FIXME: Generalize this
     if 'deltaTOverM' not in kwargs:
         kwargs['deltaTOverM'] = 0.1
@@ -69,7 +73,7 @@ def load_LAL_waveform(**kwargs):
         else:
             zero_ecc_kwargs['ecc'] = 0
         zero_ecc_kwargs['include_zero_ecc'] = False   # to avoid infinite loops
-        dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
+        dataDict_zero_ecc = load_waveform(lal_kwargs=zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
         hlm_zeroecc = dataDict_zero_ecc['hlm']
         dataDict.update({'t_zeroecc': t_zeroecc,
@@ -79,6 +83,7 @@ def load_LAL_waveform(**kwargs):
 
 def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
                                  Momega0, deltaTOverM):
+    """Load LAL waveforms."""
     # Many LAL models don't return the modes. So, to get h22 we evaluate the
     # strain at (incl, phi)=(0,0) and divide by Ylm(0,0).  NOTE: This only
     # works if the only mode is the (2,2) mode.
@@ -100,54 +105,173 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
     return dataDict
 
 
-def load_from_NR_file(NR_file, ModeList, sim_type='SXS'):
-    hlm = {}
-    amplm = {}
-    phaselm = {}
-    omegalm = {}
+def time_to_physical(M):
+    """Factor to convert time from dimensionless units to SI units.
 
-    fp = h5py.File(NR_file, "r")
+    parameters
+    ----------
+    M: mass of system in the units of solar mass
 
-    for l, m in ModeList:
-        Alm = fp['amp_l'+str(l)+'_m'+str(m)+'/Y'][:]
-        tAlm = fp['amp_l'+str(l)+'_m'+str(m)+'/X'][:]
+    Returns
+    -------
+    converting factor
+    """
+    return M * lal.MTSUN_SI
 
-        philm = fp['phase_l'+str(l)+'_m'+str(m)+'/Y'][:]
-        tphilm = fp['phase_l'+str(l)+'_m'+str(m)+'/X'][:]
 
-        tNR = fp['NRtimes'][:]
-        iAlm = InterpolatedUnivariateSpline(tAlm, Alm)
-        iphilm = InterpolatedUnivariateSpline(tphilm, philm)
+def amp_to_physical(M, D):
+    """Factor to rescale amp from dimensionless units to SI units.
 
-        amplm[(l, m)] = iAlm(tNR)
-        phaselm[(l, m)] = iphilm(tNR)
-        omegalm[(l, m)] = iphilm.derivative()(tNR)
-        hlm[(l, m)] = amplm[l, m] * np.exp(1.j * phaselm[l, m])
+    parameters
+    ----------
+    M: mass of the system in units of solar mass
+    D: Luminosity distance in units of megaparsecs
 
-    if sim_type == 'SXS':
-        t_omega_orb = fp['Omega-vs-time/X'][:]
-        tHorizon = fp['HorizonBTimes'][:]
-        omega_orb = fp['Omega-vs-time/Y'][:]
-        iOmega_orb = InterpolatedUnivariateSpline(t_omega_orb, omega_orb)
+    Returns
+    -------
+    Scaling factor
+    """
+    return lal.G_SI * M * lal.MSUN_SI / (lal.C_SI**2 * D * 1e6 * lal.PC_SI)
 
-        om_orb = iOmega_orb(tHorizon)
-        phi = []
 
-        for time in tHorizon:
-            phi.append(iOmega_orb.integral(tHorizon[0], time))
-        phase_orb = np.array(phi)
-    else:
-        phase_orb = None
-        om_orb = None
-        tHorizon = None
-    fp.close()
-    dataDict = {"t": tNR, "hlm": hlm, "tHorizon": tHorizon, "amplm": amplm,
-                "phaselm": phaselm, "omegalm": omegalm, "om_orb": om_orb,
-                "phase_orb": phase_orb}
-    return dataDict
+def get_lal_mode_dictionary(mode_array):
+    """
+    Get LALDict with all specified modes.
+
+    Parameters
+    ----------
+    mode_array: list of modes, eg [[2,2], [3,3]]
+
+    Returns
+    -------
+    waveform_dictionary: LALDict with all modes included
+
+    """
+    waveform_dictionary = lal.CreateDict()
+    mode_array_lal = lalsim.SimInspiralCreateModeArray()
+    for mode in mode_array:
+        lalsim.SimInspiralModeArrayActivateMode(
+            mode_array_lal, mode[0], mode[1])
+    lalsim.SimInspiralWaveformParamsInsertModeArray(
+        waveform_dictionary, mode_array_lal)
+
+    return waveform_dictionary
+
+
+def load_from_lvcnr_file(path_to_file,
+                         Mtot=50,
+                         distance=1,
+                         srate=4096,
+                         modeList=[[2, 2]],
+                         f_low=None,
+                         dimensionless=True):
+    """Get individual modes from LVCNR format file.
+
+    Parameters
+    ==========
+    path_to_file: string
+        Path to LVCNR file
+    Mtot: float
+        Total mass (in units of MSUN) to scale the waveform to
+    distance: float
+        Luminosity Distance (in units of MPc) to scale the waveform to
+    srate: int
+        Sampling rate for the waveform
+    modeList: list
+        List of modes to use.
+        (Default: [[2, 2]])
+    f_low: float
+        Value of the low frequency to start waveform generation
+        Uses value given from the LVCNR file if `None` is provided
+        (Default: None)
+
+    Returns
+    =======
+    mass_ratio: float
+        Mass ratio derived from the LVCNR file
+    spins_args: list
+        List of spins derived from the LVCNR file
+    eccentricity: float
+        Eccentricty derived from the LVCNR file.
+        Returns `None` is eccentricity is not a number.
+    f_low: float
+        Low Frequency derived either from the file, or provided
+        in the call
+    f_ref: float
+        Reference Frequency derived from the file
+    modes: dict of pycbc TimeSeries objects
+        dict containing all the read in modes
+    """
+    with h5py.File(path_to_file) as h5file:
+        waveform_dict = get_lal_mode_dictionary(modeList)
+
+        f_low_in_file = h5file.attrs["f_lower_at_1MSUN"] / Mtot
+        f_ref = f_low_in_file
+
+        if f_low is None:
+            f_low = f_low_in_file
+
+        if h5file.attrs["Format"] < 3:
+            spin_args = lalsim.SimInspiralNRWaveformGetSpinsFromHDF5File(
+                -1, Mtot, path_to_file
+            )
+        else:
+            spin_args = lalsim.SimInspiralNRWaveformGetSpinsFromHDF5File(
+                f_low, Mtot, path_to_file
+            )
+
+        mass_args = list(mtotal_eta_to_mass1_mass2(Mtot * lal.MSUN_SI,
+                                                   h5file.attrs["eta"]))
+
+        try:
+            eccentricity = float(h5file.attrs["eccentricity"])
+        except ValueError:
+            eccentricity = None
+
+    values_mode_array = lalsim.SimInspiralWaveformParamsLookupModeArray(
+        waveform_dict)
+    _, modes = lalsim.SimInspiralNRWaveformGetHlms(
+        1 / srate,
+        *mass_args,
+        distance * 1e6 * lal.PC_SI,
+        f_low,
+        f_ref,
+        *spin_args,
+        path_to_file,
+        values_mode_array,
+    )
+    mode = modes
+    factor_to_convert_time_to_dimensionless = (
+        1 / time_to_physical(Mtot) if dimensionless else 1)
+    factor_to_convert_amp_to_dimensionless = (
+        (1 / amp_to_physical(Mtot, distance)) if dimensionless else 1)
+    modes_dict = {}
+    while 1 > 0:
+        try:
+            l, m = mode.l, mode.m
+            read_mode = mode.mode.data.data
+            modes_dict[(l, m)] = (read_mode
+                                  * factor_to_convert_amp_to_dimensionless)
+            mode = mode.next
+        except AttributeError:
+            break
+
+    t = np.arange(len(modes_dict[(l, m)])) / srate
+    t = t * factor_to_convert_time_to_dimensionless
+    t = t - get_peak_via_quadratic_fit(t, np.abs(modes_dict[(2, 2)]))[0]
+
+    return_dict = {"t": t,
+                   "hlm": modes_dict,
+                   "q": mass_args[1] / mass_args[0],
+                   "ecc": eccentricity,
+                   "spins": spin_args,
+                   "flow": f_low,
+                   "f_ref": f_ref}
+    return return_dict
 
 
 def load_h22_from_EOBfile(EOB_file):
+    """Load data from EOB files."""
     fp = h5py.File(EOB_file, "r")
     t_ecc = fp['data/t'][:]
     amp22_ecc = fp['data/hCoOrb/Amp_l2m2'][:]
