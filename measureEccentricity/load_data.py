@@ -124,20 +124,43 @@ def amp_to_physical(M, D):
     return lal.G_SI * M * lal.MSUN_SI / (lal.C_SI**2 * D * 1e6 * lal.PC_SI)
 
 
-def load_lvcnr_waveform(filepath, modeList=[[2, 2]], M=50, dt=1/4096,
+def load_lvcnr_waveform(filepath, M=50, dt=1/4096,
                         dist_mpc=1, f_low=0, dimensionless=True):
     """Load modes from lvcnr files.
 
     parameters:
     ----------
-    filepath:
+    filepath: str
         Path to lvcnr file.
 
-    modeList:
-        modes to inlcude if mode is not "all".
+    M: float
+        Mass of the system in units of solar mass.
+        Default is 50.
+    dt: float
+        Time step. Default is 1/4096.
 
-    If f_low = 0, uses the entire NR data. The actual f_low will be
-    returned.
+    dist_mpc: float
+        Distance in units of mega parsec. Default is 1.
+
+    f_low: float
+        Lower frequency to start waveform generation. Default is 0.
+        If f_low = 0, uses the entire NR data. The actual f_low will be
+        returned.
+
+    dimensionless: bool
+        Return in dimensional units if True. Default is True.
+
+    returns:
+    -------
+        Dictionary of modes dict and other waveform parameters.
+
+    t: time array
+    hlm: dictionary of modes
+    q: mass ratio
+    ecc: eccentricity
+    spins: spins list [s1x, s1y, s1z, s2x, s2y, s2z]
+    flow: flow
+    f_ref: reference frequency
     """
     NRh5File = h5py.File(filepath, 'r')
 
