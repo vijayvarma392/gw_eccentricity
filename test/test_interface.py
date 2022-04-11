@@ -17,7 +17,7 @@ def test_interface():
                   "ecc": 0.1,
                   "mean_ano": 0,
                   "include_zero_ecc": True}
-    dataDict = load_data.load_waveform(lal_kwargs=lal_kwargs)
+    dataDict = load_data.load_waveform(**lal_kwargs)
 
     # List of all available methods
     available_methods = measureEccentricity.get_available_methods()
