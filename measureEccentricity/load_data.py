@@ -1,7 +1,6 @@
 """Utility to load waveform data from lvcnr files or LAL."""
 import numpy as np
 import gwtools
-from .utils import generate_waveform
 from .utils import get_peak_via_quadratic_fit
 from .utils import check_kwargs_and_set_defaults
 import h5py
@@ -82,9 +81,9 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
     inclination = 0
 
     # h = hp -1j * hc
-    t, h = generate_waveform(approximant, q, chi1, chi2,
-                             deltaTOverM, Momega0, eccentricity=ecc,
-                             phi_ref=phi_ref, inclination=inclination)
+    t, h = generate_LAL_waveform(approximant, q, chi1, chi2,
+                                 deltaTOverM, Momega0, eccentricity=ecc,
+                                 phi_ref=phi_ref, inclination=inclination)
 
     Ylm = gwtools.harmonics.sYlm(-2, 2, 2, inclination, phi_ref)
     mode_dict = {(2, 2): h/Ylm}
@@ -94,6 +93,89 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
 
     dataDict = {"t": t, "hlm": mode_dict}
     return dataDict
+
+
+def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
+                          inclination=0, phi_ref=0., longAscNodes=0,
+                          eccentricity=0, meanPerAno=0,
+                          alignedSpin=True, lambda1=None, lambda2=None):
+    """Generate waveform for a given approximant using LALSuite.
+
+    Returns dimless time and dimless complex strain.
+    parameters:
+    ----------
+    approximant     # str, name of approximant
+    q               # float, mass ratio q>=1
+    chi1            # array/list of len=3, dimensionless spin vector of larger BH
+    chi2            # array/list of len=3, dimensionless spin vector of smaller BH
+    deltaTOverM     # float, dimensionless time step size
+    Momega0          # float, dimensionless starting orbital frequency for waveform (rad/s)
+    inclination     # float, inclination angle in radians
+    phi_ref         # float, lalsim stuff
+    longAscNodes    # float, Longiture of Ascending nodes
+    eccentricity    # float, Eccentricity
+    meanPerAno      # float, Mean anomaly of periastron
+    alignedSpin     # assume aligned spin approximant
+    lambda1         # tidal parameter for larger BH
+    lambda2         # tidal parameter for smaller BH
+
+    return:
+    t               # array, dimensionless time
+    h               # complex array, dimensionless complex strain h_{+} -i*h_{x}
+    """
+    chi1 = np.array(chi1)
+    chi2 = np.array(chi2)
+
+    if alignedSpin:
+        if np.sum(np.sqrt(chi1[:2]**2)) > 1e-5 or np.sum(np.sqrt(chi2[:2]**2)) > 1e-5:
+            raise Exception("Got precessing spins for aligned spin "
+                            "approximant.")
+        if np.sum(np.sqrt(chi1[:2]**2)) != 0:
+            chi1[:2] = 0
+        if np.sum(np.sqrt(chi2[:2]**2)) != 0:
+            chi2[:2] = 0
+
+    # sanity checks
+    if np.sqrt(np.sum(chi1**2)) > 1:
+        raise Exception('chi1 out of range.')
+    if np.sqrt(np.sum(chi2**2)) > 1:
+        raise Exception('chi2 out of range.')
+    if len(chi1) != 3:
+        raise Exception('chi1 must have size 3.')
+    if len(chi2) != 3:
+        raise Exception('chi2 must have size 3.')
+
+    # use M=10 and distance=1 Mpc, but will scale these out before outputting h
+    M = 10      # dimless mass
+    distance = 1.0e6 * lal.PC_SI
+
+    approxTag = lalsim.GetApproximantFromString(approximant)
+    MT = M * lal.MTSUN_SI
+    f_low = Momega0/np.pi/MT
+    f_ref = f_low
+
+    # component masses of the binary
+    m1_kg = M * lal.MSUN_SI * q / (1. + q)
+    m2_kg = M * lal.MSUN_SI / (1. + q)
+
+    # tidal parameters if given
+    if lambda1 is not None or lambda2 is not None:
+        dictParams = lal.CreateDict()
+        lalsim.SimInspiralWaveformParamsInsertTidalLambda1(dictParams, lambda1)
+        lalsim.SimInspiralWaveformParamsInsertTidalLambda2(dictParams, lambda2)
+    else:
+        dictParams = None
+
+    hp, hc = lalsim.SimInspiralChooseTDWaveform(
+        m1_kg, m2_kg, chi1[0], chi1[1], chi1[2], chi2[0], chi2[1], chi2[2],
+        distance, inclination, phi_ref,
+        longAscNodes, eccentricity, meanPerAno,
+        deltaTOverM*MT, f_low, f_ref, dictParams, approxTag)
+
+    h = np.array(hp.data.data - 1.j*hc.data.data)
+    t = deltaTOverM * np.arange(len(h))  # dimensionless time
+
+    return t, h*distance/MT/lal.C_SI
 
 
 def time_to_physical(M):
@@ -134,22 +216,13 @@ def load_lvcnr_waveform(**kwargs):
     filepath: str
         Path to lvcnr file.
 
-    M: float
-        Mass of the system in units of solar mass.
-        Default is 50.
-    dt: float
-        Time step. Default is 1/4096.
+    deltaTOverM: float
+        Time step. Default is 0.1
 
-    dist_mpc: float
-        Distance in units of mega parsec. Default is 1.
-
-    f_low: float
+    Momega0: float
         Lower frequency to start waveform generation. Default is 0.
-        If f_low = 0, uses the entire NR data. The actual f_low will be
+        If Momega0 = 0, uses the entire NR data. The actual f_low will be
         returned.
-
-    dimensionless: bool
-        Return in dimensional units if True. Default is True.
 
     returns:
     -------
@@ -164,21 +237,17 @@ def load_lvcnr_waveform(**kwargs):
     f_ref: reference frequency
     """
     default_kwargs = {"filepath": None,
-                      "M": 50,
-                      "dt": 1/4096,
-                      "dist_mpc": 1,
-                      "f_low": 0,
-                      "dimensionless": True,
+                      "deltaTOverM": 0.1,
+                      "Momega0": 0,
                       "include_zero_ecc": True}
 
     kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
                                            "lvcnr kwargs")
     filepath = kwargs["filepath"]
-    M = kwargs["M"]
-    dt = kwargs["dt"]
-    dist_mpc = kwargs["dist_mpc"]
-    f_low = kwargs["f_low"]
-    dimensionless = kwargs["dimensionless"]
+    M = 10  # will be factored out
+    dt = kwargs["deltaTOverM"] * time_to_physical(M)
+    dist_mpc = 1  # will be factored out
+    f_low = kwargs["Momega0"] / time_to_physical(M)
 
     NRh5File = h5py.File(filepath, 'r')
 
@@ -228,24 +297,16 @@ def load_lvcnr_waveform(**kwargs):
         s2z,
         filepath,
         values_mode_array)
-    mode = modes
-    factor_to_convert_time_to_dimensionless = (
-        1 / time_to_physical(M) if dimensionless else 1)
-    factor_to_convert_amp_to_dimensionless = (
-        (1 / amp_to_physical(M, dist_mpc)) if dimensionless else 1)
-    modes_dict = {}
-    while 1 > 0:
-        try:
-            l, m = mode.l, mode.m
-            read_mode = mode.mode.data.data
-            modes_dict[(l, m)] = (read_mode
-                                  * factor_to_convert_amp_to_dimensionless)
-            mode = mode.next
-        except AttributeError:
-            break
 
-    t = np.arange(len(modes_dict[(l, m)])) * dt
-    t = t * factor_to_convert_time_to_dimensionless
+    modes_dict = {}
+    while modes is not None:
+        modes_dict[(modes.l, modes.m)] = (modes.mode.data.data
+                                          / amp_to_physical(M, dist_mpc))
+        modes = modes.next
+
+    t = np.arange(len(modes_dict[(2, 2)])) * dt
+    t = t / time_to_physical(M)
+    # shift the times to make merger a t = 0
     t = t - get_peak_via_quadratic_fit(t, np.abs(modes_dict[(2, 2)]))[0]
 
     q = m1SI/m2SI
@@ -257,30 +318,27 @@ def load_lvcnr_waveform(**kwargs):
     NRh5File.close()
 
     return_dict = {"t": t,
-                   "hlm": modes_dict,
-                   "q": q,
+                   "hlm": modes_dict}
+    params_dict = {"q": q,
+                   "chi1": [s1x, s1y, s1z],
+                   "chi2": [s2x, s2y, s2z],
                    "ecc": eccentricity,
-                   "spins": [s1x, s1y, s1z, s2x, s2y, s2z],
-                   "flow": f_low,
-                   "f_ref": f_ref}
+                   "mean_ano": 0.0,
+                   "deltaTOverM": t[1] - t[0],
+                   "Momega0": (
+                       f_low
+                       * np.pi
+                       * time_to_physical(M)),
+                   }
+    return_dict.update({"params_dict": params_dict})
 
     if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
         # Keep all other params fixed but set ecc = 0 and generate IMRPhenom
         # waveform
-        zero_ecc_kwargs = {"approximant": "IMRPhenomXP",
-                           "q": q,
-                           "chi1": [s1x, s1y, s1z],
-                           "chi2": [s2x, s2z, s2z],
-                           "deltaTOverM": t[1] - t[0],
-                           "Momega0": (
-                               f_low
-                               * np.pi
-                               / factor_to_convert_time_to_dimensionless),
-                           "ecc": 0.0,
-                           "mean_ano": 0,
-                           "phi_ref": 0,
-                           "inclination": 0}
-        zero_ecc_kwargs['include_zero_ecc'] = False   # to avoid infinite loops
+        zero_ecc_kwargs = params_dict.copy()
+        zero_ecc_kwargs["ecc"] = 0.0
+        zero_ecc_kwargs["approximant"] = "IMRPhenomT"
+        zero_ecc_kwargs['include_zero_ecc'] = False  # to avoid double calc
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
         hlm_zeroecc = dataDict_zero_ecc['hlm']
