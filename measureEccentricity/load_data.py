@@ -6,6 +6,7 @@ from .utils import check_kwargs_and_set_defaults
 import h5py
 import lal
 import lalsimulation as lalsim
+import warnings
 
 
 def load_waveform(catalog="LAL", **kwargs):
@@ -348,10 +349,16 @@ def load_lvcnr_waveform(**kwargs):
         # In case the zeroecc waveform is not long enough we reduce the
         # initial Momega0 by a factor of 2 and generate the waveform again
         # NEED A BETTER SOLUTION to this later
-        if abs(t_zeroecc[0]) < abs(t[0]):
+        num_tries = 0
+        while t_zeroecc[0] > t[0]:
             zero_ecc_kwargs["Momega0"] = zero_ecc_kwargs["Momega0"] / 2
             dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
             t_zeroecc = dataDict_zero_ecc['t']
+            num_tries += 1
+        if num_tries >= 2:
+            warnings.warn("Too many tries to reset Momega0 for generating"
+                          " zeroecc modes. Total number of tries = "
+                          f"{num_tries}")
         hlm_zeroecc = dataDict_zero_ecc['hlm']
         return_dict.update({'t_zeroecc': t_zeroecc,
                             'hlm_zeroecc': hlm_zeroecc})
