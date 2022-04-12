@@ -221,20 +221,24 @@ def load_lvcnr_waveform(**kwargs):
 
     Momega0: float
         Lower frequency to start waveform generation. Default is 0.
-        If Momega0 = 0, uses the entire NR data. The actual f_low will be
+        If Momega0 = 0, uses the entire NR data. The actual Momega0 will be
         returned.
+
+    include_zero_ecc: bool
+        If True returns PhenomT waveform mode for same set of parameters
+        except eccentricity set to zero. Default is True.
 
     returns:
     -------
-        Dictionary of modes dict and other waveform parameters.
+        Dictionary of modes dict, parameter dict and also zero ecc mode dict if
+        include_zero_ecc is True.
 
     t: time array
     hlm: dictionary of modes
-    q: mass ratio
-    ecc: eccentricity
-    spins: spins list [s1x, s1y, s1z, s2x, s2y, s2z]
-    flow: flow
-    f_ref: reference frequency
+    params_dict: dictionary of parameters
+    optionally,
+    t_zeroecc: time array for zero ecc modes
+    hlm_zeroecc: mode dictionary for zero eccentricity
     """
     default_kwargs = {"filepath": None,
                       "deltaTOverM": 0.1,
