@@ -242,7 +242,7 @@ def load_lvcnr_waveform(**kwargs):
     """
     default_kwargs = {"filepath": None,
                       "deltaTOverM": 0.1,
-                      "Momega0": 0,
+                      "Momega0": 0,  # 0 means that the full NR waveform is returned
                       "include_zero_ecc": True}
 
     kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
@@ -251,11 +251,9 @@ def load_lvcnr_waveform(**kwargs):
     M = 10  # will be factored out
     dt = kwargs["deltaTOverM"] * time_to_physical(M)
     dist_mpc = 1  # will be factored out
-    f_low = kwargs["Momega0"] / time_to_physical(M)
+    f_low = kwargs["Momega0"] / np.pi / time_to_physical(M)
 
     NRh5File = h5py.File(filepath, 'r')
-
-    # set mode for NR data
     params_NR = lal.CreateDict()
     lalsim.SimInspiralWaveformParamsInsertNumRelData(params_NR, filepath)
 
@@ -345,6 +343,15 @@ def load_lvcnr_waveform(**kwargs):
         zero_ecc_kwargs['include_zero_ecc'] = False  # to avoid double calc
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
+        # We need the zeroecc modes to long enough, at least the same length
+        # as the eccentric one to get the residual amplitude correctly.
+        # In case the zeroecc waveform is not long enough we reduce the
+        # initial Momega0 by a factor of 2 and generate the waveform again
+        # NEED A BETTER SOLUTION to this later
+        if abs(t_zeroecc[0]) < abs(t[0]):
+            zero_ecc_kwargs["Momega0"] = zero_ecc_kwargs["Momega0"] / 2
+            dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
+            t_zeroecc = dataDict_zero_ecc['t']
         hlm_zeroecc = dataDict_zero_ecc['hlm']
         return_dict.update({'t_zeroecc': t_zeroecc,
                             'hlm_zeroecc': hlm_zeroecc})
