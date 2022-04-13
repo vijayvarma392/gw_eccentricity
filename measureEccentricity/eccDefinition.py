@@ -187,6 +187,10 @@ class eccDefinition:
         omega_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
         omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
+        # check separation between exxtrema
+        self.check_extrema_separation(self.peaks_location, "maxima")
+        self.check_extrema_separation(self.troughs_location, "minima")
+
         t_peaks = self.t[self.peaks_location]
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             t_troughs = self.t[self.troughs_location]
@@ -241,6 +245,21 @@ class eccDefinition:
             self.check_monotonicity_and_convexity(tref_out, ecc_ref)
 
         return tref_out, ecc_ref, mean_ano_ref
+
+    def check_extrema_separation(self, extrema_location,
+                                 description="extrema",
+                                 max_phase_diff=3 * np.pi,
+                                 min_phase_diff=np.pi):
+        """Check if two extrema are too close or too far."""
+        phase_at_extrema = self.phase22[extrema_location]
+        phase_diff = np.diff(phase_at_extrema)
+        if any(phase_diff < min_phase_diff):
+            warnings.warn(f"At least a pair of {description} are close.")
+        if any(np.abs(phase_diff - np.pi)
+               < np.abs(phase_diff - 2 * np.pi)):
+            warnings.warn("Phase shift closer to pi than 2 pi detected.")
+        if any(phase_diff > max_phase_diff):
+            warnings.warn(f"At least a pair of {description} are two far.")
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,
