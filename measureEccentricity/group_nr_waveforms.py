@@ -68,7 +68,6 @@ def check_precessing(waveform_file):
     s2z = f.attrs["spin2z"]
     chi1 = [s1x, s1y, s1z]
     chi2 = [s2x, s2y, s2z]
-    print(chi1, chi2)
     f.close()
     return (np.linalg.norm(chi1[:2]) > 1e-3
             or np.linalg.norm(chi2[:2]) > 1e-3)
@@ -92,10 +91,10 @@ def move_file(waveform_file, dest_dir, catalog):
 
 # move nr files to precessing/Non-precessing directories
 if args.nr_file:
-    move_file(args.nr_file, args.catalog)
+    move_file(args.nr_file, args.dest_dir, args.catalog)
 else:
     if not args.nr_dir:
         raise Exception("Must provide nr_dir if nr_file is not given.")
     nr_files = glob.glob(f"{args.nr_dir}/*.h5")
     for fileName in tqdm(nr_files):
-        move_file(fileName, args.catalog)
+        move_file(fileName, args.dest_dir, args.catalog)
