@@ -94,12 +94,12 @@ class eccDefinition:
             }
         return default_extra_kwargs
 
-    def find_extrema(self, which="maxima"):
+    def find_extrema(self, extrema_type="maxima"):
         """Find the extrema in the data.
 
         parameters:
         -----------
-        which:
+        extrema_type:
             One of 'maxima', 'peaks', 'minima' or 'troughs'.
 
         returns:
@@ -108,19 +108,19 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def interp_extrema(self, which="maxima"):
+    def interp_extrema(self, extrema_type="maxima"):
         """Interpolator through extrema.
 
         parameters:
         -----------
-        which:
+        extrema_type:
             One of 'maxima', 'peaks', 'minima' or 'troughs'.
 
         returns:
         ------
         spline through extrema, positions of extrema
         """
-        extrema_idx = self.find_extrema(which)
+        extrema_idx = self.find_extrema(extrema_type)
         # experimenting wih throwing away peaks too close to merger
         # This helps in avoiding unwanted feature in the spline
         # thorugh the extrema
@@ -147,7 +147,7 @@ class eccDefinition:
             return spline, extrema_idx
         else:
             raise Exception(
-                f"Sufficient number of {which} are not found."
+                f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolator.")
 
     def measure_ecc(self, tref_in):
@@ -187,10 +187,6 @@ class eccDefinition:
         omega_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
         omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
-        # check separation between exxtrema
-        self.check_extrema_separation(self.peaks_location, "maxima")
-        self.check_extrema_separation(self.troughs_location, "minima")
-
         t_peaks = self.t[self.peaks_location]
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             t_troughs = self.t[self.troughs_location]
@@ -199,6 +195,11 @@ class eccDefinition:
             tref_out = tref_in[tref_in <= t_max]
         else:
             tref_out = tref_in
+
+        # check separation between extrema
+        self.check_extrema_separation(self.peaks_location, "maxima")
+        self.check_extrema_separation(self.troughs_location, "minima")
+
         # check if the tref_out has a peak before and after
         # This required to define mean anomaly.
         if tref_out[0] < t_peaks[0] or tref_out[-1] >= t_peaks[-1]:
@@ -247,19 +248,22 @@ class eccDefinition:
         return tref_out, ecc_ref, mean_ano_ref
 
     def check_extrema_separation(self, extrema_location,
-                                 description="extrema",
+                                 extrema_type="extrema",
                                  max_phase_diff=3 * np.pi,
                                  min_phase_diff=np.pi):
         """Check if two extrema are too close or too far."""
         phase_at_extrema = self.phase22[extrema_location]
         phase_diff = np.diff(phase_at_extrema)
+        # This might suggest that the data is noisy, for example, and a
+        # spurious peak got picked up.
         if any(phase_diff < min_phase_diff):
-            warnings.warn(f"At least a pair of {description} are close.")
+            warnings.warn(f"At least a pair of {extrema_type} are too close.")
         if any(np.abs(phase_diff - np.pi)
                < np.abs(phase_diff - 2 * np.pi)):
             warnings.warn("Phase shift closer to pi than 2 pi detected.")
+        # This might suggest that the peak finding method missed an extrema.
         if any(phase_diff > max_phase_diff):
-            warnings.warn(f"At least a pair of {description} are two far.")
+            warnings.warn(f"At least a pair of {extrema_type} are too far.")
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,

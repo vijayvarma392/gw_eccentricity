@@ -19,13 +19,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         """
         super().__init__(*args, **kwargs)
 
-
-    def find_extrema(self, which="maxima"):
+    def find_extrema(self, extrema_type="maxima"):
         """Find the extrema in the data.
 
         parameters:
         -----------
-        which:
+        extrema_type:
             One of 'maxima', 'peaks', 'minima' or 'troughs'.
 
         returns:

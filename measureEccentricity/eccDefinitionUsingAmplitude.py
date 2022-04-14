@@ -29,21 +29,18 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             self.get_default_extrema_finding_kwargs(),
             "extrema_finding_kwargs")
 
-
     def get_default_extrema_finding_kwargs(self):
         """Defaults for extrema_finding_kwargs."""
-
-        #TODO: Set width more smartly
+        # TODO: Set width more smartly
         default_extrema_finding_kwargs = {
             "height": None,
-             "threshold": None,
-             "distance": None,
-             "prominence": None,
-             "width": 10,
-             "wlen": None,
-             "rel_height": 0.5,
-             "plateau_size": None
-             }
+            "threshold": None,
+            "distance": None,
+            "prominence": None,
+            "width": 10,
+            "wlen": None,
+            "rel_height": 0.5,
+            "plateau_size": None}
         return default_extrema_finding_kwargs
 
     def get_data_for_finding_extrema(self):
@@ -57,12 +54,12 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         return self.amp22
 
-    def find_extrema(self, which="maxima"):
+    def find_extrema(self, extrema_type="maxima"):
         """Find the extrema in the amp22.
 
         parameters:
         -----------
-        which: either maxima, peaks, minima or troughs
+        extrema_type: either maxima, peaks, minima or troughs
         extrema_finding_kwargs: Dictionary of arguments to be passed to the
         peak finding function. Here we use scipy.signal.find_peaks for finding
         peaks. Hence the arguments are those that are allowed in that function
@@ -71,14 +68,13 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         ------
         array of positions of extrema.
         """
-
-        if which == "maxima" or which == "peaks":
+        if extrema_type in ["maxima", "peaks"]:
             sign = 1
-        elif which == "minima" or which == "troughs":
+        elif extrema_type in ["minima", "troughs"]:
             sign = - 1
         else:
-            raise Exception("`which` must be one of ['maxima', 'minima',"
-                            " 'peaks', 'troughs']")
+            raise Exception("`extrema_type` must be one of ['maxima', "
+                            "'minima', 'peaks', 'troughs']")
 
         return find_peaks(
             sign * self.data_for_finding_extrema,
