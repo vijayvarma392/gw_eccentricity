@@ -80,7 +80,7 @@ class eccDefinition:
             "w": None,
             "bbox": [None, None],
             "k": 3,
-            "ext": 0,
+            "ext": 2,
             "check_finite": False}
         return default_spline_kwargs
 
@@ -197,8 +197,10 @@ class eccDefinition:
             tref_out = tref_in
 
         # check separation between extrema
-        self.check_extrema_separation(self.peaks_location, "maxima")
-        self.check_extrema_separation(self.troughs_location, "minima")
+        self.orb_phase_diff_at_peaks = self.check_extrema_separation(
+            self.peaks_location, "peaks")
+        self.orb_phase_diff_at_troughs = self.check_extrema_separation(
+            self.troughs_location, "troughs")
 
         # check if the tref_out has a peak before and after
         # This required to define mean anomaly.
@@ -249,21 +251,26 @@ class eccDefinition:
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
-                                 max_phase_diff=3 * np.pi,
-                                 min_phase_diff=np.pi):
+                                 max_orb_phase_diff=3 * np.pi,
+                                 min_orb_phase_diff=np.pi):
         """Check if two extrema are too close or too far."""
-        phase_at_extrema = self.phase22[extrema_location]
-        phase_diff = np.diff(phase_at_extrema)
+        orb_phase_at_extrema = self.phase22[extrema_location] / 2
+        orb_phase_diff = np.diff(orb_phase_at_extrema)
         # This might suggest that the data is noisy, for example, and a
         # spurious peak got picked up.
-        if any(phase_diff < min_phase_diff):
-            warnings.warn(f"At least a pair of {extrema_type} are too close.")
-        if any(np.abs(phase_diff - np.pi)
-               < np.abs(phase_diff - 2 * np.pi)):
+        if any(orb_phase_diff < min_orb_phase_diff):
+            warnings.warn(f"At least a pair of {extrema_type} are too close."
+                          " Minimum orbital phase diff is "
+                          f"{min(orb_phase_diff)}")
+        if any(np.abs(orb_phase_diff - np.pi)
+               < np.abs(orb_phase_diff - 2 * np.pi)):
             warnings.warn("Phase shift closer to pi than 2 pi detected.")
         # This might suggest that the peak finding method missed an extrema.
-        if any(phase_diff > max_phase_diff):
-            warnings.warn(f"At least a pair of {extrema_type} are too far.")
+        if any(orb_phase_diff > max_orb_phase_diff):
+            warnings.warn(f"At least a pair of {extrema_type} are too far."
+                          " Maximum orbital phase diff is "
+                          f"{max(orb_phase_diff)}")
+        return orb_phase_diff
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,
