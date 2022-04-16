@@ -258,18 +258,25 @@ class eccDefinition:
         orb_phase_diff = np.diff(orb_phase_at_extrema)
         # This might suggest that the data is noisy, for example, and a
         # spurious peak got picked up.
+        t_at_extrema = self.t[extrema_location][1:]
         if any(orb_phase_diff < min_orb_phase_diff):
+            too_close_idx = np.where(orb_phase_diff < min_orb_phase_diff)[0]
+            too_close_times = t_at_extrema[too_close_idx]
             warnings.warn(f"At least a pair of {extrema_type} are too close."
                           " Minimum orbital phase diff is "
-                          f"{min(orb_phase_diff)}")
+                          f"{min(orb_phase_diff)}. Times of occurances are"
+                          f" {too_close_times}")
         if any(np.abs(orb_phase_diff - np.pi)
                < np.abs(orb_phase_diff - 2 * np.pi)):
             warnings.warn("Phase shift closer to pi than 2 pi detected.")
         # This might suggest that the peak finding method missed an extrema.
         if any(orb_phase_diff > max_orb_phase_diff):
+            too_far_idx = np.where(orb_phase_diff > max_orb_phase_diff)[0]
+            too_far_times = t_at_extrema[too_far_idx]
             warnings.warn(f"At least a pair of {extrema_type} are too far."
                           " Maximum orbital phase diff is "
-                          f"{max(orb_phase_diff)}")
+                          f"{max(orb_phase_diff)}. Times of occurances are"
+                          f" {too_far_times}")
         return orb_phase_diff
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
