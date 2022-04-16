@@ -29,7 +29,7 @@ def load_waveform(catalog="LAL", **kwargs):
     elif catalog == "EOB":
         if kwargs["filepath"] is None:
             raise Exception("Must provide file path to EOB waveform")
-        return load_h22_from_EOBfile(**kwargs)
+        return load_EOB_EccTest_file(**kwargs)
     else:
         raise Exception(f"Unknown catalog {catalog}")
 
@@ -380,4 +380,15 @@ def load_h22_from_EOBfile(EOB_file):
     dataDict = {"t": t_ecc, "hlm": amp22_ecc * np.exp(1j * phi22_ecc),
                 "t_zeroecc": t_nonecc,
                 "hlm_zeroecc": amp22_nonecc * np.exp(1j * phi22_nonecc)}
+    return dataDict
+
+
+def load_EOB_EccTest_file(filepath):
+    """Load EOB files for testing EccDefinition."""
+    f = h5py.File(filepath, "r")
+    t = f["t"]
+    hlm = {(2, 2): f["(2, 2)"]}
+    # make t = 0 at the merger
+    t = t - get_peak_via_quadratic_fit(t, np.abs(hlm[(2, 2)]))[0]
+    dataDict = {"t": t, "hlm": hlm}
     return dataDict

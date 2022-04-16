@@ -191,8 +191,10 @@ class eccDefinition:
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
+            t_min = max(t_peaks[0], t_troughs[0])
             # measure eccentricty and mean anomaly only upto t_max
-            tref_out = tref_in[tref_in <= t_max]
+            tref_out = tref_in[tref_in < t_max]
+            tref_out = tref_out[tref_out >= t_min]
         else:
             tref_out = tref_in
 
