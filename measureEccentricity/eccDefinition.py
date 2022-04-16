@@ -80,7 +80,7 @@ class eccDefinition:
             "w": None,
             "bbox": [None, None],
             "k": 3,
-            "ext": 0,
+            "ext": 2,
             "check_finite": False}
         return default_spline_kwargs
 
@@ -94,12 +94,12 @@ class eccDefinition:
             }
         return default_extra_kwargs
 
-    def find_extrema(self, which="maxima"):
+    def find_extrema(self, extrema_type="maxima"):
         """Find the extrema in the data.
 
         parameters:
         -----------
-        which:
+        extrema_type:
             One of 'maxima', 'peaks', 'minima' or 'troughs'.
 
         returns:
@@ -108,19 +108,19 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def interp_extrema(self, which="maxima"):
+    def interp_extrema(self, extrema_type="maxima"):
         """Interpolator through extrema.
 
         parameters:
         -----------
-        which:
+        extrema_type:
             One of 'maxima', 'peaks', 'minima' or 'troughs'.
 
         returns:
         ------
         spline through extrema, positions of extrema
         """
-        extrema_idx = self.find_extrema(which)
+        extrema_idx = self.find_extrema(extrema_type)
         # experimenting wih throwing away peaks too close to merger
         # This helps in avoiding unwanted feature in the spline
         # thorugh the extrema
@@ -147,7 +147,7 @@ class eccDefinition:
             return spline, extrema_idx
         else:
             raise Exception(
-                f"Sufficient number of {which} are not found."
+                f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolator.")
 
     def measure_ecc(self, tref_in):
@@ -195,6 +195,13 @@ class eccDefinition:
             tref_out = tref_in[tref_in <= t_max]
         else:
             tref_out = tref_in
+
+        # check separation between extrema
+        self.orb_phase_diff_at_peaks = self.check_extrema_separation(
+            self.peaks_location, "peaks")
+        self.orb_phase_diff_at_troughs = self.check_extrema_separation(
+            self.troughs_location, "troughs")
+
         # check if the tref_out has a peak before and after
         # This required to define mean anomaly.
         if tref_out[0] < t_peaks[0] or tref_out[-1] >= t_peaks[-1]:
@@ -241,6 +248,36 @@ class eccDefinition:
             self.check_monotonicity_and_convexity(tref_out, ecc_ref)
 
         return tref_out, ecc_ref, mean_ano_ref
+
+    def check_extrema_separation(self, extrema_location,
+                                 extrema_type="extrema",
+                                 max_orb_phase_diff=3 * np.pi,
+                                 min_orb_phase_diff=np.pi):
+        """Check if two extrema are too close or too far."""
+        orb_phase_at_extrema = self.phase22[extrema_location] / 2
+        orb_phase_diff = np.diff(orb_phase_at_extrema)
+        # This might suggest that the data is noisy, for example, and a
+        # spurious peak got picked up.
+        t_at_extrema = self.t[extrema_location][1:]
+        if any(orb_phase_diff < min_orb_phase_diff):
+            too_close_idx = np.where(orb_phase_diff < min_orb_phase_diff)[0]
+            too_close_times = t_at_extrema[too_close_idx]
+            warnings.warn(f"At least a pair of {extrema_type} are too close."
+                          " Minimum orbital phase diff is "
+                          f"{min(orb_phase_diff)}. Times of occurances are"
+                          f" {too_close_times}")
+        if any(np.abs(orb_phase_diff - np.pi)
+               < np.abs(orb_phase_diff - 2 * np.pi)):
+            warnings.warn("Phase shift closer to pi than 2 pi detected.")
+        # This might suggest that the peak finding method missed an extrema.
+        if any(orb_phase_diff > max_orb_phase_diff):
+            too_far_idx = np.where(orb_phase_diff > max_orb_phase_diff)[0]
+            too_far_times = t_at_extrema[too_far_idx]
+            warnings.warn(f"At least a pair of {extrema_type} are too far."
+                          " Maximum orbital phase diff is "
+                          f"{max(orb_phase_diff)}. Times of occurances are"
+                          f" {too_far_times}")
+        return orb_phase_diff
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,
