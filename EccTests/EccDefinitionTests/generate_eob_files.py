@@ -22,7 +22,7 @@ deltaTOverM = 1
 dt = deltaTOverM * MT
 print(1/dt)
 
-data_dir = "/home1/md.shaikh/Eccentricity/test_definition/EOB"
+data_dir = "/home1/md.shaikh/Eccentricity/EccTests/EccDefinitionTests/EOB"
 
 if not os.path.exists(data_dir):
     os.system(f"mkdir -p {data_dir}")
