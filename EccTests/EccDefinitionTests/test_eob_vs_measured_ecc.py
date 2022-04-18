@@ -3,7 +3,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import argparse
-sys.path.append("../")
+sys.path.append("../../")
 from measureEccentricity import measure_eccentricity
 from measureEccentricity.load_data import load_waveform
 
