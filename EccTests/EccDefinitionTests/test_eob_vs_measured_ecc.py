@@ -13,27 +13,30 @@ parser.add_argument(
     "--data_dir",
     type=str,
     required=True,
-    help=("Directory where EOB Files are stored"))
+    help=("Base directory where waveform files are stored."))
 parser.add_argument(
     "--method",
     type=str,
-    default="Amplitude",
-    help=("EccDefinition method to use."))
+    nargs="+",
+    default="all",
+    help=("EccDefinition method to test."
+          " Could be one or more of the methods in"
+          " measureEccentricity.get_available_methods."
+          " Default is all."
+          " usage: --method Amplitude Frequency"))
 parser.add_argument(
-    "--q",
-    type=float,
-    default=1.,
-    help="mass ratio of the system.")
-parser.add_argument(
-    "--chi1z",
-    type=float,
-    default=0.0,
-    help="chi1z of the system.")
-parser.add_argument(
-    "--chi2z",
-    type=float,
-    default=0.0,
-    help="chi2z of the system.")
+    "--set",
+    type=str,
+    default="all",
+    nargs="+",
+    help=("Run test on the set of parameters. "
+          "Possible choices are one or more of 1, 2, 3, 4 or all."
+          " 1: q=1, chi1z=chi2z=0."
+          " 2: q=2, chi1z=chi2z=0.5"
+          " 3: q=4, chi1z=chi2z=-0.6"
+          " 4: q=6, chi1z=0.4, chi2z=-0.4."
+          " Default is all."
+          " usage: --set 1 2"))
 parser.add_argument(
     "--fig_dir",
     type=str,
@@ -43,26 +46,19 @@ parser.add_argument(
 args = parser.parse_args()
 
 EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
-q = args.q
-chi1z = args.chi1z
-chi2z = args.chi2z
-data_dir = args.data_dir
-method = args.method
-
-if not args.fig_dir:
-    fig_dir = "."
-else:
-    fig_dir = args.fig_dir
-fig_name = f"{fig_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_chi2z{chi2z:.2f}_{method}.pdf"
-
-fig, ax = plt.subplots()
+param_sets = {"1": [1, 0, 0],
+              "2": [2, 0.5, 0.5],
+              "3": [4, -0.6, -0.6],
+              "4": [6, 0.4, -0.4]}
+data_dir = args.data_dir + "Non-Precessing/EOB/"
 
 markers = ["o", "v", "^", "<", ">", "d", "+", "x"]
 
 
-def plot_for_method(method, marker, ax):
+def plot_for(method, param_set, marker, ax):
     MeasuredEccs = []
     WaveformEccs = []
+    q, chi1z, chi2z = param_sets[param_set]
     for ecc in tqdm(EOBeccs):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
@@ -89,15 +85,29 @@ def plot_for_method(method, marker, ax):
     ax.loglog(WaveformEccs, MeasuredEccs, marker=marker, label=f"{method}")
 
 
-if method == "All":
+if args.method[0] == "all":
     methods = get_available_methods()
-    for idx, method in enumerate(methods):
-        plot_for_method(method, markers[idx], ax)
+    method_str = args.method[0]
 else:
-    plot_for_method(method, markers[0], ax)
+    methods = args.method
+    method_str = "_".join(args.method)
 
-ax.legend()
-ax.grid()
-ax.set_xlabel("EOB Eccentricity")
-ax.set_ylabel("Measured Eccentricity")
-fig.savefig(f"{fig_name}")
+if args.set[0] == "all":
+    sets = param_sets
+else:
+    sets = {}
+    for key in args.set:
+        sets.update({key: param_sets[key]})
+
+fig_dir = args.fig_dir if args.fig_dir else "./"
+
+for param_set in sets:
+    fig, ax = plt.subplots()
+    fig_name = f"{fig_dir}/EccTest_set{param_set}_{method_str}.png"
+    for idx, method in enumerate(methods):
+        plot_for(method, param_set, markers[idx], ax)
+    ax.legend()
+    ax.grid()
+    ax.set_xlabel("EOB Eccentricity")
+    ax.set_ylabel("Measured Eccentricity")
+    fig.savefig(f"{fig_name}")
