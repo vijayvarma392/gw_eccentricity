@@ -39,7 +39,7 @@ jobs:
           pip install .
 
       - name: Run test suite
-        working-directory: tests
+        working-directory: test
         shell: bash -l {0}
         run: |
           py.test
