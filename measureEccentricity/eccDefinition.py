@@ -165,7 +165,7 @@ class eccDefinition:
               accorindly a tmax is set by chosing the min of time of last
               peak/trough. Thus the eccentricity and mean anomaly are computed
               only upto tmax and a new time array tref_out is returned with
-              max(tref_out) = tmax.
+              max(tref_out) = tmax. See documention of tref_out below.
 
         returns:
         --------
@@ -173,6 +173,13 @@ class eccDefinition:
             Array of reference times where eccenricity and mean anomaly are
             measured. This would be different from tref_in if
             exclude_num_obrits_before_merger in the extra_kwargs is not None.
+            tref_out starts from the time of first peak and first trough
+            whichever comers later and stops at the last peak or trough
+            (constrained by the num_orbits_to_exclude_before_merger value)
+            whichever comes earlier. Effectively the range of tref_out is
+            [max(first_peak, first_trough), min(last_peak, last_trough)].
+            The last_peak/last_trough is after applying the
+            num_orbits_to_exclude_before_merger condiion.
 
         ecc_ref:
             Measured eccentricity at tref_out.
@@ -181,9 +188,6 @@ class eccDefinition:
             Measured mean anomaly at tref_out.
         """
         tref_in = np.atleast_1d(tref_in)
-        if any(tref_in >= 0):
-            raise Exception("Reference time must be negative. Merger being"
-                            " at t = 0.")
         omega_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
         omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
@@ -192,9 +196,9 @@ class eccDefinition:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
             t_min = max(t_peaks[0], t_troughs[0])
-            # measure eccentricty and mean anomaly only upto t_max
-            tref_out = tref_in[tref_in < t_max]
-            tref_out = tref_out[tref_out >= t_min]
+            # measure eccentricty and mean anomaly from t_min to t_max
+            tref_out = tref_in[np.logical_and(tref_in < t_max,
+                                              tref_in >= t_min)]
         else:
             tref_out = tref_in
 

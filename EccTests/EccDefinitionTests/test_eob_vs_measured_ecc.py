@@ -1,3 +1,5 @@
+"""Test to compare eob model eccentricity with measured eccentricity."""
+
 import sys
 import numpy as np
 from tqdm import tqdm
@@ -43,6 +45,12 @@ parser.add_argument(
     type=str,
     required=False,
     help="Directory to save figure.")
+parser.add_argument(
+    "--plot_format",
+    type=str,
+    default="png",
+    help=("Format to save the plot. Default is 'png'. "
+          "Could be any format that matplotlib supports."))
 
 args = parser.parse_args()
 
@@ -55,8 +63,14 @@ data_dir = args.data_dir + "Non-Precessing/EOB/"
 
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
-    waveform_eccs = []
-    model_eccs = []
+    # We will loop over waveforms with ecc in EOBeccs
+    # Howver many eccentricity definitions might not work
+    # for all of these waveforms, for example, due to small
+    # eccentricity. Therefore we need to track only those
+    # eob model eccentricity for which the particular
+    # definition works.
+    waveform_eccs = []  # ecc as measured by the definition
+    model_eccs = []  # ecc that goes in to the waveform generation
     q, chi1z, chi2z = param_sets[set_key]
     for ecc in tqdm(EOBeccs):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
@@ -70,7 +84,6 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
                            "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
         tref_in = dataDict["t"]
-        tref_in = tref_in[tref_in < 0]
         try:
             tref_out, measured_ecc, mean_ano = measure_eccentricity(tref_in,
                                                                     dataDict,
@@ -102,7 +115,7 @@ fig_dir = args.fig_dir if args.fig_dir else "./"
 
 for key in args.set:
     fig, ax = plt.subplots()
-    fig_name = f"{fig_dir}/EccTest_set{set}_{method_str}.png"
+    fig_name = f"{fig_dir}/EccTest_set{key}_{method_str}.{args.plot_format}"
     for idx, method in enumerate(args.method):
         plot_waveform_ecc_vs_model_ecc(method, key, ax)
     ax.legend()

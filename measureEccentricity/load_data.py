@@ -29,7 +29,12 @@ def load_waveform(catalog="LAL", **kwargs):
     elif catalog == "EOB":
         if kwargs["filepath"] is None:
             raise Exception("Must provide file path to EOB waveform")
-        return load_EOB_EccTest_file(**kwargs)
+        if "EccTest" in kwargs["filepath"]:
+            return load_EOB_EccTest_file(**kwargs)
+        elif "Case" in kwargs["filepath"]:
+            return load_h22_from_EOBfile(**kwargs)
+        else:
+            raise Exception("Unknown filepath pattern.")
     else:
         raise Exception(f"Unknown catalog {catalog}")
 
