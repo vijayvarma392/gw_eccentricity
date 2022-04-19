@@ -47,7 +47,7 @@ parser.add_argument(
     nargs="+",
     default="all",
     help=("EccDefinition method to test. Can be 'all' OR one or more of the "
-          "methods in measureEccentricity.get_available_methods."))
+          f"methods in {list(get_available_methods())}."))
 parser.add_argument(
     "--param_set_key", "-p",
     type=str,
@@ -108,6 +108,9 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
             tref_out, measured_ecc, mean_ano = measure_eccentricity(tref_in,
                                                                     dataDict,
                                                                     method)
+            # Get the measured eccentricity at the first available index.
+            # This corresponds to the first extrema that occurs after the
+            # initial time.
             waveform_eccs.append(measured_ecc[0])
             model_eccs.append(ecc)
         except Exception:
