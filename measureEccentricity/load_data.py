@@ -29,7 +29,12 @@ def load_waveform(catalog="LAL", **kwargs):
     elif catalog == "EOB":
         if kwargs["filepath"] is None:
             raise Exception("Must provide file path to EOB waveform")
-        return load_h22_from_EOBfile(**kwargs)
+        if "EccTest" in kwargs["filepath"]:
+            return load_EOB_EccTest_file(**kwargs)
+        elif "Case" in kwargs["filepath"]:
+            return load_h22_from_EOBfile(**kwargs)
+        else:
+            raise Exception("Unknown filepath pattern.")
     else:
         raise Exception(f"Unknown catalog {catalog}")
 
@@ -380,4 +385,26 @@ def load_h22_from_EOBfile(EOB_file):
     dataDict = {"t": t_ecc, "hlm": amp22_ecc * np.exp(1j * phi22_ecc),
                 "t_zeroecc": t_nonecc,
                 "hlm_zeroecc": amp22_nonecc * np.exp(1j * phi22_nonecc)}
+    return dataDict
+
+
+def load_EOB_EccTest_file(**kwargs):
+    """Load EOB files for testing EccDefinition."""
+    f = h5py.File(kwargs["filepath"], "r")
+    t = f["t"]
+    hlm = {(2, 2): f["(2, 2)"]}
+    # make t = 0 at the merger
+    t = t - get_peak_via_quadratic_fit(t, np.abs(hlm[(2, 2)]))[0]
+    dataDict = {"t": t, "hlm": hlm}
+    if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
+        if "filepath_zero_ecc" not in kwargs:
+            raise Exception("Mus provide file path to zero ecc waveform.")
+        zero_ecc_kwargs = kwargs.copy()
+        zero_ecc_kwargs["filepath"] = kwargs["filepath_zero_ecc"]
+        zero_ecc_kwargs["include_zero_ecc"] = False
+        dataDict_zero_ecc = load_EOB_EccTest_file(**zero_ecc_kwargs)
+        t_zeroecc = dataDict_zero_ecc["t"]
+        hlm_zeroecc = dataDict_zero_ecc["hlm"]
+        dataDict.update({"t_zeroecc": t_zeroecc,
+                         "hlm_zeroecc": hlm_zeroecc})
     return dataDict
