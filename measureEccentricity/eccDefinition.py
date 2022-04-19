@@ -32,17 +32,19 @@ class eccDefinition:
         extra_kwargs:
             Any extra kwargs to be passed. Allowed kwargs are
                 num_orbits_to_exclude_before_merger:
-                    Could be either None or non negative real number. If None,
-                    then the full data even after merger is used but this might
-                    cause issues with he interpolaion trough exrema. For non
-                    negative real number, that many orbits prior to merger is
-                    exculded.
+                    Can be None or a non negative real number.
+                    If None, the full waveform data (even post-merger) is used
+                    to measure eccentricity, but this might cause issues when
+                    interpolating trough extrema.
+                    For a non negative real
+                    num_orbits_to_exclude_before_merger, that many orbits prior
+                    to merger are excluded when finding extrema.
                     Default: 1.
                 extrema_finding_kwargs:
                     Dictionary of arguments to be passed to the peak finding
                     function (typically scipy.signal.find_peaks).
-               debug:
-                    Run additional sanity checks if debug is True.
+                debug:
+                    Run additional sanity checks if True.
                     Default: True.
         """
         self.dataDict = dataDict
@@ -155,6 +157,7 @@ class eccDefinition:
 
         parameters:
         ----------
+        #TODO for Arif: Update this to match what is said in measureEccentricity. 
         tref_in:
               Input reference time to measure eccentricity and mean anomaly.
               This is the input array provided by the user to evaluate

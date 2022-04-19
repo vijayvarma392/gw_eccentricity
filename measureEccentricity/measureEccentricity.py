@@ -54,14 +54,9 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
     parameters:
     ----------
     tref_in:
-        Input Reference time at which to measure eccentricity and mean anomaly.
-        Can be a single float or an array.
-        However, if exclude_num_orbits_before_merger in extra_kwargs is not
-        None, the interpolator used to measure eccentricty is constructed using
-        extrema only upto exclude_num_orbits_before_merger and accorindly a
-        tmax is set by chosing the min of time of last peak/trough. Thus the
-        eccentricity and mean anomaly are computed only till tmax and a newr
-        time array tref_out is returned with max(tref_out) = tmax.
+        Input reference time at which to measure eccentricity and mean anomaly.
+        Can be a single float or an array. NOTE: eccentricity/mean_ano are
+        returned on a different time array tref_out, described below.
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
@@ -87,11 +82,12 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
 
     extra_kwargs: Any extra kwargs to be passed. Allowed kwargs are
         num_orbits_to_exclude_before_merger:
-            Could be either None or non negative real number. If None, then
-            the full data even after merger is used but this might cause
-            issues with the interpolaion trough exrema. For non negative real
-            number, that many orbits prior to merger are exculded when
-            finding extrema.
+            Can be None or a non negative real number.
+            If None, the full waveform data (even post-merger) is used to
+            measure eccentricity, but this might cause issues when
+            interpolating trough extrema.
+            For a non negative real num_orbits_to_exclude_before_merger, that
+            many orbits prior to merger are excluded when finding extrema.
             Default: 1.
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the peak finding function,
@@ -103,9 +99,18 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
     returns:
     --------
     tref_out:
-         Output reference time where eccenricity and mean anomaly is
-         measured. This would be different than tref_in if
-         exclude_num_obrits_before_merger in the extra_kwargs is not None
+        Output reference time where eccentricity and mean anomaly are
+        measured.
+        This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
+        where tmax = min(t_peaks[-1], t_troughs[-1]),
+        and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
+        eccentricity is computed using interpolants of omega_peaks and
+        omega_troughs. The above cutoffs ensure that we are not extrapolating
+        in omega_peaks/omega_troughs.
+        In addition, if num_orbits_to_exclude_before_merger in extra_kwargs is
+        not None, only the data up to that many orbits before merger is
+        included when finding the t_peaks/t_troughs. This helps avoid
+        unphysical features like nonmonotonic eccentricity near the merger.
 
     ecc_ref:
         Measured eccentricity at t_ref. Same type as t_ref.
@@ -114,8 +119,8 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
         Measured mean anomaly at t_ref. Same type as t_ref.
 
     ecc_method:
-       method object used to compute eccentricity only if
-       return_ecc_method is True
+        Method object used to compute eccentricity. Only returne if
+        return_ecc_method is True.
     """
     available_methods = get_available_methods()
 
