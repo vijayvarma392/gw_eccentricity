@@ -120,11 +120,13 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
     ax.loglog(model_eccs, waveform_eccs, marker=".", label=f"{method}")
     ax.set_title(f"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$={chi2z:.3f}")
 
-# This is used in the filename for the output figure
-method_str = args.method if "all" in args.method else "_".join(args.method)
 
 if "all" in args.method:
     args.method = get_available_methods()
+    # method_str is used in the filename for the output figure
+    method_str = "all"
+else:
+    method_str = "_".join(args.method)
 
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
