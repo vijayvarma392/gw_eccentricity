@@ -43,7 +43,7 @@ class eccDefinition:
                     function (typically scipy.signal.find_peaks).
                debug:
                     Run additional sanity checks if debug is True.
-                    Default: True.
+                    Default: False.
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
@@ -90,7 +90,7 @@ class eccDefinition:
             "num_orbits_to_exclude_before_merger": 1,
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
-            "debug": True
+            "debug": False
             }
         return default_extra_kwargs
 
@@ -250,14 +250,16 @@ class eccDefinition:
             ecc_ref = ecc_ref[0]
 
         # check if eccenricity is monotonic and convex
-        if len(tref_out) > 1 and self.extra_kwargs["debug"]:
-            self.check_monotonicity_and_convexity(tref_out, ecc_ref)
+        if len(tref_out) > 1:
+            self.check_monotonicity_and_convexity(
+                tref_out, ecc_ref,
+                debug=self.extra_kwargs["debug"])
 
         return tref_out, ecc_ref, mean_ano_ref
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
-                                 max_orb_phase_diff=3 * np.pi,
+                                 max_orb_phase_diff_factor=1.5,
                                  min_orb_phase_diff=np.pi):
         """Check if two extrema are too close or too far."""
         orb_phase_at_extrema = self.phase22[extrema_location] / 2
@@ -276,8 +278,15 @@ class eccDefinition:
                < np.abs(orb_phase_diff - 2 * np.pi)):
             warnings.warn("Phase shift closer to pi than 2 pi detected.")
         # This might suggest that the peak finding method missed an extrema.
-        if any(orb_phase_diff > max_orb_phase_diff):
-            too_far_idx = np.where(orb_phase_diff > max_orb_phase_diff)[0]
+        # We will check if the phase diff at an extrema is greater than
+        # max_orb_phase_diff_factor times the orb_phase_factor at the
+        # previous peak
+        orb_phase_diff_ratio = orb_phase_diff[1:]/orb_phase_diff[:-1]
+        # make it of same length as orb_phase_diff by prepending 0
+        orb_phase_diff_ratio = np.append([0], orb_phase_diff_ratio)
+        if any(orb_phase_diff_ratio > max_orb_phase_diff_factor):
+            too_far_idx = np.where(orb_phase_diff_ratio
+                                   > max_orb_phase_diff_factor)[0]
             too_far_times = t_at_extrema[too_far_idx]
             warnings.warn(f"At least a pair of {extrema_type} are too far."
                           " Maximum orbital phase diff is "
@@ -287,23 +296,31 @@ class eccDefinition:
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,
+                                         debug=False,
                                          t_for_ecc_test=None):
         """Check if measured eccentricity is a monotonic function of time.
 
         parameters:
-        tref_out: Output reference time from eccentricty measurement
-        ecc_ref: measured eccentricity at tref_out
-        check_convexity: In addition to monotonicity, it will check for
-        convexity as well. Default is False.
-        t_for_ecc_test: Time array to build a spline. If None, then uses
-        a new time array with delta_t = 0.1 for same range as in tref_out
-        Default is None.
+        tref_out:
+            Output reference time from eccentricty measurement
+        ecc_ref:
+            measured eccentricity at tref_out
+        check_convexity:
+            In addition to monotonicity, it will check for
+            convexity as well. Default is False.
+        debug:
+            If True then warning is generated when length for interpolation
+            is greater than 100000. Default is False.
+        t_for_ecc_test:
+            Time array to build a spline. If None, then uses
+            a new time array with delta_t = 0.1 for same range as in tref_out
+            Default is None.
         """
         spline = InterpolatedUnivariateSpline(tref_out, ecc_ref)
         if t_for_ecc_test is None:
             t_for_ecc_test = np.arange(tref_out[0], tref_out[-1], 0.1)
             len_t_for_ecc_test = len(t_for_ecc_test)
-            if len_t_for_ecc_test > 100000:
+            if debug and len_t_for_ecc_test > 100000:
                 warnings.warn("time array t_for_ecc_test is too long."
                               f" Length is {len_t_for_ecc_test}")
 
