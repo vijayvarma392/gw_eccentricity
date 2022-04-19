@@ -11,7 +11,23 @@ sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 
-parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
+parser = argparse.ArgumentParser(
+    description=("This test is designed to check how well different"
+                 " eccentricity definition works. The waveforms that are"
+                 " used for this test are generated"
+                 " from a fixed initial frequency and eccentricities varying "
+                 " from 1e-5 to 0.5. We try to measure the eccentricity"
+                 " from these waveforms using the definitions. For a given"
+                 " waveform, we measure the eccentriicities at times in the"
+                 " range [max(first_peak, first_trough), min(last_peak,"
+                 " last_trough)] and collect the very first value of the "
+                 " eccentricity in this range and then do the same looping"
+                 " over all the eob waveforms. Finally we plot these"
+                 " eccentricites vs the eccentricities that was used to"
+                 " generate the eob waveforms.\n\n"
+                 "The goal is to check that the measured eccentricity"
+                 " varies smoothly with the eccentricities of the model."),
+    formatter_class=RawTextHelpFormatter)
 parser.add_argument(
     "--data_dir",
     type=str,
