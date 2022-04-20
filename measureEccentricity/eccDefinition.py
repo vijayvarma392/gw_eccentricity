@@ -43,7 +43,7 @@ class eccDefinition:
                     function (typically scipy.signal.find_peaks).
                debug:
                     Run additional sanity checks if debug is True.
-                    Default: False.
+                    Default: True.
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
@@ -90,7 +90,7 @@ class eccDefinition:
             "num_orbits_to_exclude_before_merger": 1,
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
-            "debug": False
+            "debug": True
             }
         return default_extra_kwargs
 
@@ -279,7 +279,7 @@ class eccDefinition:
             warnings.warn("Phase shift closer to pi than 2 pi detected.")
         # This might suggest that the peak finding method missed an extrema.
         # We will check if the phase diff at an extrema is greater than
-        # max_orb_phase_diff_factor times the orb_phase_factor at the
+        # max_orb_phase_diff_factor times the orb_phase_diff at the
         # previous peak
         orb_phase_diff_ratio = orb_phase_diff[1:]/orb_phase_diff[:-1]
         # make it of same length as orb_phase_diff by prepending 0

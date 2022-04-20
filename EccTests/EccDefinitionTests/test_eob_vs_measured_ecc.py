@@ -76,6 +76,9 @@ param_sets = {"1": [1, 0, 0],
               "3": [4, -0.6, -0.6],
               "4": [6, 0.4, -0.4]}
 data_dir = args.data_dir + "Non-Precessing/EOB/"
+# don't want to raise warnings when length of data for interpolaion
+# in the monotonicity check is too long
+extra_kwargs = {"debug": False}
 
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
@@ -101,9 +104,11 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
         dataDict = load_waveform(catalog="EOB", **kwargs)
         tref_in = dataDict["t"]
         try:
-            tref_out, measured_ecc, mean_ano = measure_eccentricity(tref_in,
-                                                                    dataDict,
-                                                                    method)
+            tref_out, measured_ecc, mean_ano = measure_eccentricity(
+                tref_in,
+                dataDict,
+                method,
+                extra_kwargs=extra_kwargs)
             waveform_eccs.append(measured_ecc[0])
             model_eccs.append(ecc)
         except Exception:
