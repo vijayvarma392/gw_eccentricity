@@ -104,11 +104,9 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
         dataDict = load_waveform(catalog="EOB", **kwargs)
         tref_in = dataDict["t"]
         try:
-            tref_out, measured_ecc, mean_ano = measure_eccentricity(
-                tref_in,
-                dataDict,
-                method,
-                extra_kwargs=extra_kwargs)
+            tref_out, measured_ecc, mean_ano = measure_eccentricity(tref_in,
+                                                                    dataDict,
+                                                                    method)
             waveform_eccs.append(measured_ecc[0])
             model_eccs.append(ecc)
         except Exception:
