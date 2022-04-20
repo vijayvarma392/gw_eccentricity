@@ -23,13 +23,15 @@ sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 
+
 class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text """
+    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text"""
     def _split_lines(self, text, width):
         if text.startswith('R|'):
             return text[2:].splitlines()
         # this is the RawTextHelpFormatter._split_lines
         return argparse.HelpFormatter._split_lines(self, text, width)
+
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -76,11 +78,17 @@ args = parser.parse_args()
 EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
 
 # Format: [q, chi1z, chi2z]
-available_param_sets = {"1": [1, 0, 0],
-              "2": [2, 0.5, 0.5],
-              "3": [4, -0.6, -0.6],
-              "4": [6, 0.4, -0.4]}
+available_param_sets = {
+    "1": [1, 0, 0],
+    "2": [2, 0.5, 0.5],
+    "3": [4, -0.6, -0.6],
+    "4": [6, 0.4, -0.4]}
 data_dir = args.data_dir + "/Non-Precessing/EOB/"
+
+# Avoid raising warnings when length of the data for interpolation
+# in monotonicity check is too long
+extra_kwargs = {"debug": False}
+
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
     # We will loop over waveforms with ecc in EOBeccs
@@ -105,9 +113,11 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
         dataDict = load_waveform(catalog="EOB", **kwargs)
         tref_in = dataDict["t"]
         try:
-            tref_out, measured_ecc, mean_ano = measure_eccentricity(tref_in,
-                                                                    dataDict,
-                                                                    method)
+            tref_out, measured_ecc, mean_ano = measure_eccentricity(
+                tref_in,
+                dataDict,
+                method,
+                extra_kwargs=extra_kwargs)
             # Get the measured eccentricity at the first available index.
             # This corresponds to the first extrema that occurs after the
             # initial time.
