@@ -37,7 +37,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": 10,
+            "width": 50,
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}

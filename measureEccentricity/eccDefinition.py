@@ -157,32 +157,26 @@ class eccDefinition:
 
         parameters:
         ----------
-        #TODO for Arif: Update this to match what is said in measureEccentricity. 
         tref_in:
-              Input reference time to measure eccentricity and mean anomaly.
-              This is the input array provided by the user to evaluate
-              eccenricity and mean anomaly at. However, if
-              num_orbits_to_exclude_before_merger in extra_kwargs is not None,
-              the interpolator used to measure eccentricty is constructed using
-              extrema only upto num_orbits_to_exclude_before_merger and
-              accorindly a tmax is set by chosing the min of time of last
-              peak/trough. Thus the eccentricity and mean anomaly are computed
-              only upto tmax and a new time array tref_out is returned with
-              max(tref_out) = tmax. See documention of tref_out below.
+            Input reference time at which to measure eccentricity and mean anomaly.
+            Can be a single float or an array. NOTE: eccentricity/mean_ano are
+            returned on a different time array tref_out, described below.
 
         returns:
         --------
         tref_out:
-            Array of reference times where eccenricity and mean anomaly are
-            measured. This would be different from tref_in if
-            exclude_num_obrits_before_merger in the extra_kwargs is not None.
-            tref_out starts from the time of first peak and first trough
-            whichever comers later and stops at the last peak or trough
-            (constrained by the num_orbits_to_exclude_before_merger value)
-            whichever comes earlier. Effectively the range of tref_out is
-            [max(first_peak, first_trough), min(last_peak, last_trough)].
-            The last_peak/last_trough is after applying the
-            num_orbits_to_exclude_before_merger condiion.
+            Output reference time where eccentricity and mean anomaly are
+            measured.
+            This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
+            where tmax = min(t_peaks[-1], t_troughs[-1]),
+            and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
+            eccentricity is computed using interpolants of omega_peaks and
+            omega_troughs. The above cutoffs ensure that we are not extrapolating
+            in omega_peaks/omega_troughs.
+            In addition, if num_orbits_to_exclude_before_merger in extra_kwargs is
+            not None, only the data up to that many orbits before merger is
+            included when finding the t_peaks/t_troughs. This helps avoid
+            unphysical features like nonmonotonic eccentricity near the merger.
 
         ecc_ref:
             Measured eccentricity at tref_out.
@@ -206,10 +200,12 @@ class eccDefinition:
             tref_out = tref_in
 
         # check separation between extrema
-        self.orb_phase_diff_at_peaks = self.check_extrema_separation(
-            self.peaks_location, "peaks")
-        self.orb_phase_diff_at_troughs = self.check_extrema_separation(
-            self.troughs_location, "troughs")
+        self.orb_phase_diff_at_peaks, \
+            self.orb_phase_diff_ratio_at_peaks \
+            = self.check_extrema_separation(self.peaks_location, "peaks")
+        self.orb_phase_diff_at_troughs, \
+            self.orb_phase_diff_ratio_at_troughs \
+            = self.check_extrema_separation(self.troughs_location, "troughs")
 
         # check if the tref_out has a peak before and after
         # This required to define mean anomaly.
@@ -248,15 +244,17 @@ class eccDefinition:
         # Compute mean anomaly at tref_out
         mean_ano_ref = compute_mean_ano(tref_out)
 
-        if len(tref_out) == 1:
-            mean_ano_ref = mean_ano_ref[0]
-            ecc_ref = ecc_ref[0]
-
         # check if eccenricity is monotonic and convex
         if len(tref_out) > 1:
             self.check_monotonicity_and_convexity(
                 tref_out, ecc_ref,
                 debug=self.extra_kwargs["debug"])
+
+        if len(tref_out) == 1:
+            mean_ano_ref = mean_ano_ref[0]
+            ecc_ref = ecc_ref[0]
+            tref_out = tref_out[0]
+
 
         return tref_out, ecc_ref, mean_ano_ref
 
@@ -295,7 +293,7 @@ class eccDefinition:
                           " Maximum orbital phase diff is "
                           f"{max(orb_phase_diff)}. Times of occurances are"
                           f" {too_far_times}")
-        return orb_phase_diff
+        return orb_phase_diff, orb_phase_diff_ratio
 
     def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
                                          check_convexity=False,
@@ -323,7 +321,7 @@ class eccDefinition:
         if t_for_ecc_test is None:
             t_for_ecc_test = np.arange(tref_out[0], tref_out[-1], 0.1)
             len_t_for_ecc_test = len(t_for_ecc_test)
-            if debug and len_t_for_ecc_test > 100000:
+            if debug and len_t_for_ecc_test > 1e6:
                 warnings.warn("time array t_for_ecc_test is too long."
                               f" Length is {len_t_for_ecc_test}")
 
