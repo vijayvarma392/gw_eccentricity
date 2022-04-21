@@ -244,15 +244,17 @@ class eccDefinition:
         # Compute mean anomaly at tref_out
         mean_ano_ref = compute_mean_ano(tref_out)
 
-        if len(tref_out) == 1:
-            mean_ano_ref = mean_ano_ref[0]
-            ecc_ref = ecc_ref[0]
-
         # check if eccenricity is monotonic and convex
         if len(tref_out) > 1:
             self.check_monotonicity_and_convexity(
                 tref_out, ecc_ref,
                 debug=self.extra_kwargs["debug"])
+
+        if len(tref_out) == 1:
+            mean_ano_ref = mean_ano_ref[0]
+            ecc_ref = ecc_ref[0]
+            tref_out = tref_out[0]
+
 
         return tref_out, ecc_ref, mean_ano_ref
 
@@ -319,7 +321,7 @@ class eccDefinition:
         if t_for_ecc_test is None:
             t_for_ecc_test = np.arange(tref_out[0], tref_out[-1], 0.1)
             len_t_for_ecc_test = len(t_for_ecc_test)
-            if debug and len_t_for_ecc_test > 100000:
+            if debug and len_t_for_ecc_test > 1e6:
                 warnings.warn("time array t_for_ecc_test is too long."
                               f" Length is {len_t_for_ecc_test}")
 
