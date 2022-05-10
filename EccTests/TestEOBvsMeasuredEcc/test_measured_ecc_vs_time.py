@@ -49,6 +49,16 @@ parser.add_argument(
     help=("EccDefinition method to test. Can be 'all' OR one or more of the "
           f"methods in {list(get_available_methods())}."))
 parser.add_argument(
+    "--emax",
+    type=float,
+    required=False,
+    help="Maximum ecc value to test.")
+parser.add_argument(
+    "--emin",
+    type=float,
+    required=False,
+    help="Minimum ecc value to test.")
+parser.add_argument(
     "--param_set_key", "-p",
     type=str,
     default="all",
@@ -60,7 +70,7 @@ parser.add_argument(
           "3: q=4, chi1z=chi2z=-0.6\n"
           "4: q=6, chi1z=0.4, chi2z=-0.4.\n"))
 parser.add_argument(
-    "--fig_dir",
+    "--fig_dir", "-f",
     type=str,
     default='.',
     help="Directory to save figure.")
@@ -70,10 +80,35 @@ parser.add_argument(
     default="png",
     help=("Format to save the plot. "
           "Can be any format that matplotlib supports."))
+parser.add_argument(
+    "--tmax",
+    type=float,
+    required=False,
+    help="Maximum time to plot. Note: Merger is at 0.")
+parser.add_argument(
+    "--tmin",
+    type=float,
+    required=False,
+    help="Minimum time to plot. Note: Merger is at 0.")
+parser.add_argument(
+    "--ymax",
+    type=float,
+    required=False,
+    help="ylim max for plot.")
+parser.add_argument(
+    "--ymin",
+    type=float,
+    required=False,
+    help="ylim min for plot.")
+
 
 args = parser.parse_args()
-
 EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
+# do the test for eccentricity values between emin and emax
+if args.emin:
+    EOBeccs = EOBeccs[EOBeccs >= args.emin]
+if args.emax:
+    EOBeccs = EOBeccs[EOBeccs <= args.emax]
 
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
@@ -89,42 +124,47 @@ extra_kwargs = {"debug": False,
                 "num_orbits_to_exclude_before_merger": 2}
 
 
-def plot_waveform_ecc_vs_time(method, set_key, axarr):
-    q, chi1z, chi2z = available_param_sets[set_key]
-    for idx, ecc in tqdm(enumerate(EOBeccs)):
+def plot_waveform_ecc_vs_time(method, set_key, ax):
+    ax.set_title(f"method = {method}")
+    tmaxList = []  # to keep track of minimum time in tref_out across all eccs
+    tminList = []  # to keep track of maximum time in tref_out across all eccs
+    ecciniList = []  # to keep track of the measured initial eccentricities
+    for ecc in EOBeccs:
+        q, chi1z, chi2z = available_param_sets[set_key]
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
         kwargs = {"filepath": fileName}
-        if method == "ResidualAmplitude":
+        if "ResidualAmplitude" in args.method:
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
                                  f"chi2z{chi2z:.2f}_EOBecc{0:.7f}.h5")
-            kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
-                           "include_zero_ecc": True})
+        kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
+                       "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
         tref_in = dataDict["t"]
-        ax = axarr[idx]
-        ax.set_ylim(0.01 * ecc, 1.5 * ecc)
-        ax.set_title(f"ecc = {ecc:.7f}")
         try:
             tref_out, measured_ecc, mean_ano = measure_eccentricity(
                 tref_in,
                 dataDict,
                 method,
                 extra_kwargs=extra_kwargs)
-            # Get the measured eccentricity at the first available index.
-            # This corresponds to the first extrema that occurs after the
-            # initial time.
-            ax.plot(tref_out, measured_ecc,
-                    label=f"method = {method}")
-            ax.legend()
-            ax.legend()
-            ax.grid()
-            ax.set_xlabel("time")
-            ax.set_ylabel("Measured Eccentricity")
+            tminList.append(tref_out[0])
+            tmaxList.append(tref_out[-1])
+            ecciniList.append(measured_ecc[0])
+            ax.plot(tref_out, measured_ecc)
         except Exception:
             warnings.warn("Exception raised. Probably too small eccentricity"
                           "to detect any extrema.")
+    ax.grid()
+    if len(tmaxList) >= 1:
+        tmin = args.tmin if args.tmin else min(tminList)
+        tmax = args.tmax if args.tmax else max(tmaxList)
+        ymax = args.ymax if args.ymax else max(ecciniList)
+        ymin = args.ymin if args.ymin else min(EOBeccs)
+        ax.set_xlim(tmin, tmax)
+        ax.set_ylim(ymin, ymax)
+    ax.set_xlabel("time")
+    ax.set_ylabel("Measured Eccentricity")
 
 
 if "all" in args.method:
@@ -137,14 +177,16 @@ else:
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
-nrows = len(EOBeccs)
+nrows = len(args.method)
 
 for key in args.param_set_key:
     fig_name = (
         f"{args.fig_dir}/EccTest_eccVsTime_set{key}_"
-        f"{method_str}.{args.plot_format}")
-    fig, ax = plt.subplots(nrows=nrows,
-                           figsize=(12, 4 * nrows))
-    for method in args.method:
+        f"{method_str}_emin_{args.emin:.7f}_emax_{args.emax:.7f}"
+        f".{args.plot_format}")
+    fig, axarr = plt.subplots(nrows=nrows,
+                              figsize=(12, 4 * nrows))
+    for idx, method in tqdm(enumerate(args.method)):
+        ax = axarr if nrows == 1 else axarr[idx]
         plot_waveform_ecc_vs_time(method, key, ax)
     fig.savefig(f"{fig_name}")
