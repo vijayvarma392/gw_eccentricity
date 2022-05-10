@@ -1,7 +1,7 @@
 # Eccentricity
 Defining eccentricity for GW applications. See [wiki](https://github.com/vijayvarma392/Eccentricity/wiki).
 
-Paper: [![Latest build](https://img.shields.io/badge/PDF-latest-orange.svg?style=flat)](../pdflatex_2/paper/paper.pdf)
+Paper: [![Latest build](https://img.shields.io/badge/PDF-latest-orange.svg?style=flat)](../pdflatex/paper/paper.pdf)
 
 ## Automated tests
 Continuous Integration tests are automatically run (using Github Actions) for every pull request.    
