@@ -1,0 +1,29 @@
+name: LaTeX build
+on:
+  push:
+    branches-ignore:
+      - '/pdflatex'
+jobs:
+  build_latex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v2
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v2
+        with:
+          root_file: paper.tex
+          working_directory: paper
+      - name: Commit to orphan branch
+        run: |
+          git checkout --orphan pdflatex
+          git rm -rf .
+          git add paper/paper.pdf
+          git -c user.name='GitHub Action' -c user.email='action@github.com' commit -m "Built paper"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: pdflatex
+          force: true
+
