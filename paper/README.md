@@ -1,6 +1,6 @@
 # Welcome to my paper template
 
-[![Latest build](https://img.shields.io/badge/PDF-latest-orange.svg?style=flat)](../../pdflatex/paper.pdf)
+[![Latest build](https://img.shields.io/badge/PDF-latest-orange.svg?style=flat)](../pdflatex/paper/paper.pdf)
 
 Should work for PRD.
 
