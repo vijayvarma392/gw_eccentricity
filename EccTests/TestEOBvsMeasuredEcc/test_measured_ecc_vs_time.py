@@ -63,7 +63,7 @@ parser.add_argument(
     type=str,
     default="all",
     nargs="+",
-    help=("R|Run test for this set of parameters kept fixed.\n"
+    help=("Run test for this set of parameters kept fixed.\n"
           "Possible choices are 'all' OR one or more of 1, 2, 3, 4.\n"
           "1: q=1, chi1z=chi2z=0.\n"
           "2: q=2, chi1z=chi2z=0.5\n"
@@ -80,11 +80,17 @@ parser.add_argument(
     default="png",
     help=("Format to save the plot. "
           "Can be any format that matplotlib supports."))
+parser.add_argument(
+    "--example",
+    action="store_true",
+    help=("This will override the figure name (that contains the "
+          "information about parameter set, method used and so on)"
+          " and uses a figure name which is of the form test_name_example.png"
+          "where test_name is the name of the test."))
 
 args = parser.parse_args()
 # do the test for eccentricity values between emin and emax
-EOBeccs = EOBeccs[EOBeccs >= args.emin]
-EOBeccs = EOBeccs[EOBeccs <= args.emax]
+EOBeccs = EOBeccs[np.logical_and(EOBeccs >= args.emin, EOBeccs <= args.emax)]
 
 cmap = cm.get_cmap("viridis")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
@@ -138,7 +144,7 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
         tmin = max(tminList)  # choose the shortest
         tmax = max(tmaxList)
         ymax = max(ecciniList)
-        ymin = min(EOBeccs)
+        ymin = 1e-1 * min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
     ax.set_ylabel("Measured Eccentricity")
@@ -172,10 +178,13 @@ if "all" in args.param_set_key:
 
 nrows = len(args.method)
 for key in args.param_set_key:
-    fig_name = (
-        f"{args.fig_dir}/EccTest_eccVsTime_set{key}_"
-        f"{method_str}_emin_{min(EOBeccs):.7f}_emax_{max(EOBeccs):.7f}"
-        f".{args.plot_format}")
+    if args.example:
+        fig_name = f"{args.fig_dir}/test_measured_ecc_vs_time_example.png"
+    else:
+        fig_name = (
+            f"{args.fig_dir}/EccTest_eccVsTime_set{key}_"
+            f"{method_str}_emin_{min(EOBeccs):.7f}_emax_{max(EOBeccs):.7f}"
+            f".{args.plot_format}")
     fig, axarr = plt.subplots(nrows=nrows,
                               figsize=(6,
                                        3 * nrows),

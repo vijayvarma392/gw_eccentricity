@@ -46,7 +46,7 @@ parser.add_argument(
     type=str,
     default="all",
     nargs="+",
-    help=("R|Run test for this set of parameters kept fixed.\n"
+    help=("Run test for this set of parameters kept fixed.\n"
           "Possible choices are 'all' OR one or more of 1, 2, 3, 4.\n"
           "1: q=1, chi1z=chi2z=0.\n"
           "2: q=2, chi1z=chi2z=0.5\n"
@@ -54,6 +54,7 @@ parser.add_argument(
           "4: q=6, chi1z=0.4, chi2z=-0.4.\n"))
 parser.add_argument(
     "--fig_dir",
+    "-f",
     type=str,
     default='.',
     help="Directory to save figure.")
@@ -63,6 +64,13 @@ parser.add_argument(
     default="png",
     help=("Format to save the plot. "
           "Can be any format that matplotlib supports."))
+parser.add_argument(
+    "--example",
+    action="store_true",
+    help=("This will override the figure name (that contains the "
+          "information about parameter set, method used and so on)"
+          " and uses a figure name which is of the form test_name_example.png"
+          "where test_name is the name of the test."))
 
 args = parser.parse_args()
 
@@ -115,7 +123,7 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
             waveform_eccs.append(measured_ecc[0])
             model_eccs.append(ecc)
         except Exception:
-            warnings.warn("Exception raised. Probably too small eccentricity"
+            warnings.warn("Exception raised. Probably too small eccentricity "
                           "to detect any extrema.")
 
     ax.loglog(model_eccs, waveform_eccs, marker=".", label=f"{method}")
@@ -134,7 +142,10 @@ if "all" in args.param_set_key:
 
 for key in args.param_set_key:
     fig, ax = plt.subplots()
-    fig_name = f"{args.fig_dir}/EccTest_set{key}_{method_str}.{args.plot_format}"
+    if args.example:
+        fig_name = f"{args.fig_dir}/test_eob_vs_measured_ecc_example.png"
+    else:
+        fig_name = f"{args.fig_dir}/EccTest_set{key}_{method_str}.{args.plot_format}"
     for idx, method in enumerate(args.method):
         plot_waveform_ecc_vs_model_ecc(method, key, ax)
     ax.legend()
