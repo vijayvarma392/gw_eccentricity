@@ -11,7 +11,7 @@ __doc__ = """This script runs all the tests in the directory.
 This should produce the example figures in the directory.
 The tests are run for the parameter set 3 for all
 available methods.
-Usage: python run_all_tests.py -d ecc_waveforms"""
+Usage: python generate_examples.py -d ecc_waveforms"""
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
