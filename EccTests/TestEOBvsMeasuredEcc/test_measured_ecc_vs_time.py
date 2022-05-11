@@ -184,8 +184,4 @@ for key in args.param_set_key:
         plot_waveform_ecc_vs_time(method, key, fig, ax)
         if idx == nrows - 1:
             ax.set_xlabel("time")
-    plt.subplots_adjust(bottom=0.05,
-                        top=0.95,
-                        right=0.87,
-                        hspace=0.1)
-    fig.savefig(f"{fig_name}")
+    fig.savefig(f"{fig_name}", bbox_inches="tight")
