@@ -7,7 +7,7 @@ sys.path.append("../../")
 from measureEccentricity.utils import SmartFormatter
 
 
-__doc__ = """This script runs all the test in the directory.
+__doc__ = """This script runs all the tests in the directory.
 This should produce the example figures in the directory.
 The tests are run for the parameter set 3 for all
 available methods.

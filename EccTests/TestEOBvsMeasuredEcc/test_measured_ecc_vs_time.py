@@ -90,8 +90,7 @@ parser.add_argument(
 
 args = parser.parse_args()
 # do the test for eccentricity values between emin and emax
-EOBeccs = EOBeccs[EOBeccs >= args.emin]
-EOBeccs = EOBeccs[EOBeccs <= args.emax]
+EOBeccs = EOBeccs[np.logical_and(EOBeccs >= args.emin, EOBeccs <= args.emax)]
 
 cmap = cm.get_cmap("viridis")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
