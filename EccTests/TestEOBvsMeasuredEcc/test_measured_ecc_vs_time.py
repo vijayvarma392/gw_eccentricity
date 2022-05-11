@@ -3,10 +3,9 @@ a function of time for different eccentricity definitions. The EOB waveforms
 that are used for this test are generated from a fixed mass ratio, spins, and
 Momega0 (the initial dimless orbital frequency), with eccentricity varying
 from 1e-5 to 0.5. We try to measure the eccentricity from these waveforms
-using different eccentricity definitions. we plot the measured eccentricity vs
+using different eccentricity definitions. We plot the measured eccentricity vs
 tref_out, and color the lines by the input EOB eccentricity at Momega0.
- You should check visually whether there
-are glitchy features in these plots.
+You should check visually whether there are glitchy features in these plots.
 Usage:
 python test_measured_ecc_vs_time.py -d ecc_waveforms -m 'Amplitude' 'ResidualAmplitude' -p 'all'
 python test_measured_ecc_vs_time.py -d ecc_waveforms -m 'all' -p 'all'
@@ -150,13 +149,15 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     # add colorbar
     norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='3%', pad=0.05)
+    cax = divider.append_axes('right', size='3%', pad=0.1)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
     cbar.set_label(r"EOB eccentricity at $\omega_0$",
                    size=10)
-    fig.suptitle(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, \chi_{{2z}}={chi2z:.3f}$",
-                 size=10)
+    if idx == 0:
+        ax.set_title(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, "
+                     rf"\chi_{{2z}}={chi2z:.3f}$",
+                     y=1.02, fontsize=10)
 
 
 if "all" in args.method:
@@ -179,6 +180,9 @@ for key in args.param_set_key:
                               figsize=(6,
                                        3 * nrows),
                               sharex=True)
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.xticks(fontsize=8)
+
     for idx, method in tqdm(enumerate(args.method)):
         ax = axarr if nrows == 1 else axarr[idx]
         plot_waveform_ecc_vs_time(method, key, fig, ax)
