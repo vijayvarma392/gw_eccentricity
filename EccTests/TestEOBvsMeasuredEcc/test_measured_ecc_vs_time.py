@@ -30,6 +30,8 @@ parser = argparse.ArgumentParser(
     description=(__doc__),
     formatter_class=SmartFormatter)
 
+EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
+
 parser.add_argument(
     "--data_dir", "-d",
     type=str,
@@ -46,13 +48,17 @@ parser.add_argument(
 parser.add_argument(
     "--emax",
     type=float,
-    required=False,
-    help="Maximum ecc value to test.")
+    default=max(EOBeccs),
+    help=("Maximum EOB ecc value to test. Useful to set when we want to "
+          "perform the test on EOB ecc upto certain max value to focus "
+          "on low eccs."))
 parser.add_argument(
     "--emin",
     type=float,
-    required=False,
-    help="Minimum ecc value to test.")
+    default=min(EOBeccs),
+    help=("Minimum EOB ecc value to test. Useful to set when we want to "
+          "perform the test on EOB ecc above certain min value to focus "
+          "on high eccs."))
 parser.add_argument(
     "--param_set_key", "-p",
     type=str,
@@ -77,12 +83,9 @@ parser.add_argument(
           "Can be any format that matplotlib supports."))
 
 args = parser.parse_args()
-EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
 # do the test for eccentricity values between emin and emax
-if args.emin:
-    EOBeccs = EOBeccs[EOBeccs >= args.emin]
-if args.emax:
-    EOBeccs = EOBeccs[EOBeccs <= args.emax]
+EOBeccs = EOBeccs[EOBeccs >= args.emin]
+EOBeccs = EOBeccs[EOBeccs <= args.emax]
 
 cmap = cm.get_cmap("viridis")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
@@ -150,7 +153,7 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     cax = divider.append_axes('right', size='3%', pad=0.05)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
-    cbar.set_label("EOB eccentricity at initial time",
+    cbar.set_label(r"EOB eccentricity at $\omega_0$",
                    size=10)
     fig.suptitle(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, \chi_{{2z}}={chi2z:.3f}$",
                  size=10)
@@ -183,6 +186,6 @@ for key in args.param_set_key:
             ax.set_xlabel("time")
     plt.subplots_adjust(bottom=0.05,
                         top=0.95,
-                        right=0.9,
+                        right=0.87,
                         hspace=0.1)
     fig.savefig(f"{fig_name}")
