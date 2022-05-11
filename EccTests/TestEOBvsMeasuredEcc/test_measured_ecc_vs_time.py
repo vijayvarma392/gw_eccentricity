@@ -3,8 +3,9 @@ a function of time for different eccentricity definitions. The EOB waveforms
 that are used for this test are generated from a fixed mass ratio, spins, and
 Momega0 (the initial dimless orbital frequency), with eccentricity varying
 from 1e-5 to 0.5. We try to measure the eccentricity from these waveforms
-using different eccentricity definitions. For each waveform, we measure the
-eccentricity plot it vs the tref_out. You should check visually whether there
+using different eccentricity definitions. we plot the measured eccentricity vs
+tref_out, and color the lines by the input EOB eccentricity at Momega0.
+ You should check visually whether there
 are glitchy features in these plots.
 Usage:
 python test_measured_ecc_vs_time.py -d ecc_waveforms -m 'Amplitude' 'ResidualAmplitude' -p 'all'
@@ -23,16 +24,7 @@ import warnings
 sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
-
-
-class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text"""
-    def _split_lines(self, text, width):
-        if text.startswith('R|'):
-            return text[2:].splitlines()
-        # this is the RawTextHelpFormatter._split_lines
-        return argparse.HelpFormatter._split_lines(self, text, width)
-
+from measureEccentricity.utils import SmartFormatter
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -83,72 +75,6 @@ parser.add_argument(
     default="png",
     help=("Format to save the plot. "
           "Can be any format that matplotlib supports."))
-parser.add_argument(
-    "--tmax",
-    type=float,
-    required=False,
-    help="Maximum time to plot. Note: Merger is at 0.")
-parser.add_argument(
-    "--tmin",
-    type=float,
-    required=False,
-    help="Minimum time to plot. Note: Merger is at 0.")
-parser.add_argument(
-    "--ymax",
-    type=float,
-    required=False,
-    help="ylim max for plot.")
-parser.add_argument(
-    "--ymin",
-    type=float,
-    required=False,
-    help="ylim min for plot.")
-parser.add_argument(
-    "--yscale",
-    type=str,
-    default="log",
-    help="yscale. Any value accepted by matplotlib.")
-parser.add_argument(
-    "--sharex",
-    action="store_true")
-parser.add_argument(
-    "--fig_width",
-    "-fw",
-    type=float,
-    default=12,
-    help="Desired figure width")
-parser.add_argument(
-    "--fig_height",
-    "-fh",
-    type=float,
-    default=4,
-    help=("Desired figure height per row. "
-          "Actual height would be number of row times this"))
-parser.add_argument(
-    "--bottom",
-    type=float,
-    required=False,
-    help="Adjust bottom of figure.")
-parser.add_argument(
-    "--left",
-    type=float,
-    required=False,
-    help="Adjust left of figure.")
-parser.add_argument(
-    "--right",
-    type=float,
-    required=False,
-    help="Adjust right of figure.")
-parser.add_argument(
-    "--top",
-    type=float,
-    required=False,
-    help="Adjust top of figure.")
-parser.add_argument(
-    "--hspace",
-    type=float,
-    required=False,
-    help="Adjust hspace of figure.")
 
 args = parser.parse_args()
 EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
@@ -207,26 +133,27 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
                           "to detect any extrema.")
     ax.grid()
     if len(tmaxList) >= 1:
-        tmin = args.tmin if args.tmin else max(tminList)  # choose the shortest
-        tmax = args.tmax if args.tmax else max(tmaxList)
-        ymax = args.ymax if args.ymax else max(ecciniList)
-        ymin = args.ymin if args.ymin else min(EOBeccs)
+        tmin = max(tminList)  # choose the shortest
+        tmax = max(tmaxList)
+        ymax = max(ecciniList)
+        ymin = min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
-        # ax.legend()
     ax.set_ylabel("Measured Eccentricity")
-    ax.set_yscale(args.yscale)
-    if not args.sharex:
-        ax.set_xlabel("time")
+    ax.set_yscale("log")
     # add text indicating the method used
     ax.text(0.95, 0.95, f"{method}", ha="right", va="top",
             transform=ax.transAxes)
     # add colorbar
     norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
+    cax = divider.append_axes('right', size='3%', pad=0.05)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    fig.colorbar(sm, cax=cax, orientation='vertical')
+    cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
+    cbar.set_label("EOB eccentricity at initial time",
+                   size=10)
+    fig.suptitle(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, \chi_{{2z}}={chi2z:.3f}$",
+                 size=10)
 
 
 if "all" in args.method:
@@ -246,17 +173,16 @@ for key in args.param_set_key:
         f"{method_str}_emin_{min(EOBeccs):.7f}_emax_{max(EOBeccs):.7f}"
         f".{args.plot_format}")
     fig, axarr = plt.subplots(nrows=nrows,
-                              figsize=(args.fig_width,
-                                       args.fig_height * nrows),
-                              sharex=args.sharex)
+                              figsize=(6,
+                                       3 * nrows),
+                              sharex=True)
     for idx, method in tqdm(enumerate(args.method)):
         ax = axarr if nrows == 1 else axarr[idx]
         plot_waveform_ecc_vs_time(method, key, fig, ax)
-        if args.sharex and idx == nrows - 1:
+        if idx == nrows - 1:
             ax.set_xlabel("time")
-    plt.subplots_adjust(left=args.left,
-                        bottom=args.bottom,
-                        right=args.right,
-                        top=args.top,
-                        hspace=args.hspace)
+    plt.subplots_adjust(bottom=0.05,
+                        top=0.95,
+                        right=0.9,
+                        hspace=0.1)
     fig.savefig(f"{fig_name}")
