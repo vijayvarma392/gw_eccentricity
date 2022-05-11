@@ -22,16 +22,7 @@ import warnings
 sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
-
-
-class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text"""
-    def _split_lines(self, text, width):
-        if text.startswith('R|'):
-            return text[2:].splitlines()
-        # this is the RawTextHelpFormatter._split_lines
-        return argparse.HelpFormatter._split_lines(self, text, width)
-
+from measureEccentricity.utils import SmartFormatter
 
 parser = argparse.ArgumentParser(
     description=(__doc__),

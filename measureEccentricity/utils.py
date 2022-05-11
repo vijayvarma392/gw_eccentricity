@@ -1,5 +1,6 @@
 """Useful functions for the project."""
 import numpy as np
+import argparse
 
 
 def get_peak_via_quadratic_fit(t, func):
@@ -59,3 +60,13 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
             user_kwargs[kw] = default_kwargs[kw]
 
     return user_kwargs
+
+
+class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
+    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text."""
+
+    def _split_lines(self, text, width):
+        if text.startswith('R|'):
+            return text[2:].splitlines()
+        # this is the RawTextHelpFormatter._split_lines
+        return argparse.HelpFormatter._split_lines(self, text, width)
