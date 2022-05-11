@@ -15,6 +15,9 @@ import sys
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib as mpl
 import argparse
 import warnings
 sys.path.append("../../")
@@ -100,7 +103,52 @@ parser.add_argument(
     type=float,
     required=False,
     help="ylim min for plot.")
-
+parser.add_argument(
+    "--yscale",
+    type=str,
+    default="log",
+    help="yscale. Any value accepted by matplotlib.")
+parser.add_argument(
+    "--sharex",
+    action="store_true")
+parser.add_argument(
+    "--fig_width",
+    "-fw",
+    type=float,
+    default=12,
+    help="Desired figure width")
+parser.add_argument(
+    "--fig_height",
+    "-fh",
+    type=float,
+    default=4,
+    help=("Desired figure height per row. "
+          "Actual height would be number of row times this"))
+parser.add_argument(
+    "--bottom",
+    type=float,
+    required=False,
+    help="Adjust bottom of figure.")
+parser.add_argument(
+    "--left",
+    type=float,
+    required=False,
+    help="Adjust left of figure.")
+parser.add_argument(
+    "--right",
+    type=float,
+    required=False,
+    help="Adjust right of figure.")
+parser.add_argument(
+    "--top",
+    type=float,
+    required=False,
+    help="Adjust top of figure.")
+parser.add_argument(
+    "--hspace",
+    type=float,
+    required=False,
+    help="Adjust hspace of figure.")
 
 args = parser.parse_args()
 EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
@@ -109,6 +157,9 @@ if args.emin:
     EOBeccs = EOBeccs[EOBeccs >= args.emin]
 if args.emax:
     EOBeccs = EOBeccs[EOBeccs <= args.emax]
+
+cmap = cm.get_cmap("viridis")
+colors = cmap(np.linspace(0, 1, len(EOBeccs)))
 
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
@@ -124,12 +175,11 @@ extra_kwargs = {"debug": False,
                 "num_orbits_to_exclude_before_merger": 2}
 
 
-def plot_waveform_ecc_vs_time(method, set_key, ax):
-    ax.set_title(f"method = {method}")
+def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     tmaxList = []  # to keep track of minimum time in tref_out across all eccs
     tminList = []  # to keep track of maximum time in tref_out across all eccs
     ecciniList = []  # to keep track of the measured initial eccentricities
-    for ecc in EOBeccs:
+    for idx0, ecc in enumerate(EOBeccs):
         q, chi1z, chi2z = available_param_sets[set_key]
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
@@ -151,20 +201,32 @@ def plot_waveform_ecc_vs_time(method, set_key, ax):
             tminList.append(tref_out[0])
             tmaxList.append(tref_out[-1])
             ecciniList.append(measured_ecc[0])
-            ax.plot(tref_out, measured_ecc)
+            ax.plot(tref_out, measured_ecc, c=colors[idx0], label=f"{ecc:.7f}")
         except Exception:
-            warnings.warn("Exception raised. Probably too small eccentricity"
+            warnings.warn("Exception raised. Probably too small eccentricity "
                           "to detect any extrema.")
     ax.grid()
     if len(tmaxList) >= 1:
-        tmin = args.tmin if args.tmin else min(tminList)
+        tmin = args.tmin if args.tmin else max(tminList)  # choose the shortest
         tmax = args.tmax if args.tmax else max(tmaxList)
         ymax = args.ymax if args.ymax else max(ecciniList)
         ymin = args.ymin if args.ymin else min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
-    ax.set_xlabel("time")
+        # ax.legend()
     ax.set_ylabel("Measured Eccentricity")
+    ax.set_yscale(args.yscale)
+    if not args.sharex:
+        ax.set_xlabel("time")
+    # add text indicating the method used
+    ax.text(0.95, 0.95, f"{method}", ha="right", va="top",
+            transform=ax.transAxes)
+    # add colorbar
+    norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    fig.colorbar(sm, cax=cax, orientation='vertical')
 
 
 if "all" in args.method:
@@ -178,15 +240,23 @@ if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
 nrows = len(args.method)
-
 for key in args.param_set_key:
     fig_name = (
         f"{args.fig_dir}/EccTest_eccVsTime_set{key}_"
-        f"{method_str}_emin_{args.emin:.7f}_emax_{args.emax:.7f}"
+        f"{method_str}_emin_{min(EOBeccs):.7f}_emax_{max(EOBeccs):.7f}"
         f".{args.plot_format}")
     fig, axarr = plt.subplots(nrows=nrows,
-                              figsize=(12, 4 * nrows))
+                              figsize=(args.fig_width,
+                                       args.fig_height * nrows),
+                              sharex=args.sharex)
     for idx, method in tqdm(enumerate(args.method)):
         ax = axarr if nrows == 1 else axarr[idx]
-        plot_waveform_ecc_vs_time(method, key, ax)
+        plot_waveform_ecc_vs_time(method, key, fig, ax)
+        if args.sharex and idx == nrows - 1:
+            ax.set_xlabel("time")
+    plt.subplots_adjust(left=args.left,
+                        bottom=args.bottom,
+                        right=args.right,
+                        top=args.top,
+                        hspace=args.hspace)
     fig.savefig(f"{fig_name}")
