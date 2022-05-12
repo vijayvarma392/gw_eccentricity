@@ -113,7 +113,7 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     tmaxList = []  # to keep track of minimum time in tref_out across all eccs
     tminList = []  # to keep track of maximum time in tref_out across all eccs
     ecciniList = []  # to keep track of the measured initial eccentricities
-    for idx0, ecc in enumerate(EOBeccs):
+    for idx0, ecc in tqdm(enumerate(EOBeccs)):
         q, chi1z, chi2z = available_param_sets[set_key]
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
@@ -179,7 +179,8 @@ if "all" in args.param_set_key:
 nrows = len(args.method)
 for key in args.param_set_key:
     if args.example:
-        fig_name = f"{args.fig_dir}/test_measured_ecc_vs_time_example.png"
+        fig_name = (f"{args.fig_dir}/test_measured_ecc_vs_time_example."
+                    f"{args.plot_format}")
     else:
         fig_name = (
             f"{args.fig_dir}/EccTest_eccVsTime_set{key}_"

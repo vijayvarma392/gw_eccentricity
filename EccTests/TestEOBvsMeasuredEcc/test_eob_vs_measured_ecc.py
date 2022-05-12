@@ -127,7 +127,8 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
                           "to detect any extrema.")
 
     ax.loglog(model_eccs, waveform_eccs, marker=".", label=f"{method}")
-    ax.set_title(f"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$={chi2z:.3f}")
+    ax.set_title(rf"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$"
+                 f"={chi2z:.3f}")
 
 
 if "all" in args.method:
@@ -143,9 +144,11 @@ if "all" in args.param_set_key:
 for key in args.param_set_key:
     fig, ax = plt.subplots()
     if args.example:
-        fig_name = f"{args.fig_dir}/test_eob_vs_measured_ecc_example.png"
+        fig_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
+                    f".{args.plot_format}")
     else:
-        fig_name = f"{args.fig_dir}/EccTest_set{key}_{method_str}.{args.plot_format}"
+        fig_name = (f"{args.fig_dir}/EccTest_set{key}_{method_str}"
+                    f".{args.plot_format}")
     for idx, method in enumerate(args.method):
         plot_waveform_ecc_vs_model_ecc(method, key, ax)
     ax.legend()
