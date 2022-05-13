@@ -74,8 +74,8 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-EOBeccs = 10**np.linspace(-8, np.log10(0.5), 200)
-Momega0 = 0.008
+EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
+Momega0 = 0.01
 Momega0_zeroecc = 0.002
 # Format: [q, chi1z, chi2z]
 available_param_sets = {

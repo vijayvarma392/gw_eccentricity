@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(
     description=(__doc__),
     formatter_class=SmartFormatter)
 
-EOBeccs = 10**np.linspace(-8, np.log10(0.5), 200)
+EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
 
 parser.add_argument(
     "--data_dir", "-d",
@@ -87,11 +87,19 @@ parser.add_argument(
           "information about parameter set, method used and so on)"
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
+parser.add_argument(
+    "--slice",
+    type=int,
+    default=1,
+    help=("Slice the EOBeccs array by taking only every nth ecc value given by"
+          " slice. This is useful when we want do not want to loop over all"
+          "the ecc but skip n number of ecc given by slice"))
 
 args = parser.parse_args()
 # do the test for eccentricity values between emin and emax
 EOBeccs = EOBeccs[np.logical_and(EOBeccs >= args.emin, EOBeccs <= args.emax)]
-Momega0 = 0.008
+EOBeccs = EOBeccs[0: len(EOBeccs): args.slice]
+Momega0 = 0.01
 Momega0_zeroecc = 0.002
 cmap = cm.get_cmap("viridis")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
