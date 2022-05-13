@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(
     description=(__doc__),
     formatter_class=SmartFormatter)
 
-EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
+EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
 
 parser.add_argument(
     "--data_dir", "-d",
@@ -87,11 +87,20 @@ parser.add_argument(
           "information about parameter set, method used and so on)"
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
+parser.add_argument(
+    "--slice",
+    type=int,
+    default=1,
+    help=("Slice the EOBeccs array by taking only every nth ecc value given by"
+          " slice. This is useful when we want do not want to loop over all"
+          "the ecc but skip n number of ecc given by slice"))
 
 args = parser.parse_args()
 # do the test for eccentricity values between emin and emax
 EOBeccs = EOBeccs[np.logical_and(EOBeccs >= args.emin, EOBeccs <= args.emax)]
-
+EOBeccs = EOBeccs[0: len(EOBeccs): args.slice]
+Momega0 = 0.01
+Momega0_zeroecc = 0.002
 cmap = cm.get_cmap("viridis")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
 
@@ -116,12 +125,14 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     for idx0, ecc in tqdm(enumerate(EOBeccs)):
         q, chi1z, chi2z = available_param_sets[set_key]
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
-                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
+                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
+                    f"Momega0{Momega0:.3f}.h5")
         kwargs = {"filepath": fileName}
         if "ResidualAmplitude" in args.method:
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
-                                 f"chi2z{chi2z:.2f}_EOBecc{0:.7f}.h5")
+                                 f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
+                                 f"Momega0{Momega0_zeroecc:.3f}.h5")
         kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                        "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
