@@ -74,8 +74,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
-
+EOBeccs = 10**np.linspace(-8, np.log10(0.5), 200)
+Momega0 = 0.008
+Momega0_zeroecc = 0.002
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
     "1": [1, 0, 0],
@@ -101,12 +102,14 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
     q, chi1z, chi2z = available_param_sets[set_key]
     for ecc in tqdm(EOBeccs):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
-                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
+                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
+                    f"Momega0{Momega0:.3f}.h5")
         kwargs = {"filepath": fileName}
         if method == "ResidualAmplitude":
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
-                                 f"chi2z{chi2z:.2f}_EOBecc{0:.7f}.h5")
+                                 f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
+                                 f"Momega0{Momega0_zeroecc:.3f}.h5")
             kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                            "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)

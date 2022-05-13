@@ -12,9 +12,6 @@ import numpy as np
 from tqdm import tqdm
 import lal
 import h5py
-home = os.path.expanduser("~")
-import sys
-sys.path.append(f"{home}/measuring_eccentricity_from_higher_modes/seobnrv4e/")
 import seobnrv4ehm as seob
 
 parser = argparse.ArgumentParser(formatter_class=RawTextHelpFormatter)
@@ -39,22 +36,21 @@ parser.add_argument(
 parser.add_argument(
     "--ecc",
     type=float,
-    default=-1,
+    default=[-1],
     nargs="+",
     help=("Generate waveforms for the ecc values.\n"
           "Default is -1 which means it will generate 100 waveforms"
-          " from 1e-5 to 0.5\n"
+          " from 1e-7 to 0.5\n"
           "usage: --ecc 0.1 0.2"))
 parser.add_argument(
-    "--freq_in",
+    "--Momega0",
     type=float,
-    default=10,
-    help="Initial frequency to generate waveform. Default is 10 Hz.")
+    default=0.01,
+    help="Initial Momega0 to generate waveform. Default is 0.01.")
 
 args = parser.parse_args()
-
 if -1 in args.ecc:
-    args.ecc = 10**np.linspace(-5, np.log10(0.5), 100)
+    args.ecc = 10**np.linspace(-7.0, np.log10(0.5), 100)
 
 param_sets = {"1": [1, 0, 0],
               "2": [2, 0.5, 0.5],
@@ -71,7 +67,8 @@ else:
 
 M = 50
 MT = M * lal.MTSUN_SI
-Momega0 = MT * np.pi * args.freq_in
+freq_in = args.Momega0 / (MT * np.pi)
+print(freq_in)
 deltaTOverM = 1
 dt = deltaTOverM * MT
 print(1/dt)
@@ -90,19 +87,22 @@ for key in args.set:
             chi2=chi2z,
             M_fed=M,
             delta_t=dt,
-            f_min=args.freq_in,
+            f_min=freq_in,
             eccentricity=ecc,
             physical_units=False)
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
-                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
+                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
+                    f"Momega0{args.Momega0:.3f}.h5")
         f = h5py.File(fileName, "w")
         f["(2, 2)"] = modes[2, 2]
         f["t"] = times
         dset = f.create_dataset("params", ())
         dset.attrs["q"] = q
         dset.attrs["deltaTOverM"] = deltaTOverM
-        dset.attrs["Momega0"] = Momega0
+        dset.attrs["Momega0"] = args.Momega0
         dset.attrs["ecc"] = ecc
         dset.attrs["chi1z"] = chi1z
         dset.attrs["chi2z"] = chi2z
         f.close()
+
+print(f"files are saved at {data_dir}")
