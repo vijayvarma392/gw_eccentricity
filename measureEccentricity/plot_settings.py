@@ -22,15 +22,10 @@ colors_gb_36 = GrandBudapest3_6.mpl_colors
 colors_zs_5 = Zissou_5.mpl_colors
 colors_ry_14 = Royal1_4.mpl_colors
 
-colorsList = [colors_zs_5[2],
-              colors_gb_14[2],
-              colors_gb_45[3],
-              colors_aq_15[1],
-              colors_zs_5[0],
+colorsList = [colors_gb_14[1],
+              colors_gb_36[1],
+              colors_gb_45[0],
               colors_gb_55[1],
-              colors_aq_15[0],
-              colors_aq_15[0],
-              colors_dj_25[3],
               colors_dj_25[1]]
 
 
