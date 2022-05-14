@@ -131,15 +131,14 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
                           "to detect any extrema.")
     marker_style = {"marker": "."}
     if method == "ResidualFrequency":
-        marker_style.update({"marker": "o",
-                             "mfc": "none"})
+        marker_style.update({"marker": "+", "mfc": "none"})
     ax.loglog(model_eccs, waveform_eccs, label=f"{method}", **marker_style)
     ax.set_title(rf"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$"
                  f"={chi2z:.3f}")
 
 
 if "all" in args.method:
-    args.method = get_available_methods()
+    args.method = list(get_available_methods().keys())[::-1]
     # method_str is used in the filename for the output figure
     method_str = "all"
 else:
