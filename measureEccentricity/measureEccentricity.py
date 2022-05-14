@@ -38,11 +38,12 @@ from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequ
 def get_available_methods():
     """Get dictionary of available methods."""
     models = {
-            "Amplitude": eccDefinitionUsingAmplitude,
-            "Frequency": eccDefinitionUsingFrequency,
-            "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
-            "FrequencyFits": eccDefinitionUsingFrequencyFits
-            }
+        "Amplitude": eccDefinitionUsingAmplitude,
+        "Frequency": eccDefinitionUsingFrequency,
+        "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
+        "ResidualFrequency": eccDefinitionUsingResidualFrequency,
+        "FrequencyFits": eccDefinitionUsingFrequencyFits
+    }
     return models
 
 
