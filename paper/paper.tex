@@ -74,7 +74,7 @@ pdfusetitle]{hyperref}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\title{The greatest science}
+\title{Defining eccentricity for gravitational wave astronomy}
 
 \newcommand{\Cornell}{\affiliation{Cornell Center for Astrophysics
     and Planetary Science, Cornell University, Ithaca, New York 14853, USA}}
@@ -92,10 +92,26 @@ pdfusetitle]{hyperref}
 \newcommand{\Bham}{\affiliation{School of Physics and Astronomy and Institute
     for Gravitational Wave Astronomy, University of Birmingham, Birmingham, B15
     2TT, UK}}
+\newcommand{\ICTS}{\affiliation{International Centre for Theoretical Sciences,
+    Tata Institute of Fundamental Research, Bangalore 560089, India}}
+
+
+\author{Md Arif Shaikh}
+\email{arif.shaikh@icts.res.in}
+\ICTS
 
 \author{Vijay Varma}
 \email{vijay.varma@aei.mpg.de}
 \thanks{Marie Curie Fellow}
+\AEI
+
+\author{Antoni Ramos-Buades}
+\AEI
+
+\author{Harald P. Pfeiffer}
+\AEI
+
+\author{Maarten van de Meent}
 \AEI
 
 % Because hyperref only gets the *last* author, we need to be explicit.
@@ -105,7 +121,13 @@ pdfusetitle]{hyperref}
 
 %==========================================================================
 \begin{abstract}
-I scienced something, so now you get to read it.
+Eccentric Compact Binary Coalescences (CBCs) are important science targets of Gravitational Wwave (GW) observatories.
+Many different eccentricity definitions exist in the literature.
+This paper continues the development of a definition of eccentricity that is defined based solely on the gauge invariant gravitational
+waveforms and applicable to gravitational waveforms of many origins. Our proposal improves on related works in that the new definition
+agrees in the Newtonian limit with the standard Newtonian definition of eccentricity. We present a public implementation of the
+proposed algorithm and demonstrate its robustness on waveforms of various origin, ranging from quasi-circular to highly eccentric systems.
+The present work focuses on aligned-spin binaries which do not exhibit orbital precession. Possible extensions to precessing binaries are discussed.
 \end{abstract}
 
 \maketitle
@@ -117,17 +139,21 @@ I done did it. Some other people that done'd similar things:
 \cite{Scott:2015rza}.
 
 %==========================================================================
-\section{Methods}
-\label{sec:methods}
+\section{Tests}
+\label{sec:tests}
 Here's how I done'd it.
 
 %--------------------------------------------------------------------------
 \begin{figure}[thb]
-\includegraphics[width=0.45\textwidth]{string_cat.jpeg}
-\caption{
-What happened to Schrodinger's cat?
-}
-\label{fig:strings}
+\includegraphics[width=\columnwidth]{test_eob_vs_measured_ecc_example}
+\caption{EOB eccentricity vs measured eccentricity}
+\label{fig:eob_vs_measured_ecc}
+\end{figure}
+
+\begin{figure}[thb]
+\includegraphics[width=\columnwidth]{test_measured_ecc_vs_time_example}
+\caption{Measured eccentricity vs time}
+\label{fig:measured_ecc_vs_time}
 \end{figure}
 
 %==========================================================================

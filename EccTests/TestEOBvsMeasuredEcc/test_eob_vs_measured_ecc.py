@@ -22,16 +22,7 @@ import warnings
 sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
-
-
-class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text"""
-    def _split_lines(self, text, width):
-        if text.startswith('R|'):
-            return text[2:].splitlines()
-        # this is the RawTextHelpFormatter._split_lines
-        return argparse.HelpFormatter._split_lines(self, text, width)
-
+from measureEccentricity.utils import SmartFormatter
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -55,7 +46,7 @@ parser.add_argument(
     type=str,
     default="all",
     nargs="+",
-    help=("R|Run test for this set of parameters kept fixed.\n"
+    help=("Run test for this set of parameters kept fixed.\n"
           "Possible choices are 'all' OR one or more of 1, 2, 3, 4.\n"
           "1: q=1, chi1z=chi2z=0.\n"
           "2: q=2, chi1z=chi2z=0.5\n"
@@ -63,6 +54,7 @@ parser.add_argument(
           "4: q=6, chi1z=0.4, chi2z=-0.4.\n"))
 parser.add_argument(
     "--fig_dir",
+    "-f",
     type=str,
     default='.',
     help="Directory to save figure.")
@@ -72,11 +64,19 @@ parser.add_argument(
     default="png",
     help=("Format to save the plot. "
           "Can be any format that matplotlib supports."))
+parser.add_argument(
+    "--example",
+    action="store_true",
+    help=("This will override the figure name (that contains the "
+          "information about parameter set, method used and so on)"
+          " and uses a figure name which is of the form test_name_example.png"
+          "where test_name is the name of the test."))
 
 args = parser.parse_args()
 
-EOBeccs = 10**np.linspace(-5, np.log10(0.5), 100)
-
+EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
+Momega0 = 0.01
+Momega0_zeroecc = 0.002
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
     "1": [1, 0, 0],
@@ -102,12 +102,14 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
     q, chi1z, chi2z = available_param_sets[set_key]
     for ecc in tqdm(EOBeccs):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
-                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.7f}.h5")
+                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
+                    f"Momega0{Momega0:.3f}.h5")
         kwargs = {"filepath": fileName}
         if method == "ResidualAmplitude":
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
-                                 f"chi2z{chi2z:.2f}_EOBecc{0:.7f}.h5")
+                                 f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
+                                 f"Momega0{Momega0_zeroecc:.3f}.h5")
             kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                            "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
@@ -124,11 +126,12 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
             waveform_eccs.append(measured_ecc[0])
             model_eccs.append(ecc)
         except Exception:
-            warnings.warn("Exception raised. Probably too small eccentricity"
+            warnings.warn("Exception raised. Probably too small eccentricity "
                           "to detect any extrema.")
 
     ax.loglog(model_eccs, waveform_eccs, marker=".", label=f"{method}")
-    ax.set_title(f"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$={chi2z:.3f}")
+    ax.set_title(rf"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$"
+                 f"={chi2z:.3f}")
 
 
 if "all" in args.method:
@@ -143,7 +146,12 @@ if "all" in args.param_set_key:
 
 for key in args.param_set_key:
     fig, ax = plt.subplots()
-    fig_name = f"{args.fig_dir}/EccTest_set{key}_{method_str}.{args.plot_format}"
+    if args.example:
+        fig_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
+                    f".{args.plot_format}")
+    else:
+        fig_name = (f"{args.fig_dir}/EccTest_set{key}_{method_str}"
+                    f".{args.plot_format}")
     for idx, method in enumerate(args.method):
         plot_waveform_ecc_vs_model_ecc(method, key, ax)
     ax.legend()
