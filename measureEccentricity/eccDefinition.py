@@ -199,6 +199,7 @@ class eccDefinition:
         else:
             tref_out = tref_in
 
+        ## Sanity checks
         # check separation between extrema
         self.orb_phase_diff_at_peaks, \
             self.orb_phase_diff_ratio_at_peaks \
@@ -207,8 +208,17 @@ class eccDefinition:
             self.orb_phase_diff_ratio_at_troughs \
             = self.check_extrema_separation(self.troughs_location, "troughs")
 
-        # check if the tref_out has a peak before and after
-        # This required to define mean anomaly.
+        # Check if tref_out is reasonable
+        if len(tref_out) == 0:
+            raise Exception("tref_out is empty. This can happen if the "
+                            "waveform has insufficient identifiable "
+                            "periastrons/apastrons.")
+
+        if tref_out[0] < tref_in[0] or tref_out[-1] > tref_in[-1]:
+            raise Exception("tref_in extends beyond tref_out.")
+
+        # Check if tref_out has a peak before and after.
+        # This is required to define mean anomaly.
         if tref_out[0] < t_peaks[0] or tref_out[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
