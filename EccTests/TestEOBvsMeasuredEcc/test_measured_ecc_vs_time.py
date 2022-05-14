@@ -128,7 +128,7 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
                     f"Momega0{Momega0:.3f}.h5")
         kwargs = {"filepath": fileName}
-        if "ResidualAmplitude" in args.method:
+        if "Residual" in args.method:
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
                                  f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"

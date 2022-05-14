@@ -105,7 +105,7 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
                     f"Momega0{Momega0:.3f}.h5")
         kwargs = {"filepath": fileName}
-        if method == "ResidualAmplitude":
+        if "Residual" in method:
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
                                  f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
@@ -128,8 +128,11 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
         except Exception:
             warnings.warn("Exception raised. Probably too small eccentricity "
                           "to detect any extrema.")
-
-    ax.loglog(model_eccs, waveform_eccs, marker=".", label=f"{method}")
+    marker_style = {"marker": "."}
+    if method == "ResidualFrequency":
+        marker_style.update({"marker": "o",
+                             "mfc": "none"})
+    ax.loglog(model_eccs, waveform_eccs, label=f"{method}", **marker_style)
     ax.set_title(rf"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$"
                  f"={chi2z:.3f}")
 
