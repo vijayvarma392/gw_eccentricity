@@ -4,9 +4,7 @@ Find peaks and troughs using frequency fits.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-from tkinter import Toplevel
 
-from zmq import PROTOCOL_ERROR_ZMTP_MALFORMED_COMMAND_MESSAGE
 from .eccDefinition import eccDefinition
 
 import numpy as np
