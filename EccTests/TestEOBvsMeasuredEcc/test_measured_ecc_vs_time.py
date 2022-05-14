@@ -133,13 +133,13 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
                     f"Momega0{Momega0:.3f}.h5")
         kwargs = {"filepath": fileName}
-        if "Residual" in args.method:
+        if "Residual" in method:
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
                                  f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
                                  f"Momega0{Momega0_zeroecc:.3f}.h5")
-        kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
-                       "include_zero_ecc": True})
+            kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
+                           "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
         tref_in = dataDict["t"]
         try:
