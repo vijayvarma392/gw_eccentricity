@@ -1,8 +1,8 @@
 """
-Find peaks and troughs using Residual Amplitude.
+Find peaks and troughs using Residual Frequency.
 
 Part of Eccentricity Definition project.
-Md Arif Shaikh, Mar 29, 2022
+Md Arif Shaikh, May 14, 2022
 """
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .utils import get_peak_via_quadratic_fit
@@ -10,17 +10,17 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
 
 
-class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
-    """Measure eccentricity by finding extrema from residual amplitude."""
+class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
+    """Measure eccentricity by finding extrema from residual frequency."""
 
     def __init__(self, *args, **kwargs):
-        """Init for eccDefinitionUsingResidualAmplitude class.
+        """Init for eccDefinitionUsingResidualFrequency class.
 
         parameters:
         ----------
         dataDict: Dictionary containing the eccentric and quasi
         circular waveform data.
-        For residual amplitude method we need quasi-circular modes
+        For residual frequency method we need quasi-circular modes
         in additionn to the eccentric modes. Provide it as a dictionary
         for the key `hlm_zeroecc` and `t_zeroecc` in the dataDict dictionary.
         Keys for the modes in the mode dictionary should be
@@ -36,7 +36,11 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
             self.t_zeroecc,
             np.abs(self.h22_zeroecc))[0]
-        self.quasi_circ_amp22_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, np.abs(self.h22_zeroecc))
-        self.res_amp22 = self.amp22 - self.quasi_circ_amp22_interp(self.t)
-        return self.res_amp22
+        self.quasi_circ_phase22 = - np.unwrap(np.angle(self.h22_zeroecc))
+        self.quasi_circ_omega22 = np.gradient(self.quasi_circ_phase22,
+                                              self.t_zeroecc)
+        self.quasi_circ_omega22_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, self.quasi_circ_omega22)
+        self.res_omega22 = (self.omega22
+                            - self.quasi_circ_omega22_interp(self.t))
+        return self.res_omega22
