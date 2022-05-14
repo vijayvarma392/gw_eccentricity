@@ -1,5 +1,5 @@
 *~
-*/.ipynb_checkpoints/*
-*/__pycache__/*
+.ipynb_checkpoints
+__pycache__
 *.swp
 *.h5
