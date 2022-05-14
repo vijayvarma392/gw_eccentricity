@@ -41,7 +41,6 @@ def get_available_methods():
             "Amplitude": eccDefinitionUsingAmplitude,
             "Frequency": eccDefinitionUsingFrequency,
             "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
-            "ResidualFrequency": eccDefinitionUsingResidualFrequency,
             "FrequencyFits": eccDefinitionUsingFrequencyFits
             }
     return models
