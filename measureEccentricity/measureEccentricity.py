@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
-from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
+# from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequency
 
