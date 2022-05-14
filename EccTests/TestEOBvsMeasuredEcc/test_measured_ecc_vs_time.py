@@ -2,7 +2,7 @@ __doc__ = """This test checks how the measured eccentricity looks like as
 a function of time for different eccentricity definitions. The EOB waveforms
 that are used for this test are generated from a fixed mass ratio, spins, and
 Momega0 (the initial dimless orbital frequency), with eccentricity varying
-from 1e-5 to 0.5. We try to measure the eccentricity from these waveforms
+from 1e-7 to 0.5. We try to measure the eccentricity from these waveforms
 using different eccentricity definitions. We plot the measured eccentricity vs
 tref_out, and color the lines by the input EOB eccentricity at Momega0.
 You should check visually whether there are glitchy features in these plots.
@@ -24,6 +24,7 @@ sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 from measureEccentricity.utils import SmartFormatter
+from measureEccentricity.plot_settings import use_fancy_plotsettings
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -87,6 +88,10 @@ parser.add_argument(
           "information about parameter set, method used and so on)"
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
+parser.add_argument(
+    "--fancy_plot",
+    action="store_true",
+    help="Use fancy colors and style for plots.")
 parser.add_argument(
     "--slice",
     type=int,
@@ -187,7 +192,11 @@ else:
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
+if args.fancy_plot:
+    use_fancy_plotsettings()
+
 nrows = len(args.method)
+
 for key in args.param_set_key:
     if args.example:
         fig_name = (f"{args.fig_dir}/test_measured_ecc_vs_time_example."

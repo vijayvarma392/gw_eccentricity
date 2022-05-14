@@ -2,7 +2,7 @@ __doc__ = """This test checks whether different eccentricity definitions vary
 smoothly as a function of the internal eccentricity definition used by Toni's
 EOB model. The EOB waveforms that are used for this test are generated from a
 fixed mass ratio, spins, and Momega0 (the initial dimless orbital frequency),
-with eccentricity varying from 1e-5 to 0.5. We try to measure the eccentricity
+with eccentricity varying from 1e-7 to 0.5. We try to measure the eccentricity
 from these waveforms using different eccentricity definitions. For each
 waveform, we measure the eccentricity at the very first extrema (periastron or
 apastron). That way, the measured eccentricity is also at (nearly) Momega0.
@@ -23,6 +23,7 @@ sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 from measureEccentricity.utils import SmartFormatter
+from measureEccentricity.plot_settings import use_fancy_plotsettings
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -147,6 +148,10 @@ else:
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
+
+#  use fancy colors and other settings
+use_fancy_plotsettings()
+
 for key in args.param_set_key:
     fig, ax = plt.subplots()
     if args.example:
@@ -161,4 +166,4 @@ for key in args.param_set_key:
     ax.grid()
     ax.set_xlabel("EOB Eccentricity")
     ax.set_ylabel("Measured Eccentricity")
-    fig.savefig(f"{fig_name}")
+    fig.savefig(f"{fig_name}", bbox_inches="tight")
