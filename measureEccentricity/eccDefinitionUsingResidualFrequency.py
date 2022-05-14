@@ -36,11 +36,11 @@ class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
         self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
             self.t_zeroecc,
             np.abs(self.h22_zeroecc))[0]
-        self.quasi_circ_phase22 = - np.unwrap(np.angle(self.h22_zeroecc))
-        self.quasi_circ_omega22 = np.gradient(self.quasi_circ_phase22,
-                                              self.t_zeroecc)
-        self.quasi_circ_omega22_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, self.quasi_circ_omega22)
+        self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
+        self.omega22_zeroecc = np.gradient(self.phase22_zeroecc,
+                                           self.t_zeroecc)
+        self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, self.omega22_zeroecc)(self.t)
         self.res_omega22 = (self.omega22
-                            - self.quasi_circ_omega22_interp(self.t))
+                            - self.omega22_zeroecc_interp)
         return self.res_omega22

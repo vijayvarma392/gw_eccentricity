@@ -36,7 +36,7 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
             self.t_zeroecc,
             np.abs(self.h22_zeroecc))[0]
-        self.quasi_circ_amp22_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, np.abs(self.h22_zeroecc))
-        self.res_amp22 = self.amp22 - self.quasi_circ_amp22_interp(self.t)
+        self.amp22_zeroecc_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, np.abs(self.h22_zeroecc))(self.t)
+        self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
         return self.res_amp22
