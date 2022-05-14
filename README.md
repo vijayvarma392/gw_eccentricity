@@ -9,3 +9,6 @@ Before pushing, you should run these tests locally by doing the following from t
 ```
 py.test test
 ```
+
+## Waveform data
+Follow the instructions in `data/README.md`
