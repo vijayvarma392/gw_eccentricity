@@ -193,7 +193,18 @@ class eccDefinition:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
             t_min = max(t_peaks[0], t_troughs[0])
-            # measure eccentricty and mean anomaly from t_min to t_max
+
+            if tref_in[-1] > t_max:
+                raise Exception(f"tref_in is later than t_max={t_max}, "
+                                "which corresponds to min(last periastron "
+                                "time, last apastron time).")
+
+            if tref_in[0] < t_min:
+                raise Exception(f"tref_in is earlier than t_min={t_min}, "
+                                "which corresponds to max(first periastron "
+                                "time, first apastron time).")
+
+            # We measure eccentricty and mean anomaly from t_min to t_max
             tref_out = tref_in[np.logical_and(tref_in < t_max,
                                               tref_in >= t_min)]
         else:
@@ -213,9 +224,6 @@ class eccDefinition:
             raise Exception("tref_out is empty. This can happen if the "
                             "waveform has insufficient identifiable "
                             "periastrons/apastrons.")
-
-        if tref_out[0] < tref_in[0] or tref_out[-1] > tref_in[-1]:
-            raise Exception("tref_in extends beyond tref_out.")
 
         # Check if tref_out has a peak before and after.
         # This is required to define mean anomaly.
