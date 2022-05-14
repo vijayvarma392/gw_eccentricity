@@ -89,10 +89,6 @@ parser.add_argument(
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
 parser.add_argument(
-    "--fancy_plot",
-    action="store_true",
-    help="Use fancy colors and style for plots.")
-parser.add_argument(
     "--slice",
     type=int,
     default=1,
@@ -192,8 +188,8 @@ else:
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
-if args.fancy_plot:
-    use_fancy_plotsettings()
+# use fancy styles
+use_fancy_plotsettings()
 
 nrows = len(args.method)
 
