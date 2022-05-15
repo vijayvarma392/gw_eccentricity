@@ -110,7 +110,10 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             return axNew
 
     def plot_decc_dt(self, fig=None, ax=None, **kwargs):
-        """Plot decc_dt as function of time to check monotonicity."""
+        """Plot decc_dt as function of time to check monotonicity.
+
+        If decc_dt becomes positive, ecc(t) is not monotonically decreasing.
+        """
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
         else:
