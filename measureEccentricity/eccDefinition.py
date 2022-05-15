@@ -193,24 +193,22 @@ class eccDefinition:
             t_troughs = self.t[self.troughs_location]
             t_max = min(t_peaks[-1], t_troughs[-1])
             t_min = max(t_peaks[0], t_troughs[0])
-
             if tref_in[-1] > t_max:
                 raise Exception(f"tref_in is later than t_max={t_max}, "
                                 "which corresponds to min(last periastron "
                                 "time, last apastron time).")
-
             if tref_in[0] < t_min:
                 raise Exception(f"tref_in is earlier than t_min={t_min}, "
                                 "which corresponds to max(first periastron "
                                 "time, first apastron time).")
 
             # We measure eccentricty and mean anomaly from t_min to t_max
-            tref_out = tref_in[np.logical_and(tref_in < t_max,
-                                              tref_in >= t_min)]
+            self.tref_out = tref_in[np.logical_and(tref_in < t_max,
+                                                   tref_in >= t_min)]
         else:
-            tref_out = tref_in
+            self.tref_out = tref_in
 
-        ## Sanity checks
+        # Sanity checks
         # check separation between extrema
         self.orb_phase_diff_at_peaks, \
             self.orb_phase_diff_ratio_at_peaks \
@@ -220,31 +218,30 @@ class eccDefinition:
             = self.check_extrema_separation(self.troughs_location, "troughs")
 
         # Check if tref_out is reasonable
-        if len(tref_out) == 0:
+        if len(self.tref_out) == 0:
             raise Exception("tref_out is empty. This can happen if the "
                             "waveform has insufficient identifiable "
                             "periastrons/apastrons.")
 
         # Check if tref_out has a peak before and after.
         # This is required to define mean anomaly.
-        if tref_out[0] < t_peaks[0] or tref_out[-1] >= t_peaks[-1]:
+        if self.tref_out[0] < t_peaks[0] or self.tref_out[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
         # compute eccentricty from the value of omega_peaks_interp
         # and omega_troughs_interp at tref_out using the fromula in
         # ref. arXiv:2101.11798 eq. 4
-        self.omega_peak_at_tref_out = omega_peaks_interp(tref_out)
-        self.omega_trough_at_tref_out = omega_troughs_interp(tref_out)
-        ecc_ref = ((np.sqrt(self.omega_peak_at_tref_out)
-                    - np.sqrt(self.omega_trough_at_tref_out))
-                   / (np.sqrt(self.omega_peak_at_tref_out)
-                      + np.sqrt(self.omega_trough_at_tref_out)))
+        self.omega_peak_at_tref_out = omega_peaks_interp(self.tref_out)
+        self.omega_trough_at_tref_out = omega_troughs_interp(self.tref_out)
+        self.ecc_ref = ((np.sqrt(self.omega_peak_at_tref_out)
+                         - np.sqrt(self.omega_trough_at_tref_out))
+                        / (np.sqrt(self.omega_peak_at_tref_out)
+                           + np.sqrt(self.omega_trough_at_tref_out)))
 
         @np.vectorize
         def compute_mean_ano(time):
             """
             Compute mean anomaly.
-
             Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
             Mean anomaly grows linearly in time from 0 to 2 pi over
             the range [t_at_last_peak, t_at_next_peak], where t_at_last_peak
@@ -260,21 +257,20 @@ class eccDefinition:
             return mean_ano_ref
 
         # Compute mean anomaly at tref_out
-        mean_ano_ref = compute_mean_ano(tref_out)
+        self.mean_ano_ref = compute_mean_ano(self.tref_out)
 
         # check if eccenricity is monotonic and convex
-        if len(tref_out) > 1:
+        if len(self.tref_out) > 1:
             self.check_monotonicity_and_convexity(
-                tref_out, ecc_ref,
+                self.tref_out, self.ecc_ref,
                 debug=self.extra_kwargs["debug"])
 
-        if len(tref_out) == 1:
-            mean_ano_ref = mean_ano_ref[0]
-            ecc_ref = ecc_ref[0]
-            tref_out = tref_out[0]
+        if len(self.tref_out) == 1:
+            self.mean_ano_ref = self.mean_ano_ref[0]
+            self.ecc_ref = self.ecc_ref[0]
+            self.tref_out = self.tref_out[0]
 
-
-        return tref_out, ecc_ref, mean_ano_ref
+        return self.tref_out, self.ecc_ref, self.mean_ano_ref
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
