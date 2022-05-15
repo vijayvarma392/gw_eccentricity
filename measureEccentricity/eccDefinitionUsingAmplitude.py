@@ -7,6 +7,7 @@ Md Arif Shaikh, Mar 28, 2022
 from .eccDefinition import eccDefinition
 from scipy.signal import find_peaks
 from .utils import check_kwargs_and_set_defaults
+from .plot_settings import use_fancy_plotsettings
 import matplotlib.pyplot as plt
 
 
@@ -83,6 +84,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
     def make_diagnostic_plots(self, **kwargs):
         """Make dignostic plots for the eccDefinition method."""
         nrows = 7 if "hlm_zeroecc" in self.dataDict else 5
+        use_fancy_plotsettings()
         fig, ax = plt.subplots(nrows=nrows, figsize=(12, 4 * nrows), **kwargs)
         self.plot_measured_ecc(fig, ax[0])
         self.plot_decc_dt(fig, ax[1])
