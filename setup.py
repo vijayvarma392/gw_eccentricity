@@ -27,6 +27,7 @@ setuptools.setup(
         'h5py',
         'lalsuite',
         'gwtools',
+        'palettable'
     ],
     classifiers=[
         "Intended Audience :: Science/Research",
