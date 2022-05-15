@@ -21,7 +21,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
-
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
 
         # Sanity check extrema_finding_kwargs and set default values
@@ -83,12 +82,16 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
     def make_diagnostic_plots(self, **kwargs):
         """Make dignostic plots for the eccDefinition method."""
-        fig, ax = plt.subplots(nrows=5, figsize=(12, 20), **kwargs)
+        nrows = 7 if "hlm_zeroecc" in self.dataDict else 5
+        fig, ax = plt.subplots(nrows=nrows, figsize=(12, 4 * nrows), **kwargs)
         self.plot_measured_ecc(fig, ax[0])
         self.plot_decc_dt(fig, ax[1])
         self.plot_mean_ano(fig, ax[2])
         self.plot_extrema_in_omega(fig, ax[3])
         self.plot_phase_diff_ratio_between_peaks(fig, ax[4])
+        if "hlm_zeroecc" in self.dataDict:
+            self.plot_residual_omega(fig, ax[5])
+            self.plot_residual_amp(fig, ax[6])
         return fig, ax
 
     def plot_measured_ecc(self, fig=None, ax=None, **kwargs):
@@ -137,7 +140,11 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             return axNew
 
     def plot_extrema_in_omega(self, fig=None, ax=None, **kwargs):
-        """Plot omega and the Apastron Periastron as function of time."""
+        """Plot omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
+
+        This would show if the method is missing any peaks/troughs or
+        selecting one which is not a peak/trough.
+        """
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
         else:
@@ -163,7 +170,14 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             return axNew
 
     def plot_phase_diff_ratio_between_peaks(self, fig=None, ax=None, **kwargs):
-        """Plot phase diff ratio between consecutive as function of time."""
+        """Plot phase diff ratio between consecutive as function of time.
+
+        Plots deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
+        change in orbital phase from the previous extrema to the ith extrema.
+        This helps to look for missing extrema, as there will be a drastic
+        (roughly factor of 2) change in deltaPhi_orb(i) if there is a missing
+        extrema, and the ratio will go from ~1 to ~2.
+        """
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
         else:
@@ -177,6 +191,52 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         axNew.set_xlabel("time")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
+        axNew.legend()
+        if fig is None or ax is None:
+            return figNew, axNew
+        else:
+            return axNew
+
+    def plot_residual_omega(self, fig=None, ax=None, **kwargs):
+        """Plot residual omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
+
+        Useful to look for bad omega data near merger."""
+        if fig is None or ax is None:
+            figNew, axNew = plt.subplots()
+        else:
+            axNew = ax
+        axNew.plot(self.t, self.res_omega22)
+        axNew.plot(self.t[self.peaks_location],
+                   self.res_omega22[self.peaks_location],
+                   marker="o", ls="", label="Periastron")
+        axNew.plot(self.t[self.troughs_location],
+                   self.res_omega22[self.troughs_location],
+                   marker="o", ls="", label="Apastron")
+        axNew.set_xlabel("time")
+        axNew.grid()
+        axNew.set_ylabel(r"$\Delta\omega_{22}$")
+        axNew.legend()
+        if fig is None or ax is None:
+            return figNew, axNew
+        else:
+            return axNew
+
+    def plot_residual_amp(self, fig=None, ax=None, **kwargs):
+        """Plot residual amp22, the locations of the apastrons and periastrons, and their corresponding interpolants."""
+        if fig is None or ax is None:
+            figNew, axNew = plt.subplots()
+        else:
+            axNew = ax
+        axNew.plot(self.t, self.res_amp22)
+        axNew.plot(self.t[self.peaks_location],
+                   self.res_amp22[self.peaks_location],
+                   marker="o", ls="", label="Periastron")
+        axNew.plot(self.t[self.troughs_location],
+                   self.res_amp22[self.troughs_location],
+                   marker="o", ls="", label="Apastron")
+        axNew.set_xlabel("time")
+        axNew.grid()
+        axNew.set_ylabel(r"$\Delta A_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
