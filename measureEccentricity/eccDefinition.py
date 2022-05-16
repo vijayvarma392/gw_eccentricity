@@ -195,9 +195,9 @@ class eccDefinition:
         t_troughs = self.t[self.troughs_location]
         t_max = min(t_peaks[-1], t_troughs[-1])
         t_min = max(t_peaks[0], t_troughs[0])
-        # We measure eccentricty and mean anomaly from t_min to t_max
-        # note than here we do not include the tmax. This because
-        # the mean anomaly is computed in such a way that it will look
+        # We measure eccentricty and mean anomaly from t_min to t_max.
+        # Note than here we do not include the tmax. This is because
+        # the mean anomaly is computation requies to look
         # for a peak before and after the ref time to calculate the current
         # period.
         # If ref time is tmax which could be equal to the last peak, then
