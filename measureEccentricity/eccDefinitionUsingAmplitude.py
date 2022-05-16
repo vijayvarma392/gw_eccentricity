@@ -161,7 +161,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         axNew.plot(self.t_for_ecc_test, self.decc_dt, c=colorsDict["default"],
                    **kwargs)
         axNew.set_xlabel("time")
-        axNew.set_ylabel(r"$\frac{de}{dt}$")
+        axNew.set_ylabel(r"$de/dt$")
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
