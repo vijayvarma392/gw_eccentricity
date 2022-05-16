@@ -35,3 +35,9 @@ def use_fancy_plotsettings():
     rc("text", usetex=True)
     # color cycler
     rc("axes", prop_cycle=cycler(color=colorsList))
+    # fontsize
+    rc("axes", labelsize=12)
+    rc("axes", titlesize=12)
+    rc("xtick", labelsize=12)
+    rc("ytick", labelsize=12)
+    rc("legend", fontsize=12)

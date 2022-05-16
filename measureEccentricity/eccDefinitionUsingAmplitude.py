@@ -82,10 +82,45 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             **self.extrema_finding_kwargs)[0]
 
     def make_diagnostic_plots(self, **kwargs):
-        """Make dignostic plots for the eccDefinition method."""
+        """Make dignostic plots for the eccDefinition method.
+
+        We plot differenct quantities to asses how well our eccentricity
+        measurment method is working. This could be seen as a diagnostic tool
+        to check an implemented method.
+
+        We plot the following quantities
+        - The eccentricity vs vs time
+        - decc/dt vs time, this is to test the monotonicity of eccentricity as
+          a function of time
+        - mean anomaly vs time
+        - omega_22 vs time with the peaks and troughs shown. This would show
+          if the method is missing any peaks/troughs or selecting one which is
+          not a peak/trough
+        - deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
+          change in orbital phase from the previous extrema to the ith extrema.
+          This helps to look for missing extrema, as there will be a drastic
+          (roughly factor of 2) change in deltaPhi_orb(i) if there is a missing
+          extrema, and the ratio will go from ~1 to ~2.
+
+        Additionally, we plot the following if data for zero eccentricity is
+        provided
+        - residual amp22 vs time with the location of peaks and troughs shown.
+        - residual omega22 vs time with the location of peaks and troughs
+          shown.
+        These two plots with further help in understanding any unwanted feature
+        in the measured eccentricity vs time plot. For example, non smoothness
+        the residual omega22 would indicate that the data in omega22 is not
+        good which might be causing glitches in the measured eccentricity plot.
+        """
         nrows = 7 if "hlm_zeroecc" in self.dataDict else 5
+        figsize = (12, 4 * nrows)
+        default_kwargs = {"nrows": nrows,
+                          "figsize": figsize}
+        for key in ["nrows", "figsize"]:
+            if key not in kwargs:
+                kwargs.update({key: default_kwargs[key]})
         use_fancy_plotsettings()
-        fig, ax = plt.subplots(nrows=nrows, figsize=(12, 4 * nrows), **kwargs)
+        fig, ax = plt.subplots(**kwargs)
         self.plot_measured_ecc(fig, ax[0])
         self.plot_decc_dt(fig, ax[1])
         self.plot_mean_ano(fig, ax[2])
@@ -94,6 +129,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         if "hlm_zeroecc" in self.dataDict:
             self.plot_residual_omega(fig, ax[5])
             self.plot_residual_amp(fig, ax[6])
+        fig.tight_layout()
         return fig, ax
 
     def plot_measured_ecc(self, fig=None, ax=None, **kwargs):
