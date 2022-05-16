@@ -1,0 +1,37 @@
+Defining eccentricity for GW data-analysis
+only aligned spin systems, and only systems with at least a few periastron passages
+describe problem
+describe our solution 
+explain the 4/3 thing, and how to obtain the correct (post)Newtonian low-e limit
+variations
+a few demonstrations
+?performance in the low-eccentricity-limit?
+?? PE run ?? 
+Unique selling points
+Public, robust software implementation 
+insights into relation e from GW to other eccentricity  (the 4/3 thing)
+Authors { Arif, Vijay, Toni, Harald, Maarten}
+only public NR data would simplify authorlist somewhat
+Abstract
+Eccentric CBCs important science targets of GW observatories.  Many different eccentricity definitions exist in the literature.  This paper continues the development of a definition of eccentricity which is defined based solely on gauge invariant gravitational waveforms and applicable to gravitational waveforms of many origins.  Our proposal improves on related work in that the new definition agrees in the Newtonian limit with the standard Newtonian definition of eccentricity.  We present a public implementation of the proposed algorithm and demonstrate its robustness on waveforms of various origin, ranging from quasi-circular to highly eccentric systems.  The present work focuses on aligned-spin binaries which do not exhibit orbital precession; possible extensions to precessing binaries are discussed.
+Intro
+Description of algorithm
+base idea
+FIGURE 1 - illustration 
+Variations
+Different subtractions
+Different maxima conditions, max(omega) vs max(A)
+FIGURE 2 -- illustration (a) different subtractions (b) max(omega) vs max(A)
+Implementation (description of our library)
+Tests
+versatility / robustness(?)
+Show that it works for NR-SXS, NR-other-code, EOB, Phenom, PN, SMR waveforms
+FIGURE 3
+high and low eccentricity
+Show that method works in both cases
+FIGURE 4 -- high e and low e illustration (need for subtraction)
+Discuss limits
+FIGURE 5 -- plot e vs e showing that we get straight line, but not w/o correction factor
+Hoped conclusions: robust, satisfies Newtonian limit (due to correction factors?); at high e, need several radial periods
+relation to other definitions
+FIGURE 6 -- plot of e_of_model vs e_our_estimate  (or ratio thereof).  

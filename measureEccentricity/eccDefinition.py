@@ -61,6 +61,9 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.t)
 
+        if "hlm_zeroecc" in dataDict:
+            self.compute_res_amp_and_omega()
+
         # Sanity check various kwargs and set default values
         self.spline_kwargs = check_kwargs_and_set_defaults(
             spline_kwargs, self.get_default_spline_kwargs(),
@@ -167,7 +170,7 @@ class eccDefinition:
         tref_out:
             Output reference time where eccentricity and mean anomaly are
             measured.
-            This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
+            This is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
             where tmax = min(t_peaks[-1], t_troughs[-1]),
             and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
             eccentricity is computed using interpolants of omega_peaks and
@@ -189,15 +192,33 @@ class eccDefinition:
         omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
         t_peaks = self.t[self.peaks_location]
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            t_troughs = self.t[self.troughs_location]
-            t_max = min(t_peaks[-1], t_troughs[-1])
-            t_min = max(t_peaks[0], t_troughs[0])
-            # measure eccentricty and mean anomaly from t_min to t_max
-            tref_out = tref_in[np.logical_and(tref_in < t_max,
-                                              tref_in >= t_min)]
-        else:
-            tref_out = tref_in
+        t_troughs = self.t[self.troughs_location]
+        t_max = min(t_peaks[-1], t_troughs[-1])
+        t_min = max(t_peaks[0], t_troughs[0])
+        # We measure eccentricity and mean anomaly from t_min to t_max.
+        # Note that here we do not include the t_max. This is because
+        # the mean anomaly computation requires to looking
+        # for a peak before and after the ref time to calculate the current
+        # period.
+        # If ref time is t_max, which could be equal to the last peak, then
+        # there is no next peak and that would cause a problem.
+        self.tref_out = tref_in[np.logical_and(tref_in < t_max,
+                                               tref_in >= t_min)]
+
+        # Sanity checks
+        # Check if tref_out is reasonable
+        if len(self.tref_out) == 0:
+            if tref_in[-1] > t_max:
+                raise Exception(f"tref_in is later than t_max={t_max}, "
+                                "which corresponds to min(last periastron "
+                                "time, last apastron time).")
+            if tref_in[0] < t_min:
+                raise Exception(f"tref_in is earlier than t_min={t_min}, "
+                                "which corresponds to max(first periastron "
+                                "time, first apastron time).")
+            raise Exception("tref_out is empty. This can happen if the "
+                            "waveform has insufficient identifiable "
+                            "periastrons/apastrons.")
 
         # check separation between extrema
         self.orb_phase_diff_at_peaks, \
@@ -207,26 +228,26 @@ class eccDefinition:
             self.orb_phase_diff_ratio_at_troughs \
             = self.check_extrema_separation(self.troughs_location, "troughs")
 
-        # check if the tref_out has a peak before and after
-        # This required to define mean anomaly.
-        if tref_out[0] < t_peaks[0] or tref_out[-1] >= t_peaks[-1]:
+        # Check if tref_out has a peak before and after.
+        # This is required to define mean anomaly.
+        # See explaination on why we do not include the last peak above.
+        if self.tref_out[0] < t_peaks[0] or self.tref_out[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
         # compute eccentricty from the value of omega_peaks_interp
         # and omega_troughs_interp at tref_out using the fromula in
         # ref. arXiv:2101.11798 eq. 4
-        self.omega_peak_at_tref_out = omega_peaks_interp(tref_out)
-        self.omega_trough_at_tref_out = omega_troughs_interp(tref_out)
-        ecc_ref = ((np.sqrt(self.omega_peak_at_tref_out)
-                    - np.sqrt(self.omega_trough_at_tref_out))
-                   / (np.sqrt(self.omega_peak_at_tref_out)
-                      + np.sqrt(self.omega_trough_at_tref_out)))
+        self.omega_peak_at_tref_out = omega_peaks_interp(self.tref_out)
+        self.omega_trough_at_tref_out = omega_troughs_interp(self.tref_out)
+        self.ecc_ref = ((np.sqrt(self.omega_peak_at_tref_out)
+                         - np.sqrt(self.omega_trough_at_tref_out))
+                        / (np.sqrt(self.omega_peak_at_tref_out)
+                           + np.sqrt(self.omega_trough_at_tref_out)))
 
         @np.vectorize
         def compute_mean_ano(time):
             """
             Compute mean anomaly.
-
             Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
             Mean anomaly grows linearly in time from 0 to 2 pi over
             the range [t_at_last_peak, t_at_next_peak], where t_at_last_peak
@@ -242,21 +263,20 @@ class eccDefinition:
             return mean_ano_ref
 
         # Compute mean anomaly at tref_out
-        mean_ano_ref = compute_mean_ano(tref_out)
+        self.mean_ano_ref = compute_mean_ano(self.tref_out)
 
         # check if eccenricity is monotonic and convex
-        if len(tref_out) > 1:
+        if len(self.tref_out) > 1:
             self.check_monotonicity_and_convexity(
-                tref_out, ecc_ref,
+                self.tref_out, self.ecc_ref,
                 debug=self.extra_kwargs["debug"])
 
-        if len(tref_out) == 1:
-            mean_ano_ref = mean_ano_ref[0]
-            ecc_ref = ecc_ref[0]
-            tref_out = tref_out[0]
+        if len(self.tref_out) == 1:
+            self.mean_ano_ref = self.mean_ano_ref[0]
+            self.ecc_ref = self.ecc_ref[0]
+            self.tref_out = self.tref_out[0]
 
-
-        return tref_out, ecc_ref, mean_ano_ref
+        return self.tref_out, self.ecc_ref, self.mean_ano_ref
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
@@ -341,3 +361,27 @@ class eccDefinition:
             self.d2ecc_dt = self.d2ecc_dt
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
+
+    def make_diagnostic_plots(self, **kwargs):
+        """Make a number of diagnostic plots for the method used."""
+        raise NotImplementedError("Override me please.")
+
+    def compute_res_amp_and_omega(self):
+        """Compute residual amp22 and omega22."""
+        self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
+        self.t_zeroecc = self.dataDict["t_zeroecc"]
+        self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
+        self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
+            self.t_zeroecc,
+            np.abs(self.h22_zeroecc))[0]
+        self.amp22_zeroecc_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, np.abs(self.h22_zeroecc))(self.t)
+        self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
+
+        self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
+        self.omega22_zeroecc = np.gradient(self.phase22_zeroecc,
+                                           self.t_zeroecc)
+        self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, self.omega22_zeroecc)(self.t)
+        self.res_omega22 = (self.omega22
+                            - self.omega22_zeroecc_interp)

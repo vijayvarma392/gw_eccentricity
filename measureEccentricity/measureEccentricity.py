@@ -30,18 +30,20 @@ THE SOFTWARE.
 
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
-# from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
+from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
+from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequency
 
 
 def get_available_methods():
     """Get dictionary of available methods."""
     models = {
-            "Amplitude": eccDefinitionUsingAmplitude,
-            "Frequency": eccDefinitionUsingFrequency,
-            "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
-            # "FrequencyFits": eccDefinitionUsingFrequencyFits
-            }
+        "Amplitude": eccDefinitionUsingAmplitude,
+        "Frequency": eccDefinitionUsingFrequency,
+        "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
+        "ResidualFrequency": eccDefinitionUsingResidualFrequency,
+        "FrequencyFits": eccDefinitionUsingFrequencyFits
+    }
     return models
 
 
