@@ -216,10 +216,9 @@ class eccDefinition:
                 raise Exception(f"tref_in is earlier than t_min={t_min}, "
                                 "which corresponds to max(first periastron "
                                 "time, first apastron time).")
-            else:
-                raise Exception("tref_out is empty. This can happen if the "
-                                "waveform has insufficient identifiable "
-                                "periastrons/apastrons.")
+            raise Exception("tref_out is empty. This can happen if the "
+                            "waveform has insufficient identifiable "
+                            "periastrons/apastrons.")
 
         # check separation between extrema
         self.orb_phase_diff_at_peaks, \
