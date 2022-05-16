@@ -61,6 +61,9 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = np.gradient(self.phase22, self.t)
 
+        if "hlm_zeroecc" in dataDict:
+            self.compute_res_amp_and_omega()
+
         # Sanity check various kwargs and set default values
         self.spline_kwargs = check_kwargs_and_set_defaults(
             spline_kwargs, self.get_default_spline_kwargs(),
@@ -167,7 +170,7 @@ class eccDefinition:
         tref_out:
             Output reference time where eccentricity and mean anomaly are
             measured.
-            This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
+            This is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
             where tmax = min(t_peaks[-1], t_troughs[-1]),
             and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
             eccentricity is computed using interpolants of omega_peaks and
@@ -355,3 +358,27 @@ class eccDefinition:
             self.d2ecc_dt = self.d2ecc_dt
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
+
+    def make_diagnostic_plots(self, **kwargs):
+        """Make a number of diagnostic plots for the method used."""
+        raise NotImplementedError("Override me please.")
+
+    def compute_res_amp_and_omega(self):
+        """Compute residual amp22 and omega22."""
+        self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
+        self.t_zeroecc = self.dataDict["t_zeroecc"]
+        self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
+        self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
+            self.t_zeroecc,
+            np.abs(self.h22_zeroecc))[0]
+        self.amp22_zeroecc_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, np.abs(self.h22_zeroecc))(self.t)
+        self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
+
+        self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
+        self.omega22_zeroecc = np.gradient(self.phase22_zeroecc,
+                                           self.t_zeroecc)
+        self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
+            self.t_zeroecc, self.omega22_zeroecc)(self.t)
+        self.res_omega22 = (self.omega22
+                            - self.omega22_zeroecc_interp)

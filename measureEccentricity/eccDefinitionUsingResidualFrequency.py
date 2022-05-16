@@ -5,9 +5,6 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, May 14, 2022
 """
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
-from .utils import get_peak_via_quadratic_fit
-from scipy.interpolate import InterpolatedUnivariateSpline
-import numpy as np
 
 
 class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
@@ -30,17 +27,4 @@ class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
-        self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
-        self.t_zeroecc = self.dataDict["t_zeroecc"]
-        self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
-        self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
-            self.t_zeroecc,
-            np.abs(self.h22_zeroecc))[0]
-        self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
-        self.omega22_zeroecc = np.gradient(self.phase22_zeroecc,
-                                           self.t_zeroecc)
-        self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, self.omega22_zeroecc)(self.t)
-        self.res_omega22 = (self.omega22
-                            - self.omega22_zeroecc_interp)
         return self.res_omega22
