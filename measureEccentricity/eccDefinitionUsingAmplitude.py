@@ -7,7 +7,7 @@ Md Arif Shaikh, Mar 28, 2022
 from .eccDefinition import eccDefinition
 from scipy.signal import find_peaks
 from .utils import check_kwargs_and_set_defaults
-from .plot_settings import use_fancy_plotsettings
+from .plot_settings import use_fancy_plotsettings, colorsDict
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -139,7 +139,8 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.tref_out, self.ecc_ref, **kwargs)
+        axNew.plot(self.tref_out, self.ecc_ref, c=colorsDict["default"],
+                   **kwargs)
         axNew.set_xlabel("time")
         axNew.set_ylabel("eccentricity")
         axNew.grid()
@@ -157,9 +158,10 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
+        axNew.plot(self.t_for_ecc_test, self.decc_dt, c=colorsDict["default"],
+                   **kwargs)
         axNew.set_xlabel("time")
-        axNew.set_ylabel("decc/dt")
+        axNew.set_ylabel(r"$\frac{de}{dt}$")
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
@@ -172,7 +174,8 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.tref_out, self.mean_ano_ref, **kwargs)
+        axNew.plot(self.tref_out, self.mean_ano_ref,
+                   c=colorsDict["default"], **kwargs)
         axNew.set_xlabel("time")
         axNew.set_ylabel("mean anomaly")
         axNew.grid()
@@ -192,17 +195,22 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         else:
             axNew = ax
         axNew.plot(self.tref_out, self.omega_peak_at_tref_out,
-                   label="Periastron", **kwargs)
+                   c=colorsDict["periastronLine"], **kwargs)
         axNew.plot(self.tref_out, self.omega_trough_at_tref_out,
-                   label="Apastron", **kwargs)
-        # plot only upto -100 to make the plot readable
-        end = np.argmin(np.abs(self.t - (- 100)))
-        axNew.plot(self.t[: end], self.omega22[: end])
+                   c=colorsDict["apastronLine"], **kwargs)
+        # plot only upto merger to make the plot readable
+        end = np.argmin(np.abs(self.t))
+        axNew.plot(self.t[: end], self.omega22[: end],
+                   c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
+                   c=colorsDict["periastron"],
+                   label="Periastron",
                    marker="o", ls="")
         axNew.plot(self.t[self.troughs_location],
                    self.omega22[self.troughs_location],
+                   c=colorsDict["apastron"],
+                   label="Apastron",
                    marker="o", ls="")
         axNew.set_xlabel("time")
         axNew.grid()
@@ -228,10 +236,12 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             axNew = ax
         tpeaks = self.t[self.peaks_location[1:]]
         axNew.plot(tpeaks[1:], self.orb_phase_diff_ratio_at_peaks[1:],
-                   marker="o", label="peaks phase diff ratio")
+                   c=colorsDict["periastron"],
+                   marker="o", label="Periastron phase diff ratio")
         ttroughs = self.t[self.troughs_location[1:]]
         axNew.plot(ttroughs[1:], self.orb_phase_diff_ratio_at_troughs[1:],
-                   marker="o", label="troughs phase diff ratio")
+                   c=colorsDict["apastron"],
+                   marker="o", label="Apastron phase diff ratio")
         axNew.set_xlabel("time")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
@@ -252,15 +262,17 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        # plot only upto -100 to make the plot readable
-        end = np.argmin(np.abs(self.t - (- 100)))
-        axNew.plot(self.t[: end], self.res_omega22[:end])
+        # plot only upto merger to make the plot readable
+        end = np.argmin(np.abs(self.t))
+        axNew.plot(self.t[: end], self.res_omega22[:end], c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.res_omega22[self.peaks_location],
-                   marker="o", ls="", label="Periastron")
+                   marker="o", ls="", label="Periastron",
+                   c=colorsDict["periastron"])
         axNew.plot(self.t[self.troughs_location],
                    self.res_omega22[self.troughs_location],
-                   marker="o", ls="", label="Apastron")
+                   marker="o", ls="", label="Apastron",
+                   c=colorsDict["apastron"])
         axNew.set_xlabel("time")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta\omega_{22}$")
@@ -276,12 +288,14 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.t, self.res_amp22)
+        axNew.plot(self.t, self.res_amp22, c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.res_amp22[self.peaks_location],
+                   c=colorsDict["periastron"],
                    marker="o", ls="", label="Periastron")
         axNew.plot(self.t[self.troughs_location],
                    self.res_amp22[self.troughs_location],
+                   c=colorsDict["apastron"],
                    marker="o", ls="", label="Apastron")
         axNew.set_xlabel("time")
         axNew.grid()

@@ -28,6 +28,14 @@ colorsList = [colors_gb_14[1],
               colors_gb_55[1],
               colors_dj_25[1]]
 
+colorsDict = {
+    "default": colors_gb_36[5],
+    "apastron": colors_dj_25[1],
+    "periastron": colors_gb_36[4],
+    "apastronLine": colors_gb_45[1],
+    "periastronLine": colors_gb_14[0],
+}
+
 
 def use_fancy_plotsettings():
     """Use fancy plot settings."""
