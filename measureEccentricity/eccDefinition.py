@@ -196,6 +196,12 @@ class eccDefinition:
         t_max = min(t_peaks[-1], t_troughs[-1])
         t_min = max(t_peaks[0], t_troughs[0])
         # We measure eccentricty and mean anomaly from t_min to t_max
+        # note than here we do not include the tmax. This because
+        # the mean anomaly is computed in such a way that it will look
+        # for a peak before and after the ref time to calculate the current
+        # period.
+        # If ref time is tmax which could be equal to the last peak, then
+        # there is no next peak and that would cause problem.
         self.tref_out = tref_in[np.logical_and(tref_in < t_max,
                                                tref_in >= t_min)]
 
@@ -206,7 +212,7 @@ class eccDefinition:
                 raise Exception(f"tref_in is later than t_max={t_max}, "
                                 "which corresponds to min(last periastron "
                                 "time, last apastron time).")
-            elif tref_in[0] < t_min:
+            if tref_in[0] < t_min:
                 raise Exception(f"tref_in is earlier than t_min={t_min}, "
                                 "which corresponds to max(first periastron "
                                 "time, first apastron time).")
@@ -225,6 +231,7 @@ class eccDefinition:
 
         # Check if tref_out has a peak before and after.
         # This is required to define mean anomaly.
+        # See explaination on why we do not include the last peak above.
         if self.tref_out[0] < t_peaks[0] or self.tref_out[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
