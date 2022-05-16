@@ -9,6 +9,7 @@ from scipy.signal import find_peaks
 from .utils import check_kwargs_and_set_defaults
 from .plot_settings import use_fancy_plotsettings
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class eccDefinitionUsingAmplitude(eccDefinition):
@@ -194,7 +195,9 @@ class eccDefinitionUsingAmplitude(eccDefinition):
                    label="Periastron", **kwargs)
         axNew.plot(self.tref_out, self.omega_trough_at_tref_out,
                    label="Apastron", **kwargs)
-        axNew.plot(self.t, self.omega22)
+        # plot only upto -100 to make the plot readable
+        end = np.argmin(np.abs(self.t - (- 100)))
+        axNew.plot(self.t[: end], self.omega22[: end])
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
                    marker="o", ls="")
@@ -241,12 +244,17 @@ class eccDefinitionUsingAmplitude(eccDefinition):
     def plot_residual_omega(self, fig=None, ax=None, **kwargs):
         """Plot residual omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
 
-        Useful to look for bad omega data near merger."""
+        Useful to look for bad omega data near merger.
+        We also throw away post merger before since it makes the plot
+        unreadble.
+        """
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.t, self.res_omega22)
+        # plot only upto -100 to make the plot readable
+        end = np.argmin(np.abs(self.t - (- 100)))
+        axNew.plot(self.t[: end], self.res_omega22[:end])
         axNew.plot(self.t[self.peaks_location],
                    self.res_omega22[self.peaks_location],
                    marker="o", ls="", label="Periastron")
