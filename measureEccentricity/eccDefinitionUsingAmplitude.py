@@ -206,12 +206,12 @@ class eccDefinitionUsingAmplitude(eccDefinition):
                    self.omega22[self.peaks_location],
                    c=colorsDict["periastron"],
                    label="Periastron",
-                   marker="o", ls="")
+                   marker=".", ls="")
         axNew.plot(self.t[self.troughs_location],
                    self.omega22[self.troughs_location],
                    c=colorsDict["apastron"],
                    label="Apastron",
-                   marker="o", ls="")
+                   marker=".", ls="")
         axNew.set_xlabel("time")
         axNew.grid()
         axNew.set_ylabel(r"$\omega_{22}$")
@@ -237,11 +237,11 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         tpeaks = self.t[self.peaks_location[1:]]
         axNew.plot(tpeaks[1:], self.orb_phase_diff_ratio_at_peaks[1:],
                    c=colorsDict["periastron"],
-                   marker="o", label="Periastron phase diff ratio")
+                   marker=".", label="Periastron phase diff ratio")
         ttroughs = self.t[self.troughs_location[1:]]
         axNew.plot(ttroughs[1:], self.orb_phase_diff_ratio_at_troughs[1:],
                    c=colorsDict["apastron"],
-                   marker="o", label="Apastron phase diff ratio")
+                   marker=".", label="Apastron phase diff ratio")
         axNew.set_xlabel("time")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
@@ -267,11 +267,11 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         axNew.plot(self.t[: end], self.res_omega22[:end], c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.res_omega22[self.peaks_location],
-                   marker="o", ls="", label="Periastron",
+                   marker=".", ls="", label="Periastron",
                    c=colorsDict["periastron"])
         axNew.plot(self.t[self.troughs_location],
                    self.res_omega22[self.troughs_location],
-                   marker="o", ls="", label="Apastron",
+                   marker=".", ls="", label="Apastron",
                    c=colorsDict["apastron"])
         axNew.set_xlabel("time")
         axNew.grid()
@@ -292,11 +292,11 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         axNew.plot(self.t[self.peaks_location],
                    self.res_amp22[self.peaks_location],
                    c=colorsDict["periastron"],
-                   marker="o", ls="", label="Periastron")
+                   marker=".", ls="", label="Periastron")
         axNew.plot(self.t[self.troughs_location],
                    self.res_amp22[self.troughs_location],
                    c=colorsDict["apastron"],
-                   marker="o", ls="", label="Apastron")
+                   marker=".", ls="", label="Apastron")
         axNew.set_xlabel("time")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta A_{22}$")
