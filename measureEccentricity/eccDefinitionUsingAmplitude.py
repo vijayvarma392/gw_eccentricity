@@ -195,26 +195,26 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         else:
             axNew = ax
         axNew.plot(self.tref_out, self.omega_peak_at_tref_out,
-                   c=colorsDict["periastronLine"], **kwargs)
+                   c=colorsDict["periastron"], label=r"$\omega_{p}(t)$",
+                   **kwargs)
         axNew.plot(self.tref_out, self.omega_trough_at_tref_out,
-                   c=colorsDict["apastronLine"], **kwargs)
+                   c=colorsDict["apastron"], label=r"$\omega_{a}(t)$",
+                   **kwargs)
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t))
         axNew.plot(self.t[: end], self.omega22[: end],
-                   c=colorsDict["default"])
+                   c=colorsDict["default"], label=r"$\omega_{22}(t)$")
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
                    c=colorsDict["periastron"],
-                   label="Periastron",
                    marker=".", ls="")
         axNew.plot(self.t[self.troughs_location],
                    self.omega22[self.troughs_location],
                    c=colorsDict["apastron"],
-                   label="Apastron",
                    marker=".", ls="")
         axNew.set_xlabel("time")
         axNew.grid()
-        axNew.set_ylabel(r"$\omega_{22}$")
+        axNew.set_ylabel(r"$M\omega_{22}(t)$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew

@@ -386,13 +386,13 @@ class eccDefinition:
                             f"starts at {self.t_zeroecc[0]}. Try starting the "
                             "zeroecc waveform at lower Momega0.")
         self.amp22_zeroecc_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, np.abs(self.h22_zeroecc), ext=2)(self.t)
+            self.t_zeroecc, np.abs(self.h22_zeroecc))(self.t)
         self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
 
         self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
         self.omega22_zeroecc = np.gradient(self.phase22_zeroecc,
                                            self.t_zeroecc)
         self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, self.omega22_zeroecc, ext=2)(self.t)
+            self.t_zeroecc, self.omega22_zeroecc)(self.t)
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
