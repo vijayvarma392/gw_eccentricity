@@ -69,7 +69,7 @@ tref, ecc, mean_ano, eccMethod = measure_eccentricity(
     extra_kwargs={"extrema_finding_kwargs": {"width": 100}})
 
 use_fancy_plotsettings()
-fig, ax = plt.subplots(nrows=2, figsize=(6, 6), sharex=True)
+fig, ax = plt.subplots(nrows=2, figsize=(6, 4), sharex=True)
 eccMethod.plot_measured_ecc(fig, ax[0])
 eccMethod.plot_extrema_in_omega(fig, ax[1])
 ax[0].set_xlabel("")
