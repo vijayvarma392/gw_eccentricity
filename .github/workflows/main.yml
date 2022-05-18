@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - paper/**
+      - '.github/workflows/main.yml'
     branches-ignore:
       - '/pdflatex'
 jobs:
