@@ -8,6 +8,7 @@ Md Arif Shaikh, Mar 29, 2022
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
+from .utils import time_deriv_4thOrder
 from .plot_settings import use_fancy_plotsettings, colorsDict
 import matplotlib.pyplot as plt
 import warnings
@@ -51,6 +52,12 @@ class eccDefinition:
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
+        # check if the time steps are equal, the derivative function
+        # requires uniform time steps
+        self.t_diff = np.diff(self.t)
+        if not np.allclose(self.t_diff, self.t_diff[0]):
+            raise Exception("Input time array must have uniform time steps.\n"
+                            f"Time steps are {self.t_diff}")
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
@@ -61,7 +68,8 @@ class eccDefinition:
         self.t = self.t - get_peak_via_quadratic_fit(
             self.t, self.amp22)[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
-        self.omega22 = np.gradient(self.phase22, self.t)
+        self.omega22 = time_deriv_4thOrder(self.phase22,
+                                           self.t[1] - self.t[0])
 
         if "hlm_zeroecc" in dataDict:
             self.compute_res_amp_and_omega()
@@ -368,6 +376,12 @@ class eccDefinition:
         """Compute residual amp22 and omega22."""
         self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
         self.t_zeroecc = self.dataDict["t_zeroecc"]
+        # check that the time steps are equal
+        self.t_zeroecc_diff = np.diff(self.t_zeroecc)
+        if not np.allclose(self.t_zeroecc_diff, self.t_zeroecc_diff[0]):
+            raise Exception(
+                "Input time array t_zeroecc must have uniform time steps\n"
+                f"Time steps are {self.t_zeroecc_diff}")
         self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
         self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
             self.t_zeroecc,
@@ -388,8 +402,9 @@ class eccDefinition:
         self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
 
         self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
-        self.omega22_zeroecc = np.gradient(self.phase22_zeroecc,
-                                           self.t_zeroecc)
+        self.omega22_zeroecc = time_deriv_4thOrder(
+            self.phase22_zeroecc,
+            self.t_zeroecc[1] - self.t_zeroecc[0])
         self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
             self.t_zeroecc, self.omega22_zeroecc)(self.t)
         self.res_omega22 = (self.omega22
