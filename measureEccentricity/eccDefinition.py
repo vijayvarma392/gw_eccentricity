@@ -480,7 +480,7 @@ class eccDefinition:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
         axNew.set_xlabel("time")
-        axNew.set_ylabel("$de/dt$")
+        axNew.set_ylabel(r"$de/dt$")
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
@@ -514,15 +514,15 @@ class eccDefinition:
         else:
             axNew = ax
         axNew.plot(self.tref_out, self.omega_peak_at_tref_out,
-                   c=colorsDict["periastron"], label="$\omega_{p}(t)$",
+                   c=colorsDict["periastron"], label=r"$\omega_{p}(t)$",
                    **kwargs)
         axNew.plot(self.tref_out, self.omega_trough_at_tref_out,
-                   c=colorsDict["apastron"], label="$\omega_{a}(t)$",
+                   c=colorsDict["apastron"], label=r"$\omega_{a}(t)$",
                    **kwargs)
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t))
         axNew.plot(self.t[: end], self.omega22[: end],
-                   c=colorsDict["default"], label="$\omega_{22}(t)$")
+                   c=colorsDict["default"], label=r"$\omega_{22}(t)$")
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
                    c=colorsDict["periastron"],
@@ -533,7 +533,7 @@ class eccDefinition:
                    marker=".", ls="")
         axNew.set_xlabel("time")
         axNew.grid()
-        axNew.set_ylabel("$M\omega_{22}(t)$")
+        axNew.set_ylabel(r"$M\omega_{22}(t)$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -562,7 +562,7 @@ class eccDefinition:
                    c=colorsDict["apastron"],
                    marker=".", label="Apastron phase diff ratio")
         axNew.set_xlabel("time")
-        axNew.set_ylabel("$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
+        axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
         axNew.legend()
         if fig is None or ax is None:
@@ -594,7 +594,7 @@ class eccDefinition:
                    c=colorsDict["apastron"])
         axNew.set_xlabel("time")
         axNew.grid()
-        axNew.set_ylabel("$\Delta\omega_{22}$")
+        axNew.set_ylabel(r"$\Delta\omega_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -618,7 +618,7 @@ class eccDefinition:
                    marker=".", ls="", label="Apastron")
         axNew.set_xlabel("time")
         axNew.grid()
-        axNew.set_ylabel("$\Delta A_{22}$")
+        axNew.set_ylabel(r"$\Delta A_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
