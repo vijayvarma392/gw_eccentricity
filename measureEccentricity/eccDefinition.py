@@ -395,7 +395,7 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
-    def make_diagnostic_plots(self, **kwargs):
+    def make_diagnostic_plots(self, usetex=True, **kwargs):
         """Make dignostic plots for the eccDefinition method.
 
         We plot differenct quantities to asses how well our eccentricity
@@ -433,7 +433,7 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        use_fancy_plotsettings()
+        use_fancy_plotsettings(usetex=usetex)
         fig, ax = plt.subplots(**kwargs)
         self.plot_measured_ecc(fig, ax[0])
         self.plot_decc_dt(fig, ax[1])

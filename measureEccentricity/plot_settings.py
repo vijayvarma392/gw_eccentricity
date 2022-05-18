@@ -35,10 +35,10 @@ colorsDict = {
 }
 
 
-def use_fancy_plotsettings():
+def use_fancy_plotsettings(usetex=True):
     """Use fancy plot settings."""
     # LaTeX
-    rc("text", usetex=True)
+    rc("text", usetex=usetex)
     # color cycler
     rc("axes", prop_cycle=cycler(color=colorsList))
     # fontsize

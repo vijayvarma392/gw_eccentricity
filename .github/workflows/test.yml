@@ -4,6 +4,8 @@ on:
     paths:
       - measureEccentricity/**
       - test/**
+      - 'setup.py'
+      - '.github/workflows/test.yml'
 
 
 jobs:

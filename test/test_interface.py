@@ -22,7 +22,18 @@ def test_interface():
     # List of all available methods
     available_methods = measureEccentricity.get_available_methods()
     for method in available_methods:
-        tref_out, ecc_ref, mean_ano_ref = measure_eccentricity(
+        # Try evaluating at a single time
+        tref_out, ecc_ref, meanano_ref = measure_eccentricity(
             tref_in=-12000,
             method=method,
             dataDict=dataDict)
+
+        # Try evaluating at an array of times
+        tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+            tref_in=dataDict["t"],
+            method=method,
+            dataDict=dataDict,
+            return_ecc_method=True)
+
+        # Make diagnostic plots
+        eccMethod.make_diagnostic_plots(usetex=False)
