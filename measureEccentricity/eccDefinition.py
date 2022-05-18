@@ -7,6 +7,7 @@ Md Arif Shaikh, Mar 29, 2022
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.integrate import quad
 from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
 from .plot_settings import use_fancy_plotsettings, colorsDict
 import matplotlib.pyplot as plt
@@ -394,6 +395,21 @@ class eccDefinition:
             self.t_zeroecc, self.omega22_zeroecc)(self.t)
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
+
+    def compute_fref(self):
+        """Compute reference frequency by orbital averaging."""
+        t_peaks = self.t[self.peaks_location]
+        omega22_interp = InterpolatedUnivariateSpline(self.t, self.omega22)
+
+        @np.vectorize
+        def compute_orbital_average_omega22(n):
+            """Compute orbital averaged omega22 between n and n+1 peaks."""
+            return (quad(omega22_interp, t_peaks[n], t_peaks[n + 1])
+                    / (t_peaks[n + 1] - t_peaks[n]))
+        t_average = (t_peaks[1:] - t_peaks[:-1]) / 2
+        ref_omega22_average = compute_orbital_average_omega22(
+            np.arange(len(t_peaks) - 1))
+        return InterpolatedUnivariateSpline(t_average, ref_omega22_average)
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
         """Make dignostic plots for the eccDefinition method.
