@@ -18,7 +18,9 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        # Apparently macos is 10x more expensive in Github minutes!
+        #os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
         python-version: ['3.9']
 
     steps:
