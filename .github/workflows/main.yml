@@ -1,6 +1,8 @@
 name: LaTeX build
 on:
   push:
+    paths:
+      - paper/**
     branches-ignore:
       - '/pdflatex'
 jobs:
