@@ -38,7 +38,7 @@ colorsDict = {
 def use_fancy_plotsettings():
     """Use fancy plot settings."""
     # LaTeX
-    rc("text", usetex=True)
+    #rc("text", usetex=True)
     # color cycler
     rc("axes", prop_cycle=cycler(color=colorsList))
     # fontsize
