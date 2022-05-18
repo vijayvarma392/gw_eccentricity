@@ -28,7 +28,6 @@ setuptools.setup(
         'lalsuite',
         'gwtools',
         'palettable',
-        'latex',
     ],
     classifiers=[
         "Intended Audience :: Science/Research",
