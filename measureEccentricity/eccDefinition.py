@@ -7,7 +7,6 @@ Md Arif Shaikh, Mar 29, 2022
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.integrate import quad
 from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
 from .plot_settings import use_fancy_plotsettings, colorsDict
 import matplotlib.pyplot as plt
@@ -396,20 +395,29 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
-    def compute_fref(self):
+    def compute_orbital_averaged_omega22(self):
         """Compute reference frequency by orbital averaging."""
-        t_peaks = self.t[self.peaks_location]
-        omega22_interp = InterpolatedUnivariateSpline(self.t, self.omega22)
-
         @np.vectorize
-        def compute_orbital_average_omega22(n):
+        def compute_orbital_averaged_omega22(n):
             """Compute orbital averaged omega22 between n and n+1 peaks."""
-            return (quad(omega22_interp, t_peaks[n], t_peaks[n + 1])
-                    / (t_peaks[n + 1] - t_peaks[n]))
-        t_average = (t_peaks[1:] - t_peaks[:-1]) / 2
-        ref_omega22_average = compute_orbital_average_omega22(
-            np.arange(len(t_peaks) - 1))
-        return InterpolatedUnivariateSpline(t_average, ref_omega22_average)
+            # integrate omega22 between n and n+1 peaks
+            integ = np.trapz(self.omega22[self.peaks_location[n]:
+                                          self.peaks_location[n+1]],
+                             dx=self.t[1] - self.t[0])
+            period = self.peaks_location[n+1] - self.peaks_location[n]
+            return integ / period
+        # get the mid points between the peaks as avg time
+        t_average = (self.t[self.peaks_location][1:]
+                     + self.t[self.peaks_location][:-1]) / 2
+        omega22_average = compute_orbital_averaged_omega22(
+            np.arange(len(self.peaks_location) - 1))
+        return t_average, omega22_average
+
+    def find_tref_from_orbital_averaged_omega22(self, omega22_ref):
+        """Find the reference time given a reference frequency."""
+        t_average, omega22_average = self.compute_orbital_averaged_omega22()
+        t_of_omega = InterpolatedUnivariateSpline(omega22_average, t_average)
+        return t_of_omega(omega22_ref)
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
         """Make dignostic plots for the eccDefinition method.
