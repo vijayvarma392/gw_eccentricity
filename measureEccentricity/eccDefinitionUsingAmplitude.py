@@ -117,7 +117,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         figsize = (12, 4 * nrows)
         default_kwargs = {"nrows": nrows,
                           "figsize": figsize}
-        for key in ["nrows", "figsize"]:
+        for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         use_fancy_plotsettings()
@@ -139,8 +139,11 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.tref_out, self.ecc_ref, c=colorsDict["default"],
-                   **kwargs)
+        default_kwargs = {"c": colorsDict["default"]}
+        for key in default_kwargs:
+            if key not in kwargs:
+                kwargs.update({key: default_kwargs[key]})
+        axNew.plot(self.tref_out, self.ecc_ref, **kwargs)
         axNew.set_xlabel("time")
         axNew.set_ylabel("eccentricity")
         axNew.grid()
@@ -158,8 +161,11 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.t_for_ecc_test, self.decc_dt, c=colorsDict["default"],
-                   **kwargs)
+        default_kwargs = {"c": colorsDict["default"]}
+        for key in default_kwargs:
+            if key not in kwargs:
+                kwargs.update({key: default_kwargs[key]})
+        axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
         axNew.set_xlabel("time")
         axNew.set_ylabel(r"$de/dt$")
         axNew.grid()
