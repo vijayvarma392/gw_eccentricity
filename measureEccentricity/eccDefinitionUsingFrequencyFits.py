@@ -4,9 +4,7 @@ Find peaks and troughs using frequency fits.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
-
-from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
-
+from .eccDefinition import eccDefinition
 import numpy as np
 import scipy
 
@@ -42,7 +40,7 @@ class envelope_fitting_function:
         return A*(T-t)**n
 
 
-class eccDefinitionUsingFrequencyFits(eccDefinitionUsingAmplitude):
+class eccDefinitionUsingFrequencyFits(eccDefinition):
     """Measure eccentricity by finding extrema location using freq fits."""
 
     def __init__(self, *args, **kwargs):
