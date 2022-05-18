@@ -37,7 +37,6 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install -c conda-forge texlive-core
-          pip install PyDvi
           pip install pytest
 
       - name: Install pipenv
