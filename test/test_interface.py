@@ -36,4 +36,4 @@ def test_interface():
             return_ecc_method=True)
 
         # Make diagnostic plots
-        eccMethod.make_diagnostic_plots()
+        eccMethod.make_diagnostic_plots(usetex=False)
