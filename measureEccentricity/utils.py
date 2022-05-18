@@ -70,3 +70,23 @@ class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
             return text[2:].splitlines()
         # this is the RawTextHelpFormatter._split_lines
         return argparse.HelpFormatter._split_lines(self, text, width)
+
+
+def time_deriv_4thOrder(y, dt):
+    """
+    Fourth order accurate time derivative.
+
+    Assuming constant time step.
+    Tested for convergence up to 1e-12 level.
+    """
+    # Use a 5 point stencil
+    res = 0*y
+    # First do the interior
+    res[2:-2] = (y[:-4] - 8*y[1:-3] + 8*y[3:-1] - y[4:])/12.
+
+    # Next do the edges
+    res[1] = y[:5].dot(np.array([-3, -10, 18, -6, 1]) / 12.)
+    res[0] = y[:5].dot(np.array([-25, 48, -36, 16, -3]) / 12.)
+    res[-2] = y[-5:].dot(np.array([-1, 6, -18, 10, 3]) / 12.)
+    res[-1] = y[-5:].dot(np.array([3, -16, 36, -48, 25]) / 12.)
+    return res / dt
