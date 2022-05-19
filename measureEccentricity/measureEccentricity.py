@@ -61,6 +61,12 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         Can be a single float or an array. NOTE: eccentricity/mean_ano are
         returned on a different time array tref_out, described below.
 
+    fref_in:
+        Input reference frequency at which to measure the eccentricity and
+        mean anomaly. It can be a single float or an array.
+        NOTE: eccentricity/mean anomaly are returned on a different freq
+        array fref_out, described below.
+
     dataDict:
         Dictionary containing waveform modes dict, time etc.
         Should follow the format:
@@ -104,6 +110,7 @@ def measure_eccentricity(tref_in=None, fref_in=None,
     tref_out:
         Output reference time where eccentricity and mean anomaly are
         measured.
+        NOTE: This is returned when tref_in is provided.
         This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
         where tmax = min(t_peaks[-1], t_troughs[-1]),
         and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
@@ -114,6 +121,20 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         not None, only the data up to that many orbits before merger is
         included when finding the t_peaks/t_troughs. This helps avoid
         unphysical features like nonmonotonic eccentricity near the merger.
+
+    fref_out:
+        Output reference frequency where eccentricity and mean anomaly are
+        measured.
+        NOTE: This is returned when fref_in is provided.
+        fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
+        where fmin is the minimum value of the averaged omega_22 and fmax
+        is maximum value of the averaged omega_22. In other words, fmin is
+        averaged omega_22 at tmin and fmax is averaged omega_22 at tmax.
+        Where tmin and tmax are given by tmax = min(t_peaks[-1],
+        t_troughs[-1]), and tmin = max(t_peaks[0], t_troughs[0]).
+        This is necessary because eccentricity is computed using
+        interpolants of omega_peaks and omega_troughs. The above cutoffs
+        ensure that we are not extrapolating in omega_peaks/omega_troughs.
 
     ecc_ref:
         Measured eccentricity at t_ref. Same type as t_ref.
