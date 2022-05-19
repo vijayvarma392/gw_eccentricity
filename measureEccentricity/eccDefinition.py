@@ -97,7 +97,8 @@ class eccDefinition:
             "num_orbits_to_exclude_before_merger": 1,
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
-            "debug": True
+            "debug": True,
+            "omega_averaging_method": "average_between_extrema"
             }
         return default_extra_kwargs
 
@@ -199,20 +200,9 @@ class eccDefinition:
         if tref_in is not None:
             tref_in = np.atleast_1d(tref_in)
         elif fref_in is not None:
-            # find the omega22 average from extrema
-            self.omega22_average_between_extrema = self.compute_omega22_average_between_extrema()[1]
-            # check if the fref falls within the range of omega22 average
-            if fref_in < self.omega22_average_between_extrema[0]:
-                raise Exception("fref_in is less than minimum available "
-                                "frequency "
-                                f"{self.omega22_average_between_extrema[0]}")
-            if fref_in > self.omega22_average_between_extrema[-1]:
-                raise Exception("fref_in is greater than maximum available "
-                                "frequency "
-                                f"{self.omega22_average_between_extrema[-1]}")
-            print(fref_in)
-            tref_in = np.atleast_1d(
-                self.find_tref_from_omega22_average_between_extrema(fref_in))
+            fref_in = np.atleast_1d(fref_in)
+            # get the tref_in from fref_in
+            tref_in = self.compute_tref_in_from_fref_in(fref_in)
         else:
             raise KeyError("Atleast one of tref_in or fref_in should be"
                            " provided")
@@ -455,6 +445,53 @@ class eccDefinition:
                           "monotonically increasing.")
         t_of_omega22 = InterpolatedUnivariateSpline(average_omega22, t)
         return t_of_omega22(fref)
+
+    def compute_omega22_zeroecc(self):
+        """Find omega22 from zeroecc data."""
+        t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
+        omega22_zeroecc = np.interp(t, self.t_zeroecc, self.omega22_zeroecc)
+        return t, omega22_zeroecc
+
+    def find_tref_from_omega22_zeroecc(self, fref):
+        """Find the reference time given a reference frequency."""
+        t, average_omega22 = self.compute_omega22_zeroecc()
+        # check if average omega22 is monotonically increasing
+        domega22_dt = np.gradient(average_omega22, t)
+        if any(domega22_dt <= 0):
+            warnings.warn("Omega22 average between extrema is not "
+                          "monotonically increasing.")
+        t_of_omega22 = InterpolatedUnivariateSpline(average_omega22, t)
+        return t_of_omega22(fref)
+
+    def get_availabe_omega_averaging_methods(self):
+        """Return available omega averaging methods."""
+        available_methods = {
+            "average_between_extrema": [self.compute_omega22_average_between_extrema, self.find_tref_from_omega22_average_between_extrema],
+            "orbital_average_at_periastron": [self.compute_orbital_averaged_omega22_at_periastrons, self.find_tref_from_orbital_averaged_omega22_at_periastrons],
+            "omega22_zeroecc": [self.compute_omega22_zeroecc, self.find_tref_from_omega22_zeroecc]
+        }
+        return available_methods
+
+    def compute_tref_in_from_fref_in(self, fref_in):
+        """Compute tref_in from fref_in using chosen omega average method."""
+        available_averaging_methods = self.get_availabe_omega_averaging_methods()
+        method = self.extra_kwargs["omega_averaging_method"]
+        if method in available_averaging_methods:
+            self.omega22_average = available_averaging_methods[method][0]()[1]
+            # check if the fref falls within the range of omega22 average
+            if fref_in[0] < self.omega22_average[0]:
+                raise Exception("fref_in is less than minimum available "
+                                "frequency "
+                                f"{self.omega22_average[0]}")
+            if fref_in[-1] > self.omega22_average[-1]:
+                raise Exception("fref_in is greater than maximum available "
+                                "frequency "
+                                f"{self.omega22_average[-1]}")
+            tref_in = available_averaging_methods[method][1](fref_in)
+            return tref_in
+        else:
+            raise KeyError(f"Omega averaging method {method} does not exist. "
+                           f"Must be one of {available_averaging_methods.keys()}")
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
         """Make dignostic plots for the eccDefinition method.
