@@ -47,7 +47,8 @@ def get_available_methods():
     return models
 
 
-def measure_eccentricity(tref_in, dataDict, method="Amplitude",
+def measure_eccentricity(tref_in=None, fref_in=None,
+                         dataDict=None, method="Amplitude",
                          return_ecc_method=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
@@ -131,7 +132,8 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
-        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(tref_in)
+        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+            tref_in=tref_in, fref_in=fref_in)
         if not return_ecc_method:
             return tref_out, ecc_ref, mean_ano_ref
         else:

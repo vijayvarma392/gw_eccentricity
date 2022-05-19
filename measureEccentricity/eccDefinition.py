@@ -157,7 +157,7 @@ class eccDefinition:
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolator.")
 
-    def measure_ecc(self, tref_in):
+    def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly at reference time.
 
         parameters:
@@ -189,14 +189,33 @@ class eccDefinition:
         mean_ano_ref:
             Measured mean anomaly at tref_out.
         """
-        tref_in = np.atleast_1d(tref_in)
-        omega_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
-        omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
+        self.omega_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
+        self.omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
         t_peaks = self.t[self.peaks_location]
         t_troughs = self.t[self.troughs_location]
-        t_max = min(t_peaks[-1], t_troughs[-1])
-        t_min = max(t_peaks[0], t_troughs[0])
+        self.t_max = min(t_peaks[-1], t_troughs[-1])
+        self.t_min = max(t_peaks[0], t_troughs[0])
+        if tref_in is not None:
+            tref_in = np.atleast_1d(tref_in)
+        elif fref_in is not None:
+            # find the omega22 average from extrema
+            self.omega22_average_between_extrema = self.compute_omega22_average_between_extrema()[1]
+            # check if the fref falls within the range of omega22 average
+            if fref_in < self.omega22_average_between_extrema[0]:
+                raise Exception("fref_in is less than minimum available "
+                                "frequency "
+                                f"{self.omega22_average_between_extrema[0]}")
+            if fref_in > self.omega22_average_between_extrema[-1]:
+                raise Exception("fref_in is greater than maximum available "
+                                "frequency "
+                                f"{self.omega22_average_between_extrema[-1]}")
+            print(fref_in)
+            tref_in = np.atleast_1d(
+                self.find_tref_from_omega22_average_between_extrema(fref_in))
+        else:
+            raise KeyError("Atleast one of tref_in or fref_in should be"
+                           " provided")
         # We measure eccentricity and mean anomaly from t_min to t_max.
         # Note that here we do not include the t_max. This is because
         # the mean anomaly computation requires to looking
@@ -204,18 +223,18 @@ class eccDefinition:
         # period.
         # If ref time is t_max, which could be equal to the last peak, then
         # there is no next peak and that would cause a problem.
-        self.tref_out = tref_in[np.logical_and(tref_in < t_max,
-                                               tref_in >= t_min)]
+        self.tref_out = tref_in[np.logical_and(tref_in < self.t_max,
+                                               tref_in >= self.t_min)]
 
         # Sanity checks
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
-            if tref_in[-1] > t_max:
-                raise Exception(f"tref_in is later than t_max={t_max}, "
+            if tref_in[-1] > self.t_max:
+                raise Exception(f"tref_in is later than t_max={self.t_max}, "
                                 "which corresponds to min(last periastron "
                                 "time, last apastron time).")
-            if tref_in[0] < t_min:
-                raise Exception(f"tref_in is earlier than t_min={t_min}, "
+            if tref_in[0] < self.t_min:
+                raise Exception(f"tref_in is earlier than t_min={self.t_min}, "
                                 "which corresponds to max(first periastron "
                                 "time, first apastron time).")
             raise Exception("tref_out is empty. This can happen if the "
@@ -239,8 +258,8 @@ class eccDefinition:
         # compute eccentricty from the value of omega_peaks_interp
         # and omega_troughs_interp at tref_out using the fromula in
         # ref. arXiv:2101.11798 eq. 4
-        self.omega_peak_at_tref_out = omega_peaks_interp(self.tref_out)
-        self.omega_trough_at_tref_out = omega_troughs_interp(self.tref_out)
+        self.omega_peak_at_tref_out = self.omega_peaks_interp(self.tref_out)
+        self.omega_trough_at_tref_out = self.omega_troughs_interp(self.tref_out)
         self.ecc_ref = ((np.sqrt(self.omega_peak_at_tref_out)
                          - np.sqrt(self.omega_trough_at_tref_out))
                         / (np.sqrt(self.omega_peak_at_tref_out)
@@ -395,29 +414,47 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
-    def compute_orbital_averaged_omega22(self):
-        """Compute reference frequency by orbital averaging."""
+    def compute_orbital_averaged_omega22_at_periastrons(self):
+        """Compute reference frequency by orbital averaging at periastron."""
         @np.vectorize
-        def compute_orbital_averaged_omega22(n):
+        def orbital_averaged_omega22_at_periastrons(n):
             """Compute orbital averaged omega22 between n and n+1 peaks."""
             # integrate omega22 between n and n+1 peaks
-            integ = np.trapz(self.omega22[self.peaks_location[n]:
-                                          self.peaks_location[n+1]],
-                             dx=self.t[1] - self.t[0])
-            period = self.peaks_location[n+1] - self.peaks_location[n]
+            integ = (self.phase22[self.peaks_location[n+1]]
+                     - self.phase22[self.peaks_location[n]])
+            period = (self.t[self.peaks_location[n+1]]
+                      - self.t[self.peaks_location[n]])
             return integ / period
         # get the mid points between the peaks as avg time
         t_average = (self.t[self.peaks_location][1:]
                      + self.t[self.peaks_location][:-1]) / 2
-        omega22_average = compute_orbital_averaged_omega22(
+        omega22_average = orbital_averaged_omega22_at_periastrons(
             np.arange(len(self.peaks_location) - 1))
         return t_average, omega22_average
 
-    def find_tref_from_orbital_averaged_omega22(self, omega22_ref):
+    def find_tref_from_orbital_averaged_omega22_at_periastrons(self,
+                                                               omega22_ref):
         """Find the reference time given a reference frequency."""
-        t_average, omega22_average = self.compute_orbital_averaged_omega22()
+        t_average, omega22_average = self.compute_orbital_averaged_omega22_at_periastrons()
         t_of_omega = InterpolatedUnivariateSpline(omega22_average, t_average)
         return t_of_omega(omega22_ref)
+
+    def compute_omega22_average_between_extrema(self):
+        """Find omega22 average by taking mean of peaks_interp and troughs_interp."""
+        t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
+        return t, (self.omega_peaks_interp(t)
+                   + self.omega_troughs_interp(t)) / 2
+
+    def find_tref_from_omega22_average_between_extrema(self, fref):
+        """Find the reference time given a reference frequency."""
+        t, average_omega22 = self.compute_omega22_average_between_extrema()
+        # check if average omega22 is monotonically increasing
+        domega22_dt = np.gradient(average_omega22, t)
+        if any(domega22_dt <= 0):
+            warnings.warn("Omega22 average between extrema is not "
+                          "monotonically increasing.")
+        t_of_omega22 = InterpolatedUnivariateSpline(average_omega22, t)
+        return t_of_omega22(fref)
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
         """Make dignostic plots for the eccDefinition method.
