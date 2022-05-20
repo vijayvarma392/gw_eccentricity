@@ -475,6 +475,13 @@ class eccDefinition:
             np.arange(len(self.troughs_location) - 1), "troughs")
         # combine results from avergae at peaks and toughs
         t_average = np.sort(np.append(t_average_troughs, t_average_peaks))
+        # check if the average omega are monotonically increasing
+        if any(np.diff(omega22_average_peaks) <= 0):
+            raise Exception("Omega22 average at peaks are not strictly "
+                            "monotonically increaing")
+        if any(np.diff(omega22_average_troughs) <= 0):
+            raise Exception("Omega22 average at troughs are not strictly "
+                            "monotonically increaing")
         omega22_average = np.sort(np.append(omega22_average_troughs,
                                             omega22_average_peaks))
         return t_average, omega22_average
