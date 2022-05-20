@@ -436,28 +436,47 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
-    def compute_orbital_averaged_omega22_at_periastrons(self):
-        """Compute reference frequency by orbital averaging at the periastrons."""
+    def compute_orbital_averaged_omega22_at_extrema(self):
+        """Compute reference frequency by orbital averaging at extrema.
+
+        We compute the orbital average of omega22 at the periastrons
+        and the apastrons following:
+        omega22_avg((t[i]+ t[i+1])/2) = int_t[i]^t[i+1] omega22(t)dt
+                                        / (t[i+1] - t[i])
+        where t[i] is the time of ith extrema.
+        We do this for peaks and troughs and combine the results
+        """
+        extrema_locations = {"peaks": self.peaks_location,
+                             "troughs": self.troughs_location}
         @np.vectorize
-        def orbital_averaged_omega22_at_periastrons(n):
-            """Compute orbital averaged omega22 between n and n+1 peaks."""
-            # integrate omega22 between n and n+1 peaks
+        def orbital_averaged_omega22_at_extrema(n, extrema_type="peaks"):
+            """Compute orbital averaged omega22 between n and n+1 extrema."""
+            # integrate omega22 between n and n+1 extrema
             # We do not need to do the integration here since
             # we already have phase22 available to us which is
             # nothing but the integration of omega22 over time.
-            # We want to integrate from nth peak to n+1 peak
+            # We want to integrate from nth extrema to n+1 extrema
             # which is equivalent to phase difference between
-            # these two peaks
-            integ = (self.phase22[self.peaks_location[n+1]]
-                     - self.phase22[self.peaks_location[n]])
-            period = (self.t[self.peaks_location[n+1]]
-                      - self.t[self.peaks_location[n]])
+            # these two extrema
+            integ = (self.phase22[extrema_locations[extrema_type][n+1]]
+                     - self.phase22[extrema_locations[extrema_type][n]])
+            period = (self.t[extrema_locations[extrema_type][n+1]]
+                      - self.t[extrema_locations[extrema_type][n]])
             return integ / period
-        # get the mid points between the peaks as avg time
-        t_average = (self.t[self.peaks_location][1:]
-                     + self.t[self.peaks_location][:-1]) / 2
-        omega22_average = orbital_averaged_omega22_at_periastrons(
-            np.arange(len(self.peaks_location) - 1))
+        # get the mid points between the peaks as avg time for peaks
+        t_average_peaks = (self.t[self.peaks_location][1:]
+                           + self.t[self.peaks_location][:-1]) / 2
+        omega22_average_peaks = orbital_averaged_omega22_at_extrema(
+            np.arange(len(self.peaks_location) - 1), "peaks")
+        # get the mid points between the troughs as avg time for troughs
+        t_average_troughs = (self.t[self.troughs_location][1:]
+                             + self.t[self.troughs_location][:-1]) / 2
+        omega22_average_troughs = orbital_averaged_omega22_at_extrema(
+            np.arange(len(self.troughs_location) - 1), "troughs")
+        # combine results from avergae at peaks and toughs
+        t_average = np.sort(np.append(t_average_troughs, t_average_peaks))
+        omega22_average = np.sort(np.append(omega22_average_troughs,
+                                            omega22_average_peaks))
         return t_average, omega22_average
 
     def compute_omega22_average_between_extrema(self):
@@ -481,7 +500,7 @@ class eccDefinition:
         """Return available omega averaging methods."""
         available_methods = {
             "average_between_extrema": self.compute_omega22_average_between_extrema,
-            "orbital_average_at_periastron": self.compute_orbital_averaged_omega22_at_periastrons,
+            "orbital_average_at_extrema": self.compute_orbital_averaged_omega22_at_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
         return available_methods
