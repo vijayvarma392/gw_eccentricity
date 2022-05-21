@@ -451,7 +451,7 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
-    def compute_orbital_averaged_omega22_at_extrema(self):
+    def compute_orbital_averaged_omega22_at_extrema(self, t):
         """Compute reference frequency by orbital averaging at extrema.
 
         We compute the orbital average of omega22 at the periastrons
@@ -504,24 +504,21 @@ class eccDefinition:
                                     omega22_average_peaks)
         # sort omega22
         omega22_average = omega22_average[sorted_idx]
-        return t_average, omega22_average
+        return InterpolatedUnivariateSpline(t_average, omega22_average)(t)
 
-    def compute_omega22_average_between_extrema(self):
+    def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
 
         Take mean of omega22 using spline through omega22 peaks
-        and spline through omega22 troughs evaluated at
-        tref_out.
+        and spline through omega22 troughs.
         """
-        t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
-        return t, (self.omega22_peaks_interp(t)
-                   + self.omega22_troughs_interp(t)) / 2
+        return ((self.omega22_peaks_interp(t)
+                 + self.omega22_troughs_interp(t)) / 2)
 
-    def compute_omega22_zeroecc(self):
+    def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
-        t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
-        omega22_zeroecc = InterpolatedUnivariateSpline(self.t_zeroecc, self.omega22_zeroecc)(t)
-        return t, omega22_zeroecc
+        return InterpolatedUnivariateSpline(
+            self.t_zeroecc, self.omega22_zeroecc)(t)
 
     def get_availabe_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
@@ -544,10 +541,15 @@ class eccDefinition:
         these tref_in in the same way as we do when the input array was time
         instead of frequencies.
 
-        First we compute an average omega22 to get our reference frequency which
-        would be the omega22_average / (2 * pi). The reference frequency would
-        depend on how we compute the average omega22. It could
-        be
+        We first compute omega22_average(t) using the instantaneous omega22(t),
+        which can be done in different ways as described below. Then, we keep
+        only the allowed frequencies in fref_in by doing
+        fref_out = fref_in[fref_in >= omega22_average(tmin) / (2 pi) &&
+                           fref_in < omega22_average(tmax) / (2 pi)]
+        Finally, we find the times where omega22_average(t) = 2 * pi * fref_out,
+        and set those to tref_in.
+
+        omega22_average(t) could be calculated in the following ways
         - Mean of the omega22 given by the spline through the peaks and the
           spline through the troughs, we call this "average_between_extrema"
         - Orbital average at the extrema, we call this "orbital_average_at_extrema"
@@ -562,16 +564,21 @@ class eccDefinition:
 
         Finally we evaluate this spine on the fref_in to get the tref_in.
         """
-        available_averaging_methods = self.get_availabe_omega22_averaging_methods()
+        self.available_averaging_methods = self.get_availabe_omega22_averaging_methods()
         method = self.extra_kwargs["omega22_averaging_method"]
-        if method in available_averaging_methods:
-            self.t_for_omega22_average, self.omega22_average = available_averaging_methods[method]()
+        if method in self.available_averaging_methods:
             # The fref_in array could have frequencies that is outside the range
             # of frequencies in omega22 average. Therefore, we want to create
             # a separate array of frequencies fref_out which is created by
             # taking on those frequencies that falls within the omega22 average
             # Then proceed to evaluate the tref_in based on these fref_out
-            fref_out = self.get_fref_out(fref_in)
+            fref_out = self.get_fref_out(fref_in, method)
+            # get omega22_average by evaluating the omega22_average(t)
+            # on t, from tmin to tmax
+            self.t_for_omega22_average = self.t[
+                np.logical_and(self.t >= self.t_min, self.t < self.t_max)]
+            self.omega22_average = self.available_averaging_methods[
+                method](self.t_for_omega22_average)
             # check if average omega22 is monotonically increasing
             if any(np.diff(self.omega22_average) <= 0):
                 warnings.warn(f"Omega22 average from method {method} is not "
@@ -588,24 +595,45 @@ class eccDefinition:
         else:
             raise KeyError(f"Omega22 averaging method {method} does not exist."
                            " Must be one of "
-                           f"{list(available_averaging_methods.keys())}")
+                           f"{list(self.available_averaging_methods.keys())}")
 
-    def get_fref_out(self, fref_in):
-        """Get fref_out from fref_in that falls within the valid average f22 range."""
-        # get f22_average from omega22_average
-        self.f22_average = self.omega22_average / (2 * np.pi)
+    def get_fref_out(self, fref_in, method):
+        """Get fref_out from fref_in that falls within the valid average f22 range.
+
+        Parameters:
+        ----------
+        fref_in:
+            Input 22 mode reference frequency array.
+
+        method:
+            method for getting average omega22
+
+        Returns:
+        -------
+        fref_out:
+            Slice of fref_in that satisfies
+            fref_in >= omega22_average(t_min) / 2 pi and
+            fref_in < omega22_average(t_max) / 2 pi
+        """
+        # get min an max value f22_average from omega22_average
+        self.omega22_average_min = self.available_averaging_methods[
+            method](self.t_min)
+        self.omega22_average_max = self.available_averaging_methods[
+            method](self.t_max)
+        self.f22_average_min = self.omega22_average_min / (2 * np.pi)
+        self.f22_average_max = self.omega22_average_max / (2 * np.pi)
         fref_out = fref_in[
-            np.logical_and(fref_in >= self.f22_average[0],
-                           fref_in < self.f22_average[-1])]
+            np.logical_and(fref_in >= self.f22_average_min,
+                           fref_in < self.f22_average_max)]
         if len(fref_out) == 0:
-            if fref_in[0] < self.f22_average[0]:
+            if fref_in[0] < self.f22_average_min:
                 raise Exception("fref_in is earlier than minimum available "
                                 "frequency "
-                                f"{self.f22_average[0]}")
-            if fref_in[-1] > self.f22_average[-1]:
+                                f"{self.f22_average_min}")
+            if fref_in[-1] > self.f22_average_max:
                 raise Exception("fref_in is later than maximum available "
                                 "frequency "
-                                f"{self.f22_average[-1]}")
+                                f"{self.f22_average_max}")
             else:
                 raise Exception("fref_out is empty. This can happen if the "
                                 "waveform has insufficient identifiable "
