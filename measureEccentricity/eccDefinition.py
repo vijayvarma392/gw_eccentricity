@@ -520,7 +520,7 @@ class eccDefinition:
     def compute_omega22_zeroecc(self):
         """Find omega22 from zeroecc data."""
         t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
-        omega22_zeroecc = np.interp(t, self.t_zeroecc, self.omega22_zeroecc)
+        omega22_zeroecc = InterpolatedUnivariateSpline(self.t_zeroecc, self.omega22_zeroecc)(t)
         return t, omega22_zeroecc
 
     def get_availabe_omega22_averaging_methods(self):
