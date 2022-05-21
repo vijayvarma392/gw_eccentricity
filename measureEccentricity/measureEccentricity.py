@@ -47,7 +47,8 @@ def get_available_methods():
     return models
 
 
-def measure_eccentricity(tref_in, dataDict, method="Amplitude",
+def measure_eccentricity(tref_in=None, fref_in=None,
+                         dataDict=None, method="Amplitude",
                          return_ecc_method=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
@@ -59,6 +60,31 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
         Input reference time at which to measure eccentricity and mean anomaly.
         Can be a single float or an array. NOTE: eccentricity/mean_ano are
         returned on a different time array tref_out, described below.
+
+    fref_in:
+        Input reference frequency at which to measure the eccentricity and
+        mean anomaly. It can be a single float or an array.
+        NOTE: eccentricity/mean anomaly are returned on a different freq
+        array fref_out, described below.
+
+        Given an fref_in, we find the corresponding tref_in such that,
+        omega22_average(tref_in) = 2 * pi * fref_in.
+        Here, omega22_average(t) is a monotonically increasing average
+        frequency that is computed from the instantaneous omega22(t).
+        Note that this is not a moving average; depending on which averaging
+        method is used (see the omega22_averaging_method option below),
+        it means slightly different things.
+
+        Currently, following options are implemented to calculate the
+        omega22_average
+        - "average_between_extrema": Mean of the omega22 given by the
+            spline through the peaks and the spline through the troughs.
+        - "orbital_average_at_extrema": A spline through the orbital
+            averaged omega22 evaluated at all available extrema.
+        - "omega22_zeroecc": omega22 of the zero eccentricity waveform
+        The default is "average_between_extrema". A method could be passed
+        through the "extra_kwargs" option with the key
+        "omega22_averaging_method".
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
@@ -97,22 +123,35 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
         debug:
             Run additional sanity checks if debug is True.
             Default: True.
+        omega22_averaging_method:
+            Methods for getting average omega22. Default is
+            "average_between_extrema". For more see fref_in.
 
     returns:
     --------
-    tref_out:
-        Output reference time where eccentricity and mean anomaly are
-        measured.
-        This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
+    tref_out/fref_out:
+        tref_out is the output reference time where eccentricity and mean
+        anomaly are measured and fref_out is the output reference frequency
+        where eccentricity and mean anomaly are measured.
+
+        NOTE: Only of these is returned depending on whether tref_in or
+        fref_in is provided. If tref_in is provided then tref_out is returned
+        and if fref_in provided then fref_out is returned.
+
+        tref_out is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
         where tmax = min(t_peaks[-1], t_troughs[-1]),
         and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
-        eccentricity is computed using interpolants of omega_peaks and
-        omega_troughs. The above cutoffs ensure that we are not extrapolating
-        in omega_peaks/omega_troughs.
-        In addition, if num_orbits_to_exclude_before_merger in extra_kwargs is
-        not None, only the data up to that many orbits before merger is
+        eccentricity is computed using interpolants of omega22_peaks and
+        omega22_troughs. The above cutoffs ensure that we are not
+        extrapolating in omega22_peaks/omega22_troughs.
+        In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
+        is not None, only the data up to that many orbits before merger is
         included when finding the t_peaks/t_troughs. This helps avoid
         unphysical features like nonmonotonic eccentricity near the merger.
+
+        fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
+        where fmin is the frequency at tmin, and fmax is the frequency at tmax.
+        tmin/tmax are defined above.
 
     ecc_ref:
         Measured eccentricity at t_ref. Same type as t_ref.
@@ -131,7 +170,8 @@ def measure_eccentricity(tref_in, dataDict, method="Amplitude",
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
-        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(tref_in)
+        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+            tref_in=tref_in, fref_in=fref_in)
         if not return_ecc_method:
             return tref_out, ecc_ref, mean_ano_ref
         else:

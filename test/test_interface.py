@@ -1,6 +1,7 @@
 import measureEccentricity
 from measureEccentricity import load_data
 from measureEccentricity import measure_eccentricity
+import numpy as np
 
 
 def test_interface():
@@ -37,3 +38,16 @@ def test_interface():
 
         # Make diagnostic plots
         eccMethod.make_diagnostic_plots(usetex=False)
+
+        # Try evaluating at single frequency
+        tref_out, ecc_ref, meanano_ref = measure_eccentricity(
+            fref_in=0.025 / (2 * np.pi),
+            method=method,
+            dataDict=dataDict)
+
+        # Try evaluating at an array of frequencies
+        tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+            fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
+            method=method,
+            dataDict=dataDict,
+            return_ecc_method=True)
