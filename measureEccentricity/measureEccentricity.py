@@ -77,10 +77,11 @@ def measure_eccentricity(tref_in=None, fref_in=None,
 
         Currently, following options are implemented to calculate the
         omega22_average
-        - "average_between_extrema": Mean of the frequecies given by the
+        - "average_between_extrema": Mean of the omega22 given by the
             spline through the peaks and the spline through the troughs.
-        - "orbital_average_at_extrema": Orbital average at the extrema
-        - "omega22_zeroecc": Frequency of the zero eccentricity waveform
+        - "orbital_average_at_extrema": A spline through the orbital
+            averaged omega22 evaluated at all available extrema.
+        - "omega22_zeroecc": omega22 of the zero eccentricity waveform
         The default is "average_between_extrema". A method could be passed
         through the "extra_kwargs" option with the key
         "omega22_averaging_method".

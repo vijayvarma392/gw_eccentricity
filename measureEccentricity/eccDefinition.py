@@ -186,10 +186,11 @@ class eccDefinition:
 
             Currently, following options are implemented to calculate the
             omega22_average
-            - "average_between_extrema": Mean of the frequecies given by the
+            - "average_between_extrema": Mean of the omega22 given by the
               spline through the peaks and the spline through the troughs.
-            - "orbital_average_at_extrema": Orbital average at the extrema
-            - "omega22_zeroecc": Frequency of the zero eccentricity waveform
+            - "orbital_average_at_extrema": A spline through the orbital
+              averaged omega22 evaluated at all available extrema.
+            - "omega22_zeroecc": omega22 of the zero eccentricity waveform
             The default is "average_between_extrema". A method could be passed
             through the "extra_kwargs" option with the key
             "omega22_averaging_method".
@@ -197,13 +198,13 @@ class eccDefinition:
         returns:
         --------
         tref_out/fref_out:
-            tref_out is the output reference time where eccentricity and mean
-            anomaly are measured and fref_out is the output reference frequency
-            where eccentricity and mean anomaly are measured.
+            tref_out is the output reference time, while fref_out is the
+            output reference frequency, at which eccentricity and mean anomaly
+            are measured.
 
-            NOTE: Only of these is returned depending on whether tref_in or
-            fref_in is provided. If tref_in is provided then tref_out is returned
-            and if fref_in provided then fref_out is returned.
+            NOTE: Only one of these is returned depending on whether tref_in or
+            fref_in is provided. If tref_in is provided then tref_out is
+            returned and if fref_in provided then fref_out is returned.
 
             tref_out is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
             where tmax = min(t_peaks[-1], t_troughs[-1]),
@@ -217,8 +218,8 @@ class eccDefinition:
             unphysical features like nonmonotonic eccentricity near the merger.
 
             fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
-            where fmin is the frequency at tmin, and fmax is the frequency at tmax.
-            tmin/tmax are defined above.
+            where fmin = omega22_average(tmin)/2/pi, and
+            fmax = omega22_average(tmax)/2/pi. tmin/tmax are defined above.
 
         ecc_ref:
             Measured eccentricity at tref_out/fref_out.
@@ -239,13 +240,10 @@ class eccDefinition:
                            " should be specified.")
         elif tref_in is not None:
             tref_in = np.atleast_1d(tref_in)
-        elif fref_in is not None:
-            fref_in = np.atleast_1d(fref_in)
-            # get the tref_in from fref_in
-            tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
         else:
-            raise KeyError("Atleast one of tref_in or fref_in should be"
-                           " provided")
+            fref_in = np.atleast_1d(fref_in)
+            # get the tref_in and fref_out from fref_in
+            tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
         # We measure eccentricity and mean anomaly from t_min to t_max.
         # Note that here we do not include the t_max. This is because
         # the mean anomaly computation requires to looking
@@ -257,7 +255,7 @@ class eccDefinition:
                                                tref_in >= self.t_min)]
 
         # Sanity checks
-        # check that fref_out and tref_out is of the same length
+        # check that fref_out and tref_out are of the same length
         if fref_in is not None:
             if len(self.fref_out) != len(self.tref_out):
                 raise Exception(f"Length of fref_out {len(self.fref_out)}"
@@ -513,7 +511,7 @@ class eccDefinition:
 
         Take mean of omega22 using spline through omega22 peaks
         and spline through omega22 troughs evaluated at
-        the input times.
+        tref_out.
         """
         t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
         return t, (self.omega22_peaks_interp(t)
@@ -546,13 +544,14 @@ class eccDefinition:
         these tref_in in the same way as we do when the input array was time
         instead of frequencies.
 
-        First we compute an average frequency to use as our reference frequency
-        which depends on what we want our reference frequencies to be. It could
+        First we compute an average omega22 to get our reference frequency which
+        would be the omega22_average / (2 * pi). The reference frequency would
+        depend on how we compute the average omega22. It could
         be
-        - Mean of the frequecies given by the spline through the peaks and the
+        - Mean of the omega22 given by the spline through the peaks and the
           spline through the troughs, we call this "average_between_extrema"
         - Orbital average at the extrema, we call this "orbital_average_at_extrema"
-        - Frequency of the zero eccentricity waveform, called "omega22_zeroecc"
+        - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
         User can provide a method through the "extra_kwargs" option with the key
         "omega22_averaging_method". Default is "average_between_extrema"
