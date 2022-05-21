@@ -592,19 +592,21 @@ class eccDefinition:
                            f"{list(available_averaging_methods.keys())}")
 
     def get_fref_out(self, fref_in):
-        """Get fref_out from fref_in that falls within the valid average omega22 range."""
+        """Get fref_out from fref_in that falls within the valid average f22 range."""
+        # get f22_average from omega22_average
+        self.f22_average = self.omega22_average / (2 * np.pi)
         fref_out = fref_in[
-            np.logical_and(fref_in >= (self.omega22_average[0] / (2 * np.pi)),
-                           fref_in < (self.omega22_average[-1]) / (2 * np.pi))]
+            np.logical_and(fref_in >= self.f22_average[0],
+                           fref_in < self.f22_average[-1])]
         if len(fref_out) == 0:
-            if fref_in[0] < (self.omega22_average[0] / (2 * np.pi)):
+            if fref_in[0] < self.f22_average[0]:
                 raise Exception("fref_in is earlier than minimum available "
                                 "frequency "
-                                f"{self.omega22_average[0]}")
-            if fref_in[-1] > (self.omega22_average[-1] / (2 * np.pi)):
+                                f"{self.f22_average[0]}")
+            if fref_in[-1] > self.f22_average[-1]:
                 raise Exception("fref_in is later than maximum available "
                                 "frequency "
-                                f"{self.omega22_average[-1]}")
+                                f"{self.f22_average[-1]}")
             else:
                 raise Exception("fref_out is empty. This can happen if the "
                                 "waveform has insufficient identifiable "
@@ -799,13 +801,13 @@ class eccDefinition:
             axNew = ax
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t))
-        axNew.plot(self.t[: end], self.res_omega2222[:end], c=colorsDict["default"])
+        axNew.plot(self.t[: end], self.res_omega22[:end], c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
-                   self.res_omega2222[self.peaks_location],
+                   self.res_omega22[self.peaks_location],
                    marker=".", ls="", label="Periastron",
                    c=colorsDict["periastron"])
         axNew.plot(self.t[self.troughs_location],
-                   self.res_omega2222[self.troughs_location],
+                   self.res_omega22[self.troughs_location],
                    marker=".", ls="", label="Apastron",
                    c=colorsDict["apastron"])
         axNew.set_xlabel("time")

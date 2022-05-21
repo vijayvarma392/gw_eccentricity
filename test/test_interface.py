@@ -41,13 +41,13 @@ def test_interface():
 
         # Try evaluating at single frequency
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
-            fref_in=0.025,
+            fref_in=0.025 / (2 * np.pi),
             method=method,
             dataDict=dataDict)
 
         # Try evaluating at an array of frequencies
         tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
-            fref_in=np.arange(0.025, 0.035, 0.001),
+            fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
             method=method,
             dataDict=dataDict,
             return_ecc_method=True)
