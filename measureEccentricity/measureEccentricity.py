@@ -67,6 +67,24 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         NOTE: eccentricity/mean anomaly are returned on a different freq
         array fref_out, described below.
 
+        Given an fref_in, we find the corresponding tref_in such that,
+        omega22_average(tref_in) = 2 * pi * fref_in.
+        Here, omega22_average(t) is a monotonically increasing average
+        frequency that is computed from the instantaneous omega22(t).
+        Note that this is not a moving average; depending on which averaging
+        method is used (see the omega22_averaging_method option below),
+        it means slightly different things.
+
+        Currently, following options are implemented to calculate the
+        omega22_average
+        - "average_between_extrema": Mean of the frequecies given by the
+            spline through the peaks and the spline through the troughs.
+        - "orbital_average_at_extrema": Orbital average at the extrema
+        - "omega22_zeroecc": Frequency of the zero eccentricity waveform
+        The default is "average_between_extrema". A method could be passed
+        through the "extra_kwargs" option with the key
+        "omega22_averaging_method".
+
     dataDict:
         Dictionary containing waveform modes dict, time etc.
         Should follow the format:
@@ -104,37 +122,35 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         debug:
             Run additional sanity checks if debug is True.
             Default: True.
+        omega22_averaging_method:
+            Methods for getting average omega22. Default is
+            "average_between_extrema". For more see fref_in.
 
     returns:
     --------
-    tref_out:
-        Output reference time where eccentricity and mean anomaly are
-        measured.
-        NOTE: This is returned when tref_in is provided.
-        This is set as tref_out = tref_in[tref_in >= tmin && tref_in <= tmax],
+    tref_out/fref_out:
+        tref_out is the output reference time where eccentricity and mean
+        anomaly are measured and fref_out is the output reference frequency
+        where eccentricity and mean anomaly are measured.
+
+        NOTE: Only of these is returned depending on whether tref_in or
+        fref_in is provided. If tref_in is provided then tref_out is returned
+        and if fref_in provided then fref_out is returned.
+
+        tref_out is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
         where tmax = min(t_peaks[-1], t_troughs[-1]),
         and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
-        eccentricity is computed using interpolants of omega_peaks and
-        omega_troughs. The above cutoffs ensure that we are not extrapolating
-        in omega_peaks/omega_troughs.
-        In addition, if num_orbits_to_exclude_before_merger in extra_kwargs is
-        not None, only the data up to that many orbits before merger is
+        eccentricity is computed using interpolants of omega22_peaks and
+        omega22_troughs. The above cutoffs ensure that we are not
+        extrapolating in omega22_peaks/omega22_troughs.
+        In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
+        is not None, only the data up to that many orbits before merger is
         included when finding the t_peaks/t_troughs. This helps avoid
         unphysical features like nonmonotonic eccentricity near the merger.
 
-    fref_out:
-        Output reference frequency where eccentricity and mean anomaly are
-        measured.
-        NOTE: This is returned when fref_in is provided.
         fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
-        where fmin is the minimum value of the averaged omega_22 and fmax
-        is maximum value of the averaged omega_22. In other words, fmin is
-        averaged omega_22 at tmin and fmax is averaged omega_22 at tmax.
-        Where tmin and tmax are given by tmax = min(t_peaks[-1],
-        t_troughs[-1]), and tmin = max(t_peaks[0], t_troughs[0]).
-        This is necessary because eccentricity is computed using
-        interpolants of omega_peaks and omega_troughs. The above cutoffs
-        ensure that we are not extrapolating in omega_peaks/omega_troughs.
+        where fmin is the frequency at tmin, and fmax is the frequency at tmax.
+        tmin/tmax are defined above.
 
     ecc_ref:
         Measured eccentricity at t_ref. Same type as t_ref.

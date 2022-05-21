@@ -64,7 +64,7 @@ class eccDefinition:
         self.omega22 = np.gradient(self.phase22, self.t)
 
         if "hlm_zeroecc" in dataDict:
-            self.compute_res_amp_and_omega()
+            self.compute_res_amp_and_omega22()
 
         # Sanity check various kwargs and set default values
         self.spline_kwargs = check_kwargs_and_set_defaults(
@@ -98,7 +98,7 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega_averaging_method": "average_between_extrema"
+            "omega22_averaging_method": "average_between_extrema"
             }
         return default_extra_kwargs
 
@@ -166,42 +166,59 @@ class eccDefinition:
         tref_in:
             Input reference time at which to measure eccentricity and mean
             anomaly.
-            Can be a single float or an array. NOTE: eccentricity/mean_ano are
+            Can be a single float or an array.
+            NOTE: eccentricity/mean_ano are
             returned on a different time array tref_out, described below.
+
         fref_in:
             Input reference frequency at which to measure the eccentricity and
             mean anomaly. It can be a single float or an array.
             NOTE: eccentricity/mean anomaly are returned on a different freq
             array fref_out, described below.
 
+            Given an fref_in, we find the corresponding tref_in such that,
+            omega22_average(tref_in) = 2 * pi * fref_in.
+            Here, omega22_average(t) is a monotonically increasing average
+            frequency that is computed from the instantaneous omega22(t).
+            Note that this is not a moving average; depending on which averaging
+            method is used (see the omega22_averaging_method option below),
+            it means slightly different things.
+
+            Currently, following options are implemented to calculate the
+            omega22_average
+            - "average_between_extrema": Mean of the frequecies given by the
+              spline through the peaks and the spline through the troughs.
+            - "orbital_average_at_extrema": Orbital average at the extrema
+            - "omega22_zeroecc": Frequency of the zero eccentricity waveform
+            The default is "average_between_extrema". A method could be passed
+            through the "extra_kwargs" option with the key
+            "omega22_averaging_method".
+
         returns:
         --------
-        tref_out:
-            Output reference time where eccentricity and mean anomaly are
-            measured. NOTE: This is returned when tref_in is provided.
-            This is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
+        tref_out/fref_out:
+            tref_out is the output reference time where eccentricity and mean
+            anomaly are measured and fref_out is the output reference frequency
+            where eccentricity and mean anomaly are measured.
+
+            NOTE: Only of these is returned depending on whether tref_in or
+            fref_in is provided. If tref_in is provided then tref_out is returned
+            and if fref_in provided then fref_out is returned.
+
+            tref_out is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
             where tmax = min(t_peaks[-1], t_troughs[-1]),
             and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
-            eccentricity is computed using interpolants of omega_peaks and
-            omega_troughs. The above cutoffs ensure that we are not
-            extrapolating in omega_peaks/omega_troughs.
+            eccentricity is computed using interpolants of omega22_peaks and
+            omega22_troughs. The above cutoffs ensure that we are not
+            extrapolating in omega22_peaks/omega22_troughs.
             In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
             is not None, only the data up to that many orbits before merger is
             included when finding the t_peaks/t_troughs. This helps avoid
             unphysical features like nonmonotonic eccentricity near the merger.
 
-        fref_out:
-            Output reference frequency where eccentricity and mean anomaly are
-            measured. NOTE: This is returned when fref_in is provided.
             fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
-            where fmin is the minimum value of the averaged omega_22 and fmax
-            is maximum value of the averaged omega_22. In other words, fmin is
-            averaged omega_22 at tmin and fmax is averaged omega_22 at tmax.
-            Where tmin and tmax are given by tmax = min(t_peaks[-1],
-            t_troughs[-1]), and tmin = max(t_peaks[0], t_troughs[0]).
-            This is necessary because eccentricity is computed using
-            interpolants of omega_peaks and omega_troughs. The above cutoffs
-            ensure that we are not extrapolating in omega_peaks/omega_troughs.
+            where fmin is the frequency at tmin, and fmax is the frequency at tmax.
+            tmin/tmax are defined above.
 
         ecc_ref:
             Measured eccentricity at tref_out/fref_out.
@@ -209,17 +226,17 @@ class eccDefinition:
         mean_ano_ref:
             Measured mean anomaly at tref_out/fref_out.
         """
-        self.omega_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
-        self.omega_troughs_interp, self.troughs_location = self.interp_extrema("minima")
+        self.omega22_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
+        self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
         t_peaks = self.t[self.peaks_location]
         t_troughs = self.t[self.troughs_location]
         self.t_max = min(t_peaks[-1], t_troughs[-1])
         self.t_min = max(t_peaks[0], t_troughs[0])
         # check that only one of tref_in or fref_in is provided
-        if tref_in is not None and fref_in is not None:
-            raise Exception("Can not accept both tref_in and fref_in. Provide "
-                            "only one of these.")
+        if (tref_in is not None) + (fref_in is not None) != 1:
+            raise KeyError("Exactly one of tref_in and fref_in"
+                           " should be specified.")
         elif tref_in is not None:
             tref_in = np.atleast_1d(tref_in)
         elif fref_in is not None:
@@ -274,15 +291,15 @@ class eccDefinition:
         if self.tref_out[0] < t_peaks[0] or self.tref_out[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
-        # compute eccentricty from the value of omega_peaks_interp
-        # and omega_troughs_interp at tref_out using the fromula in
+        # compute eccentricty from the value of omega22_peaks_interp
+        # and omega22_troughs_interp at tref_out using the fromula in
         # ref. arXiv:2101.11798 eq. 4
-        self.omega_peak_at_tref_out = self.omega_peaks_interp(self.tref_out)
-        self.omega_trough_at_tref_out = self.omega_troughs_interp(self.tref_out)
-        self.ecc_ref = ((np.sqrt(self.omega_peak_at_tref_out)
-                         - np.sqrt(self.omega_trough_at_tref_out))
-                        / (np.sqrt(self.omega_peak_at_tref_out)
-                           + np.sqrt(self.omega_trough_at_tref_out)))
+        self.omega22_peak_at_tref_out = self.omega22_peaks_interp(self.tref_out)
+        self.omega22_trough_at_tref_out = self.omega22_troughs_interp(self.tref_out)
+        self.ecc_ref = ((np.sqrt(self.omega22_peak_at_tref_out)
+                         - np.sqrt(self.omega22_trough_at_tref_out))
+                        / (np.sqrt(self.omega22_peak_at_tref_out)
+                           + np.sqrt(self.omega22_trough_at_tref_out)))
 
         @np.vectorize
         def compute_mean_ano(time):
@@ -405,7 +422,7 @@ class eccDefinition:
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
 
-    def compute_res_amp_and_omega(self):
+    def compute_res_amp_and_omega22(self):
         """Compute residual amp22 and omega22."""
         self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
         self.t_zeroecc = self.dataDict["t_zeroecc"]
@@ -474,16 +491,21 @@ class eccDefinition:
         omega22_average_troughs = orbital_averaged_omega22_at_extrema(
             np.arange(len(self.troughs_location) - 1), "troughs")
         # combine results from avergae at peaks and toughs
-        t_average = np.sort(np.append(t_average_troughs, t_average_peaks))
-        # check if the average omega are monotonically increasing
+        t_average = np.append(t_average_troughs, t_average_peaks)
+        # sort the times
+        sorted_idx = np.argsort(t_average)
+        t_average = t_average[sorted_idx]
+        # check if the average omega22 are monotonically increasing
         if any(np.diff(omega22_average_peaks) <= 0):
             raise Exception("Omega22 average at peaks are not strictly "
                             "monotonically increaing")
         if any(np.diff(omega22_average_troughs) <= 0):
             raise Exception("Omega22 average at troughs are not strictly "
                             "monotonically increaing")
-        omega22_average = np.sort(np.append(omega22_average_troughs,
-                                            omega22_average_peaks))
+        omega22_average = np.append(omega22_average_troughs,
+                                    omega22_average_peaks)
+        # sort omega22
+        omega22_average = omega22_average[sorted_idx]
         return t_average, omega22_average
 
     def compute_omega22_average_between_extrema(self):
@@ -494,8 +516,8 @@ class eccDefinition:
         the input times.
         """
         t = np.arange(self.t_min, self.t_max, self.t[1] - self.t[0])
-        return t, (self.omega_peaks_interp(t)
-                   + self.omega_troughs_interp(t)) / 2
+        return t, (self.omega22_peaks_interp(t)
+                   + self.omega22_troughs_interp(t)) / 2
 
     def compute_omega22_zeroecc(self):
         """Find omega22 from zeroecc data."""
@@ -503,8 +525,8 @@ class eccDefinition:
         omega22_zeroecc = np.interp(t, self.t_zeroecc, self.omega22_zeroecc)
         return t, omega22_zeroecc
 
-    def get_availabe_omega_averaging_methods(self):
-        """Return available omega averaging methods."""
+    def get_availabe_omega22_averaging_methods(self):
+        """Return available omega22 averaging methods."""
         available_methods = {
             "average_between_extrema": self.compute_omega22_average_between_extrema,
             "orbital_average_at_extrema": self.compute_orbital_averaged_omega22_at_extrema,
@@ -515,7 +537,7 @@ class eccDefinition:
     def compute_tref_in_and_fref_out_from_fref_in(self, fref_in):
         """Compute tref_in and fref_out from fref_in.
 
-        Using chosen omega average method we get the tref_in and fref_out
+        Using chosen omega22 average method we get the tref_in and fref_out
         for the given fref_in.
 
         When the input is frequencies where eccentricity/mean anomaly is to be
@@ -529,11 +551,11 @@ class eccDefinition:
         be
         - Mean of the frequecies given by the spline through the peaks and the
           spline through the troughs, we call this "average_between_extrema"
-        - Orbital average at the extrema, we call this "orbital_average_at_periastron"
+        - Orbital average at the extrema, we call this "orbital_average_at_extrema"
         - Frequency of the zero eccentricity waveform, called "omega22_zeroecc"
 
         User can provide a method through the "extra_kwargs" option with the key
-        "omega_averaging_method".
+        "omega22_averaging_method". Default is "average_between_extrema"
 
         Once we get the reference frequencies, we create a spline to get time
         as function of these reference frequencies. This should work if the
@@ -541,8 +563,8 @@ class eccDefinition:
 
         Finally we evaluate this spine on the fref_in to get the tref_in.
         """
-        available_averaging_methods = self.get_availabe_omega_averaging_methods()
-        method = self.extra_kwargs["omega_averaging_method"]
+        available_averaging_methods = self.get_availabe_omega22_averaging_methods()
+        method = self.extra_kwargs["omega22_averaging_method"]
         if method in available_averaging_methods:
             self.t_for_omega22_average, self.omega22_average = available_averaging_methods[method]()
             # The fref_in array could have frequencies that is outside the range
@@ -555,34 +577,38 @@ class eccDefinition:
             if any(np.diff(self.omega22_average) <= 0):
                 warnings.warn(f"Omega22 average from method {method} is not "
                               "monotonically increasing.")
-            t_of_omega22 = InterpolatedUnivariateSpline(
-                self.omega22_average, self.t_for_omega22_average)
-            tref_in = t_of_omega22(fref_out)
+            t_of_fref_out = InterpolatedUnivariateSpline(
+                self.omega22_average / (2 * np.pi),
+                self.t_for_omega22_average)
+            tref_in = t_of_fref_out(fref_out)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
                 warnings.warn(f"tref_in from fref_in using method {method} is"
                               " not monotonically increasing.")
             return tref_in, fref_out
         else:
-            raise KeyError(f"Omega averaging method {method} does not exist. "
-                           "Must be one of "
+            raise KeyError(f"Omega22 averaging method {method} does not exist."
+                           " Must be one of "
                            f"{list(available_averaging_methods.keys())}")
 
     def get_fref_out(self, fref_in):
         """Get fref_out from fref_in that falls within the valid average omega22 range."""
-        fref_out = fref_in[np.logical_and(fref_in >= self.omega22_average[0],
-                                          fref_in < self.omega22_average[-1])]
+        fref_out = fref_in[
+            np.logical_and(fref_in >= (self.omega22_average[0] / (2 * np.pi)),
+                           fref_in < (self.omega22_average[-1]) / (2 * np.pi))]
         if len(fref_out) == 0:
-            if fref_in[0] < self.omega22_average[0]:
+            if fref_in[0] < (self.omega22_average[0] / (2 * np.pi)):
                 raise Exception("fref_in is earlier than minimum available "
                                 "frequency "
                                 f"{self.omega22_average[0]}")
-            if fref_in[-1] > self.omega22_average[-1]:
+            if fref_in[-1] > (self.omega22_average[-1] / (2 * np.pi)):
                 raise Exception("fref_in is later than maximum available "
                                 "frequency "
                                 f"{self.omega22_average[-1]}")
             else:
-                raise Exception("Sufficient peaks/troughs are not found.")
+                raise Exception("fref_out is empty. This can happen if the "
+                                "waveform has insufficient identifiable "
+                                "periastrons/apastrons.")
         return fref_out
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
@@ -628,10 +654,10 @@ class eccDefinition:
         self.plot_measured_ecc(fig, ax[0])
         self.plot_decc_dt(fig, ax[1])
         self.plot_mean_ano(fig, ax[2])
-        self.plot_extrema_in_omega(fig, ax[3])
+        self.plot_extrema_in_omega22(fig, ax[3])
         self.plot_phase_diff_ratio_between_peaks(fig, ax[4])
         if "hlm_zeroecc" in self.dataDict:
-            self.plot_residual_omega(fig, ax[5])
+            self.plot_residual_omega22(fig, ax[5])
             self.plot_residual_amp(fig, ax[6])
         fig.tight_layout()
         return fig, ax
@@ -693,7 +719,7 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_extrema_in_omega(self, fig=None, ax=None, **kwargs):
+    def plot_extrema_in_omega22(self, fig=None, ax=None, **kwargs):
         """Plot omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
 
         This would show if the method is missing any peaks/troughs or
@@ -703,10 +729,10 @@ class eccDefinition:
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.tref_out, self.omega_peak_at_tref_out,
+        axNew.plot(self.tref_out, self.omega22_peak_at_tref_out,
                    c=colorsDict["periastron"], label=r"$\omega_{p}(t)$",
                    **kwargs)
-        axNew.plot(self.tref_out, self.omega_trough_at_tref_out,
+        axNew.plot(self.tref_out, self.omega22_trough_at_tref_out,
                    c=colorsDict["apastron"], label=r"$\omega_{a}(t)$",
                    **kwargs)
         # plot only upto merger to make the plot readable
@@ -760,10 +786,10 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_residual_omega(self, fig=None, ax=None, **kwargs):
+    def plot_residual_omega22(self, fig=None, ax=None, **kwargs):
         """Plot residual omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
 
-        Useful to look for bad omega data near merger.
+        Useful to look for bad omega22 data near merger.
         We also throw away post merger before since it makes the plot
         unreadble.
         """
@@ -773,13 +799,13 @@ class eccDefinition:
             axNew = ax
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t))
-        axNew.plot(self.t[: end], self.res_omega22[:end], c=colorsDict["default"])
+        axNew.plot(self.t[: end], self.res_omega2222[:end], c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
-                   self.res_omega22[self.peaks_location],
+                   self.res_omega2222[self.peaks_location],
                    marker=".", ls="", label="Periastron",
                    c=colorsDict["periastron"])
         axNew.plot(self.t[self.troughs_location],
-                   self.res_omega22[self.troughs_location],
+                   self.res_omega2222[self.troughs_location],
                    marker=".", ls="", label="Apastron",
                    c=colorsDict["apastron"])
         axNew.set_xlabel("time")

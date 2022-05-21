@@ -53,7 +53,7 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
         if kw not in default_kwargs:
             raise ValueError(f"Invalid key {kw} in {name}."
                              " Should be one of "
-                             f"{default_kwargs.keys()}")
+                             f"{list(default_kwargs.keys())}")
 
     for kw in default_kwargs.keys():
         if kw not in user_kwargs:
