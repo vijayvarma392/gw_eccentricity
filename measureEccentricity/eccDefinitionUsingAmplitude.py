@@ -140,7 +140,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         width:
             Minimal width to separate consecutive peaks.
         """
-        # get the phase22 at merger
+        # get the phase22 at merger. t = 0 at the merger
         phase22_merger = self.phase22[np.argmin(np.abs(self.t))]
         # get the time for getting width at num orbits before merger.
         # for 22 mode phase changes about 2 * 2pi for each orbit.
