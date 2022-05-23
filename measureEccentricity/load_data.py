@@ -36,7 +36,8 @@ def load_waveform(catalog="LAL", **kwargs):
         else:
             raise Exception("Unknown filepath pattern.")
     else:
-        raise Exception(f"Unknown catalog {catalog}")
+        raise Exception(f"Unknown catalog {catalog}. Should be one of 'LAL',"
+                        " 'LVCNR', 'EOB'")
 
 
 def load_LAL_waveform(**kwargs):
