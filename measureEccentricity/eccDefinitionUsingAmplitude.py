@@ -37,7 +37,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_width_for_extrema_finding_by_scaling_with_dt(),
+            "width": self.get_default_width_for_peak_finder(),
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
@@ -80,8 +80,9 @@ class eccDefinitionUsingAmplitude(eccDefinition):
             sign * self.data_for_finding_extrema,
             **self.extrema_finding_kwargs)[0]
 
-    def get_width_for_extrema_finding_by_scaling_with_dt(self,
-                                                         default_width=50):
+    def get_default_width_for_peak_finder(
+            self,
+            width_for_unit_timestep=50):
         """Get the minimal value of width parameter for extrema finding.
 
         The extrema finding method, i.e., find_peaks from scipy.signal
@@ -96,7 +97,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         Parameters:
         ----------
-        default_width:
+        width_for_unit_timestep:
             Width to use when the time step in the wavefrom data is 1.
 
         Returns:
@@ -104,9 +105,9 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         width:
             Minimal width to separate consecutive peaks.
         """
-        return int(default_width / (self.t[1] - self.t[0]))
+        return int(width_for_unit_timestep / (self.t[1] - self.t[0]))
 
-    def get_width_for_extrema_finding_from_phase22(self, t_selected=-100):
+    def get_width_for_peak_finder_from_phase22(self, t_for_width=-100):
         """Get the minimal value of width parameter for extrema finding.
 
         The extrema finding method, i.e., find_peaks from scipy.signal
@@ -118,33 +119,34 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         This function tries to use the phase22 to get a reasonable value of
         "width" by looking at the time scale over which the phase22 changes by
-        about 2 pi.
+        about 4pi because the change in phase22 over one orbit would be
+        approximately twice the change in the orbital phase which is about 2pi.
 
         Parameters:
         ----------
-        t_selected:
-            A selected in the inspiral where we want the to check
-            phase22 changes. We want to select a point late in the inspiral
-            near merger as we are interested in setting the minimal width which
-            could be set using the phase difference near merger as the
-            peaks/troughs are closest near the merger due to the chirping
-            nature of the gravitational wave frequency
+        t_for_width:
+            The time at which the width parameter is determined. We want to do
+            this near the merger as this is where the time between extrema is
+            the smallest, and the width parameter sets the minimal separation
+            between extrema. Default is -100.
+            NOTE: Here we assume dimensionless units for time. This should be
+            changed in the future to make it work with physical units as well.
 
         Returns:
         -------
         width:
             Minimal width to separate consecutive peaks.
         """
-        # get phase22 at selected time
-        phase22_selected = self.phase22[np.argmin(np.abs(self.t - t_selected))]
-        # get the time where phase22 = phase22_mid + 2 pi
-        t_selected_plus_2pi_phase22_change = self.t[np.argmin(
-            np.abs(self.phase22 - (phase22_selected + 2 * np.pi)))]
-        # change in time over which phase22 change by 2 pi from t_selected
-        dt = t_selected_plus_2pi_phase22_change - t_selected
+        # get phase22 at t_for_width
+        phase22_t_for_width = self.phase22[
+            np.argmin(np.abs(self.t - t_for_width))]
+        # get the time where phase22 = phase22_t_for_width + 4 pi
+        t_at_one_orbit_after_t_for_width = self.t[np.argmin(
+            np.abs(self.phase22 - (phase22_t_for_width + 4 * np.pi)))]
+        # change in time over which phase22 change by 4 pi from t_for_width
+        dt = t_at_one_orbit_after_t_for_width - t_for_width
         # get the width using dt and the time step
         width = dt / (self.t[1] - self.t[0])
-        # we want to use a width that is slightly smaller than the one we got
-        # from the phase22 above, otherwise we might miss a few peaks near
-        # merger
+        # we want to use a width that is always smaller than the separation
+        # between extrema, otherwise we might miss a few peaks near merger
         return int(width / 4)
