@@ -702,7 +702,7 @@ class eccDefinition:
         self.plot_phase_diff_ratio_between_peaks(fig, ax[4])
         if "hlm_zeroecc" in self.dataDict:
             self.plot_residual_omega22(fig, ax[5])
-            self.plot_residual_amp(fig, ax[6])
+            self.plot_residual_amp22(fig, ax[6])
         fig.tight_layout()
         return fig, ax
 
@@ -753,8 +753,11 @@ class eccDefinition:
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.tref_out, self.mean_ano_ref,
-                   c=colorsDict["default"], **kwargs)
+        default_kwargs = {"c": colorsDict["default"]}
+        for key in default_kwargs:
+            if key not in kwargs:
+                kwargs.update({key: default_kwargs[key]})
+        axNew.plot(self.tref_out, self.mean_ano_ref, **kwargs)
         axNew.set_xlabel("time")
         axNew.set_ylabel("mean anomaly")
         axNew.grid()
@@ -861,7 +864,7 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_residual_amp(self, fig=None, ax=None, **kwargs):
+    def plot_residual_amp22(self, fig=None, ax=None, **kwargs):
         """Plot residual amp22, the locations of the apastrons and periastrons, and their corresponding interpolants."""
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
