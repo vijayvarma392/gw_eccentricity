@@ -117,9 +117,9 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
         tref_in = dataDict["t"]
         try:
             tref_out, measured_ecc, mean_ano = measure_eccentricity(
-                tref_in,
-                dataDict,
-                method,
+                tref_in=tref_in,
+                dataDict=dataDict,
+                method=method,
                 extra_kwargs=extra_kwargs)
             # Get the measured eccentricity at the first available index.
             # This corresponds to the first extrema that occurs after the
