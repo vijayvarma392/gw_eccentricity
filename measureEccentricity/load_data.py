@@ -360,7 +360,11 @@ def load_lvcnr_waveform(**kwargs):
         f0 = ((5 * MT) / (256 * inspiralTime * eta)) ** (3/8) / MT / np.pi
         # make dimensionless
         Momega0_zeroecc = f0 * time_to_physical(M) * np.pi
-        zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
+        # It seems that this value of initial omega generates
+        # waveform that is not long enough
+        # For now just divide it by factor of 8
+        # WE SHOULD FIX THIS LATER
+        zero_ecc_kwargs["Momega0"] = Momega0_zeroecc / 8
 
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
