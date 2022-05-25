@@ -32,6 +32,8 @@ colorsDict = {
     "default": colors_gb_36[5],
     "apastron": colors_dj_25[1],
     "periastron": colors_gb_45[1],
+    "vline": colors_gb_14[1],
+    "peaksvline": colors_aq_15[1]
 }
 
 

@@ -717,8 +717,8 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.tref_out, self.ecc_ref, **kwargs)
-        axNew.set_xlabel("time")
-        axNew.set_ylabel("eccentricity")
+        axNew.set_xlabel(r"$t$")
+        axNew.set_ylabel(r"Eccentricity $e(t)$")
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
@@ -739,7 +739,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
-        axNew.set_xlabel("time")
+        axNew.set_xlabel("$t$")
         axNew.set_ylabel(r"$de/dt$")
         axNew.grid()
         if fig is None or ax is None:
@@ -758,7 +758,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.tref_out, self.mean_ano_ref, **kwargs)
-        axNew.set_xlabel("time")
+        axNew.set_xlabel("$t$")
         axNew.set_ylabel("mean anomaly")
         axNew.grid()
         if fig is None or ax is None:
@@ -794,9 +794,9 @@ class eccDefinition:
                    self.omega22[self.troughs_location],
                    c=colorsDict["apastron"],
                    marker=".", ls="")
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$M\omega_{22}(t)$")
+        axNew.set_ylabel(r"$\omega_{22}(t)$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -824,7 +824,7 @@ class eccDefinition:
         axNew.plot(ttroughs[1:], self.orb_phase_diff_ratio_at_troughs[1:],
                    c=colorsDict["apastron"],
                    marker=".", label="Apastron phase diff ratio")
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
         axNew.legend()
@@ -855,9 +855,9 @@ class eccDefinition:
                    self.res_omega22[self.troughs_location],
                    marker=".", ls="", label="Apastron",
                    c=colorsDict["apastron"])
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$\Delta\omega_{22}$")
+        axNew.set_ylabel(r"$\Delta\omega_{22}(t)$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -879,9 +879,9 @@ class eccDefinition:
                    self.res_amp22[self.troughs_location],
                    c=colorsDict["apastron"],
                    marker=".", ls="", label="Apastron")
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$\Delta A_{22}$")
+        axNew.set_ylabel(r"$\Delta A_{22}(t)$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
