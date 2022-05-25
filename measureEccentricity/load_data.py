@@ -348,6 +348,20 @@ def load_lvcnr_waveform(**kwargs):
         zero_ecc_kwargs["ecc"] = 0.0
         zero_ecc_kwargs["approximant"] = "IMRPhenomT"
         zero_ecc_kwargs['include_zero_ecc'] = False  # to avoid double calc
+        # calculate the Momega0 so that the length is >= the length of the NR
+        # waveform.
+        # First we compute the inspiral time of the NR waveform
+        inspiralTime = - t[0] * time_to_physical(M)  # t = 0 at merger
+        # Now we compute the initial frequency by inverting 0PN chirptime
+        # formula to get frequency as function of
+        # chirptime, i.e., the time till merger
+        eta = q / (1 + q)**2
+        MT = ((m1 + m2) * lal.MTSUN_SI)
+        f0 = ((5 * MT) / (256 * inspiralTime * eta)) ** (3/8) / MT / np.pi
+        # make dimensionless
+        Momega0_zeroecc = f0 * time_to_physical(M) * np.pi
+        zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
+
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
         # We need the zeroecc modes to long enough, at least the same length
