@@ -10,6 +10,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 sys.path.append("../../")
 from measureEccentricity.measureEccentricity import measure_eccentricity
 from measureEccentricity.plot_settings import use_fancy_plotsettings, colorsDict
+from measureEccentricity.plot_settings import figWidthsOneColDict
 from measureEccentricity.utils import get_peak_via_quadratic_fit
 
 # We will use one NR waveform from SXS catalog to plot the measured
@@ -17,6 +18,9 @@ from measureEccentricity.utils import get_peak_via_quadratic_fit
 # locations
 # sxs_id = "SXS:BBH:1371"
 sxs_id = "040"
+
+# We want to prepare fig for PRD
+journal = "APS"
 
 
 def get_nr_data(sxs_id, lev=3, is_private=True, sim_path="./"):
@@ -68,8 +72,9 @@ tref, ecc, mean_ano, eccMethod = measure_eccentricity(
     method="Amplitude",
     return_ecc_method=True)
 
-use_fancy_plotsettings()
-fig, ax = plt.subplots(nrows=2, figsize=(6, 4), sharex=True)
+use_fancy_plotsettings(journal=journal)
+fig, ax = plt.subplots(nrows=2, figsize=(figWidthsOneColDict[journal], 3),
+                       sharex=True)
 eccMethod.plot_measured_ecc(fig, ax[0])
 eccMethod.plot_extrema_in_omega22(fig, ax[1])
 ax[1].set_xlabel(r"$t$ [$M$]")
@@ -96,7 +101,8 @@ fig.tight_layout()
 fig.savefig("../figs/ecc_definition.pdf")
 
 # plot the mean anomaly
-fig, ax = plt.subplots(nrows=2, figsize=(6, 4), sharex=True)
+fig, ax = plt.subplots(nrows=2, figsize=(figWidthsOneColDict[journal], 3),
+                       sharex=True)
 ax[0].set_ylabel(r"Mean Anomaly $l(t)$")
 ax[0].axvline(tref_mark, c=colorsDict["vline"], ls="--")
 ax[0].plot(tref_mark, mean_ano_mark, c=colorsDict["vline"], marker=".")

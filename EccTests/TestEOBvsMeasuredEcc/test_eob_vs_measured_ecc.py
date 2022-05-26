@@ -23,7 +23,7 @@ sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 from measureEccentricity.utils import SmartFormatter
-from measureEccentricity.plot_settings import use_fancy_plotsettings
+from measureEccentricity.plot_settings import use_fancy_plotsettings, figWidthsOneColDict
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -104,11 +104,11 @@ lwidths = {"Amplitude": 2,
            "ResidualAmplitude": 2,
            "ResidualFrequency": 1,
            "FrequencyFits": 4}
-lalphas = {"Amplitude": 1,
+lalphas = {"Amplitude": 0.5,
            "Frequency": 1,
            "ResidualAmplitude": 1,
            "ResidualFrequency": 1,
-           "FrequencyFits": 0.5}
+           "FrequencyFits": 1}
 
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
@@ -169,12 +169,12 @@ else:
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
-
 #  use fancy colors and other settings
-use_fancy_plotsettings()
+journal = "APS" if args.paper else "Notebook"
+use_fancy_plotsettings(journal=journal)
 
 for key in args.param_set_key:
-    fig, ax = plt.subplots(figsize=(6, 4))
+    fig, ax = plt.subplots(figsize=(figWidthsOneColDict[journal], 3))
     if args.example:
         fig_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
                     f".{args.plot_format}")

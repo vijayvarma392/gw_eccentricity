@@ -24,7 +24,7 @@ sys.path.append("../../")
 from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 from measureEccentricity.utils import SmartFormatter
-from measureEccentricity.plot_settings import use_fancy_plotsettings
+from measureEccentricity.plot_settings import use_fancy_plotsettings, figWidthsOneColDict
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -95,6 +95,10 @@ parser.add_argument(
     help=("Slice the EOBeccs array by taking only every nth ecc value given by"
           " slice. This is useful when we want do not want to loop over all"
           "the ecc but skip n number of ecc given by slice"))
+parser.add_argument(
+    "--paper",
+    action="store_true",
+    help="Generate plot for paper.")
 
 args = parser.parse_args()
 # do the test for eccentricity values between emin and emax
@@ -159,23 +163,23 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
         ymin = 1e-1 * min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
-    ax.set_ylabel("Measured Eccentricity $e(t)$")
+    ax.set_ylabel("$e(t)$")
     ax.set_yscale("log")
     # add text indicating the method used
     ax.text(0.95, 0.95, f"{method}", ha="right", va="top",
-            transform=ax.transAxes, fontsize=12)
+            transform=ax.transAxes, fontsize=10)
     # add colorbar
     norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='3%', pad=0.1)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
-    cbar.set_label(r"EOB eccentricity $e_{\mathrm{EOB}}$ at $\omega_0$",
-                   size=12)
+    cbar.set_label(r"$e_{\mathrm{EOB}}$ at $\omega_0$",
+                   size=10)
     if idx == 0:
         ax.set_title(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, "
                      rf"\chi_{{2z}}={chi2z:.3f}$",
-                     y=1.02, fontsize=12)
+                     y=1.02, fontsize=10)
 
 
 if "all" in args.method:
@@ -189,9 +193,11 @@ if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
 
 # use fancy styles
-use_fancy_plotsettings()
+journal = "APS" if args.paper else "Notebook"
+use_fancy_plotsettings(journal=journal)
 
 nrows = len(args.method)
+height = 2 if args.paper else 3
 
 for key in args.param_set_key:
     if args.example:
@@ -202,9 +208,10 @@ for key in args.param_set_key:
             f"{args.fig_dir}/EccTest_eccVsTime_set{key}_"
             f"{method_str}_emin_{min(EOBeccs):.7f}_emax_{max(EOBeccs):.7f}"
             f".{args.plot_format}")
-    fig, axarr = plt.subplots(nrows=nrows,
-                              figsize=(6, 3 * nrows),
-                              sharex=True)
+    fig, axarr = plt.subplots(
+        nrows=nrows,
+        figsize=(figWidthsOneColDict[journal], height * nrows),
+        sharex=True)
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
 
     for idx, method in tqdm(enumerate(args.method)):
