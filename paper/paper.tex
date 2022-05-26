@@ -167,7 +167,11 @@ In the Newtonian case, the radial period $P$ is a constant but in general relati
 
 \begin{figure}[thb]
 \includegraphics[width=\columnwidth]{mean_ano_definition}
-\caption{Illustration of how mean anomaly definition works.}
+\caption{Time evolution of the mean anomaly $l(t)$ (upper panel) and the $\omega_{22}(t)$ (lower panel).
+  The vertical green dotted lines denote the local maxima (times of passage of pericenter). The mean anomaly
+  varies linearly with time between two successive passages of pericenter. The slope of $l(t)$ becomes steeper as the binary
+  inspirals due the reducing radial period. The red dashed line indicates the reference time $t_{\text{ref}}=-5500$ and the
+  red circle (upper panel) denotes the measured value of the mean anomaly.}
 \label{fig:mean_anomaly_definition}
 \end{figure}
 
@@ -188,14 +192,35 @@ Given a gravitational waveform, we proceed to measure the eccentricity and mean 
 %==========================================================================
 \section{Tests}
 \label{sec:tests}
-Here's how I done'd it.
+To check the robustness of our eccentricity definition and the implementations using different methods, we put our implementations
+through different tests. One of the checks for robustness of our implementation is to see how well it works for waveforms of with eccentricities
+varying from very low to high. For this purpose, we generate hundreds of EOB waveforms using \texttt{SEOBNRv4EHM} model (cite Toni's paper) with eccentricity
+(this is the eccentricity that the model takes as an input, we call this EOB eccentricity) from $e_{\text{EOB}} = 10^{-7}$ to $e_{\text{EOB}} = 0.5$ keeping
+other parameters (mass ratio and spins of the black holes) fixed. We do the following two tests using these waveforms
+
+\subsection{EOB eccentricity vs measured eccentricity}
+\label{sec:eob-eccentricity-vs-measured-eccentricity}
+In this test, we compare the eccentricity that the EOB model takes as an input (the EOB eccentricity $e_{\text{EOB}}$) and the eccentricity that we measure using
+our definition in (\ref{eq:eccentricity_definition}) at a specific reference time. For this test, we choose our reference time to be at the first available local
+extremum (pericenter or apocenter). As we vary the $e_{\text{EOB}}$ smoothly from low to high values we expect the measured eccentricities to also vary smoothly.
+This test also checks whether a particular implementation is able to measure the eccentricity at all. This is because, as $e_{\text{EOB}}$ becomes smaller and smaller
+some of the implementations may fail to detect any local extrema and therefore can not measure eccentricity beyond a certain $e_{\text{EOB}}$. In \ref{fig:eob_vs_measured_ecc},
+we show how the measured eccentricities varies with the EOB eccentricities for waveforms with $q=4, \chi{1z}=-0.6, \chi_{2z}=-0.6$.
+
 
 %--------------------------------------------------------------------------
 \begin{figure}[thb]
 \includegraphics[width=\columnwidth]{test_eob_vs_measured_ecc_example}
-\caption{EOB eccentricity vs measured eccentricity}
+\caption{EOB eccentricity vs measured eccentricity. This plot illustrates the capabilities and robustness of different methods to measure eccentricities from very low to high $e_{\text{EOB}}$.
+  While all methods works nicely for relatively high eccentricities $e_{\text{EOB}} \gtrsim 10^{-2}$, \texttt{Frequency} and \texttt{Amplitude} methods start to deviate from others
+  and fails to measure eccentricities as $e_{\text{EOB}}$ becomes close to $10^{-3}$. On the other hand the residual methods, \texttt{ResidualFrequency} and \texttt{ResidualAmplitude}
+can measure eccentricities up $e_{\text{EOB}} \simeq 10^{-5}$ and after that the measured eccentricities tend to saturate.}
 \label{fig:eob_vs_measured_ecc}
 \end{figure}
+
+\subsection{Measured eccentricity vs time}
+\label{sec:measured-eccentricity-vs-time}
+In this test, we check how the evolution of measured eccentricity with time looks for a given $e_{\text{EOB}}$.
 
 \begin{figure}[thb]
 \includegraphics[width=\columnwidth]{test_measured_ecc_vs_time_example}
