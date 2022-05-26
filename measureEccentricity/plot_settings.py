@@ -39,13 +39,24 @@ colorsDict = {
 
 def use_fancy_plotsettings(usetex=True):
     """Use fancy plot settings."""
-    # LaTeX
-    rc("text", usetex=usetex)
-    # color cycler
-    rc("axes", prop_cycle=cycler(color=colorsList))
-    # fontsize
+    # Text
+    if usetex:
+        rc("text", usetex=usetex)
+        rc("text.latex", preamble=r"\usepackage{amsmath}")
+        rc("text.latex", preamble=r"\usepackage{txfonts}")
+    # Axes
+    rc("axes", prop_cycle=cycler(color=colorsList))  # color cycler
+    rc("axes", linewidth=0.6)
     rc("axes", labelsize=12)
     rc("axes", titlesize=12)
+    # Ticks
     rc("xtick", labelsize=12)
     rc("ytick", labelsize=12)
+    rc("xtick", direction="in")
+    rc("ytick", direction="in")
+    # Legend
+    rc("legend", frameon=False)
     rc("legend", fontsize=12)
+    # Fonts
+    rc("font", family="serif")
+    rc("font", serif="times")

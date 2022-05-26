@@ -32,7 +32,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "--data_dir", "-d",
     type=str,
-    required=True,
+    default="../../data/ecc_waveforms",
     help=("Base directory where waveform files are stored. You can get this "
           "from home/md.shaikh/ecc_waveforms on CIT."))
 parser.add_argument(
@@ -72,6 +72,10 @@ parser.add_argument(
           "information about parameter set, method used and so on)"
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
+parser.add_argument(
+    "--paper",
+    action="store_true",
+    help="Remove markers for paper.")
 
 args = parser.parse_args()
 
@@ -89,6 +93,22 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 # Avoid raising warnings when length of the data for interpolation
 # in monotonicity check is too long
 extra_kwargs = {"debug": False}
+
+lstyles = {"Amplitude": "solid",
+           "Frequency": "dashed",
+           "ResidualAmplitude": "dashdot",
+           "ResidualFrequency": "solid",
+           "FrequencyFits": "dotted"}
+lwidths = {"Amplitude": 2,
+           "Frequency": 1,
+           "ResidualAmplitude": 2,
+           "ResidualFrequency": 1,
+           "FrequencyFits": 4}
+lalphas = {"Amplitude": 1,
+           "Frequency": 1,
+           "ResidualAmplitude": 1,
+           "ResidualFrequency": 1,
+           "FrequencyFits": 0.5}
 
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
@@ -129,10 +149,12 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
         except Exception:
             warnings.warn("Exception raised. Probably too small eccentricity "
                           "to detect any extrema.")
-    marker_style = {"marker": "."}
-    if method == "ResidualFrequency":
-        marker_style.update({"marker": "+", "mfc": "none"})
-    ax.loglog(model_eccs, waveform_eccs, label=f"{method}", **marker_style)
+    ax.loglog(model_eccs, waveform_eccs, label=f"{method}",
+              ls=lstyles.get(method, "-"),
+              lw=lwidths.get(method, 1),
+              alpha=lalphas.get(method, 1),
+              marker=None if args.paper else "."  # no marker for paper
+              )
     ax.set_title(rf"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$"
                  f"={chi2z:.3f}")
 
@@ -152,7 +174,7 @@ if "all" in args.param_set_key:
 use_fancy_plotsettings()
 
 for key in args.param_set_key:
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 4))
     if args.example:
         fig_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
                     f".{args.plot_format}")
@@ -163,6 +185,6 @@ for key in args.param_set_key:
         plot_waveform_ecc_vs_model_ecc(method, key, ax)
     ax.legend()
     ax.grid()
-    ax.set_xlabel("EOB Eccentricity")
-    ax.set_ylabel("Measured Eccentricity")
+    ax.set_xlabel(r"EOB Eccentricity $e_{\mathrm{EOB}}$")
+    ax.set_ylabel(r"Measured Eccentricity $e$")
     fig.savefig(f"{fig_name}", bbox_inches="tight")

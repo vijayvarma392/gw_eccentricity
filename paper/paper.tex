@@ -7,7 +7,6 @@ superscriptaddress,nofootinbib,showpacs]{revtex4-1}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
-
 \usepackage{verbatim}
 
 \usepackage[dvipsnames, usenames]{xcolor}
@@ -148,14 +147,24 @@ the pericenter (point of nearest approach) and the apocenter (point of largest s
 e(t) = \frac{\sqrt{\omega_{p}(t)} - \sqrt{\omega_{a}(t)}}{\sqrt{\omega_{p}(t)} + \sqrt{\omega_{a}(t)}}
 \end{equation}
 
-\begin{figure}[thb]
-\includegraphics[width=\columnwidth]{ecc_definition}
-\caption{Time evolution of the eccentricity $e(t)$ (upper panel) and the frequency of (2, 2) mode $\omega_{22}(t)$ (lower panel) for NR simulation (insert the simulation id here).
-  $\omega_p(t)$ and $\omega_a(t)$ are spline interpolants of the frequency of (2, 2) mode at the pericenter and apocenter, respectively. The spine interpolants $\omega_p(t)$ ad $\omega_a(t)$
-  are created using the values of $\omega_{22}$ at the pericenter (local maxima, deep violet circles) and the apocenter (local minima, cyan circles), respectively. The red dashed vertical line
-  denotes the reference reference time $t_{\text{ref}}=-5500$ and red circle (upper panel) denotes the measured value of eccentricity at reference time.}
-\label{fig:ecc_definition}
-\end{figure}
+\begin{figure*}
+  \centering
+  \begin{minipage}[t]{0.475\textwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{ecc_definition}
+    \label{fig:ecc_definition}
+    \caption{Time evolution of the eccentricity $e(t)$ (upper panel) and the frequency of (2, 2) mode $\omega_{22}(t)$ (lower panel) for NR simulation (insert the simulation id here).
+      $\omega_p(t)$ and $\omega_a(t)$ are spline interpolants of the frequency of (2, 2) mode at the pericenter and apocenter, respectively. The spine interpolants $\omega_p(t)$ ad $\omega_a(t)$
+      are created using the values of $\omega_{22}$ at the pericenter (local maxima, deep violet circles) and the apocenter (local minima, cyan circles), respectively. The red dashed vertical line
+      denotes the reference reference time $t_{\text{ref}}=-5500$ and red circle (upper panel) denotes the measured value of eccentricity at reference time.}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.475\textwidth}
+      \centering
+      \includegraphics[width=\columnwidth]{mean_ano_definition}
+      \label{fig:mean_anomaly_definition}
+      \caption{Time evolution of the mean anomaly $l(t)$ (upper panel) and the $\omega_{22}(t)$ (lower panel). The vertical green dotted lines denote the local maxima (times of passage of pericenter). The mean anomaly varies linearly with time between two successive passages of pericenter. The slope of $l(t)$ becomes steeper as the binary inspirals due the reducing radial period. The red dashed line indicates the reference time $t_{\text{ref}}=-5500$ and the red circle (upper panel) denotes the measured value of the mean anomaly.}
+    \end{minipage}
+\end{figure*}
 
 For an eccentric orbit, apart from the eccentricity, one can define another quantity called the mean anomaly $l(t)$. In the Newtonian context it is defined as
 \begin{equation}
@@ -164,17 +173,6 @@ l(t) = 2\pi \frac{t - t_0}{P}
 \end{equation}
 where $t_0$ is the time of the last pericenter passage and $P$ is the radial period which is defined to be the time between two successive pericenter passages.
 In the Newtonian case, the radial period $P$ is a constant but in general relativistic case, it changes as the binary inspirals.
-
-\begin{figure}[thb]
-\includegraphics[width=\columnwidth]{mean_ano_definition}
-\caption{Time evolution of the mean anomaly $l(t)$ (upper panel) and the $\omega_{22}(t)$ (lower panel).
-  The vertical green dotted lines denote the local maxima (times of passage of pericenter). The mean anomaly
-  varies linearly with time between two successive passages of pericenter. The slope of $l(t)$ becomes steeper as the binary
-  inspirals due the reducing radial period. The red dashed line indicates the reference time $t_{\text{ref}}=-5500$ and the
-  red circle (upper panel) denotes the measured value of the mean anomaly.}
-\label{fig:mean_anomaly_definition}
-\end{figure}
-
 
 %==========================================================================
 \section{Measurement of eccentricity and mean anomaly}

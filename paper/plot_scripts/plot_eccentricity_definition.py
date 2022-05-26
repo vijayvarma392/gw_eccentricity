@@ -72,12 +72,14 @@ use_fancy_plotsettings()
 fig, ax = plt.subplots(nrows=2, figsize=(6, 4), sharex=True)
 eccMethod.plot_measured_ecc(fig, ax[0])
 eccMethod.plot_extrema_in_omega22(fig, ax[1])
-ax[1].set_xlabel(r"$t(M)$")
-ax[1].set_ylabel(r"$M\omega_{22}(t)$")
+ax[1].set_xlabel(r"$t$ [$M$]")
+ax[1].set_ylabel(r"$\omega_{22}(t)$ [rad/$M$]")
 ax[0].set_ylabel(r"Eccentricity $e(t)$")
 ax[0].set_xlabel("")
 ax[1].set_ylim(0.008, 0.1)
 ax[1].set_xlim(left=tref_in[0], right=0)
+ax[0].grid(False)
+ax[1].grid(False)
 
 tref_mark = -5500
 tref_mark, ecc_mark, mean_ano_mark, eccMethod_mark = measure_eccentricity(
@@ -96,7 +98,6 @@ fig.savefig("../figs/ecc_definition.pdf")
 # plot the mean anomaly
 fig, ax = plt.subplots(nrows=2, figsize=(6, 4), sharex=True)
 ax[0].set_ylabel(r"Mean Anomaly $l(t)$")
-ax[0].grid()
 ax[0].axvline(tref_mark, c=colorsDict["vline"], ls="--")
 ax[0].plot(tref_mark, mean_ano_mark, c=colorsDict["vline"], marker=".")
 ax[0].set_yticks([0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi])
@@ -105,8 +106,8 @@ ax[0].set_yticklabels(["0", r"$\pi/2$", r"$\pi$", r"$3\pi/2$", r"$2\pi$"])
 end = np.argmin(np.abs(eccMethod.t))
 ax[1].plot(eccMethod.t[: end], eccMethod.omega22[: end],
            c=colorsDict["default"])
-ax[1].set_xlabel(r"$t(M)$")
-ax[1].set_ylabel(r"$M\omega_{22}(t)$")
+ax[1].set_xlabel(r"$t$ [$M$]")
+ax[1].set_ylabel(r"$\omega_{22}(t)$ [rad/$M$]")
 ax[1].axvline(tref_mark, c=colorsDict["vline"], ls="--")
 
 for idx in np.arange(len(eccMethod.peaks_location) - 1):
@@ -123,7 +124,6 @@ for idx in np.arange(len(eccMethod.peaks_location) - 1):
         ax[0].axvline(t_next_peak, c=colorsDict["peaksvline"], ls=":")
 ax[1].set_ylim(0.008, 0.1)
 ax[1].set_xlim(left=tref_in[0], right=0)
-ax[1].grid()
 
 plt.subplots_adjust(hspace=0.1)
 fig.tight_layout()

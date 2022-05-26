@@ -35,7 +35,7 @@ EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
 parser.add_argument(
     "--data_dir", "-d",
     type=str,
-    required=True,
+    default="../../data/ecc_waveforms",
     help=("Base directory where waveform files are stored. You can get this "
           "from home/md.shaikh/ecc_waveforms on CIT."))
 parser.add_argument(
@@ -102,7 +102,7 @@ EOBeccs = EOBeccs[np.logical_and(EOBeccs >= args.emin, EOBeccs <= args.emax)]
 EOBeccs = EOBeccs[0: len(EOBeccs): args.slice]
 Momega0 = 0.01
 Momega0_zeroecc = 0.002
-cmap = cm.get_cmap("viridis")
+cmap = cm.get_cmap("plasma")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
 
 # Format: [q, chi1z, chi2z]
@@ -159,23 +159,23 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
         ymin = 1e-1 * min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
-    ax.set_ylabel("Measured Eccentricity")
+    ax.set_ylabel("Measured Eccentricity $e(t)$")
     ax.set_yscale("log")
     # add text indicating the method used
     ax.text(0.95, 0.95, f"{method}", ha="right", va="top",
-            transform=ax.transAxes)
+            transform=ax.transAxes, fontsize=12)
     # add colorbar
     norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='3%', pad=0.1)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
-    cbar.set_label(r"EOB eccentricity at $\omega_0$",
-                   size=10)
+    cbar.set_label(r"EOB eccentricity $e_{\mathrm{EOB}}$ at $\omega_0$",
+                   size=12)
     if idx == 0:
         ax.set_title(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, "
                      rf"\chi_{{2z}}={chi2z:.3f}$",
-                     y=1.02, fontsize=10)
+                     y=1.02, fontsize=12)
 
 
 if "all" in args.method:
@@ -203,15 +203,13 @@ for key in args.param_set_key:
             f"{method_str}_emin_{min(EOBeccs):.7f}_emax_{max(EOBeccs):.7f}"
             f".{args.plot_format}")
     fig, axarr = plt.subplots(nrows=nrows,
-                              figsize=(6,
-                                       3 * nrows),
+                              figsize=(6, 3 * nrows),
                               sharex=True)
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
-    plt.xticks(fontsize=8)
 
     for idx, method in tqdm(enumerate(args.method)):
         ax = axarr if nrows == 1 else axarr[idx]
         plot_waveform_ecc_vs_time(method, key, fig, ax)
         if idx == nrows - 1:
-            ax.set_xlabel("time")
+            ax.set_xlabel(r"$t$ [$M$]")
     fig.savefig(f"{fig_name}", bbox_inches="tight")
