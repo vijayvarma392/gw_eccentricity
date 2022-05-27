@@ -17,6 +17,7 @@ import sys
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import argparse
 import warnings
 sys.path.append("../../")
@@ -24,6 +25,7 @@ from measureEccentricity import measure_eccentricity, get_available_methods
 from measureEccentricity.load_data import load_waveform
 from measureEccentricity.utils import SmartFormatter
 from measureEccentricity.plot_settings import use_fancy_plotsettings, figWidthsOneColDict
+from measureEccentricity.plot_settings import colorsDict, lwidths, lalphas, lstyles
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -94,22 +96,6 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 # in monotonicity check is too long
 extra_kwargs = {"debug": False}
 
-lstyles = {"Amplitude": "solid",
-           "Frequency": "dashed",
-           "ResidualAmplitude": "dashdot",
-           "ResidualFrequency": "solid",
-           "FrequencyFits": "dotted"}
-lwidths = {"Amplitude": 2,
-           "Frequency": 1,
-           "ResidualAmplitude": 2,
-           "ResidualFrequency": 1,
-           "FrequencyFits": 4}
-lalphas = {"Amplitude": 0.5,
-           "Frequency": 1,
-           "ResidualAmplitude": 1,
-           "ResidualFrequency": 1,
-           "FrequencyFits": 1}
-
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
     # We will loop over waveforms with ecc in EOBeccs
@@ -150,13 +136,14 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
             warnings.warn("Exception raised. Probably too small eccentricity "
                           "to detect any extrema.")
     ax.loglog(model_eccs, waveform_eccs, label=f"{method}",
+              c=colorsDict.get(method, "C0"),
               ls=lstyles.get(method, "-"),
               lw=lwidths.get(method, 1),
               alpha=lalphas.get(method, 1),
               marker=None if args.paper else "."  # no marker for paper
               )
-    ax.set_title(rf"$q$={q:.3f}, $\chi_{{1z}}$={chi1z:.3f}, $\chi_{{2z}}$"
-                 f"={chi2z:.3f}")
+    ax.set_title(rf"$q$={q:.1f}, $\chi_{{1z}}$={chi1z:.1f}, $\chi_{{2z}}$"
+                 f"={chi2z:.1f}")
 
 
 if "all" in args.method:
@@ -183,8 +170,18 @@ for key in args.param_set_key:
                     f".{args.plot_format}")
     for idx, method in enumerate(args.method):
         plot_waveform_ecc_vs_model_ecc(method, key, ax)
-    ax.legend()
-    ax.grid()
+    ax.legend(frameon=True)
+    # set major ticks
+    locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
+    ax.xaxis.set_major_locator(locmaj)
+    # set minor ticks
+    locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
+                                   numticks=20)
+    ax.xaxis.set_minor_locator(locmin)
+    ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    # set grid
+    ax.grid(which="major")
     ax.set_xlabel(r"EOB Eccentricity $e_{\mathrm{EOB}}$")
     ax.set_ylabel(r"Measured Eccentricity $e$")
+    ax.set_ylim(top=1.0)
     fig.savefig(f"{fig_name}", bbox_inches="tight")

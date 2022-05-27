@@ -33,8 +33,29 @@ colorsDict = {
     "apastron": colors_dj_25[1],
     "periastron": colors_gb_45[1],
     "vline": colors_gb_14[1],
-    "peaksvline": colors_aq_15[1]
+    "peaksvline": colors_aq_15[1],
+    "FrequencyFits": colors_gb_14[1],
+    "ResidualFrequency": colors_dj_25[1],
+    "ResidualAmplitude": colors_gb_55[1],
+    "Frequency": colors_aq_15[1],
+    "Amplitude": colors_gb_45[1]
 }
+
+lstyles = {"Amplitude": "solid",
+           "Frequency": "dashed",
+           "ResidualAmplitude": "dashdot",
+           "ResidualFrequency": "solid",
+           "FrequencyFits": "dotted"}
+lwidths = {"Amplitude": 2,
+           "Frequency": 1,
+           "ResidualAmplitude": 2,
+           "ResidualFrequency": 1,
+           "FrequencyFits": 4}
+lalphas = {"Amplitude": 1,
+           "Frequency": 1,
+           "ResidualAmplitude": 1,
+           "ResidualFrequency": 1,
+           "FrequencyFits": 1}
 
 figWidthsOneColDict = {
     "APS": 3.4,

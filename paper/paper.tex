@@ -65,6 +65,19 @@ pdfusetitle]{hyperref}
 \newcommand{\TODO}[1]{\red{TODO: #1}}
 \newcommand{\AddCite}{\red{[Needs citation]}}
 
+\newcommand{\avgOmega}{\omega^{\text{avg}}_{22}}
+\newcommand{\eEOB}{e_{\text{EOB}}}
+\newcommand{\zeroA}{A_{22}^{e=0}}
+\newcommand{\zeroOmega}{\omega_{22}^{e=0}}
+\newcommand{\tref}{t_{\text{ref}}}
+\newcommand{\fref}{f_{\text{ref}}}
+\newcommand{\mAmp}{\texttt{Amplitude}}
+\newcommand{\mFreq}{\texttt{Frequency}}
+\newcommand{\mResAmp}{\texttt{ResidualAmplitude}}
+\newcommand{\mResFreq}{\texttt{ResidualFrequency}}
+\newcommand{\mFreqFits}{\texttt{FrequencyFits}}
+\newcommand{\resAmp}{\Delta A_{22}}
+\newcommand{\resOmega}{\Delta \omega_{22}}
 
 % \newcommand{\mat}{{\tiny{\mathrm{mat}}}}
 % \newcommand{\mat}{{(\mathrm{m})}}
@@ -145,8 +158,8 @@ I done did it. Some other people that done'd similar things:
 \cite{Scott:2015rza}.
 
 %==========================================================================
-\section{Eccentricity Definition}
-\label{sec:eccentricity_definition}
+\section{Definig eccentricity and mean anomaly}
+\label{sec:defining-eccentricity-and-mean-anomaly}
 We propose a definition of eccentricity inspired by previous works in
 the literature (\TODO{cite papers}) using the frequency of the (2, 2)
 mode of gravitational wave at the pericenter (point of nearest
@@ -180,9 +193,6 @@ two successive pericenter passages.  In the Newtonian case, the radial
 period $P$ is a constant but in general relativistic case, it changes
 as the binary inspirals.
 
-%==========================================================================
-\section{Measurement of eccentricity and mean anomaly}
-\label{sec:measurement-of-eccentricity-and-mean-anomaly}
 Given a gravitational waveform, we proceed to measure the eccentricity
 and mean anomaly using the eccentricity definition in
 eq. (\ref{eq:eccentricity_definition}) and the mean anomaly definition
@@ -214,33 +224,30 @@ the times of passage of pericenters and use those in
 eq. (\ref{eq:mean_anomaly_definition}).
 \end{enumerate}
 
-In fig. \ref{fig:ecc_definition} and
-fig. \ref{fig:mean_anomaly_definition}, we illustrate how the
-measurements of eccentricity and mean anomaly, respectively, are done
-for a gravitational wave from a numerical relatively simulation. Lower
-panel of fig. \ref{fig:ecc_definition} shows the $\omega_{22}(t)$
-(light brown), the positions of pericenters (violet circles) and
-apocenters (cyan circles) and the interpolants $\omega_p(t)$ (violet
-solid line) and $\omega_a(t)$ (cyan solid line). The upper panel of
-fig. \ref{fig:ecc_definition} shows the evolution of measured
-eccentricity $e(t)$.
+In fig. \ref{fig:ecc_definition}, we illustrate how the measurements
+of eccentricity and mean anomaly are done for a gravitational wave
+from a numerical relatively simulation. Lower left panel shows the
+instantaneous (2, 2) mode frequency $\omega_{22}(t)$ (light brown),
+the positions of pericenters (violet circles) and apocenters (cyan
+circles) and the interpolants $\omega_p(t)$ (violet solid line) and
+$\omega_a(t)$ (cyan solid line). The upper left panel shows the
+evolution of measured eccentricity $e(t)$.
 
-Lower panel of fig. \ref{fig:mean_anomaly_definition}, shows the times
-of passage of pericenters using the vertical dotted (green)
-lines. The upper panel of the same figure shows the evolution of the
-mean anomaly $l(t)$. Between two successive pericenters, the mean
-anomaly varies linearly with time. The slope of the mean anomaly
-curves becomes steeper as the binary inspirals towards merger due to
-decreasing radial period $P_{i} = t_{i+1} - t_i$, where $t_{i}$ and
-$t_{i+1}$ are the time of passages of $i$th and the $i+1$th
-pericenter, respectively.
+Lower right panel shows the times of passage of pericenters using the
+vertical dotted (green) lines. The upper right panel shows the
+evolution of the mean anomaly $l(t)$. Between two successive
+pericenters, the mean anomaly varies linearly with time. The slope of
+the mean anomaly curves becomes steeper as the binary inspirals
+towards merger due to decreasing radial period $P_{i} = t_{i+1} -
+t_i$, where $t_{i}$ and $t_{i+1}$ are the time of passages of $i$th
+and the $i+1$th pericenter, respectively and $P_i$ is the radial
+period of the $i$th orbit.
 
-The vertical dashed red lines in fig. \ref{fig:ecc_definition} and
-fig. \ref{fig:mean_anomaly_definition} indicate the reference time
-$t_{\text{ref}}$ where we want to measure the eccentricity and mean
-anomaly and the red circles on the upper panels represent the measured
-eccentricity and the measured mean anomaly, respectively, at the
-reference time.
+The vertical dashed red lines in all the panels indicate the reference
+time $\tref$ where we measure the eccentricity and mean
+anomaly and the red circles on the upper left and upper right panels
+represent the measured eccentricity and the measured mean anomaly,
+respectively, at the reference time.
 
 Instead of measuring eccentricity and mean anomaly at a reference
 time, one may be interested in doing the measurement at a reference
@@ -249,57 +256,48 @@ frequency?}). However, for eccentric systems, the instantaneous
 $\omega_{22}(t)$ is not a monotonic function of time. Therefore there
 is no one-to-one map between a given frequency and a time. A way
 around this problem is to define some kind of average
-$\omega^{\text{avg}}_{22}(t)$ that is a monotonic function of
-time. Using $\omega^{\text{avg}}_{22}(t)$ we can establish a map
-between given reference frequency $f_{\text{ref}}$ and a reference
-time $t_{\text{ref}}$ demanding that the value of the average
+$\avgOmega(t)$ that is a monotonic function of
+time. Using $\avgOmega(t)$ we can establish a map
+between given reference frequency $\fref$ and a reference
+time $\tref$ demanding that the value of the average
 frequency at the reference time is equal to the reference frequency at
 which we want to measure the eccentricity and the mean anomaly, i.e.,
 
 \begin{equation}
   \label{eq:map-between-ref-freq-and-ref-time}
-  \omega^{\text{avg}}_{22}(t_{\text{ref}}) = 2 \pi f_{\text{ref}}
+  \avgOmega(\tref) = 2 \pi \fref
 \end{equation}
 
-Once we get the $t_{\text{ref}}$ that corresponds to the
-$f_{\text{ref}}$, we use that reference time and then follow the steps
+Once we get the $\tref$ that corresponds to the
+$\fref$, we use that reference time and then follow the steps
 discussed above to measure the eccentricity and mean anomaly. In
 sec. \ref{sec:implementation}, we discuss different ways to define a
-$\omega^{\text{avg}}_{22}(t)$ in details.
+$\avgOmega(t)$ in details.
 
-\begin{figure*}
-  \centering
-  \begin{minipage}[t]{0.475\textwidth}
-    \centering
-    \includegraphics[width=\columnwidth]{ecc_definition}
-    \caption{
-      Time evolution of the eccentricity $e(t)$ (upper panel)
-      and the frequency of (2, 2) mode $\omega_{22}(t)$ (lower panel) for NR
-      simulation (insert the simulation id here).  $\omega_p(t)$ and
-      $\omega_a(t)$ are spline interpolants of the frequency of (2, 2) mode
-      at the pericenter and apocenter, respectively. The spine interpolants
-      $\omega_p(t)$ ad $\omega_a(t)$ are created using the values of
-      $\omega_{22}$ at the pericenter (local maxima, deep violet circles)
-      and the apocenter (local minima, cyan circles), respectively. The red
-      dashed vertical line denotes the reference reference time
-      $t_{\text{ref}}=-5500$ and red circle (upper panel) denotes the
-      measured value of eccentricity at reference time.}
-    \label{fig:ecc_definition}
-  \end{minipage}\hfill
-  \begin{minipage}[t]{0.475\textwidth}
-    \centering
-    \includegraphics[width=\columnwidth]{mean_ano_definition}
-    \caption{
-      Time evolution of the mean anomaly $l(t)$ (upper panel) and
-      the $\omega_{22}(t)$ (lower panel). The vertical green dotted lines
-      denote the local maxima (times of passage of pericenter). The mean
-      anomaly varies linearly with time between two successive passages of
-      pericenter. The slope of $l(t)$ becomes steeper as the binary
-      inspirals due the reducing radial period. The red dashed line
-      indicates the reference time $t_{\text{ref}}=-5500$ and the red circle
-      (upper panel) denotes the measured value of the mean anomaly.}
-    \label{fig:mean_anomaly_definition}
-  \end{minipage}
+\begin{figure*} \centering
+  \begin{tabular}{cc}
+\includegraphics[width=\columnwidth]{ecc_definition} &
+\includegraphics[width=\columnwidth]{mean_ano_definition}
+  \end{tabular}
+  \caption{{\itshape left:} Time evolution of the eccentricity $e(t)$
+(upper panel) and the frequency of (2, 2) mode $\omega_{22}(t)$ (lower
+panel) for NR simulation (insert the simulation id here).
+$\omega_p(t)$ and $\omega_a(t)$ are spline interpolants of the
+frequency of (2, 2) mode at the pericenter and apocenter,
+respectively. The spine interpolants $\omega_p(t)$ ad $\omega_a(t)$
+are created using the values of $\omega_{22}$ at the pericenter (local
+maxima, deep violet circles) and the apocenter (local minima, cyan
+circles), respectively. {\itshape right:} Time evolution of the mean
+anomaly $l(t)$ (upper panel) and the $\omega_{22}(t)$ (lower
+panel). The vertical green dotted lines denote the local maxima (times
+of passage of pericenter). The mean anomaly varies linearly with time
+between two successive passages of pericenter. The slope of $l(t)$
+becomes steeper as the binary inspirals due the reducing radial
+period. The red dashed line on all the panels indicates the reference
+time $\tref=-5500$ and the red circle on upper left panel and upper
+right panel denotes the measured value of the eccentricity and mean
+anomaly, respectively, at $\tref$.}
+  \label{fig:ecc_definition}
 \end{figure*}
 
 %==========================================================================
@@ -332,28 +330,28 @@ of the local minima, i. e., the apocenters in the same way but just
 changing the sign of the $\omega_{22}(t)$ since the
 \texttt{find\_peaks} routine is designed to find the local maxima
 only. We call this method of find the locations of pericenters and
-apocenters using the $\omega_{22}$ data as \texttt{Frequency}.
+apocenters using the $\omega_{22}$ data as \mFreq{}.
 
-The next method that we implemented is called \texttt{Amplitude} and
+The next method that we implemented is called \mAmp{} and
 as the name suggests it uses the same procedure to locate the
 pericenters and apocenters but uses the instantaneous amplitude
 $A_{22}$ instead of the $\omega_{22}$.
 
-There is one advantage of using \texttt{Amplitude} over using
-\texttt{Frequency} specially for numerical relatively waveforms where
+There is one advantage of using \mAmp{} over using
+\mFreq{} specially for numerical relatively waveforms where
 often the $\omega_{22}$ data is noisier than the $A_{22}$ data and
 therefore it is safer to use the $A_{22}$. Otherwise using noisy
 $\omega_{22}$ data may lead to spurious local maxima and minima and
 that would in turn give in correct measurement of the eccentricity and
 mean anomaly.
 
-However, both the \texttt{Frequency} and \texttt{Amplitude} method has
+However, both the \mFreq{} and \mAmp{} method has
 the disadvantages that these methods do not work well for low
 eccentricities since the peak finding routines fail to detect the
 local maxima and minima in the $\omega_{22}$ and $A_{22}$ data due to
 the reduced modulations in them. This motivates us to consider other
 ways to detect local maxima and minima that would work for even low
-eccentricities where the \texttt{Frequency} and \texttt{Amplitude}
+eccentricities where the \mFreq{} and \mAmp{}
 method fail.
 
 \subsubsection{Residual frequency and residual amplitude}
@@ -363,34 +361,34 @@ and $A_{22}$ becomes smaller and we want to find a way to detect these
 small modulations to locate the local maxima and minima in them. One
 way to do this is to substract some sort of average of the
 instantaneous $\omega_{22}(t)$ from the instantaneous $\omega_{22}(t)$
-itself and get a residual $\Delta\omega_{22}$. It is observed that for
-any eccentric waveform the instantaneous $\omega_{22}^{e=0}(t)$ of
+itself and get a residual $\resOmega$. It is observed that for
+any eccentric waveform the instantaneous $\zeroOmega(t)$ of
 corresponding quasi-circular waveform (that has all the binary
 parameters the same except that the eccentricity is zero) can act as
 such an average $\omega_{22}$. Thus, we can construct a residual
-frequency $\Delta\omega_{22}$ by aligning the waveforms at the merger
+frequency $\resOmega$ by aligning the waveforms at the merger
 and then substracting the $\omega_{22}(t)$ of the quasi-circular
-waveform from the $\omega_{22}^{e=0}(t)$ of the eccentric waveform.
+waveform from the $\zeroOmega(t)$ of the eccentric waveform.
 \begin{equation}
   \label{eq:residual-omega22}
-  \Delta\omega_{22}(t) = \omega_{22}(t) - \omega_{22}^{e=0}(t)
+  \resOmega(t) = \omega_{22}(t) - \zeroOmega(t)
 \end{equation}
 
 We then follow the same steps as discussed in
-sec. \ref{sec:frequency-and-amplitude} but use $\Delta\omega_{22}(t)$
+sec. \ref{sec:frequency-and-amplitude} but use $\resOmega(t)$
 instead of $\omega_{22}(t)$ to find the local maxima and minima. We
-call this method \texttt{ResidualFrequency}.
+call this method \mResFreq{}.
 
-Similarly one can construct a residual amplitude $\Delta A_{22}$ by
-substracting the quasi-circular amplitude $A_{22}^{e=0}$ from
+Similarly one can construct a residual amplitude $\resAmp$ by
+substracting the quasi-circular amplitude $\zeroA$ from
 eccentric amplitude $A_{22}$
 
 \begin{equation}
   \label{eq:residual-amplitude}
-  \Delta A_{22}(t) = A_{22}(t) - A_{22}^{e=0}(t)
+  \resAmp(t) = A_{22}(t) - \zeroA(t)
 \end{equation}
 
-\texttt{ResidualAmplitude} method uses the residual amplitude $\Delta
+\mResAmp{} method uses the residual amplitude $\Delta
 A_{22}$ to find the local maxima and minima.
 
 The advantage of the residual methods is that these methods can detect
@@ -404,59 +402,59 @@ corresponding quasi-circular waveform. (\TODO{EXPAND and IMPROVE this})
 
 \TODO{Harald should fill this in.}
 
-\subsection{Defining $\omega^{\text{avg}}_{22}(t)$}
+\subsection{Defining $\avgOmega(t)$}
 \label{sec:definig-average-omega22}
 
-To measure the eccentricity and mean anomaly at a reference frequency $f_{\text{ref}}$
-we need a $\omega_{22}^{\text{avg}}$ so that we can get the reference
-time $t_{\text{ref}}$ using
+To measure the eccentricity and mean anomaly at a reference frequency $\fref$
+we need a $\avgOmega$ so that we can get the reference
+time $\tref$ using
 eq. (\ref{eq:map-between-ref-freq-and-ref-time}). Below we discuss
-different ways of implementing such an $\omega_{22}^{\text{avg}}$
+different ways of implementing such an $\avgOmega$
 
 \subsubsection{Orbital average at the extrema}
 \label{sec:orbital-average-at-the-extrema}
 In this implementation, we get the orbital average of the
 $\omega_{22}(t)$ at the extrema. At the $i$th extrema the
-$\omega^{\text{avg}}_{22}[t_i]$ is computed as
+$\avgOmega[t_i]$ is computed as
 
 \begin{equation}
   \label{eq:orbital-average-at-extrema}
-  \omega^{\text{avg}}_{22}[t_i] = \frac{1}{t_{i+1} -
+  \avgOmega[t_i] = \frac{1}{t_{i+1} -
     t_{i}}\int_{t_{i}}^{t_{i+1}}\omega_{22}(t) dt,
 \end{equation}
 where $t_{i+1}$ is the time of the $i+1$th extrema. We associate this
-$\omega_{22}^{\text{avg}}[t_{i}]$ with the time $t = (t_i +
+$\avgOmega[t_{i}]$ with the time $t = (t_i +
 t_{i+1})/2$. Once we get the orbital average of $\omega_{22}(t)$ at
 all the extrema using eq. (\ref{eq:orbital-average-at-extrema}), we
-create an interpolant $\omega_{22}^{\text{avg}}(t)$.
+create an interpolant $\avgOmega(t)$.
 
 \subsubsection{Average between the extrema}
 \label{sec:average-between-the-extrema}
 For the eccentricity measurement we create the interpolants
 $\omega_{p}(t)$ and $\omega_a(t)$ which uses the $\omega_{22}$ values
 at the pericenter and the apocenters, respectively. This
-implementation of $\omega_{22}^{\text{avg}}$ uses these two
+implementation of $\avgOmega$ uses these two
 interpolants and takes the mean of these
 \begin{equation}
   \label{eq:average-between-extrema}
-  \omega_{22}^{avg}(t) = \frac{\omega_{p}(t) + \omega_{a}(t)}{2}.
+  \avgOmega(t) = \frac{\omega_{p}(t) + \omega_{a}(t)}{2}.
 \end{equation}
 
 \subsubsection{Quasi-circular frequency}
 \label{sec:quasi-circular-frequency}
-Another option to get the $\omega_{22}^{\text{avg}}$ is to just use
-the $\omega_{22}^{e=0}$ of the corresponding quasi-circular waveforms
+Another option to get the $\avgOmega$ is to just use
+the $\zeroOmega$ of the corresponding quasi-circular waveforms
 where the quasi-circular waveform is generated using the same set of
 binary parameters as the eccentric one except that for the
 quasi-circular waveform, the eccentricity $e$ is set to zero. Thus we
 can use
 \begin{equation}
   \label{eq:quasi-circular-frequency}
-  \omega^{\text{avg}}_{22}(t) = \omega_{22}^{e=0}(t).
+  \avgOmega(t) = \zeroOmega(t).
 \end{equation}
 
 %==========================================================================
-\section{Tests}
+\section{Tests of robustness}
 \label{sec:tests}
 To check the robustness of the eccentricity definition in
 (\ref{eq:eccentricity_definition}) and the implementations using
@@ -467,42 +465,42 @@ waveforms of eccentricities varying from very low to high values. For
 this purpose, we generate hundreds of EOB waveforms using
 \texttt{SEOBNRv4EHM} model (\TODO{cite Toni's paper}) with
 eccentricity (this is the eccentricity that the model takes as an
-input, we call this EOB eccentricity $e_{\text{EOB}}$) from
-$e_{\text{EOB}} = 10^{-7}$ to $e_{\text{EOB}} = 0.5$ keeping other
+input, we call this EOB eccentricity $\eEOB$) from
+$\eEOB = 10^{-7}$ to $\eEOB = 0.5$ keeping other
 parameters (mass ratio and spins of the black holes) fixed. We do the
 following two tests using these waveforms
 
 \subsection{EOB eccentricity vs measured eccentricity}
 \label{sec:eob-eccentricity-vs-measured-eccentricity} In this test, we
 compare the eccentricity that the EOB model takes as an input (the EOB
-eccentricity $e_{\text{EOB}}$) and the eccentricity that we measure
+eccentricity $\eEOB$) and the eccentricity that we measure
 using our definition in (\ref{eq:eccentricity_definition}) at a
 specific reference time. For this test, we choose our reference time
 to be at the first available local extremum (pericenter or
-apocenter). As we vary the $e_{\text{EOB}}$ smoothly from low to high
+apocenter). As we vary the $\eEOB$ smoothly from low to high
 values we expect the measured eccentricities to also vary smoothly.
 This test also checks whether a particular implementation is able to
-measure the eccentricity at all. This is because, as $e_{\text{EOB}}$
+measure the eccentricity at all. This is because, as $\eEOB$
 becomes smaller and smaller some of the implementations may fail to
 detect any local extrema and therefore can not measure eccentricity
-beyond a certain $e_{\text{EOB}}$.
+beyond a certain $\eEOB$.
 
 Fig. \ref{fig:eob_vs_measured_ecc}, shows how the measured
-eccentricities $e$ varies with the EOB eccentricities $e_{\text{EOB}}$
+eccentricities $e$ varies with the EOB eccentricities $\eEOB$
 for waveforms with $q=4, \chi_{1z}=-0.6, \chi_{2z}=-0.6$. It
 illustrates the capabilities and robustness of different methods to
-measure eccentricities from very low to high $e_{\text{EOB}}$.  While
+measure eccentricities from very low to high $\eEOB$.  While
 all methods works nicely and gives similar measurement of $e$ for
-relatively high eccentricities $e_{\text{EOB}} \gtrsim 10^{-2}$, the
-\texttt{Frequency} (dashed) and the \texttt{Amplitude} (thick solid)
+relatively high eccentricities $\eEOB \gtrsim 10^{-2}$, the
+\mFreq{} (dashed) and the \mAmp{} (thick solid)
 method starts to deviate from others and fails to measure
-eccentricities as $e_{\text{EOB}}$ becomes close to $10^{-3}$.  On the
-other hand the residual methods, the \texttt{ResidualFrequency} (thin
-solid) and the \texttt{ResidualAmplitude} (thick dashdot) can measure
-eccentricities up to $e_{\text{EOB}} \simeq 10^{-5}$ and after that
+eccentricities as $\eEOB$ becomes close to $10^{-3}$.  On the
+other hand the residual methods, the \mResFreq{} (thin
+solid) and the \mResAmp{} (thick dashdot) can measure
+eccentricities up to $\eEOB \simeq 10^{-5}$ and after that
 the measured eccentricities tend to saturate. The
-\texttt{FrequencyFits} (thick dotted) works upto $10^{-4}$. This test
-implies that while the \texttt{Frequency} and the $\texttt{Amplitude}$
+\mFreqFits (thick dotted) works upto $10^{-4}$. This test
+implies that while the \mFreq{} and the \mAmp{}
 methods work for relatively high eccentricities, they fail to
 accurately measure eccentricity or fail to measure eccentricity at all
 for low eccentricities. However, the residual methods work and can
@@ -515,16 +513,16 @@ accurately measure eccentricity even for very low eccentricities.
 \caption{
   EOB eccentricity vs measured eccentricity. This plot illustrates the
   capabilities and robustness of different methods to measure
-  eccentricities from very low to high $e_{\text{EOB}}$.  While all
+  eccentricities from very low to high $\eEOB$.  While all
   methods works nicely for relatively high eccentricities
-  $e_{\text{EOB}} \gtrsim 10^{-2}$, \texttt{Frequency} (dashed) and
-  \texttt{Amplitude} (thick solid) methods start to deviate from others
-  and fails to measure eccentricities as $e_{\text{EOB}}$ becomes close
+  $\eEOB \gtrsim 10^{-2}$, \mFreq{} (dashed) and
+  \mAmp{} (thick solid) methods start to deviate from others
+  and fails to measure eccentricities as $\eEOB$ becomes close
   to $10^{-3}$. On the other hand the residual methods,
-  \texttt{ResidualFrequency} (thin solid) and \texttt{ResidualAmplitude}
-  (thick dashdot) can measure eccentricities up to $e_{\text{EOB}}
+  \mResFreq{} (thin solid) and \mResAmp{}
+  (thick dashdot) can measure eccentricities up to $\eEOB
   \simeq 10^{-5}$ and after that the measured eccentricities tend to
-  saturate. \texttt{FrequencyFits} (thick dotted) works upto $10^{-4}$.
+  saturate. \mFreqFits (thick dotted) works upto $10^{-4}$.
 }
 \label{fig:eob_vs_measured_ecc}
 \end{figure}
@@ -534,9 +532,9 @@ accurately measure eccentricity even for very low eccentricities.
 In this test, we check how the evolution of measured eccentricity with
 time vary as we vary the EOB eccentricities for a given method. To
 make the visualization better, we color the measured eccentricity vs
-time plots as a function of the $e_{\text{EOB}}$ and use a smoothly
+time plots as a function of the $\eEOB$ and use a smoothly
 varying color gradient to choose the colors from. If a particular
-method works for all $e_{\text{EOB}}$ from $10^{-7}$ to $0.5$ and for
+method works for all $\eEOB$ from $10^{-7}$ to $0.5$ and for
 all the times upto the merger, then we expect the measured
 eccentricity vs time plots for that method to form a band of colors
 smoothly varying from color of one end to the other end of the color
@@ -547,15 +545,15 @@ decreasing.
 Fig. \ref{fig:measured_ecc_vs_time} the results of this test. The text
 at the top right corner of each panel indicate the method that was
 used to measure the eccentricity of the EOB waveforms starting with
-eccentricity $e_{\text{EOB}}$. The \texttt{Amplitude} and the
-\texttt{Frequency} methods work well upto $e_{\text{EOB}} \simeq
+eccentricity $\eEOB$. The \mAmp{} and the
+\mFreq{} methods work well upto $\eEOB \simeq
 10^{-2}$ and below that the $e(t)$ curves stop further and further
 away from the merger and finally fail to measure any eccentricity. On
-ther other hand, the \texttt{ResidualAmplitude} and
-\texttt{ResidualFrequency} methods work well upto $e_{\text{EOB}}
+ther other hand, the \mResAmp{} and
+\mResFreq{} methods work well upto $\eEOB
 \simeq 10^{-5}$ and the $e(t)$ curves go all the way up to the
 merger. There are sudden jumps and the glitches, noticable in
-particular for low $e_{\text{EOB}}$s, in the evolution of the measured
+particular for low $\eEOB$s, in the evolution of the measured
 eccentricities for the two residual methods.  This is due to the jump
 and glitches in $\omega_{22}$ data of the EOB waveform itself and not
 a drawback of the methods (\TODO{IMPROVE THIS PHRASING}).
@@ -563,24 +561,24 @@ a drawback of the methods (\TODO{IMPROVE THIS PHRASING}).
 \begin{figure}[thb]
 \includegraphics[width=\columnwidth]{test_measured_ecc_vs_time_example}
 \caption{
-  Evolution of $e(t)$ (measured eccentricity) for varying
-  $e_{\text{EOB}}$ (EOB eccentricity) for different methods. Text at top
-  right corner indicates the method that is used to measure the
-  eccentricity evolution. The colorbar on right indicates the
-  $e_{\text{EOB}}$ of wavefomrs used to plot the evolution of measured
-  eccentricity. \texttt{Amplitude} and \texttt{Frequency} methods work
-  well upto $e_{\text{EOB}} \simeq 10^{-2}$ and below that the evolution
-  stops further and further away from the merger. On ther other hand the
-  \texttt{ResidualAmplitude} and \texttt{ResidualFrequency} methods work
-  well upto $e_{\text{EOB}} \simeq 10^{-5}$ and the evolution goes all
-  the way up to the merger. The sudden jump and the glitches we see in
-  the evolution of the measured eccentricities for these two methods is
-  due to the jump and glitches in $\omega_{22}$ data of the EOB waveform
-  itself and not a drawback of the method itself (\TODO{IMPROVE THIS
-  PHRASING}).
+  Evolution of $e(t)$ (measured eccentricity) for varying $\eEOB$ (EOB
+eccentricity). Text at top right corner indicates the used method. The
+colorbar on right indicates the $\eEOB$ of the waveforms
+used. \mAmp{} and \mFreq{} methods work well upto
+$\eEOB \simeq 10^{-2}$ and below that the evolution stops further and
+further away from the merger. \mResAmp{} and
+\mResFreq{} methods work well upto $\eEOB \simeq
+10^{-5}$ and the evolution goes all the way up to the merger. Refer to
+the text for more details.
 }
 \label{fig:measured_ecc_vs_time}
 \end{figure}
+
+% ==========================================================================
+
+\section{Applications}
+\label{sec:applications}
+
 
 %==========================================================================
 \section{Conclusion}
