@@ -225,8 +225,8 @@ solid line) and $\omega_a(t)$ (cyan solid line). The upper panel of
 fig. \ref{fig:ecc_definition} shows the evolution of measured
 eccentricity $e(t)$.
 
-Lower panel of fig. \ref{fig:mean_anomaly_definition}, shows the time
-of passages of pericenters using the vertical dotted (green)
+Lower panel of fig. \ref{fig:mean_anomaly_definition}, shows the times
+of passage of pericenters using the vertical dotted (green)
 lines. The upper panel of the same figure shows the evolution of the
 mean anomaly $l(t)$. Between two successive pericenters, the mean
 anomaly varies linearly with time. The slope of the mean anomaly
@@ -262,7 +262,7 @@ which we want to measure the eccentricity and the mean anomaly, i.e.,
 \end{equation}
 
 Once we get the $t_{\text{ref}}$ that corresponds to the
-$f_{\text{ref}}$, we use that reference time and the follow the steps
+$f_{\text{ref}}$, we use that reference time and then follow the steps
 discussed above to measure the eccentricity and mean anomaly. In
 sec. \ref{sec:implementation}, we discuss different ways to define a
 $\omega^{\text{avg}}_{22}(t)$ in details.
@@ -387,7 +387,7 @@ eccentric amplitude $A_{22}$
 
 \begin{equation}
   \label{eq:residual-amplitude}
-  \Delta A_{22}(t) = A_{22}(t) - A_{22}^{e=0}
+  \Delta A_{22}(t) = A_{22}(t) - A_{22}^{e=0}(t)
 \end{equation}
 
 \texttt{ResidualAmplitude} method uses the residual amplitude $\Delta
@@ -427,8 +427,8 @@ $\omega^{\text{avg}}_{22}[t_i]$ is computed as
 where $t_{i+1}$ is the time of the $i+1$th extrema. We associate this
 $\omega_{22}^{\text{avg}}[t_{i}]$ with the time $t = (t_i +
 t_{i+1})/2$. Once we get the orbital average of $\omega_{22}(t)$ at
-all the extrema using eq. (\ref{eq:orbital-average-at-extrema}) we
-create and interpolant $\omega_{22}^{\text{avg}}(t)$.
+all the extrema using eq. (\ref{eq:orbital-average-at-extrema}), we
+create an interpolant $\omega_{22}^{\text{avg}}(t)$.
 
 \subsubsection{Average between the extrema}
 \label{sec:average-between-the-extrema}
