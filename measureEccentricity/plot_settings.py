@@ -34,16 +34,16 @@ colorsDict = {
     "periastron": colors_gb_45[1],
     "vline": colors_gb_14[1],
     "peaksvline": colors_aq_15[1],
-    "FrequencyFits": colors_gb_14[1],
-    "ResidualFrequency": colors_dj_25[1],
-    "ResidualAmplitude": colors_gb_55[1],
+    "FrequencyFits": colors_dj_25[1],
+    "ResidualFrequency": colors_gb_14[1],
+    "ResidualAmplitude": colors_gb_45[1],
     "Frequency": colors_aq_15[1],
-    "Amplitude": colors_gb_45[1]
+    "Amplitude": colors_gb_36[5],
 }
 
 lstyles = {"Amplitude": "solid",
-           "Frequency": "dashed",
-           "ResidualAmplitude": "dashdot",
+           "Frequency": "dashdot",
+           "ResidualAmplitude": "dashed",
            "ResidualFrequency": "solid",
            "FrequencyFits": "dotted"}
 lwidths = {"Amplitude": 2,

@@ -129,11 +129,11 @@ for idx in np.arange(len(eccMethod.peaks_location) - 1):
 
 # draw omega22
 end = np.argmin(np.abs(eccMethod.t))
-ax[1].plot(eccMethod.t[: end], eccMethod.omega22[: end],
+ax[1].plot(eccMethod.t[: end], eccMethod.amp22[: end],
            c=colorsDict["default"])
 ax[1].set_xlabel(r"$t$ [$M$]")
-ax[1].set_ylabel(r"$\omega_{22}(t)$ [rad/$M$]")
-ax[1].set_ylim(0.008, 0.1)
+ax[1].set_ylabel(r"$A_{22}(t)$ [FIX ME]")
+ax[1].set_ylim(0.05, )
 ax[1].set_xlim(left=tref_in[0], right=0)
 
 # draw the vertical line indicate tref

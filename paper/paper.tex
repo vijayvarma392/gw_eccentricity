@@ -233,15 +233,15 @@ circles) and the interpolants $\omega_p(t)$ (violet solid line) and
 $\omega_a(t)$ (cyan solid line). The upper left panel shows the
 evolution of measured eccentricity $e(t)$.
 
-Lower right panel shows the times of passage of pericenters using the
-vertical dotted (green) lines. The upper right panel shows the
-evolution of the mean anomaly $l(t)$. Between two successive
-pericenters, the mean anomaly varies linearly with time. The slope of
-the mean anomaly curves becomes steeper as the binary inspirals
-towards merger due to decreasing radial period $P_{i} = t_{i+1} -
-t_i$, where $t_{i}$ and $t_{i+1}$ are the time of passages of $i$th
-and the $i+1$th pericenter, respectively and $P_i$ is the radial
-period of the $i$th orbit.
+Lower right panel shows the the $A_22(t)$ (solid line) and times of
+passage of pericenters using the vertical dotted (green) lines. The
+upper right panel shows the evolution of the mean anomaly
+$l(t)$. Between two successive pericenters, the mean anomaly varies
+linearly with time. The slope of the mean anomaly curves becomes
+steeper as the binary inspirals towards merger due to decreasing
+radial period $P_{i} = t_{i+1} - t_i$, where $t_{i}$ and $t_{i+1}$ are
+the time of passages of $i$th and the $i+1$th pericenter, respectively
+and $P_i$ is the radial period of the $i$th orbit.
 
 The vertical dashed red lines in all the panels indicate the reference
 time $\tref$ where we measure the eccentricity and mean
@@ -486,43 +486,37 @@ detect any local extrema and therefore can not measure eccentricity
 beyond a certain $\eEOB$.
 
 Fig. \ref{fig:eob_vs_measured_ecc}, shows how the measured
-eccentricities $e$ varies with the EOB eccentricities $\eEOB$
-for waveforms with $q=4, \chi_{1z}=-0.6, \chi_{2z}=-0.6$. It
-illustrates the capabilities and robustness of different methods to
-measure eccentricities from very low to high $\eEOB$.  While
-all methods works nicely and gives similar measurement of $e$ for
-relatively high eccentricities $\eEOB \gtrsim 10^{-2}$, the
-\mFreq{} (dashed) and the \mAmp{} (thick solid)
-method starts to deviate from others and fails to measure
-eccentricities as $\eEOB$ becomes close to $10^{-3}$.  On the
-other hand the residual methods, the \mResFreq{} (thin
-solid) and the \mResAmp{} (thick dashdot) can measure
-eccentricities up to $\eEOB \simeq 10^{-5}$ and after that
-the measured eccentricities tend to saturate. The
-\mFreqFits (thick dotted) works upto $10^{-4}$. This test
-implies that while the \mFreq{} and the \mAmp{}
+eccentricities $e$ varies with the EOB eccentricities $\eEOB$ for
+waveforms with $q=4, \chi_{1z}=-0.6, \chi_{2z}=-0.6$. It illustrates
+robustness of different methods to measure eccentricities from very
+low to high $\eEOB$. \mFreq{} and \mResFreq{} is not shown as they
+perform similar to \mAmp{} and \mResAmp{}, respectively.  While each
+method works nicely for relatively high eccentricities $\eEOB \gtrsim
+10^{-2}$, \mAmp{} (solid line) starts to deviate from others and fails
+to measure eccentricities as $\eEOB$ becomes close to $10^{-3}$. On
+the other hand, \mResAmp{} (dashed line) can measure eccentricities up
+to $\eEOB \simeq 10^{-5}$ and after that the measured eccentricities
+tend to saturate. \mFreqFits{} (dotted line) works upto
+$10^{-4}$. This test implies that while the \mFreq{} and the \mAmp{}
 methods work for relatively high eccentricities, they fail to
 accurately measure eccentricity or fail to measure eccentricity at all
 for low eccentricities. However, the residual methods work and can
 accurately measure eccentricity even for very low eccentricities.
 
-
 %--------------------------------------------------------------------------
 \begin{figure}[thb]
 \includegraphics[width=\columnwidth]{test_eob_vs_measured_ecc_example}
 \caption{
-  EOB eccentricity vs measured eccentricity. This plot illustrates the
-  capabilities and robustness of different methods to measure
-  eccentricities from very low to high $\eEOB$.  While all
-  methods works nicely for relatively high eccentricities
-  $\eEOB \gtrsim 10^{-2}$, \mFreq{} (dashed) and
-  \mAmp{} (thick solid) methods start to deviate from others
-  and fails to measure eccentricities as $\eEOB$ becomes close
-  to $10^{-3}$. On the other hand the residual methods,
-  \mResFreq{} (thin solid) and \mResAmp{}
-  (thick dashdot) can measure eccentricities up to $\eEOB
-  \simeq 10^{-5}$ and after that the measured eccentricities tend to
-  saturate. \mFreqFits (thick dotted) works upto $10^{-4}$.
+  EOB eccentricity vs measured eccentricity plots to illustrate the
+robustness of different methods to measure eccentricities from very
+low to high $\eEOB$. \mFreq{} and \mResFreq{} is not shown as they
+perform similar to \mAmp{} and \mResAmp{}, respectively.  While each
+method works nicely for relatively high eccentricities $\eEOB \gtrsim
+10^{-2}$, \mAmp{} (solid line) starts to deviate from others and fails
+to measure eccentricities as $\eEOB$ becomes close to $10^{-3}$. On
+the other hand, \mResAmp{} (dashed line) can measure eccentricities up
+to $\eEOB \simeq 10^{-5}$ and after that the measured eccentricities
+tend to saturate. \mFreqFits{} (dotted line) works upto $10^{-4}$.
 }
 \label{fig:eob_vs_measured_ecc}
 \end{figure}
