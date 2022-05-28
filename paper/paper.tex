@@ -345,14 +345,28 @@ $\omega_{22}$ data may lead to spurious local maxima and minima and
 that would in turn give in correct measurement of the eccentricity and
 mean anomaly.
 
-However, both the \mFreq{} and \mAmp{} method has
-the disadvantages that these methods do not work well for low
-eccentricities since the peak finding routines fail to detect the
-local maxima and minima in the $\omega_{22}$ and $A_{22}$ data due to
-the reduced modulations in them. This motivates us to consider other
-ways to detect local maxima and minima that would work for even low
-eccentricities where the \mFreq{} and \mAmp{}
-method fail.
+However, both the \mFreq{} and \mAmp{} method has the disadvantages
+that these methods do not work well for low eccentricities since the
+peak finding routines fail to detect the local maxima and minima in
+the $\omega_{22}$ and $A_{22}$ data due to the reduced modulations in
+them. In fig. \ref{fig:amp_vs_res_amp}, it is seen that the \mAmp{}
+method is able to detect only the first few local maxima (shown by violet
+circles) and after that it does not pick any local maxima. This
+motivates us to consider other ways to detect local maxima and minima
+that would work for even low eccentricities where the \mFreq{} and
+\mAmp{} method fail.
+
+\begin{figure}[thb]
+  \centering
+  \includegraphics[width=\columnwidth]{amp_vs_res_amp}
+  \caption{Illustration of how well \mAmp{} and \mResAmp{} can detect
+the local maxima for a waveform of low eccentricity. The \mAmp{}
+method can detect only the very first few maxima (violet circles) and
+fails to detect the rest of the maxima. On the other hand, the
+\mResAmp{} method can detect all the local maxima (red circles) in the
+$\omega_{22}(t)$ (brown solid line).}
+  \label{fig:amp_vs_res_amp}
+\end{figure}
 
 \subsubsection{Residual frequency and residual amplitude}
 \label{sec:residual-frequency-and-residual-amplitude}
@@ -393,9 +407,12 @@ A_{22}$ to find the local maxima and minima.
 
 The advantage of the residual methods is that these methods can detect
 the locations of local maxima and minima accurately even for very
-small eccentricities (see sec. \ref{sec:tests} below for more
-details). The disadvantage of the residual methods is that they need a
-corresponding quasi-circular waveform. (\TODO{EXPAND and IMPROVE this})
+small eccentricities. In fig. \ref{fig:amp_vs_res_amp}, it could be
+seen that the \mResAmp{} method (red circles) can detect all the local
+maxima that the \mAmp{} method (violet circles) was unable to
+detect. The disadvantage of the residual methods is that they need a
+corresponding quasi-circular waveform. (\TODO{EXPAND and IMPROVE
+this})
 
 \subsubsection{Frequency fits}
 \label{sec:frequenc-fits}
@@ -546,11 +563,24 @@ away from the merger and finally fail to measure any eccentricity. On
 ther other hand, the \mResAmp{} and
 \mResFreq{} methods work well upto $\eEOB
 \simeq 10^{-5}$ and the $e(t)$ curves go all the way up to the
-merger. There are sudden jumps and the glitches, noticable in
+merger.
+
+There are sudden jumps and the glitches, noticable in
 particular for low $\eEOB$s, in the evolution of the measured
 eccentricities for the two residual methods.  This is due to the jump
 and glitches in $\omega_{22}$ data of the EOB waveform itself and not
-a drawback of the methods (\TODO{IMPROVE THIS PHRASING}).
+a drawback of the methods. In fig. \ref{fig:res-amp-glitches}, we
+explain these jumps in the eccentricity evolution using one EOB
+waveform with $q=4.0, \chi_{1z}=-0.6, \chi_{2z}=-0.6$ and $\eEOB=1.07
+\into 10^{-5}$ at initial $\omega_{22} = 0.01$. In the upper panel,
+there is a big jump in
+the $e(t)$ curve around $t=-10000$ which is indicated by a red dashed
+line. In the lower panel, $\resOmega$ is plotted as a function of time
+and it is indeed seen that apocenters (cyan circles) and pericenters
+(violet circles) accurately correspond to the extrema of the
+$\resOmega$ and at around $t=10000$, there is a jump in the
+$\resOmega$ values at the extrema which corresponds to the jump in the
+$e(t)$ curve in the upper panel.
 
 \begin{figure}[thb]
 \includegraphics[width=\columnwidth]{test_measured_ecc_vs_time_example}
@@ -566,6 +596,22 @@ further away from the merger. \mResAmp{} and
 the text for more details.
 }
 \label{fig:measured_ecc_vs_time}
+\end{figure}
+
+\begin{figure}[thb]
+  \centering
+  \includegraphics[width=\columnwidth]{res_amp_glitches}
+  \caption{Eccentricity evolution using EOB waveform with $q=4.0,
+\chi_{1z}=-0.6, \chi_{2z}=-0.6$ and $\eEOB=1.07 \into 10^{-5}$ at
+initial $\omega_{22} = 0.01$. In the upper panel, there is a big jump
+in the $e(t)$ curve around $t=-10000$ which is indicated by a red
+dashed line. In the lower panel, $\resOmega$ is plotted as a function
+of time and it is indeed seen that apocenters (cyan circles) and
+pericenters (violet circles) accurately correspond to the extrema of
+the $\resOmega$ and at around $t=10000$, there is a jump in the
+$\resOmega$ values at the extrema which corresponds to the jump in the
+$e(t)$ curve in the upper panel.}
+  \label{fig:res-amp-glitches}
 \end{figure}
 
 % ==========================================================================
