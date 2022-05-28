@@ -193,6 +193,31 @@ two successive pericenter passages.  In the Newtonian case, the radial
 period $P$ is a constant but in general relativistic case, it changes
 as the binary inspirals.
 
+In gravitational wave literature, the two gravitational wave
+polarizations $\h_{+}$ and $\h_{\into}$ are conventionally presented
+in the form of a complex function of time $\h(t) = \h_{+}(t) - i
+\h_{\into}(t)$ which can be decomposed in terms of spin weighted
+spherical harmonics of spin $-2$ denoted as ${}_{-2}Y_{\ell m}(\theta,
+\varphi)$ and a complex gravitational wave mode $\hlm(t)$
+\begin{equation}
+  \label{eq:h} \h(t) \equiv \h_{+}(t) -i \h_{\into}(t) =
+\sum_{\ell=2}^{\ell=\infty}\sum_{m=-\ell}^{m=\ell} {}_{-2}Y_{\ell
+m}(\theta, \varphi) \hlm(t)
+\end{equation} In the current work, the waveform modes at future null
+infinity, scaled to unit mass and unit distance, is denoted as $\hlm$.
+
+The $\hlm$ of the $(\ell, m)$ mode could be further decomposed in an
+amplitude $A_{\ell m}$ and a phase $\phi_{\ell m}$ as
+\begin{equation}
+  \label{eq:amp-phase}
+  \hlm(t) = A_{\ell m}(t) e^{i \phi_{\ell m}(t)}
+\end{equation}
+The frequency of $(2, 2)$ mode, therefore, could be obtained as
+\begin{equation}
+  \label{eq:omega22}
+  \omega_{22}(t) = \frac{\dd \phi_{22}(t)}{\dd t}.
+\end{equation}
+
 Given a gravitational waveform, we proceed to measure the eccentricity
 and mean anomaly using the eccentricity definition in
 eq. (\ref{eq:eccentricity_definition}) and the mean anomaly definition
@@ -233,7 +258,7 @@ circles) and the interpolants $\omega_p(t)$ (violet solid line) and
 $\omega_a(t)$ (cyan solid line). The upper left panel shows the
 evolution of measured eccentricity $e(t)$.
 
-Lower right panel shows the the $A_22(t)$ (solid line) and times of
+Lower right panel shows the the $A_{22}(t)$ (solid line) and times of
 passage of pericenters using the vertical dotted (green) lines. The
 upper right panel shows the evolution of the mean anomaly
 $l(t)$. Between two successive pericenters, the mean anomaly varies
@@ -358,7 +383,7 @@ that would work for even low eccentricities where the \mFreq{} and
 
 \begin{figure}[thb]
   \centering
-  \includegraphics[width=\columnwidth]{amp_vs_res_amp}
+  \includegraphics[width=\columnwidth]{compare_methods}
   \caption{Illustration of how well \mAmp{} and \mResAmp{} can detect
 the local maxima for a waveform of low eccentricity. The \mAmp{}
 method can detect only the very first few maxima (violet circles) and
@@ -375,11 +400,23 @@ and $A_{22}$ becomes smaller and we want to find a way to detect these
 small modulations to locate the local maxima and minima in them. One
 way to do this is to substract some sort of average of the
 instantaneous $\omega_{22}(t)$ from the instantaneous $\omega_{22}(t)$
-itself and get a residual $\resOmega$. It is observed that for
-any eccentric waveform the instantaneous $\zeroOmega(t)$ of
-corresponding quasi-circular waveform (that has all the binary
-parameters the same except that the eccentricity is zero) can act as
-such an average $\omega_{22}$. Thus, we can construct a residual
+itself and get a residual $\resOmega$. It is observed that for any
+eccentric waveform the instantaneous $\zeroOmega(t)$ of corresponding
+quasi-circular waveform (that has all the binary parameters the same
+except that the eccentricity is zero) can act as such an average
+$\omega_{22}$. Fig. \ref{fig:eccentric-and-non-eccentric}, the upper
+panel shows amplitude $A_{22}$ for an eccentric EOB waveform (solid
+line) and a quasi-circular waveform (dashed line) aligned at the
+merger. The lower panel shows the same for the $\omega_{22}$. 
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\columnwidth]{ecc_and_zero_ecc}
+  \caption{eccentric and quasi-circular amplitude and frequency}
+  \label{fig:eccentric-and-non-eccentric}
+\end{figure}
+
+Thus, we can construct a residual
 frequency $\resOmega$ by aligning the waveforms at the merger
 and then substracting the $\omega_{22}(t)$ of the quasi-circular
 waveform from the $\zeroOmega(t)$ of the eccentric waveform.
