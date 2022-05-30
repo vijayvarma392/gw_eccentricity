@@ -2,7 +2,7 @@ __doc__ = """This test checks how the measured eccentricity looks like as
 a function of time for different eccentricity definitions. The EOB waveforms
 that are used for this test are generated from a fixed mass ratio, spins, and
 Momega0 (the initial dimless orbital frequency), with eccentricity varying
-from 1e-7 to 0.5. We try to measure the eccentricity from these waveforms
+from 1e-7 to 1. We try to measure the eccentricity from these waveforms
 using different eccentricity definitions. We plot the measured eccentricity vs
 tref_out, and color the lines by the input EOB eccentricity at Momega0.
 You should check visually whether there are glitchy features in these plots.
@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(
     description=(__doc__),
     formatter_class=SmartFormatter)
 
-EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
+EOBeccs = 10**np.linspace(-7, 0, 150)
 
 parser.add_argument(
     "--data_dir", "-d",
@@ -105,6 +105,7 @@ args = parser.parse_args()
 EOBeccs = EOBeccs[np.logical_and(EOBeccs >= args.emin, EOBeccs <= args.emax)]
 EOBeccs = EOBeccs[0: len(EOBeccs): args.slice]
 Momega0 = 0.01
+meanAno = np.pi/2
 Momega0_zeroecc = 0.002
 cmap = cm.get_cmap("plasma")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
@@ -120,7 +121,8 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 # Avoid raising warnings when length of the data for interpolation
 # in monotonicity check is too long
 extra_kwargs = {"debug": False,
-                "num_orbits_to_exclude_before_merger": 2}
+                "num_orbits_to_exclude_before_merger": 2,
+                "treat_mid_points_between_peaks_as_troughs": True}
 
 
 def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
@@ -131,13 +133,14 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
         q, chi1z, chi2z = available_param_sets[set_key]
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
-                    f"Momega0{Momega0:.3f}.h5")
+                    f"Momega0{Momega0:.3f}_meanAno{meanAno:.3f}.h5")
         kwargs = {"filepath": fileName}
         if "Residual" in method:
             fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
                                  f"{chi1z:.2f}_"
                                  f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
-                                 f"Momega0{Momega0_zeroecc:.3f}.h5")
+                                 f"Momega0{Momega0_zeroecc:.3f}_"
+                                 f"meanAno{meanAno:.3f}.h5")
             kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                            "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
@@ -160,7 +163,7 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
         tmin = max(tminList)  # choose the shortest
         tmax = max(tmaxList)
         ymax = max(ecciniList)
-        ymin = 1e-1 * min(EOBeccs)
+        ymin = min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
     ax.set_ylabel("$e(t)$")
@@ -177,8 +180,8 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     cbar.set_label(r"$e_{\mathrm{EOB}}$ at $\omega_0$",
                    size=10)
     if idx == 0:
-        ax.set_title(rf"$q={q:.3f}, \chi_{{1z}}={chi1z:.3f}, "
-                     rf"\chi_{{2z}}={chi2z:.3f}$",
+        ax.set_title(rf"$q={q:.1f}, \chi_{{1z}}={chi1z:.1f}, "
+                     rf"\chi_{{2z}}={chi2z:.1f}$",
                      y=1.02, fontsize=10)
 
 
