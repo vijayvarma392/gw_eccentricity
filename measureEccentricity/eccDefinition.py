@@ -50,8 +50,11 @@ class eccDefinition:
                     Run additional sanity checks if True.
                     Default: True.
                 treat_mid_points_between_peaks_as_troughs:
-                    Use the mid points between two consecutive peaks as the
-                    locations of of the troughs.
+                    If True, instead of trying to find local minima in the
+                    data, we simply find the midpoints between local maxima
+                    and treat them as apastron locations. This is helpful for
+                    eccentricities ~1 where periastrons are easy to find but
+                    apastrons are not.
                     Default: False
         """
         self.dataDict = dataDict
