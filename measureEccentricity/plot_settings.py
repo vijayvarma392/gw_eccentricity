@@ -46,11 +46,11 @@ lstyles = {"Amplitude": "solid",
            "ResidualAmplitude": "dashed",
            "ResidualFrequency": "solid",
            "FrequencyFits": "dotted"}
-lwidths = {"Amplitude": 2,
+lwidths = {"Amplitude": 1,
            "Frequency": 1,
-           "ResidualAmplitude": 2,
+           "ResidualAmplitude": 1,
            "ResidualFrequency": 1,
-           "FrequencyFits": 4}
+           "FrequencyFits": 2}
 lalphas = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,

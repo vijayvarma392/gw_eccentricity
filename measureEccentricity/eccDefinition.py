@@ -49,6 +49,10 @@ class eccDefinition:
                 debug:
                     Run additional sanity checks if True.
                     Default: True.
+                treat_mid_points_between_peaks_as_troughs:
+                    Use the mid points between two consecutive peaks as the
+                    locations of of the troughs.
+                    Default: False
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
@@ -237,6 +241,10 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out.
         """
         self.omega22_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
+        # In some cases it is easier to find the peaks than finding the
+        # troughs. For such cases, one can only find the peaks and use the
+        # mid points between two consecutive peaks as the location of the
+        # troughs.
         if self.extra_kwargs["treat_mid_points_between_peaks_as_troughs"]:
             self.omega22_troughs_interp, self.troughs_location = self.get_troughs_from_peaks()
         else:
@@ -908,6 +916,12 @@ class eccDefinition:
         ------
         spline through troughs, positions of troughs
         """
+        # NOTE: Assuming uniform time steps.
+        # TODO: Make it work for non uniform time steps
+        # In the following we get the location of mid point between ith peak
+        # and (i+1)th peak as (loc[i] + loc[i+1])/2 where loc is the array
+        # that contains the peak locations. This works because time steps are
+        # assumed to be uniform and hence proportional to the time itself.
         troughs_idx = (self.peaks_location[:-1] + self.peaks_location[1:]) / 2
         troughs_idx = troughs_idx.astype(int)  # convert to ints
         if len(troughs_idx) >= 2:
