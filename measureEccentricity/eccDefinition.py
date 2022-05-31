@@ -95,6 +95,10 @@ class eccDefinition:
                 "num_orbits_to_exclude_before_merger must be non-negative. "
                 "Given value was "
                 f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
+        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs['extrema_finding_kwargs'],
+            self.get_default_extrema_finding_kwargs(),
+            "extrema_finding_kwargs")
 
     def get_default_spline_kwargs(self):
         """Defaults for spline settings."""
@@ -105,6 +109,19 @@ class eccDefinition:
             "ext": 2,
             "check_finite": False}
         return default_spline_kwargs
+
+    def get_default_extrema_finding_kwargs(self):
+        """Defaults for extrema_finding_kwargs."""
+        default_extrema_finding_kwargs = {
+            "height": None,
+            "threshold": None,
+            "distance": None,
+            "prominence": None,
+            "width": self.get_default_width_for_peak_finder(),
+            "wlen": None,
+            "rel_height": 0.5,
+            "plateau_size": None}
+        return default_extrema_finding_kwargs
 
     def get_default_extra_kwargs(self):
         """Defaults for additional kwargs."""
@@ -936,3 +953,89 @@ class eccDefinition:
             raise Exception(
                 "Sufficient number of troughs are not found."
                 " Can not create an interpolator.")
+
+    def get_default_width_for_peak_finder(
+            self,
+            width_for_unit_timestep=50):
+        """Get the minimal value of width parameter for extrema finding.
+
+        The extrema finding method, i.e., find_peaks from scipy.signal
+        needs a "width" parameter that is used to determine the minimal
+        separation between consecutive extrema. If the "width" is too small
+        then some noisy features in the signal might be mistaken for extrema
+        and on the other hand if the "width" is too large then we might miss
+        an extrema.
+
+        This function gets an appropriate width by scaling it with the
+        time steps in the time array of the waveform data.
+
+        Parameters:
+        ----------
+        width_for_unit_timestep:
+            Width to use when the time step in the wavefrom data is 1.
+
+        Returns:
+        -------
+        width:
+            Minimal width to separate consecutive peaks.
+        """
+        return int(width_for_unit_timestep / (self.t[1] - self.t[0]))
+
+    def get_width_for_peak_finder_from_phase22(self,
+                                               num_orbits_before_merger=2):
+        """Get the minimal value of width parameter for extrema finding.
+
+        The extrema finding method, i.e., find_peaks from scipy.signal
+        needs a "width" parameter that is used to determine the minimal
+        separation between consecutive extrema. If the "width" is too small
+        then some noisy features in the signal might be mistaken for extrema
+        and on the other hand if the "width" is too large then we might miss
+        an extrema.
+
+        This function tries to use the phase22 to get a reasonable value of
+        "width" by looking at the time scale over which the phase22 changes by
+        about 4pi because the change in phase22 over one orbit would be
+        approximately twice the change in the orbital phase which is about 2pi.
+        Finally we divide this by 4 so that the width is always smaller than
+        the two consecutive extrema otherwise we risk of missing a few extrema
+        very close to the merger.
+
+        Parameters:
+        ----------
+        num_orbits_before_merger:
+            Number of orbits before merger to get the time at which the width
+            parameter is determined. We want to do this near the merger as this
+            is where the time between extrema is the smallest, and the width
+            parameter sets the minimal separation between extrema.
+            Default is 2.
+
+        Returns:
+        -------
+        width:
+            Minimal width to separate consecutive peaks.
+        """
+        # get the phase22 at merger. t = 0 at the merger
+        phase22_merger = self.phase22[np.argmin(np.abs(self.t))]
+        # get the time for getting width at num orbits before merger.
+        # for 22 mode phase changes about 2 * 2pi for each orbit.
+        t_at_num_orbits_before_merger = self.t[
+            np.argmin(
+                np.abs(
+                    self.phase22
+                    - (phase22_merger
+                       - (num_orbits_before_merger * 4 * np.pi))))]
+        t_at_num_minus_one_orbits_before_merger = self.t[
+            np.argmin(
+                np.abs(
+                    self.phase22
+                    - (phase22_merger
+                       - ((num_orbits_before_merger - 1) * 4 * np.pi))))]
+        # change in time over which phase22 change by 4 pi
+        # between num_orbits_before_merger and num_orbits_before_merger - 1
+        dt = (t_at_num_minus_one_orbits_before_merger
+              - t_at_num_orbits_before_merger)
+        # get the width using dt and the time step
+        width = dt / (self.t[1] - self.t[0])
+        # we want to use a width that is always smaller than the separation
+        # between extrema, otherwise we might miss a few peaks near merger
+        return int(width / 4)
