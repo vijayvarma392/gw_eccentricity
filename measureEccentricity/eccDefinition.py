@@ -49,6 +49,13 @@ class eccDefinition:
                 debug:
                     Run additional sanity checks if True.
                     Default: True.
+                treat_mid_points_between_peaks_as_troughs:
+                    If True, instead of trying to find local minima in the
+                    data, we simply find the midpoints between local maxima
+                    and treat them as apastron locations. This is helpful for
+                    eccentricities ~1 where periastrons are easy to find but
+                    apastrons are not.
+                    Default: False
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
@@ -106,7 +113,8 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega22_averaging_method": "average_between_extrema"
+            "omega22_averaging_method": "average_between_extrema",
+            "treat_mid_points_between_peaks_as_troughs": False
             }
         return default_extra_kwargs
 
@@ -236,7 +244,14 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out.
         """
         self.omega22_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
-        self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
+        # In some cases it is easier to find the peaks than finding the
+        # troughs. For such cases, one can only find the peaks and use the
+        # mid points between two consecutive peaks as the location of the
+        # troughs.
+        if self.extra_kwargs["treat_mid_points_between_peaks_as_troughs"]:
+            self.omega22_troughs_interp, self.troughs_location = self.get_troughs_from_peaks()
+        else:
+            self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
         t_peaks = self.t[self.peaks_location]
         t_troughs = self.t[self.troughs_location]
@@ -717,8 +732,8 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.tref_out, self.ecc_ref, **kwargs)
-        axNew.set_xlabel("time")
-        axNew.set_ylabel("eccentricity")
+        axNew.set_xlabel(r"$t$")
+        axNew.set_ylabel(r"Eccentricity $e$")
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
@@ -739,7 +754,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
-        axNew.set_xlabel("time")
+        axNew.set_xlabel("$t$")
         axNew.set_ylabel(r"$de/dt$")
         axNew.grid()
         if fig is None or ax is None:
@@ -758,7 +773,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.tref_out, self.mean_ano_ref, **kwargs)
-        axNew.set_xlabel("time")
+        axNew.set_xlabel("$t$")
         axNew.set_ylabel("mean anomaly")
         axNew.grid()
         if fig is None or ax is None:
@@ -777,15 +792,15 @@ class eccDefinition:
         else:
             axNew = ax
         axNew.plot(self.tref_out, self.omega22_peak_at_tref_out,
-                   c=colorsDict["periastron"], label=r"$\omega_{p}(t)$",
+                   c=colorsDict["periastron"], label=r"$\omega_{p}$",
                    **kwargs)
         axNew.plot(self.tref_out, self.omega22_trough_at_tref_out,
-                   c=colorsDict["apastron"], label=r"$\omega_{a}(t)$",
+                   c=colorsDict["apastron"], label=r"$\omega_{a}$",
                    **kwargs)
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t))
         axNew.plot(self.t[: end], self.omega22[: end],
-                   c=colorsDict["default"], label=r"$\omega_{22}(t)$")
+                   c=colorsDict["default"], label=r"$\omega_{22}$")
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
                    c=colorsDict["periastron"],
@@ -794,9 +809,9 @@ class eccDefinition:
                    self.omega22[self.troughs_location],
                    c=colorsDict["apastron"],
                    marker=".", ls="")
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$M\omega_{22}(t)$")
+        axNew.set_ylabel(r"$\omega_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -824,7 +839,7 @@ class eccDefinition:
         axNew.plot(ttroughs[1:], self.orb_phase_diff_ratio_at_troughs[1:],
                    c=colorsDict["apastron"],
                    marker=".", label="Apastron phase diff ratio")
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
         axNew.legend()
@@ -855,7 +870,7 @@ class eccDefinition:
                    self.res_omega22[self.troughs_location],
                    marker=".", ls="", label="Apastron",
                    c=colorsDict["apastron"])
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta\omega_{22}$")
         axNew.legend()
@@ -879,7 +894,7 @@ class eccDefinition:
                    self.res_amp22[self.troughs_location],
                    c=colorsDict["apastron"],
                    marker=".", ls="", label="Apastron")
-        axNew.set_xlabel("time")
+        axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta A_{22}$")
         axNew.legend()
@@ -887,3 +902,37 @@ class eccDefinition:
             return figNew, axNew
         else:
             return axNew
+
+    def get_troughs_from_peaks(self):
+        """Get Interpolator through troughs and their locations.
+
+        This function treats the mid points between two successive peaks
+        as the location of the trough in between the same two peaks. Thus
+        it does not find the locations of the troughs using peak
+        finder at all. It is useful in situation where finding peaks
+        is easy but finding the troughs in between is difficult. This is
+        the case for highly eccentric systems where eccentricity approaches
+        1. For such systems the amp22/omega22 data between the peaks is almost
+        flat and hard to find the local minima.
+
+        returns:
+        ------
+        spline through troughs, positions of troughs
+        """
+        # NOTE: Assuming uniform time steps.
+        # TODO: Make it work for non uniform time steps
+        # In the following we get the location of mid point between ith peak
+        # and (i+1)th peak as (loc[i] + loc[i+1])/2 where loc is the array
+        # that contains the peak locations. This works because time steps are
+        # assumed to be uniform and hence proportional to the time itself.
+        troughs_idx = (self.peaks_location[:-1] + self.peaks_location[1:]) / 2
+        troughs_idx = troughs_idx.astype(int)  # convert to ints
+        if len(troughs_idx) >= 2:
+            spline = InterpolatedUnivariateSpline(self.t[troughs_idx],
+                                                  self.omega22[troughs_idx],
+                                                  **self.spline_kwargs)
+            return spline, troughs_idx
+        else:
+            raise Exception(
+                "Sufficient number of troughs are not found."
+                " Can not create an interpolator.")

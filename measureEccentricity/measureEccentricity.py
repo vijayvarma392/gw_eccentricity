@@ -124,8 +124,15 @@ def measure_eccentricity(tref_in=None, fref_in=None,
             Run additional sanity checks if debug is True.
             Default: True.
         omega22_averaging_method:
-            Methods for getting average omega22. Default is
-            "average_between_extrema". For more see fref_in.
+            Methods for getting average omega22. For more see fref_in.
+            Default is "average_between_extrema".
+        treat_mid_points_between_peaks_as_troughs:
+            If True, instead of trying to find local minima in the
+            data, we simply find the midpoints between local maxima
+            and treat them as apastron locations. This is helpful for
+            eccentricities ~1 where periastrons are easy to find but
+            apastrons are not.
+            Default: False
 
     returns:
     --------

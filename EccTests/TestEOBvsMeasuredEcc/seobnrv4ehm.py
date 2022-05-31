@@ -5,13 +5,6 @@ import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 import os
 import h5py
-import pycbc.types.timeseries as pt
-from pycbc.waveform.utils import taper_timeseries
-from pycbc.filter import match
-import pycbc.psd.analytical as psda
-from scipy.optimize import minimize_scalar
-import glob
-from tqdm import tqdm
 
 LALMTSUNSI = 4.925491025543575903411922162094833998e-6
 # (* Subscript[M, \[CircleDot]][s] = G/c^3Subscript[M, \[CircleDot]][kg]
