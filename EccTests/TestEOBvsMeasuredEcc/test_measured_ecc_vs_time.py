@@ -122,7 +122,8 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 # in monotonicity check is too long
 extra_kwargs = {"debug": False,
                 "num_orbits_to_exclude_before_merger": 2,
-                "treat_mid_points_between_peaks_as_troughs": True}
+                "treat_mid_points_between_peaks_as_troughs": True
+                }
 
 
 def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
@@ -166,8 +167,10 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
         ymin = min(EOBeccs)
         ax.set_xlim(tmin, tmax)
         ax.set_ylim(ymin, ymax)
-    ax.set_ylabel("$e(t)$")
+    ax.set_ylabel("$e$")
     ax.set_yscale("log")
+    # add yticks
+    ax.set_yticks(10.0**np.arange(-6.0, 1.0, 2.0))
     # add text indicating the method used
     ax.text(0.95, 0.95, f"{method}", ha="right", va="top",
             transform=ax.transAxes, fontsize=10)
@@ -177,6 +180,8 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     cax = divider.append_axes('right', size='3%', pad=0.1)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
+    # set yticks on colorbar
+    cbar.ax.set_yticks([1e-7, 1e-5, 1e-3, 1e-1, 1])
     cbar.set_label(r"$e_{\mathrm{EOB}}$ at $\omega_0$",
                    size=10)
     if idx == 0:

@@ -80,8 +80,8 @@ eccMethod.plot_measured_ecc(fig, ax[0])
 # draw the omega22 and the pericenters and apocenters
 eccMethod.plot_extrema_in_omega22(fig, ax[1])
 ax[1].set_xlabel(r"$t$ [$M$]")
-ax[1].set_ylabel(r"$\omega_{22}(t)$ [rad/$M$]")
-ax[0].set_ylabel(r"Eccentricity $e(t)$")
+ax[1].set_ylabel(r"$\omega_{22}$ [rad/$M$]")
+ax[0].set_ylabel(r"Eccentricity $e$")
 ax[0].set_xlabel("")
 ax[1].set_ylim(0.008, 0.1)
 ax[1].set_xlim(left=tref_in[0], right=0)
@@ -107,7 +107,7 @@ fig.savefig("../figs/ecc_definition.pdf")
 # plot the mean anomaly ====================================================
 fig, ax = plt.subplots(nrows=2, figsize=(figWidthsOneColDict[journal], 3),
                        sharex=True)
-ax[0].set_ylabel(r"Mean Anomaly $l(t)$ [rad]")
+ax[0].set_ylabel(r"Mean Anomaly $l$ [rad]")
 # set the yticks for mean anomaly
 ax[0].set_yticks([0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi])
 ax[0].set_yticklabels(["0", r"$\pi/2$", r"$\pi$", r"$3\pi/2$", r"$2\pi$"])
@@ -128,13 +128,23 @@ for idx in np.arange(len(eccMethod.peaks_location) - 1):
         ax[0].axvline(t_next_peak, c=colorsDict["peaksvline"], ls=":", lw=0.5)
 
 # draw omega22
-end = np.argmin(np.abs(eccMethod.t))
+end = np.argmin(np.abs(eccMethod.t - 500))
 ax[1].plot(eccMethod.t[: end], eccMethod.amp22[: end],
            c=colorsDict["default"])
+# draw the extrema
+ax[1].plot(eccMethod.t[eccMethod.peaks_location],
+           eccMethod.amp22[eccMethod.peaks_location],
+           c=colorsDict["periastron"],
+           marker=".")
+ax[1].plot(eccMethod.t[eccMethod.troughs_location],
+           eccMethod.amp22[eccMethod.troughs_location],
+           c=colorsDict["apastron"],
+           marker=".")
+
 ax[1].set_xlabel(r"$t$ [$M$]")
-ax[1].set_ylabel(r"$A_{22}(t)$")
+ax[1].set_ylabel(r"$A_{22}$")
 ax[1].set_ylim(0.05, )
-ax[1].set_xlim(left=tref_in[0], right=0)
+ax[1].set_xlim(left=tref_in[0], right=eccMethod.t[end])
 
 # # draw the vertical line indicate tref
 # ax[0].axvline(tref_mark, c=colorsDict["vline"], ls="--")

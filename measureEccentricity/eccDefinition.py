@@ -733,7 +733,7 @@ class eccDefinition:
                 kwargs.update({key: default_kwargs[key]})
         axNew.plot(self.tref_out, self.ecc_ref, **kwargs)
         axNew.set_xlabel(r"$t$")
-        axNew.set_ylabel(r"Eccentricity $e(t)$")
+        axNew.set_ylabel(r"Eccentricity $e$")
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
@@ -792,15 +792,15 @@ class eccDefinition:
         else:
             axNew = ax
         axNew.plot(self.tref_out, self.omega22_peak_at_tref_out,
-                   c=colorsDict["periastron"], label=r"$\omega_{p}(t)$",
+                   c=colorsDict["periastron"], label=r"$\omega_{p}$",
                    **kwargs)
         axNew.plot(self.tref_out, self.omega22_trough_at_tref_out,
-                   c=colorsDict["apastron"], label=r"$\omega_{a}(t)$",
+                   c=colorsDict["apastron"], label=r"$\omega_{a}$",
                    **kwargs)
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t))
         axNew.plot(self.t[: end], self.omega22[: end],
-                   c=colorsDict["default"], label=r"$\omega_{22}(t)$")
+                   c=colorsDict["default"], label=r"$\omega_{22}$")
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
                    c=colorsDict["periastron"],
@@ -811,7 +811,7 @@ class eccDefinition:
                    marker=".", ls="")
         axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$\omega_{22}(t)$")
+        axNew.set_ylabel(r"$\omega_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -872,7 +872,7 @@ class eccDefinition:
                    c=colorsDict["apastron"])
         axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$\Delta\omega_{22}(t)$")
+        axNew.set_ylabel(r"$\Delta\omega_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
@@ -896,7 +896,7 @@ class eccDefinition:
                    marker=".", ls="", label="Apastron")
         axNew.set_xlabel(r"$t$")
         axNew.grid()
-        axNew.set_ylabel(r"$\Delta A_{22}(t)$")
+        axNew.set_ylabel(r"$\Delta A_{22}$")
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
