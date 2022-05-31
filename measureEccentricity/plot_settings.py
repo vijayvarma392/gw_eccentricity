@@ -50,7 +50,7 @@ lwidths = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,
            "ResidualFrequency": 1,
-           "FrequencyFits": 2}
+           "FrequencyFits": 3}
 lalphas = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,
