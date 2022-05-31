@@ -181,13 +181,14 @@ def plot_waveform_ecc_vs_time(method, set_key, fig, ax):
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
     # set yticks on colorbar
-    cbar.ax.set_yticks([1e-7, 1e-5, 1e-3, 1e-1, 1])
+    cbar.ax.set_yticks(10**np.arange(-7.0, 1.0))
+    cbar.ax.tick_params(labelsize=8)
     cbar.set_label(r"$e_{\mathrm{EOB}}$ at $\omega_0$",
                    size=10)
     if idx == 0:
         ax.set_title(rf"$q={q:.1f}, \chi_{{1z}}={chi1z:.1f}, "
                      rf"\chi_{{2z}}={chi2z:.1f}$",
-                     y=1.02, fontsize=10)
+                     ha="center", fontsize=10)
 
 
 if "all" in args.method:
@@ -220,7 +221,7 @@ for key in args.param_set_key:
         nrows=nrows,
         figsize=(figWidthsOneColDict[journal], height * nrows),
         sharex=True)
-    plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.subplots_adjust(wspace=0.1, hspace=0.12)
 
     for idx, method in tqdm(enumerate(args.method)):
         ax = axarr if nrows == 1 else axarr[idx]

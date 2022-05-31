@@ -79,12 +79,16 @@ fig, ax = plt.subplots(nrows=2, figsize=(figWidthsOneColDict[journal], 3),
 eccMethod.plot_measured_ecc(fig, ax[0])
 # draw the omega22 and the pericenters and apocenters
 eccMethod.plot_extrema_in_omega22(fig, ax[1])
+# set labels and limits
+end = np.argmin(np.abs(eccMethod.t - 500))
+merger = np.argmin(np.abs(eccMethod.t))
+
 ax[1].set_xlabel(r"$t$ [$M$]")
 ax[1].set_ylabel(r"$\omega_{22}$ [rad/$M$]")
 ax[0].set_ylabel(r"Eccentricity $e$")
 ax[0].set_xlabel("")
-ax[1].set_ylim(0.008, 0.1)
-ax[1].set_xlim(left=tref_in[0], right=0)
+ax[1].set_ylim(0.008, 0.1)  # xeccMethod.omega22[merger]+0.01)
+ax[1].set_xlim(left=tref[0], right=eccMethod.t[end])
 ax[0].grid(False)
 ax[1].grid(False)
 ax[1].legend(handlelength=1)
@@ -127,24 +131,24 @@ for idx in np.arange(len(eccMethod.peaks_location) - 1):
         ax[1].axvline(t_next_peak, c=colorsDict["peaksvline"], ls=":", lw=0.5)
         ax[0].axvline(t_next_peak, c=colorsDict["peaksvline"], ls=":", lw=0.5)
 
-# draw omega22
-end = np.argmin(np.abs(eccMethod.t - 500))
+# draw amp22
 ax[1].plot(eccMethod.t[: end], eccMethod.amp22[: end],
            c=colorsDict["default"])
 # draw the extrema
 ax[1].plot(eccMethod.t[eccMethod.peaks_location],
            eccMethod.amp22[eccMethod.peaks_location],
            c=colorsDict["periastron"],
-           marker=".")
+           marker=".", ls="", label="Pericenters")
 ax[1].plot(eccMethod.t[eccMethod.troughs_location],
            eccMethod.amp22[eccMethod.troughs_location],
            c=colorsDict["apastron"],
-           marker=".")
+           marker=".", ls="", label="Apocenters")
 
 ax[1].set_xlabel(r"$t$ [$M$]")
 ax[1].set_ylabel(r"$A_{22}$")
 ax[1].set_ylim(0.05, )
-ax[1].set_xlim(left=tref_in[0], right=eccMethod.t[end])
+ax[1].legend(handlelength=0.1, frameon=True)
+ax[1].set_xlim(left=tref[0], right=eccMethod.t[end])
 
 # # draw the vertical line indicate tref
 # ax[0].axvline(tref_mark, c=colorsDict["vline"], ls="--")
