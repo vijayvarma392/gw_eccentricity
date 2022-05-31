@@ -2,7 +2,7 @@ __doc__ = """This test checks whether different eccentricity definitions vary
 smoothly as a function of the internal eccentricity definition used by Toni's
 EOB model. The EOB waveforms that are used for this test are generated from a
 fixed mass ratio, spins, and Momega0 (the initial dimless orbital frequency),
-with eccentricity varying from 1e-7 to 0.5. We try to measure the eccentricity
+with eccentricity varying from 1e-7 to 1. We try to measure the eccentricity
 from these waveforms using different eccentricity definitions. For each
 waveform, we measure the eccentricity at the very first extrema (periastron or
 apastron). That way, the measured eccentricity is also at (nearly) Momega0.
@@ -81,8 +81,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-EOBeccs = 10**np.linspace(-7, np.log10(0.5), 100)
+EOBeccs = 10**np.linspace(-7, 0, 150)
 Momega0 = 0.01
+meanAno = np.pi/2
 Momega0_zeroecc = 0.002
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
@@ -94,7 +95,8 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 
 # Avoid raising warnings when length of the data for interpolation
 # in monotonicity check is too long
-extra_kwargs = {"debug": False}
+extra_kwargs = {"debug": False,
+                "treat_mid_points_between_peaks_as_troughs": True}
 
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
@@ -110,13 +112,14 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
     for ecc in tqdm(EOBeccs):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
-                    f"Momega0{Momega0:.3f}.h5")
+                    f"Momega0{Momega0:.3f}_meanAno{meanAno:.3f}.h5")
         kwargs = {"filepath": fileName}
         if "Residual" in method:
-            fileName_zero_ecc = (f"{data_dir}/EccTest_q{q:.2f}_chi1z"
-                                 f"{chi1z:.2f}_"
-                                 f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
-                                 f"Momega0{Momega0_zeroecc:.3f}.h5")
+            fileName_zero_ecc = (
+                f"{data_dir}/EccTest_q{q:.2f}_chi1z"
+                f"{chi1z:.2f}_"
+                f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
+                f"Momega0{Momega0_zeroecc:.3f}_meanAno{meanAno:.3f}.h5")
             kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                            "include_zero_ecc": True})
         dataDict = load_waveform(catalog="EOB", **kwargs)
@@ -184,4 +187,5 @@ for key in args.param_set_key:
     ax.set_xlabel(r"EOB Eccentricity $e_{\mathrm{EOB}}$")
     ax.set_ylabel(r"Measured Eccentricity $e$")
     ax.set_ylim(top=1.0)
+    ax.set_xlim(EOBeccs[0], EOBeccs[-1])
     fig.savefig(f"{fig_name}", bbox_inches="tight")

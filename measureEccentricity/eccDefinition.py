@@ -49,6 +49,13 @@ class eccDefinition:
                 debug:
                     Run additional sanity checks if True.
                     Default: True.
+                treat_mid_points_between_peaks_as_troughs:
+                    If True, instead of trying to find local minima in the
+                    data, we simply find the midpoints between local maxima
+                    and treat them as apastron locations. This is helpful for
+                    eccentricities ~1 where periastrons are easy to find but
+                    apastrons are not.
+                    Default: False
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
@@ -106,7 +113,8 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega22_averaging_method": "average_between_extrema"
+            "omega22_averaging_method": "average_between_extrema",
+            "treat_mid_points_between_peaks_as_troughs": False
             }
         return default_extra_kwargs
 
@@ -236,7 +244,14 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out.
         """
         self.omega22_peaks_interp, self.peaks_location = self.interp_extrema("maxima")
-        self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
+        # In some cases it is easier to find the peaks than finding the
+        # troughs. For such cases, one can only find the peaks and use the
+        # mid points between two consecutive peaks as the location of the
+        # troughs.
+        if self.extra_kwargs["treat_mid_points_between_peaks_as_troughs"]:
+            self.omega22_troughs_interp, self.troughs_location = self.get_troughs_from_peaks()
+        else:
+            self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
         t_peaks = self.t[self.peaks_location]
         t_troughs = self.t[self.troughs_location]
@@ -887,3 +902,37 @@ class eccDefinition:
             return figNew, axNew
         else:
             return axNew
+
+    def get_troughs_from_peaks(self):
+        """Get Interpolator through troughs and their locations.
+
+        This function treats the mid points between two successive peaks
+        as the location of the trough in between the same two peaks. Thus
+        it does not find the locations of the troughs using peak
+        finder at all. It is useful in situation where finding peaks
+        is easy but finding the troughs in between is difficult. This is
+        the case for highly eccentric systems where eccentricity approaches
+        1. For such systems the amp22/omega22 data between the peaks is almost
+        flat and hard to find the local minima.
+
+        returns:
+        ------
+        spline through troughs, positions of troughs
+        """
+        # NOTE: Assuming uniform time steps.
+        # TODO: Make it work for non uniform time steps
+        # In the following we get the location of mid point between ith peak
+        # and (i+1)th peak as (loc[i] + loc[i+1])/2 where loc is the array
+        # that contains the peak locations. This works because time steps are
+        # assumed to be uniform and hence proportional to the time itself.
+        troughs_idx = (self.peaks_location[:-1] + self.peaks_location[1:]) / 2
+        troughs_idx = troughs_idx.astype(int)  # convert to ints
+        if len(troughs_idx) >= 2:
+            spline = InterpolatedUnivariateSpline(self.t[troughs_idx],
+                                                  self.omega22[troughs_idx],
+                                                  **self.spline_kwargs)
+            return spline, troughs_idx
+        else:
+            raise Exception(
+                "Sufficient number of troughs are not found."
+                " Can not create an interpolator.")
