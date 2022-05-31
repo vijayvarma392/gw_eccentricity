@@ -7,6 +7,9 @@ Md Arif Shaikh, Mar 29, 2022
 from .eccDefinition import eccDefinition
 import numpy as np
 import scipy
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 class envelope_fitting_function:
@@ -51,6 +54,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
+
+        self.verbose=False
+        #if self.extra_kwargs["verbose"]:
+        #self.verbose=True
 
         # create the shortened data-set for analysis 
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
@@ -115,7 +122,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         # TODO - make verbose user-specifiable
         # TODO - better way of handling diagnostic output?
-        verbose = False
+        verbose = self.verbose
+        diag_file=""
+        #diag_file="out.pdf"
+        if diag_file!="":
+            pp = PdfPages(diag_file)
+        else:
+            pp=False
 
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema
@@ -167,7 +180,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 f_fit, p, bounds0,
                 1e-8,
                 increase_idx_ref_if_needed=True,
-                verbose=verbose)
+                verbose=verbose,
+                pp=pp)
             if verbose:
                 print(f"IDX_EXTREMA={idx_extrema}, f_fit={f_fit.format(*p)}, "
                       f"K={K:5.3f}, idx_ref={idx_ref}")
@@ -179,9 +193,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # THIS IS LIKELY SIGNAL THAT WE ARE AT MERGER")
                 break
             if count > 1000:
+                if pp:
+                    pp.close()
                 raise Exception("count large??")
         if verbose:
             print(f"Reached end of data.  Identified extrema = {extrema}")
+        if pp:  
+            pp.close()
         return np.array(extrema)
 
         # Procedure:
@@ -219,7 +237,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                           f_fit, p_initial, bounds,
                           TOL,
                           increase_idx_ref_if_needed=True,
-                          verbose=False):
+                          verbose=False,
+                          pp=None):
     """given a 22-GW mode (t, phase22, omega22), identify a stretch of data
     [idx_lo, idx_hi] centered roughly around the index idx_ref which satisfies
     the following properties:
@@ -257,6 +276,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                                       preserve monotonicity to help tracing
                                       out an inspiral)
 
+      - pp a PdfPages object for a diagnostic output plot 
 
     RETURNS:
           idx_extrema, p, K, idx_ref
@@ -307,10 +327,26 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
 
     old_extrema = np.zeros(Nbefore+Nafter)
     old_idx_lo, old_idx_hi = -1, -1
+
+    # width used as exclusion in find_peaks
+    #    1/2 phi-orbit  (at highest omega)
+    #    translated into samples using the maximum time-spacing
+    maxdt = np.max(np.diff(t[idx_lo:idx_hi]))
+    width=int( 0.5* 2 * np.pi / np.max(omega22[idx_lo:idx_hi]) / maxdt )
+    if verbose:
+        print(f"width for find_peaks = {width}")
+    if pp:
+        fig,ax=plt.subplots(1,1)
+
     while True:
         it = it+1
 
         if it > 10:
+            if pp:
+                plt.legend()
+                fig.savefig(pp,format='pdf')
+                plt.close(fig)
+                pp.close()
             raise Exception("FindExtremaNearIdxRef seems to not converge "
                             "(use 'verbose=True' to diagnose)")
         if verbose:
@@ -326,8 +362,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         # Harald has some code to do this, but he hasn't moved it over yet to
         # keep the base implementation simple.
         idx_extrema, properties = scipy.signal.find_peaks(
-            sign*omega_residual
-            # width=10,
+            sign*omega_residual,
+                width=width
             # prominence=omega_residual_amp*0.03,width=10
         )
         # add offset due to to calling find_peaks with sliced data
@@ -341,6 +377,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         if verbose:
             print(f"idx_extrema={idx_extrema}, Nleft={Nleft}, "
                   f"Nright={Nright}, K={K:5.3f}")
+        if pp:
+            ax.plot(t[idx_lo:idx_hi], sign*omega_residual, label=f"it={it}")
 
         if Nleft != Nbefore or Nright != Nafter:
             # number of extrema not as we wished, so update [idx_lo, idx_hi]
@@ -451,6 +489,10 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             # (this cannot trigger on first iteration, due to initialization of old_extrema)
             if verbose:
                 print("extrema & omega(extrema) unchanged.  Done")
+            if pp:
+                plt.legend()
+                fig.savefig(pp,format='pdf')
+                plt.close(fig)
             return idx_extrema, p, K, idx_ref
 
         # not done, update fit
@@ -461,6 +503,4 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         if verbose:
             print(f"max_delta_omega={max_delta_omega:5.4g} => fit updated to"
                   f" f_fit={f_fit.format(*p)}")
-        if (it > 100):
-            raise Exception("FindExtremaNearIdxRef did not converge")
     raise Exception("Should never get here")
