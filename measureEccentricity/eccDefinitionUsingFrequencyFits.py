@@ -55,9 +55,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         """
         super().__init__(*args, **kwargs)
 
-        self.verbose=False
-        #if self.extra_kwargs["verbose"]:
-        #self.verbose=True
+        self.debug=self.extra_kwargs["debug"];
 
         # create the shortened data-set for analysis 
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
@@ -120,11 +118,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # TODO - make user-specifiable via option
         N = 3
 
-        # TODO - make verbose user-specifiable
-        # TODO - better way of handling diagnostic output?
-        verbose = self.verbose
-        diag_file=""
-        #diag_file="out.pdf"
+        verbose=self.debug
+        if verbose:
+            diag_file="eccDefinitionUsingFrequencyFitsDiagnosticOutput.pdf"
+        else:
+            diag_file=""
+
         if diag_file!="":
             pp = PdfPages(diag_file)
         else:
@@ -135,7 +134,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
         f_fit = envelope_fitting_function(t0=fit_center_time,
-                                          verbose=False)
+                                          verbose=False
+                                          #verbose=verbose
+                                          )
         # some reasonable initial guess for curve_fit
         nPN = -3./8  # the PN exponent as approximation
         f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[-1])
@@ -336,14 +337,14 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     if verbose:
         print(f"width for find_peaks = {width}")
     if pp:
-        fig,ax=plt.subplots(1,1)
+        fig,axs=plt.subplots(1,2,figsize=(8,4))
 
     while True:
         it = it+1
 
-        if it > 10:
+        if it > 30:
             if pp:
-                plt.legend()
+                axs[0].legend()
                 fig.savefig(pp,format='pdf')
                 plt.close(fig)
                 pp.close()
@@ -378,7 +379,9 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             print(f"idx_extrema={idx_extrema}, Nleft={Nleft}, "
                   f"Nright={Nright}, K={K:5.3f}")
         if pp:
-            ax.plot(t[idx_lo:idx_hi], sign*omega_residual, label=f"it={it}")
+            axs[0].plot(t[idx_lo:idx_hi], sign*omega_residual, label=f"it={it}")
+            axs[1].plot(t[idx_extrema], omega22[idx_extrema], 'o', label=f"it={it}")
+
 
         if Nleft != Nbefore or Nright != Nafter:
             # number of extrema not as we wished, so update [idx_lo, idx_hi]
@@ -437,7 +440,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                         # coulnd't get as much data as we wished, take all
                         # we have
                         idx_hi = len(phase22)
-                    if verbose:
+                    if verbose and idx_hi != old_idx_hi:
                         print(f"idx_hi increased to {idx_hi}")
                 else:
                     # we had already fully extended idx_hi in earlier iteration
@@ -447,7 +450,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                            or it <= interval_changed_on_it + 1:
                             # we just changed the interval, or didn't yet have
                             # the extra iteration that does perform a new
-                            # curve_fit therefore, continue to do another
+                            # curve_fit therefore, continue with another
                             # curve_fit, in the hopes that it might identify
                             # one more extremum
                             pass
@@ -496,9 +499,15 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             return idx_extrema, p, K, idx_ref
 
         # not done, update fit
-        p, pconv = scipy.optimize.curve_fit(f_fit, t[idx_extrema],
+        pnew, pconv = scipy.optimize.curve_fit(f_fit, t[idx_extrema],
                                             omega22[idx_extrema], p0=p,
-                                            bounds=bounds)
+                                            bounds=bounds,maxfev=10000)
+        if it<=10:
+            p=pnew  # simple fixed-point iteration
+        else:
+            # sometimes, the simple fixed-point iteration has a cyclus of length 2
+            # this is meant to break it
+            p=0.5*(pnew+p)
         old_extrema = omega22_extrema
         if verbose:
             print(f"max_delta_omega={max_delta_omega:5.4g} => fit updated to"
