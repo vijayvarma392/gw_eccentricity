@@ -75,13 +75,13 @@ figWidthsTwoColDict = {
     "Notebook": 10
 }
 
-labelSizeDict = {"APS": 10.0,
+labelSizeDict = {"APS": 9.0,
                  "APJ": 8.0,
                  "Elsevier": 8.0,
                  "Springer": 8.0,
                  "Presentation": 8.0,
                  "Notebook": 12.0}
-fontSizeDict = {"APS": 10.0,
+fontSizeDict = {"APS": 9.0,
                 "APJ": 8.0,
                 "Elsevier": 8.0,
                 "Springer": 8.0,
