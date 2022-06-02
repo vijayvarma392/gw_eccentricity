@@ -329,6 +329,15 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     old_extrema = np.zeros(Nbefore+Nafter)
     old_idx_lo, old_idx_hi = -1, -1
 
+    # this variable counts the number of iterations in which Nright was one too few.
+    # This is used to detect limiting cycles, where the interval adjustment oscillates
+    # betweem
+    #   short interval with Nleft, Nright-1    extrema
+    #   long interval with  Nleft, Nright      extrema
+    # the oscillations can occur, because the fit with one more/left extremum
+    # is so different as to make the extremum appear/vanish
+    Count_Nright_one_short=0
+
     # width used as exclusion in find_peaks
     #    1/2 phi-orbit  (at highest omega)
     #    translated into samples using the maximum time-spacing
@@ -382,6 +391,10 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             axs[0].plot(t[idx_lo:idx_hi], sign*omega_residual, label=f"it={it}")
             axs[1].plot(t[idx_extrema], omega22[idx_extrema], 'o', label=f"it={it}")
 
+        if Nright==Nafter-1  and Nleft==Nbefore:
+            Count_Nright_one_short=Count_Nright_one_short+1
+            if verbose:
+                print(f"Count_Nright_one_short={Count_Nright_one_short}")
 
         if Nleft != Nbefore or Nright != Nafter:
             # number of extrema not as we wished, so update [idx_lo, idx_hi]
@@ -488,6 +501,20 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         else:
             max_delta_omega = max(np.abs(omega22_extrema-old_extrema))
 
+        if Count_Nright_one_short>=5:  
+            # safety exit to catch periodic loops
+            # note that Count_Nright_one_short is only increased if Nright=Nafter-1, 
+            # therefore, this will coincide with Nright=Nafter-1, also signaling
+            # that the overall extrema searching is ending.
+            if verbose:
+                print(f"exiting because Count_right_one_short={Count_Nright_one_short} is large")
+            if pp:
+                plt.legend()
+                fig.savefig(pp,format='pdf')
+                plt.close(fig)
+            return idx_extrema, p, K, idx_ref
+
+
         if max_delta_omega < TOL:
             # (this cannot trigger on first iteration, due to initialization of old_extrema)
             if verbose:
@@ -498,16 +525,10 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                 plt.close(fig)
             return idx_extrema, p, K, idx_ref
 
-        # not done, update fit
-        pnew, pconv = scipy.optimize.curve_fit(f_fit, t[idx_extrema],
+        # termination conditions not met, update fit and continue iterating
+        p, pconv = scipy.optimize.curve_fit(f_fit, t[idx_extrema],
                                             omega22[idx_extrema], p0=p,
-                                            bounds=bounds,maxfev=10000)
-        if it<=10:
-            p=pnew  # simple fixed-point iteration
-        else:
-            # sometimes, the simple fixed-point iteration has a cyclus of length 2
-            # this is meant to break it
-            p=0.5*(pnew+p)
+                                            bounds=bounds,maxfev=1000)
         old_extrema = omega22_extrema
         if verbose:
             print(f"max_delta_omega={max_delta_omega:5.4g} => fit updated to"
