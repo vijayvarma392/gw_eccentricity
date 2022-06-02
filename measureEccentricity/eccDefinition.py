@@ -835,6 +835,37 @@ class eccDefinition:
         else:
             return axNew
 
+    def plot_extrema_in_amp22(self, fig=None, ax=None, **kwargs):
+        """Plot amp22, the locations of the apastrons and periastrons.
+
+        This would show if the method is missing any peaks/troughs or
+        selecting one which is not a peak/trough.
+        """
+        if fig is None or ax is None:
+            figNew, axNew = plt.subplots()
+        else:
+            axNew = ax
+        # plot only upto merger to make the plot readable
+        end = np.argmin(np.abs(self.t))
+        axNew.plot(self.t[: end], self.amp22[: end],
+                   c=colorsDict["default"], label=r"$A_{22}$")
+        axNew.plot(self.t[self.peaks_location],
+                   self.amp22[self.peaks_location],
+                   c=colorsDict["periastron"],
+                   marker=".", ls="", label="Pericenters")
+        axNew.plot(self.t[self.troughs_location],
+                   self.amp22[self.troughs_location],
+                   c=colorsDict["apastron"],
+                   marker=".", ls="", label="Apocenters")
+        axNew.set_xlabel(r"$t$")
+        axNew.grid()
+        axNew.set_ylabel(r"$A_{22}$")
+        axNew.legend()
+        if fig is None or ax is None:
+            return figNew, axNew
+        else:
+            return axNew
+
     def plot_phase_diff_ratio_between_peaks(self, fig=None, ax=None, **kwargs):
         """Plot phase diff ratio between consecutive as function of time.
 
