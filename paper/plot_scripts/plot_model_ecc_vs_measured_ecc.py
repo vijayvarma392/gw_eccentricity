@@ -8,11 +8,11 @@ import numpy as np
 sys.path.append("../../")
 from measureEccentricity.plot_settings import figWidthsOneColDict, use_fancy_plotsettings, colorsDict
 
+data = pd.read_csv("../../data/model_ecc_vs_measured_ecc.csv")
+
 q = 1
 chi1 = 0
 chi2 = 0
-
-data = pd.read_csv("../../data/model_ecc_vs_measured_ecc.csv")
 
 use_fancy_plotsettings(journal="APS")
 
@@ -21,6 +21,8 @@ ax.loglog(data["model_ecc"], data["SEOB_measured_ecc"], marker=".",
           label="SEOBNRv4EHM", c=colorsDict["apastron"], markersize=5)
 ax.loglog(data["model_ecc"], data["TEOB_measured_ecc"], marker=".",
           label="TEOBResumS", c=colorsDict["periastron"], markersize=5)
+ax.loglog(data["model_ecc"], data["SEOBNRE_measured_ecc"], marker=".",
+          label="SEOBNRE", c=colorsDict["vline"], markersize=5)
 
 ax.legend(frameon=True)
 # set major ticks
@@ -40,5 +42,5 @@ ax.set_ylim(bottom=1e-6, top=1.0)
 ax.set_xlim(min(data["model_ecc"]), 1.0)
 ax.set_title(rf"$q={q:.1f}$, $\chi_{{1z}}={chi1:.1f}$, "
              rf"$\chi_{{2z}}={chi2:.1f}$", ha="center", fontsize=9)
-fig.savefig(f"../../paper/figs/model_ecc_vs_measured_ecc_q{q:.1f}"
-            f"_chi1{chi1:.1f}_chi2{chi2:.1f}.pdf", bbox_inches="tight")
+fig.savefig("../../paper/figs/model_ecc_vs_measured_ecc_set1.pdf",
+            bbox_inches="tight")
