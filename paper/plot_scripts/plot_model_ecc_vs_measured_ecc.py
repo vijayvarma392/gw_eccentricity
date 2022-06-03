@@ -18,11 +18,11 @@ use_fancy_plotsettings(journal="APS")
 
 fig, ax = plt.subplots(figsize=(figWidthsOneColDict["APS"], 3))
 ax.loglog(data["model_ecc"], data["SEOB_measured_ecc"], marker=".",
-          label="SEOBNRv4EHM", c=colorsDict["apastron"], markersize=5)
+          label="SEOBNRv4EHM", c=colorsDict["apastron"], markersize=3)
 ax.loglog(data["model_ecc"], data["TEOB_measured_ecc"], marker=".",
-          label="TEOBResumS", c=colorsDict["periastron"], markersize=5)
+          label="TEOBResumS", c=colorsDict["periastron"], markersize=3)
 ax.loglog(data["model_ecc"], data["SEOBNRE_measured_ecc"], marker=".",
-          label="SEOBNRE", c=colorsDict["vline"], markersize=5)
+          label="SEOBNRE", c=colorsDict["vline"], markersize=3)
 
 ax.legend(frameon=True)
 # set major ticks
