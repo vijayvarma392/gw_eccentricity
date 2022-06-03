@@ -43,6 +43,59 @@ class envelope_fitting_function:
         return A*(T-t)**n
 
 
+class envelope_fitting_function2:
+    """Re-parameterize A*(t-T)^n in terms of function value, first derivative at the time t0, and 
+    second time-derivative at time t0.  The second time-derivative is re-parameterized
+    into alpha in [-1,1], such that the value alpha=-1 corresponds to Tmin<0, the value
+    alpha=0 corresponds to T=0, and alpha=1 to T->infty.  This reparameterization is hoped
+    to improve convergence of the fitting procedure while simultaneously allowing for square
+    bounds -1<alpha<1.
+    """
+    def __init__(self, t0, Tmin,verbose=False):
+        """Init."""
+        self.t0 = t0
+        self.Tmin=Tmin
+        self.alpha1 = (Tmin - t0) / (-Tmin)
+        self.alpha1 = -2*(Tmin - t0) / (2*Tmin-t0)
+        self.Gamma = -(-t0 + 2*Tmin)/(2*(Tmin-t0)*(-t0))
+        self.verbose = verbose
+        if verbose:
+            print(f"fitting_function2:  to={t0}, Tmin={Tmin}, alpha1={self.alpha1}, Gamma={self.Gamma}")
+        if -t0<= -2*Tmin:
+            raise Exception("t0 must be at least twice as large as Tmin, "\
+                "otherwise the alpha-reparameterization is multi-valued"
+            )
+
+    def format(self, f0, f1, alpha):
+        """Return a string representation for use in legends and output."""
+        T_m_t0 =  (self.Tmin-self.t0)/(1.-alpha)
+        n = -f1/f0*T_m_t0
+        A = f0*(T_m_t0)**(-n)
+        T = T_m_t0 + self.t0
+        return f"{A:.3g}(t{-T:+.2f})^{n:.3f}"
+
+    def __call__(self, t, f0, f1, alpha):
+        """Call."""
+        # f0, f1 are function values and first time-derivatives
+        # at t0.  Re-expfress as T, n, A, then evalate A*(t-T)^n
+
+        # T-t0
+        T_m_t0 =  (self.Tmin-self.t0)/(1.-alpha)
+        n = -f1/f0*T_m_t0
+        A = f0*(T_m_t0)**(-n)
+        T = T_m_t0 + self.t0
+        if self.verbose:
+            print(f"f0={f0}, f1={f1}, alpha={alpha}; T={T}, n={n}, A={A}, max(t)={t.max()}")
+        if t.max() > T:
+            print(end="", flush=True)
+            raise Exception(
+                "envelope_fitting_function reached parameters where merger "
+                "time T is within time-series to be fitted\n"
+                f"f0={f0}, f1={f1}, alpha={alpha}; T={T}, n={n}, A={A}, max(t)={max(t)}\n"
+                f"self.to={self.t0}, self.Tmin={self.Tmin}")
+        return A*(T-t)**n
+
+
 class eccDefinitionUsingFrequencyFits(eccDefinition):
     """Measure eccentricity by finding extrema location using freq fits."""
 
@@ -132,21 +185,40 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema
 
+        UseAlphaFit=True
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
-        f_fit = envelope_fitting_function(t0=fit_center_time,
-                                          verbose=False
-                                          #verbose=verbose
-                                          )
-        # some reasonable initial guess for curve_fit
-        nPN = -3./8  # the PN exponent as approximation
-        f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[-1])
-        p0 = [f0,  # function value ~ omega
-              -nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-              0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
-              ]
-        # some hopefully reasonable bounds for global curve_fit
-        bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
-                   [1., 10./(-fit_center_time), -fit_center_time]]
+        if UseAlphaFit:
+            Tmin = 0.8*self.t_analyse[-1]
+            f_fit = envelope_fitting_function2(t0=fit_center_time,
+                                               Tmin=Tmin,
+                                              #verbose=False
+                                              verbose=verbose
+                                              )
+            # some reasonable initial guess for curve_fit
+            nPN = -3./8  # the PN exponent as approximation
+            f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[-1])
+            p0 = [f0,  # function value ~ omega
+                  -nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
+                  0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
+                  ]
+            # some hopefully reasonable bounds for global curve_fit
+            bounds0 = [[0., 0., 0.],
+                       [1., 10./(-fit_center_time), 1.]]
+        else:
+            f_fit = envelope_fitting_function(t0=fit_center_time,
+                                              verbose=False
+                                              #verbose=verbose
+                                              )
+            # some reasonable initial guess for curve_fit
+            nPN = -3./8  # the PN exponent as approximation
+            f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[-1])
+            p0 = [f0,  # function value ~ omega
+                  -nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
+                  0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
+                  ]
+            # some hopefully reasonable bounds for global curve_fit
+            bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
+                       [1., 10./(-fit_center_time), -fit_center_time]]
         if verbose:
             print(f"global fit: guess p0={p0}, bounds={bounds0}")
         p_global, pconv = scipy.optimize.curve_fit(
@@ -346,7 +418,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     if verbose:
         print(f"width for find_peaks = {width}")
     if pp:
-        fig,axs=plt.subplots(1,2,figsize=(8,4))
+        fig,axs=plt.subplots(1,3,figsize=(11,4))
 
     while True:
         it = it+1
@@ -526,9 +598,20 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             return idx_extrema, p, K, idx_ref
 
         # termination conditions not met, update fit and continue iterating
+
+        if pp:
+            # begin plotting residuals
+            lin=np.polynomial.polynomial.Polynomial.fit(t[idx_extrema], omega22[idx_extrema], 1)
+            quad=np.polynomial.polynomial.Polynomial.fit(t[idx_extrema], omega22[idx_extrema], 2)
+            #axs[2].plot(t[idx_extrema], lin(t[idx_extrema])-omega22[idx_extrema], "o-")
+            axs[2].plot(t[idx_extrema], quad(t[idx_extrema])-omega22[idx_extrema], "o--")
+
         p, pconv = scipy.optimize.curve_fit(f_fit, t[idx_extrema],
                                             omega22[idx_extrema], p0=p,
-                                            bounds=bounds,maxfev=1000)
+                                            bounds=bounds,maxfev=10000)
+        if pp:
+            axs[2].plot(t[idx_extrema], f_fit(t[idx_extrema], *p)-omega22[idx_extrema], "x")
+
         old_extrema = omega22_extrema
         if verbose:
             print(f"max_delta_omega={max_delta_omega:5.4g} => fit updated to"
