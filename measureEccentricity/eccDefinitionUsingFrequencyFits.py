@@ -24,7 +24,7 @@ class envelope_fitting_function:
         """Return a string representation for use in legends and output."""
         n = -(T-self.t0)*f1/f0
         A = f0*(T-self.t0)**(-n)
-        return f"{A:.3g}(t{-T:+.2f})^{n:.3f}"
+        return f"{A:.3g}({T:+.2f}-t)^{n:.3f}"
 
     def __call__(self, t, f0, f1, T):
         """Call."""
@@ -72,7 +72,7 @@ class envelope_fitting_function2:
         n = -f1/f0*T_m_t0
         A = f0*(T_m_t0)**(-n)
         T = T_m_t0 + self.t0
-        return f"{A:.3g}(t{-T:+.2f})^{n:.3f}"
+        return f"{A:.3g}({T:+.2f}-t)^{n:.3f}"
 
     def __call__(self, t, f0, f1, alpha):
         """Call."""
@@ -410,13 +410,6 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     # is so different as to make the extremum appear/vanish
     Count_Nright_one_short=0
 
-    # width used as exclusion in find_peaks
-    #    1/2 phi-orbit  (at highest omega)
-    #    translated into samples using the maximum time-spacing
-    maxdt = np.max(np.diff(t[idx_lo:idx_hi]))
-    width=int( 0.5* 2 * np.pi / np.max(omega22[idx_lo:idx_hi]) / maxdt )
-    if verbose:
-        print(f"width for find_peaks = {width}")
     if pp:
         fig,axs=plt.subplots(1,3,figsize=(11,4))
 
@@ -443,10 +436,21 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         # (fractional) index where the fit reaches its maximum.
         # Harald has some code to do this, but he hasn't moved it over yet to
         # keep the base implementation simple.
+
+        # width used as exclusion in find_peaks
+        #    1/2 phi-orbit  (at highest omega)
+        #    translated into samples using the maximum time-spacing
+        maxdt = np.max(np.diff(t[idx_lo:idx_hi]))
+        width=int( 0.5* 2 * np.pi / np.max(omega22[idx_lo:idx_hi]) / maxdt )
+        omega_residual_amp = max(omega_residual)-min(omega_residual)
+        if verbose:
+            print(f"width for find_peaks = {width}")
+
+
         idx_extrema, properties = scipy.signal.find_peaks(
             sign*omega_residual,
-                width=width
-            # prominence=omega_residual_amp*0.03,width=10
+                width=width,
+                prominence=omega_residual_amp*0.03
         )
         # add offset due to to calling find_peaks with sliced data
         idx_extrema = idx_extrema+idx_lo
@@ -498,11 +502,16 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                         raise Exception(f"could not identify {Nbefore} extrema"
                                         f" to the left of idx_ref={idx_ref}")
                 else:
-                    # target phase on left 1.5 radial periods before first
-                    # identified peak that should conveniently cover the next
-                    # earlier peak.  If there's not enough
-                    # data then this search returns the first data-point
-                    phase_lo = phase22[idx_extrema[0]] - K*4*np.pi*1.5
+                    # # target phase on left 1.5 radial periods before first
+                    # # identified peak that should conveniently cover the next
+                    # # earlier peak.  If there's not enough
+                    # # data then this search returns the first data-point
+                    # phase_lo = phase22[idx_extrema[0]] - K*4*np.pi*1.5
+                    # idx_lo = np.argmax(phase22 > phase_lo)
+
+                    # decrease idx_lo by 1.1 radial periods.  This should get the next 
+                    # lower extremum into the view
+                    phase_lo = phase22[idx_lo] - K*4*np.pi*1.1
                     idx_lo = np.argmax(phase22 > phase_lo)
                     if verbose:
                         print(f"idx_lo reduced to {idx_lo}")
@@ -600,32 +609,32 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
 
         # termination conditions not met, update fit and continue iterating
 
-        if verbose:
+        if verbose and False:
             # begin plotting residuals
             for deg in [1,2,3]:
                 lin=np.polynomial.polynomial.Polynomial.fit(t_extrema, omega22_extrema, deg)
                 print(f"    fit with deg={deg}: residual={np.linalg.norm(lin(t_extrema)-omega22_extrema)}")
             #axs[2].plot(t_extrema, quad(t_extrema)-omega22_extrema], "o--")
 
-        tmp=bounds[0][2]
+        #tmp=bounds[0][2]
         p, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
                                             omega22_extrema, p0=p,
                                             bounds=bounds,maxfev=10000)
-        if verbose:
+        if verbose and False:
                 print(f"    PRODUCTION FIT: residual={np.linalg.norm(f_fit(t_extrema,*p)-omega22_extrema)}, f={f_fit.format(*p)}")
-        bounds[0][2]=t_extrema[-1]*0.8
-        p_unbounded, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
-                                            omega22_extrema, p0=p,
-                                            bounds=bounds,maxfev=10000)
+        #bounds[0][2]=t_extrema[-1]*0.8
+        #p_unbounded, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
+        #                                    omega22_extrema, p0=p,
+        #                                    bounds=bounds,maxfev=10000)
 
-        bounds[0][2]=tmp
-        if verbose:
-                print(f"    unbounded     : residual={np.linalg.norm(f_fit(t_extrema,*p_unbounded)-omega22_extrema)}, f={f_fit.format(*p_unbounded)}")
+        #bounds[0][2]=tmp
+        #if verbose:
+        #        print(f"    unbounded     : residual={np.linalg.norm(f_fit(t_extrema,*p_unbounded)-omega22_extrema)}, f={f_fit.format(*p_unbounded)}")
 
 
         if pp:
             axs[2].plot(t_extrema, f_fit(t_extrema, *p)-omega22_extrema, "o")
-            axs[2].plot(t_extrema, f_fit(t_extrema, *p_unbounded)-omega22_extrema, "x")
+            #axs[2].plot(t_extrema, f_fit(t_extrema, *p_unbounded)-omega22_extrema, "x")
 
         old_extrema = omega22_extrema
         if verbose:
