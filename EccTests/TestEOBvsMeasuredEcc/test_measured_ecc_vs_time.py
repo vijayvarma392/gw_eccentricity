@@ -122,7 +122,7 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 # in monotonicity check is too long
 extra_kwargs = {"debug": False,
                 "num_orbits_to_exclude_before_merger": 2,
-                "treat_mid_points_between_peaks_as_troughs": True
+                # "treat_mid_points_between_peaks_as_troughs": True
                 }
 
 

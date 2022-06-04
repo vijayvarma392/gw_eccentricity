@@ -465,6 +465,18 @@ time $\tref$ using
 eq. (\ref{eq:map-between-ref-freq-and-ref-time}). Below we discuss
 different ways of implementing such an $\avgOmega$
 
+\subsubsection{Average between the extrema}
+\label{sec:average-between-the-extrema}
+For the eccentricity measurement we create the interpolants
+$\omega_{p}(t)$ and $\omega_a(t)$ which uses the $\omega_{22}$ values
+at the pericenter and the apocenters, respectively. This
+implementation of $\avgOmega$ uses these two
+interpolants and takes the mean of these
+\begin{equation}
+  \label{eq:average-between-extrema}
+  \avgOmega(t) = \frac{\omega_{p}(t) + \omega_{a}(t)}{2}.
+\end{equation}
+
 \subsubsection{Orbital average at the extrema}
 \label{sec:orbital-average-at-the-extrema}
 In this implementation, we get the orbital average of the
@@ -482,18 +494,6 @@ t_{i+1})/2$. Once we get the orbital average of $\omega_{22}(t)$ at
 all the extrema using eq. (\ref{eq:orbital-average-at-extrema}), we
 create an interpolant $\avgOmega(t)$.
 
-\subsubsection{Average between the extrema}
-\label{sec:average-between-the-extrema}
-For the eccentricity measurement we create the interpolants
-$\omega_{p}(t)$ and $\omega_a(t)$ which uses the $\omega_{22}$ values
-at the pericenter and the apocenters, respectively. This
-implementation of $\avgOmega$ uses these two
-interpolants and takes the mean of these
-\begin{equation}
-  \label{eq:average-between-extrema}
-  \avgOmega(t) = \frac{\omega_{p}(t) + \omega_{a}(t)}{2}.
-\end{equation}
-
 \subsubsection{Quasi-circular frequency}
 \label{sec:quasi-circular-frequency}
 Another option to get the $\avgOmega$ is to just use
@@ -507,13 +507,20 @@ can use
   \avgOmega(t) = \zeroOmega(t).
 \end{equation}
 
-Fig. \ref{fig:omega22-average}, $\avgOmega$ is shown for different
-averaging methods.
+Fig. \ref{fig:omega22-average} shows $\avgOmega$ for different
+averaging methods. Average between extrema is shown by solid (cyan) line,
+orbital average at the extrema is shown by dashed line and the
+quasi-circular frequency is shown by the dotted line. The solid brown
+line shows the instantaneous $\omega_{22}$.
 
 \begin{figure}[htb]
   \centering
   \includegraphics[width=\columnwidth]{omega22_average}
-  \caption{omega22 average}
+  \caption{$\avgOmega$ using different methods. Average between
+extrema is shown by solid (cyan) line, orbital average at the extrema
+is shown by dashed line and the quasi-circular frequency is shown by
+the dotted line. The solid brown line shows the instantaneous
+$\omega_{22}$.}
   \label{fig:omega22-average}
 \end{figure}
 % ==========================================================================
@@ -674,6 +681,15 @@ the $\resOmega$ and at around $t=10000$, there is a jump in the
 $\resOmega$ values at the extrema which corresponds to the jump in the
 $e(t)$ curve in the upper panel.}
   \label{fig:res-amp-glitches}
+\end{figure}
+
+\subsection{Model eccentricity vs measured eccentricity}
+\label{sec:model-ecc-vs-measured-ecc}
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=\columnwidth]{model_ecc_vs_measured_ecc_set1}
+  \caption{Model eccentricity vs measured eccentricity}
 \end{figure}
 
 %==========================================================================

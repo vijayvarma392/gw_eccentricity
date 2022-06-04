@@ -96,7 +96,8 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 # Avoid raising warnings when length of the data for interpolation
 # in monotonicity check is too long
 extra_kwargs = {"debug": False,
-                "treat_mid_points_between_peaks_as_troughs": True}
+                # "treat_mid_points_between_peaks_as_troughs": True
+                }
 
 
 def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
