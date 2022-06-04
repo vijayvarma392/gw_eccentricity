@@ -354,6 +354,12 @@ def load_lvcnr_waveform(**kwargs):
         inspiralTime = - t[0] * time_to_physical(M)  # t = 0 at merger
         # get the initial frequency to generate waveform of inspiral time
         # roughly equal to that of the NR one.
+        # The following function that estimates the initial frequency to
+        # generate a waveform with given time to merger needs
+        # the file at
+        # https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
+        # to be present at LAL_DATA_PATH
+        # TODO: Replace this function with one from Phenom models
         f0 = lalsim.SimIMRSEOBNRv4ROMFrequencyOfTime(
             inspiralTime, m1SI, m2SI, s1z, s2z)
         # make dimensionless
