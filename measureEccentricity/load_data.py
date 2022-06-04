@@ -348,9 +348,33 @@ def load_lvcnr_waveform(**kwargs):
         zero_ecc_kwargs["ecc"] = 0.0
         zero_ecc_kwargs["approximant"] = "IMRPhenomT"
         zero_ecc_kwargs['include_zero_ecc'] = False  # to avoid double calc
+        # calculate the Momega0 so that the length is >= the length of the NR
+        # waveform.
+        # First we compute the inspiral time of the NR waveform
+        inspiralTime = - t[0] * time_to_physical(M)  # t = 0 at merger
+        # get the initial frequency to generate waveform of inspiral time
+        # roughly equal to that of the NR one.
+        # The following function that estimates the initial frequency to
+        # generate a waveform with given time to merger needs
+        # the file at
+        # https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
+        # to be present at LAL_DATA_PATH
+        # TODO: Replace this function with one from Phenom models
+        f0 = lalsim.SimIMRSEOBNRv4ROMFrequencyOfTime(
+            inspiralTime, m1SI, m2SI, s1z, s2z)
+        # make dimensionless
+        Momega0_zeroecc = f0 * time_to_physical(M) * np.pi
+        zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
+
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
-        # We need the zeroecc modes to long enough, at least the same length
+
+        # if f0 is too small and generate too long zero ecc waveform
+        # report that
+        if -t_zeroecc[0] >= - 2 * t[0]:
+            warnings.warn("zeroecc waveform is too long. It's "
+                          f"{t_zeroecc[0]/t[0]:.2f} times the ecc waveform.")
+        # We need the zeroecc modes to be long enough, at least the same length
         # as the eccentric one to get the residual amplitude correctly.
         # In case the zeroecc waveform is not long enough we reduce the
         # initial Momega0 by a factor of 2 and generate the waveform again
@@ -366,7 +390,13 @@ def load_lvcnr_waveform(**kwargs):
                           " zeroecc modes. Total number of tries = "
                           f"{num_tries}")
         hlm_zeroecc = dataDict_zero_ecc['hlm']
-        return_dict.update({'t_zeroecc': t_zeroecc,
+        # Finally we want to return zeroecc data only about the length of the
+        # eccentric waveform and truncate the rest of the waveform to avoid
+        # wasting computing resources
+        start_zeroecc_idx = np.argmin(np.abs(t_zeroecc - t[0])) - 1
+        for key in hlm_zeroecc.keys():
+            hlm_zeroecc[key] = hlm_zeroecc[key][start_zeroecc_idx:]
+        return_dict.update({'t_zeroecc': t_zeroecc[start_zeroecc_idx:],
                             'hlm_zeroecc': hlm_zeroecc})
     return return_dict
 
