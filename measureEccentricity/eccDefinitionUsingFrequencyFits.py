@@ -185,16 +185,16 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema
 
-        UseAlphaFit=True
+        UseAlphaFit=False
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
         if UseAlphaFit:
             Tmin = 0.8*self.t_analyse[-1]
             f_fit = envelope_fitting_function2(t0=fit_center_time,
                                                Tmin=Tmin,
-                                              #verbose=False
-                                              verbose=verbose
+                                               verbose=False
+                                              #verbose=verbose
                                               )
-            # some reasonable initial guess for curve_fit
+            # some reasonable initial guess for c urve_fit
             nPN = -3./8  # the PN exponent as approximation
             f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[-1])
             p0 = [f0,  # function value ~ omega
@@ -567,6 +567,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         # If yes: return
         # If no:  re-fit envelope
 
+        t_extrema=t[idx_extrema]
         omega22_extrema = omega22[idx_extrema]
         if len(omega22_extrema) != len(old_extrema):  # number of extrema can change near merger
             max_delta_omega = 1e99
@@ -599,18 +600,32 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
 
         # termination conditions not met, update fit and continue iterating
 
-        if pp:
+        if verbose:
             # begin plotting residuals
-            lin=np.polynomial.polynomial.Polynomial.fit(t[idx_extrema], omega22[idx_extrema], 1)
-            quad=np.polynomial.polynomial.Polynomial.fit(t[idx_extrema], omega22[idx_extrema], 2)
-            #axs[2].plot(t[idx_extrema], lin(t[idx_extrema])-omega22[idx_extrema], "o-")
-            axs[2].plot(t[idx_extrema], quad(t[idx_extrema])-omega22[idx_extrema], "o--")
+            for deg in [1,2,3]:
+                lin=np.polynomial.polynomial.Polynomial.fit(t_extrema, omega22_extrema, deg)
+                print(f"    fit with deg={deg}: residual={np.linalg.norm(lin(t_extrema)-omega22_extrema)}")
+            #axs[2].plot(t_extrema, quad(t_extrema)-omega22_extrema], "o--")
 
-        p, pconv = scipy.optimize.curve_fit(f_fit, t[idx_extrema],
-                                            omega22[idx_extrema], p0=p,
+        tmp=bounds[0][2]
+        p, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
+                                            omega22_extrema, p0=p,
                                             bounds=bounds,maxfev=10000)
+        if verbose:
+                print(f"    PRODUCTION FIT: residual={np.linalg.norm(f_fit(t_extrema,*p)-omega22_extrema)}, f={f_fit.format(*p)}")
+        bounds[0][2]=t_extrema[-1]*0.8
+        p_unbounded, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
+                                            omega22_extrema, p0=p,
+                                            bounds=bounds,maxfev=10000)
+
+        bounds[0][2]=tmp
+        if verbose:
+                print(f"    unbounded     : residual={np.linalg.norm(f_fit(t_extrema,*p_unbounded)-omega22_extrema)}, f={f_fit.format(*p_unbounded)}")
+
+
         if pp:
-            axs[2].plot(t[idx_extrema], f_fit(t[idx_extrema], *p)-omega22[idx_extrema], "x")
+            axs[2].plot(t_extrema, f_fit(t_extrema, *p)-omega22_extrema, "o")
+            axs[2].plot(t_extrema, f_fit(t_extrema, *p_unbounded)-omega22_extrema, "x")
 
         old_extrema = omega22_extrema
         if verbose:
