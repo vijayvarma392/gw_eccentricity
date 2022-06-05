@@ -210,12 +210,21 @@ def measure_eccentricity(tref_in=None,
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
-        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+        tref_or_fref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
+        # if units is 'mks' then convert the units back to "MKS"
+        # from dimensionless
+        if units == "mks":
+            if tref_in:
+                # convert output time to mks
+                tref_or_fref_out = tref_or_fref_out / tPhyscialToDimless
+            else:
+                # convert output frequency to mks
+                tref_or_fref_out = tref_or_fref_out * tPhyscialToDimless
         if not return_ecc_method:
-            return tref_out, ecc_ref, mean_ano_ref
+            return tref_or_fref_out, ecc_ref, mean_ano_ref
         else:
-            return tref_out, ecc_ref, mean_ano_ref, ecc_method
+            return tref_or_fref_out, ecc_ref, mean_ano_ref, ecc_method
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {available_methods.keys()}")
