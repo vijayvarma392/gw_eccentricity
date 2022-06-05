@@ -28,6 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+from lal import MTSUN_SI
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
@@ -47,8 +48,12 @@ def get_available_methods():
     return models
 
 
-def measure_eccentricity(tref_in=None, fref_in=None,
-                         dataDict=None, method="Amplitude",
+def measure_eccentricity(tref_in=None,
+                         fref_in=None,
+                         dataDict=None,
+                         method="Amplitude",
+                         M=None,
+                         units="dimensionless",
                          return_ecc_method=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
@@ -100,9 +105,24 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         Method to define eccentricity. See get_available_methods() for
         available methods.
 
+    M:
+        Total mass of the binary in units of solar mass. Must be None when
+        'units' is 'dimensionless'. Should not be None if 'units' is 'mks'
+        Default is None.
+
+    units:
+        'dimensionless' or 'mks'. Default: 'dimensionless'.
+        If 'dimensionless': Any of fref_in/tref_in must be in dimensionless
+            units. That is, tref_in should be in units of M, while fref_in
+            should be in units of cycles/M.
+            M must be None.
+        If 'mks': Any of fref_in/tref_in must be in MKS units. That is,
+            tref_in should be in seconds, while fref_in should be
+            in Hz. M must be specified.
+
     return_ecc_method:
         If true, returns the method object used to compute the eccentricity.
-
+        Default is False.
 
     spline_kwargs:
         Dictionary of arguments to be passed to
@@ -173,6 +193,19 @@ def measure_eccentricity(tref_in=None, fref_in=None,
     available_methods = get_available_methods()
 
     if method in available_methods:
+        # check units, if 'mks' then convert to dimensionless
+        if units == "mks":
+            # M must be provided
+            if M is None:
+                raise KeyError("M can not be None. For MKS units,"
+                               " M must be provided.")
+            tPhyscialToDimless = 1 / (M * MTSUN_SI)
+            tref_in = tref_in * tPhyscialToDimless if tref_in else tref_in
+            fref_in = fref_in / tPhyscialToDimless if fref_in else fref_in
+        # for dimensionless units, M should be None
+        if units == "dimensionless" and M is not None:
+            raise KeyError("units is dimensionless but M is provided.")
+
         ecc_method = available_methods[method](dataDict,
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
