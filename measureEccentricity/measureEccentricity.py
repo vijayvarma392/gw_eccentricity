@@ -216,9 +216,11 @@ def measure_eccentricity(tref_in=None,
         # from dimensionless
         if units == "mks":
             if tref_in:
+                # tref_or_fref_out is the output time array
                 # convert output time to mks
                 tref_or_fref_out = tref_or_fref_out / tPhyscialToDimless
             else:
+                # tref_or_fref_out is the output frequency array
                 # convert output frequency to mks
                 tref_or_fref_out = tref_or_fref_out * tPhyscialToDimless
         if not return_ecc_method:
