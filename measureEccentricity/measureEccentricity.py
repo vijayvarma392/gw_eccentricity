@@ -217,8 +217,8 @@ def measure_eccentricity(tref_in=None,
                 "hlm_zeroecc": {
                     (2, 2): dataDict["hlm_zeroecc"][(2, 2)] * ampPhysicalDimless}
             }
-            tref_in = tref_in * tPhyscialToDimless if tref_in else tref_in
-            fref_in = fref_in / tPhyscialToDimless if fref_in else fref_in
+            tref_in = tref_in * tPhyscialToDimless if tref_in is not None else tref_in
+            fref_in = fref_in / tPhyscialToDimless if fref_in is not None else fref_in
         # for dimensionless units, M should be None
         if units == "dimensionless":
             if M is not None or D is not None:
@@ -235,7 +235,7 @@ def measure_eccentricity(tref_in=None,
         # if units is 'mks' then convert the units back to "MKS"
         # from dimensionless
         if units == "mks":
-            if tref_in:
+            if tref_in is not None:
                 # tref_or_fref_out is the output time array
                 # convert output time to mks
                 tref_or_fref_out = tref_or_fref_out / tPhyscialToDimless
