@@ -28,7 +28,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from lal import MTSUN_SI
+from lal import MTSUN_SI, PC_SI, C_SI
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
@@ -53,6 +53,7 @@ def measure_eccentricity(tref_in=None,
                          dataDict=None,
                          method="Amplitude",
                          M=None,
+                         D=None,
                          units="dimensionless",
                          return_ecc_method=False,
                          spline_kwargs=None,
@@ -109,16 +110,20 @@ def measure_eccentricity(tref_in=None,
         Total mass of the binary in units of solar mass. Must be None when
         'units' is 'dimensionless'. Should not be None if 'units' is 'mks'
         Default is None.
+    D:
+        Luminosity Distance of the binary in units of mega parsec. Must be None
+        when 'units' is 'dimensionless'. Should not be None if 'units' is 'mks'.
+        Default is None.
 
     units:
         'dimensionless' or 'mks'. Default: 'dimensionless'.
         If 'dimensionless': Any of fref_in/tref_in must be in dimensionless
             units. That is, tref_in should be in units of M, while fref_in
             should be in units of cycles/M.
-            M must be None.
+            M and D must be None.
         If 'mks': Any of fref_in/tref_in must be in MKS units. That is,
             tref_in should be in seconds, while fref_in should be
-            in Hz. M must be specified.
+            in Hz. M and D must be specified.
 
     return_ecc_method:
         If true, returns the method object used to compute the eccentricity.
@@ -199,14 +204,29 @@ def measure_eccentricity(tref_in=None,
             if M is None:
                 raise KeyError("M can not be None. For MKS units,"
                                " M must be provided.")
+            if D is None:
+                raise KeyError("D can not be None. For MKS units,"
+                               " D must be provided.")
             tPhyscialToDimless = 1 / (M * MTSUN_SI)
+            ampPhysicalDimless = (D * 1e6 * PC_SI
+                                  / (C_SI * M * MTSUN_SI))
+            dataDictDimless = {
+                "t": dataDict["t"] * tPhyscialToDimless,
+                "hlm": {(2, 2): dataDict["hlm"][(2, 2)] * ampPhysicalDimless},
+                "t_zeroecc": dataDict["t_zeroecc"] * tPhyscialToDimless,
+                "hlm_zeroecc": {
+                    (2, 2): dataDict["hlm_zeroecc"][(2, 2)] * ampPhysicalDimless}
+            }
             tref_in = tref_in * tPhyscialToDimless if tref_in else tref_in
             fref_in = fref_in / tPhyscialToDimless if fref_in else fref_in
         # for dimensionless units, M should be None
-        if units == "dimensionless" and M is not None:
-            raise KeyError("units is dimensionless but M is provided.")
+        if units == "dimensionless":
+            if M is not None or D is not None:
+                raise KeyError("units is dimensionless but M "
+                               "and/or D is provided.")
+            dataDictDimless = dataDict
 
-        ecc_method = available_methods[method](dataDict,
+        ecc_method = available_methods[method](dataDictDimless,
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
@@ -229,4 +249,4 @@ def measure_eccentricity(tref_in=None,
             return tref_or_fref_out, ecc_ref, mean_ano_ref, ecc_method
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
-                        f" {available_methods.keys()}")
+                        f" {list(available_methods.keys())}")
