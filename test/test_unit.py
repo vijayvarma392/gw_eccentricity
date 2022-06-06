@@ -50,23 +50,48 @@ def test_unit():
             M=10,
             D=1,
             units="mks")
+        # Check if the measured ecc an mean ano are the same from the two units
         if not np.isclose([ecc_ref], [ecc_ref_MKS]):
             raise Exception("Eccentricity at a single dimensionless and MKS"
                             "time gives different results. Dimensionless gives"
                             f" {ecc_ref} and MKS gives {ecc_ref_MKS}. Absolute"
                             f" difference is {abs(ecc_ref - ecc_ref_MKS)}")
+        if not np.allclose([meanano_ref], [meanano_ref_MKS]):
+            raise Exception("Mean anomaly at a single dimensionless and MKS"
+                            "time gives different results. Dimensionless gives"
+                            f" {meanano_ref} and MKS gives {meanano_ref_MKS}."
+                            " Absolute difference is "
+                            f"{abs(meanano_ref - meanano_ref_MKS)}")
 
-        # Try evaluating at an array of times
+        # Try evaluating at an array of dimless times
         tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
             tref_in=dataDict["t"],
             method=method,
             dataDict=dataDict,
             return_ecc_method=True)
+        # Try evaluating at an array of MKS times
+        tref_out_MKS, ecc_ref_MKS, meanano_ref_MKS, eccMethod = measure_eccentricity(
+            tref_in=dataDict["t"] * tDimlessToMKS,
+            method=method,
+            dataDict=dataDictMKS,
+            M=10,
+            D=1,
+            units="mks",
+            return_ecc_method=True)
+        # Check if the measured ecc an mean ano are the same from the two units
+        if not np.allclose(ecc_ref, ecc_ref_MKS):
+            raise Exception("Eccentricity at an dimensionless and MKS array of"
+                            "times are different. Dimensionless gives"
+                            f" {ecc_ref} and MKS gives {ecc_ref_MKS}. Absolute"
+                            f" difference is {np.abs(ecc_ref - ecc_ref_MKS)}")
+        if not np.allclose(meanano_ref, meanano_ref_MKS):
+            raise Exception("Mean anomaly at an dimensionless and MKS array of"
+                            "times are different. Dimensionless gives"
+                            f" {meanano_ref} and MKS gives {meanano_ref_MKS}."
+                            " Absolute difference is "
+                            f"{np.abs(meanano_ref - meanano_ref_MKS)}")
 
-        # Make diagnostic plots
-        eccMethod.make_diagnostic_plots(usetex=False)
-
-        # Try evaluating at single frequency
+        # Try evaluating at single dimensionless frequency
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
             fref_in=0.025 / (2 * np.pi),
             method=method,
