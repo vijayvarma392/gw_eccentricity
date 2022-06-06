@@ -2,7 +2,6 @@ import measureEccentricity
 from measureEccentricity import load_data
 from measureEccentricity import measure_eccentricity
 import numpy as np
-import lal
 
 
 def test_unit():
@@ -21,35 +20,23 @@ def test_unit():
                   "include_zero_ecc": True}
     # load_waveform returns dimensionless dataDict
     dataDict = load_data.load_waveform(**lal_kwargs)
-    # get dataDict in MKS units. Use M=10 and D=1Mpc
-    M = 10
-    D = 1
-    tDimlessToMKS = M * lal.MTSUN_SI
-    ampDimlessToMKS = lal.C_SI * M * lal.MTSUN_SI / (D * 1e6 * lal.PC_SI)
-    dataDictMKS = {
-        "t": dataDict["t"] * tDimlessToMKS,
-        "hlm": {(2, 2): dataDict["hlm"][(2, 2)] * ampDimlessToMKS},
-        "t_zeroecc": dataDict["t_zeroecc"] * tDimlessToMKS,
-        "hlm_zeroecc": {
-            (2, 2): dataDict["hlm_zeroecc"][(2, 2)] * ampDimlessToMKS}
-    }
+    # get dataDict in MKS units.
+    lal_kwargs.update({"physicalUnits": True})
+    dataDictMKS = load_data.load_waveform(**lal_kwargs)
 
     # List of all available methods
     available_methods = measureEccentricity.get_available_methods()
     for method in available_methods:
         # Try evaluating at a single dimless time
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
-            tref_in=-12000,
+            tref_in=dataDict["t"][15000],
             method=method,
             dataDict=dataDict)
         # Try evaluating at a single MKS time
         tref_out_MKS, ecc_ref_MKS, meanano_ref_MKS = measure_eccentricity(
-            tref_in=-12000 * tDimlessToMKS,
+            tref_in=dataDictMKS["t"][15000],
             method=method,
-            dataDict=dataDictMKS,
-            M=10,
-            D=1,
-            units="mks")
+            dataDict=dataDictMKS)
         # Check if the measured ecc an mean ano are the same from the two units
         if not np.allclose([ecc_ref], [ecc_ref_MKS], atol=1e-5):
             raise Exception("Eccentricity at a single dimensionless and MKS"
@@ -70,13 +57,10 @@ def test_unit():
             dataDict=dataDict,
             return_ecc_method=True)
         # Try evaluating at an array of MKS times
-        tref_out_MKS, ecc_ref_MKS, meanano_ref_MKS, eccMethod = measure_eccentricity(
-            tref_in=dataDict["t"] * tDimlessToMKS,
+        tref_out_MKS, ecc_ref_MKS, meanano_ref_MKS, eccMethod_MKS = measure_eccentricity(
+            tref_in=dataDictMKS["t"],
             method=method,
             dataDict=dataDictMKS,
-            M=10,
-            D=1,
-            units="mks",
             return_ecc_method=True)
         # Check if the measured ecc an mean ano are the same from the two units
         if not np.allclose(ecc_ref, ecc_ref_MKS, atol=1e-5):
@@ -92,18 +76,17 @@ def test_unit():
                             f"{np.abs(meanano_ref - meanano_ref_MKS)}")
 
         # Try evaluating at single dimensionless frequency
-        tref_out, ecc_ref, meanano_ref = measure_eccentricity(
-            fref_in=0.025 / (2 * np.pi),
+        fref_in = eccMethod.compute_omega22_average_between_extrema(dataDict["t"][15000]) / (2 * np.pi)
+        fref_out, ecc_ref, meanano_ref = measure_eccentricity(
+            fref_in=fref_in,
             method=method,
             dataDict=dataDict)
         # Try evaluating at single MKS frequency
-        tref_out, ecc_ref_MKS, meanano_ref_MKS = measure_eccentricity(
-            fref_in=0.025 / (2 * np.pi) / tDimlessToMKS,
+        fref_in = eccMethod_MKS.compute_omega22_average_between_extrema(dataDictMKS["t"][15000]) / (2 * np.pi)
+        fref_out, ecc_ref_MKS, meanano_ref_MKS = measure_eccentricity(
+            fref_in=fref_in,
             method=method,
-            dataDict=dataDictMKS,
-            M=10,
-            D=1,
-            units="mks")
+            dataDict=dataDictMKS)
         # Check if the measured ecc an mean ano are the same from the two units
         if not np.allclose([ecc_ref], [ecc_ref_MKS], atol=1e-5):
             raise Exception("Eccentricity at a single dimensionless and MKS"
@@ -120,20 +103,18 @@ def test_unit():
                             f"{abs(meanano_ref - meanano_ref_MKS)}")
 
         # Try evaluating at an array of dimensionless frequencies
+        fref_in = eccMethod.compute_omega22_average_between_extrema(dataDict["t"][15000: 20000]) / (2 * np.pi)
         tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
-            fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
+            fref_in=fref_in,
             method=method,
             dataDict=dataDict,
             return_ecc_method=True)
         # Try evaluating at an array of MKS frequencies
+        fref_in = eccMethod_MKS.compute_omega22_average_between_extrema(dataDictMKS["t"][15000: 20000]) / (2 * np.pi)
         tref_out, ecc_ref_MKS, meanano_ref_MKS, eccMethod = measure_eccentricity(
-            fref_in=(np.arange(0.025, 0.035, 0.001)
-                     / (2 * np.pi) / tDimlessToMKS),
+            fref_in=fref_in,
             method=method,
             dataDict=dataDictMKS,
-            M=10,
-            D=1,
-            units="mks",
             return_ecc_method=True)
         # Check if the measured ecc an mean ano are the same from the two units
         if not np.allclose(ecc_ref, ecc_ref_MKS, atol=1e-5):

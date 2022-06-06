@@ -28,7 +28,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-from lal import MTSUN_SI, PC_SI, C_SI
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
 from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
@@ -52,9 +51,6 @@ def measure_eccentricity(tref_in=None,
                          fref_in=None,
                          dataDict=None,
                          method="Amplitude",
-                         M=None,
-                         D=None,
-                         units="dimensionless",
                          return_ecc_method=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
@@ -67,11 +63,19 @@ def measure_eccentricity(tref_in=None,
         Can be a single float or an array. NOTE: eccentricity/mean_ano are
         returned on a different time array tref_out, described below.
 
+        If dataDict is provided in dimensionless units, then tref_in should be
+        in units of M. If dataDict is provided in MKS units, tref_in should be
+        in seconds.
+
     fref_in:
         Input reference frequency at which to measure the eccentricity and
         mean anomaly. It can be a single float or an array.
         NOTE: eccentricity/mean anomaly are returned on a different freq
         array fref_out, described below.
+
+        If dataDict is provided in dimensionless units, then fref_in should be
+        in units of cycles/M. If dataDict is provided in MKS units, then
+        tref_in should be in Hz.
 
         Given an fref_in, we find the corresponding tref_in such that,
         omega22_average(tref_in) = 2 * pi * fref_in.
@@ -105,25 +109,6 @@ def measure_eccentricity(tref_in=None,
     method:
         Method to define eccentricity. See get_available_methods() for
         available methods.
-
-    M:
-        Total mass of the binary in units of solar mass. Must be None when
-        'units' is 'dimensionless'. Should not be None if 'units' is 'mks'
-        Default is None.
-    D:
-        Luminosity Distance of the binary in units of mega parsec. Must be None
-        when 'units' is 'dimensionless'. Should not be None if 'units' is 'mks'.
-        Default is None.
-
-    units:
-        'dimensionless' or 'mks'. Default: 'dimensionless'.
-        If 'dimensionless': Any of fref_in/tref_in must be in dimensionless
-            units. That is, tref_in should be in units of M, while fref_in
-            should be in units of cycles/M.
-            M and D must be None.
-        If 'mks': Any of fref_in/tref_in must be in MKS units. That is,
-            tref_in should be in seconds, while fref_in should be
-            in Hz. M and D must be specified.
 
     return_ecc_method:
         If true, returns the method object used to compute the eccentricity.
@@ -165,6 +150,8 @@ def measure_eccentricity(tref_in=None,
         tref_out is the output reference time where eccentricity and mean
         anomaly are measured and fref_out is the output reference frequency
         where eccentricity and mean anomaly are measured.
+        Units of tref_out/fref_out is the same as that of tref_in/fref_in. For
+        more see tref_in/fref_in.
 
         NOTE: Only of these is returned depending on whether tref_in or
         fref_in is provided. If tref_in is provided then tref_out is returned
@@ -198,51 +185,12 @@ def measure_eccentricity(tref_in=None,
     available_methods = get_available_methods()
 
     if method in available_methods:
-        # check units, if 'mks' then convert to dimensionless
-        if units == "mks":
-            # M must be provided
-            if M is None:
-                raise KeyError("M can not be None. For MKS units,"
-                               " M must be provided.")
-            if D is None:
-                raise KeyError("D can not be None. For MKS units,"
-                               " D must be provided.")
-            tPhyscialToDimless = 1 / (M * MTSUN_SI)
-            ampPhysicalDimless = (D * 1e6 * PC_SI
-                                  / (C_SI * M * MTSUN_SI))
-            dataDictDimless = {
-                "t": dataDict["t"] * tPhyscialToDimless,
-                "hlm": {(2, 2): dataDict["hlm"][(2, 2)] * ampPhysicalDimless},
-                "t_zeroecc": dataDict["t_zeroecc"] * tPhyscialToDimless,
-                "hlm_zeroecc": {
-                    (2, 2): dataDict["hlm_zeroecc"][(2, 2)] * ampPhysicalDimless}
-            }
-            tref_in = tref_in * tPhyscialToDimless if tref_in is not None else tref_in
-            fref_in = fref_in / tPhyscialToDimless if fref_in is not None else fref_in
-        # for dimensionless units, M should be None
-        if units == "dimensionless":
-            if M is not None or D is not None:
-                raise KeyError("units is dimensionless but M "
-                               "and/or D is provided.")
-            dataDictDimless = dataDict
-
-        ecc_method = available_methods[method](dataDictDimless,
+        ecc_method = available_methods[method](dataDict,
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
         tref_or_fref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
-        # if units is 'mks' then convert the units back to "MKS"
-        # from dimensionless
-        if units == "mks":
-            if tref_in is not None:
-                # tref_or_fref_out is the output time array
-                # convert output time to mks
-                tref_or_fref_out = tref_or_fref_out / tPhyscialToDimless
-            else:
-                # tref_or_fref_out is the output frequency array
-                # convert output frequency to mks
-                tref_or_fref_out = tref_or_fref_out * tPhyscialToDimless
         if not return_ecc_method:
             return tref_or_fref_out, ecc_ref, mean_ano_ref
         else:

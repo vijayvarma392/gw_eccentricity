@@ -117,7 +117,7 @@ class eccDefinition:
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_default_width_for_peak_finder(),
+            "width": self.get_width_for_peak_finder_from_phase22(),
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
@@ -303,12 +303,14 @@ class eccDefinition:
                                 f"Length of tref_out {len(self.tref_out)}")
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
-            if tref_in[-1] > self.t_max:
-                raise Exception(f"tref_in is later than t_max={self.t_max}, "
+            if self.tref_in[-1] > self.t_max:
+                raise Exception(f"tref_in {self.tref_in} is later than t_max="
+                                f"{self.t_max}, "
                                 "which corresponds to min(last periastron "
                                 "time, last apastron time).")
-            if tref_in[0] < self.t_min:
-                raise Exception(f"tref_in is earlier than t_min={self.t_min}, "
+            if self.tref_in[0] < self.t_min:
+                raise Exception(f"tref_in {self.tref_in} is earlier than t_min="
+                                f"{self.t_min}, "
                                 "which corresponds to max(first periastron "
                                 "time, first apastron time).")
             raise Exception("tref_out is empty. This can happen if the "
@@ -985,7 +987,7 @@ class eccDefinition:
                 "Sufficient number of troughs are not found."
                 " Can not create an interpolator.")
 
-    def get_default_width_for_peak_finder(
+    def get_width_for_peak_finder_for_dimless_units(
             self,
             width_for_unit_timestep=50):
         """Get the minimal value of width parameter for extrema finding.
@@ -999,6 +1001,8 @@ class eccDefinition:
 
         This function gets an appropriate width by scaling it with the
         time steps in the time array of the waveform data.
+        NOTE: As the function name mentions, this should be used only for
+        dimensionless units.
 
         Parameters:
         ----------
