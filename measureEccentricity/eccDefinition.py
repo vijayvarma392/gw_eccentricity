@@ -68,11 +68,10 @@ class eccDefinition:
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
-        # shift the time axis to make t = 0 at merger
-        # t_ref would be then negative. This helps
-        # when subtracting quasi circular amplitude from
-        # eccentric amplitude in residual amplitude method
-        self.t = self.t - get_peak_via_quadratic_fit(
+        # We need to know the merger time of eccentric waveform.
+        # This is useful, for example, to substract the quasi circular
+        # amplitude from eccentric amplitude in residual amplitude method
+        self.t_merger = get_peak_via_quadratic_fit(
             self.t, self.amp22)[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
@@ -166,7 +165,7 @@ class eccDefinition:
         # This helps in avoiding unwanted feature in the spline
         # thorugh the extrema
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            merger_idx = np.argmin(np.abs(self.t))
+            merger_idx = np.argmin(np.abs(self.t - self.t_merger))
             phase22_at_merger = self.phase22[merger_idx]
             # one orbit changes the 22 mode phase by 4 pi since
             # omega22 = 2 omega_orb
@@ -471,22 +470,27 @@ class eccDefinition:
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
         self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
-        self.t_zeroecc = self.t_zeroecc - get_peak_via_quadratic_fit(
+        # to get the residual amplitude and omega, we need to shift the
+        # zeroecc time axis such that the merger of the zeroecc is at the
+        # same time as that of the eccentric waveform
+        self.t_merger_zeroecc = get_peak_via_quadratic_fit(
             self.t_zeroecc,
             np.abs(self.h22_zeroecc))[0]
+        self.delta_t_shift = self.t_merger_zeroecc - self.t_merger
+        self.t_zeroecc_shifted = self.t_zeroecc - self.delta_t_shift
         # check that the length of zeroecc waveform is greater than equal
         # to the length of the eccentric waveform.
         # This is important to satisfy. Otherwise there will be extrapolation
         # when we interpolate zeroecc ecc waveform data on the eccentric
         # waveform time.
-        if (self.t_zeroecc[0] > self.t[0]):
+        if (self.t_zeroecc_shifted[0] > self.t[0]):
             raise Exception("Length of zeroecc waveform must be >= the length "
                             "of the eccentric waveform. Eccentric waveform "
                             f"starts at {self.t[0]} whereas zeroecc waveform "
-                            f"starts at {self.t_zeroecc[0]}. Try starting the "
-                            "zeroecc waveform at lower Momega0.")
+                            f"starts at {self.t_zeroecc_shifted[0]}. Try "
+                            "starting the zeroecc waveform at lower Momega0.")
         self.amp22_zeroecc_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, np.abs(self.h22_zeroecc))(self.t)
+            self.t_zeroecc_shifted, np.abs(self.h22_zeroecc))(self.t)
         self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
 
         self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
@@ -494,7 +498,7 @@ class eccDefinition:
             self.phase22_zeroecc,
             self.t_zeroecc[1] - self.t_zeroecc[0])
         self.omega22_zeroecc_interp = InterpolatedUnivariateSpline(
-            self.t_zeroecc, self.omega22_zeroecc)(self.t)
+            self.t_zeroecc_shifted, self.omega22_zeroecc)(self.t)
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
@@ -565,7 +569,7 @@ class eccDefinition:
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
         return InterpolatedUnivariateSpline(
-            self.t_zeroecc, self.omega22_zeroecc)(t)
+            self.t_zeroecc_shifted, self.omega22_zeroecc)(t)
 
     def get_availabe_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
@@ -815,7 +819,7 @@ class eccDefinition:
                    c=colorsDict["apastron"], label=r"$\omega_{a}$",
                    **kwargs)
         # plot only upto merger to make the plot readable
-        end = np.argmin(np.abs(self.t))
+        end = np.argmin(np.abs(self.t - self.t_merger))
         axNew.plot(self.t[: end], self.omega22[: end],
                    c=colorsDict["default"], label=r"$\omega_{22}$")
         axNew.plot(self.t[self.peaks_location],
@@ -846,7 +850,7 @@ class eccDefinition:
         else:
             axNew = ax
         # plot only upto merger to make the plot readable
-        end = np.argmin(np.abs(self.t))
+        end = np.argmin(np.abs(self.t - self.t_merger))
         axNew.plot(self.t[: end], self.amp22[: end],
                    c=colorsDict["default"], label=r"$A_{22}$")
         axNew.plot(self.t[self.peaks_location],
@@ -908,7 +912,7 @@ class eccDefinition:
         else:
             axNew = ax
         # plot only upto merger to make the plot readable
-        end = np.argmin(np.abs(self.t))
+        end = np.argmin(np.abs(self.t - self.t_merger))
         axNew.plot(self.t[: end], self.res_omega22[:end], c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.res_omega22[self.peaks_location],
@@ -1045,8 +1049,8 @@ class eccDefinition:
         width:
             Minimal width to separate consecutive peaks.
         """
-        # get the phase22 at merger. t = 0 at the merger
-        phase22_merger = self.phase22[np.argmin(np.abs(self.t))]
+        # get the phase22 at merger.
+        phase22_merger = self.phase22[np.argmin(np.abs(self.t - self.t_merger))]
         # get the time for getting width at num orbits before merger.
         # for 22 mode phase changes about 2 * 2pi for each orbit.
         t_at_num_orbits_before_merger = self.t[
