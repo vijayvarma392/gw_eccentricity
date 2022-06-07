@@ -279,11 +279,11 @@ class eccDefinition:
             raise KeyError("Exactly one of tref_in and fref_in"
                            " should be specified.")
         elif tref_in is not None:
-            tref_in = np.atleast_1d(tref_in)
+            self.tref_in = np.atleast_1d(tref_in)
         else:
             fref_in = np.atleast_1d(fref_in)
             # get the tref_in and fref_out from fref_in
-            tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
+            self.tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
         # We measure eccentricity and mean anomaly from t_min to t_max.
         # Note that here we do not include the t_max. This is because
         # the mean anomaly computation requires to looking
@@ -291,8 +291,8 @@ class eccDefinition:
         # period.
         # If ref time is t_max, which could be equal to the last peak, then
         # there is no next peak and that would cause a problem.
-        self.tref_out = tref_in[np.logical_and(tref_in < self.t_max,
-                                               tref_in >= self.t_min)]
+        self.tref_out = self.tref_in[np.logical_and(self.tref_in < self.t_max,
+                                                    self.tref_in >= self.t_min)]
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length

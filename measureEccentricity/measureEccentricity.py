@@ -33,8 +33,6 @@ from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequency
-from .utils import get_peak_via_quadratic_fit
-import numpy as np
 
 
 def get_available_methods():
@@ -187,28 +185,12 @@ def measure_eccentricity(tref_in=None,
     available_methods = get_available_methods()
 
     if method in available_methods:
-        ecc_method = available_methods[method](
-            dataDict,
-            spline_kwargs=spline_kwargs,
-            extra_kwargs=extra_kwargs)
-        if tref_in is not None:
-            # for measuring eccentricity at given times, we align the time
-            # axis of the waveform data such that the merger is at t=0.
-            # We need to apply the same time shift (that was used to align the
-            # time axis) to the given tref_in to measured ecc at the
-            # correct time
-            t_shift = get_peak_via_quadratic_fit(
-                dataDict["t"],
-                np.abs(dataDict["hlm"][(2, 2)]))[0]
-            tref_in = tref_in - t_shift
-        # measue eccentricity and mean anomaly
+        ecc_method = available_methods[method](dataDict,
+                                               spline_kwargs=spline_kwargs,
+                                               extra_kwargs=extra_kwargs)
+
         tref_or_fref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
-            tref_in=tref_in,
-            fref_in=fref_in)
-        if tref_in is not None:
-            # tref_or_fref_out is the output time in this case.
-            # So we cancel out the time shift we applied before
-            tref_or_fref_out = tref_or_fref_out + t_shift
+            tref_in=tref_in, fref_in=fref_in)
         if not return_ecc_method:
             return tref_or_fref_out, ecc_ref, mean_ano_ref
         else:
