@@ -75,7 +75,7 @@ def measure_eccentricity(tref_in=None,
 
         If dataDict is provided in dimensionless units, then fref_in should be
         in units of cycles/M. If dataDict is provided in MKS units, then
-        tref_in should be in Hz.
+        fref_in should be in Hz.
 
         Given an fref_in, we find the corresponding tref_in such that,
         omega22_average(tref_in) = 2 * pi * fref_in.
@@ -151,7 +151,7 @@ def measure_eccentricity(tref_in=None,
         anomaly are measured and fref_out is the output reference frequency
         where eccentricity and mean anomaly are measured.
         Units of tref_out/fref_out is the same as that of tref_in/fref_in. For
-        more see tref_in/fref_in.
+        more see tref_in/fref_in above.
 
         NOTE: Only of these is returned depending on whether tref_in or
         fref_in is provided. If tref_in is provided then tref_out is returned
