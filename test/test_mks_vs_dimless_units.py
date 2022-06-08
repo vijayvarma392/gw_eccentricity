@@ -4,7 +4,7 @@ from measureEccentricity import measure_eccentricity
 import numpy as np
 
 
-def test_unit():
+def test_mks_vs_dimless_units():
     """ Tests that the measure_eccentricity interface is working for both
     MKS and dimensionless units.
 

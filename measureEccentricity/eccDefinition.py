@@ -1002,9 +1002,10 @@ class eccDefinition:
         This function gets an appropriate width by scaling it with the
         time steps in the time array of the waveform data.
         NOTE: As the function name mentions, this should be used only for
-        dimensionless units. This is because the current default
-        `width_for_unit_timestep` value is based on the tests performed
-        on dimensionless time. For physical time, this should be changed.
+        dimensionless units. This is because the `width_for_unit_timestep`
+        parameter refers to unit timestep in units of M. It is the fiducial
+        width to use if the time step is 1M. If using time in seconds, this
+        would depend on the total mass.
 
         Parameters:
         ----------
