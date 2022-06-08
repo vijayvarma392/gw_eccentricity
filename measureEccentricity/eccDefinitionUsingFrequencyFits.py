@@ -112,7 +112,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         # create the shortened data-set for analysis 
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            merger_idx = np.argmin(np.abs(self.t))
+            merger_idx = np.argmin(np.abs(self.t - self.t_merger))
             phase22_at_merger = self.phase22[merger_idx]
             # one orbit changes the 22 mode phase by 4 pi since
             # omega22 = 2 omega_orb
