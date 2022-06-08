@@ -7,8 +7,8 @@ Md Arif Shaikh, Mar 29, 2022
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
-from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
-from .utils import get_amp_using_all_modes
+from .utils import peak_via_quadratic_fit, check_kwargs_and_set_defaults
+from .utils import amp_using_all_modes
 from .utils import time_deriv_4thOrder
 from .plot_settings import use_fancy_plotsettings, colorsDict
 import matplotlib.pyplot as plt
@@ -72,9 +72,9 @@ class eccDefinition:
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to substract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
-        self.t_merger = get_peak_via_quadratic_fit(
+        self.t_merger = peak_via_quadratic_fit(
             self.t,
-            get_amp_using_all_modes(self.dataDict["hlm"]))[0]
+            amp_using_all_modes(self.dataDict["hlm"]))[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
@@ -477,9 +477,9 @@ class eccDefinition:
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
-        self.t_merger_zeroecc = get_peak_via_quadratic_fit(
+        self.t_merger_zeroecc = peak_via_quadratic_fit(
             self.t_zeroecc,
-            get_amp_using_all_modes(self.dataDict["hlm_zeroecc"]))[0]
+            amp_using_all_modes(self.dataDict["hlm_zeroecc"]))[0]
         self.t_zeroecc_shifted = (self.t_zeroecc
                                   - self.t_merger_zeroecc
                                   + self.t_merger)
