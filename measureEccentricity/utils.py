@@ -3,7 +3,25 @@ import numpy as np
 import argparse
 
 
-def get_peak_via_quadratic_fit(t, func):
+def amplitude_using_all_modes(mode_dict):
+    """Get the amplitude using all the available modes.
+
+    Parameters:
+    ----------
+    mode_dict:
+        Dictionary containing waveform modes.
+
+    Returns:
+        Square root of the qudrature sum of the amplitudes of all the
+        available modes in mode_dict.
+    """
+    amp = 0
+    for mode in mode_dict.keys():
+        amp += np.abs(mode_dict[mode])**2
+    return np.sqrt(amp)
+
+
+def peak_time_via_quadratic_fit(t, func):
     """
     Find the peak time of a function quadratically.
 

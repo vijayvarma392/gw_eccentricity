@@ -8,7 +8,6 @@ def test_interface():
     """ Tests that the measure_eccentricity interface is working for all
     implemented methods.
     """
-
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
                   "q": 1.0,
