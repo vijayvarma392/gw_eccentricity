@@ -47,8 +47,10 @@ def get_available_methods():
     return models
 
 
-def measure_eccentricity(tref_in=None, fref_in=None,
-                         dataDict=None, method="Amplitude",
+def measure_eccentricity(tref_in=None,
+                         fref_in=None,
+                         dataDict=None,
+                         method="Amplitude",
                          return_ecc_method=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
@@ -61,11 +63,19 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         Can be a single float or an array. NOTE: eccentricity/mean_ano are
         returned on a different time array tref_out, described below.
 
+        If dataDict is provided in dimensionless units, then tref_in should be
+        in units of M. If dataDict is provided in MKS units, tref_in should be
+        in seconds.
+
     fref_in:
         Input reference frequency at which to measure the eccentricity and
         mean anomaly. It can be a single float or an array.
         NOTE: eccentricity/mean anomaly are returned on a different freq
         array fref_out, described below.
+
+        If dataDict is provided in dimensionless units, then fref_in should be
+        in units of cycles/M. If dataDict is provided in MKS units, then
+        fref_in should be in Hz.
 
         Given an fref_in, we find the corresponding tref_in such that,
         omega22_average(tref_in) = 2 * pi * fref_in.
@@ -102,7 +112,7 @@ def measure_eccentricity(tref_in=None, fref_in=None,
 
     return_ecc_method:
         If true, returns the method object used to compute the eccentricity.
-
+        Default is False.
 
     spline_kwargs:
         Dictionary of arguments to be passed to
@@ -140,6 +150,8 @@ def measure_eccentricity(tref_in=None, fref_in=None,
         tref_out is the output reference time where eccentricity and mean
         anomaly are measured and fref_out is the output reference frequency
         where eccentricity and mean anomaly are measured.
+        Units of tref_out/fref_out is the same as that of tref_in/fref_in. For
+        more see tref_in/fref_in above.
 
         NOTE: Only of these is returned depending on whether tref_in or
         fref_in is provided. If tref_in is provided then tref_out is returned
@@ -177,12 +189,12 @@ def measure_eccentricity(tref_in=None, fref_in=None,
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
-        tref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+        tref_or_fref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
         if not return_ecc_method:
-            return tref_out, ecc_ref, mean_ano_ref
+            return tref_or_fref_out, ecc_ref, mean_ano_ref
         else:
-            return tref_out, ecc_ref, mean_ano_ref, ecc_method
+            return tref_or_fref_out, ecc_ref, mean_ano_ref, ecc_method
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
-                        f" {available_methods.keys()}")
+                        f" {list(available_methods.keys())}")

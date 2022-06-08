@@ -45,19 +45,22 @@ def load_LAL_waveform(**kwargs):
     # FIXME: Generalize this
     if 'deltaTOverM' not in kwargs:
         kwargs['deltaTOverM'] = 0.1
+    if 'physicalUnits' not in kwargs:
+        kwargs['physicalUnits'] = False
 
     if 'approximant' in kwargs:
         # FIXME, this assumes single mode models, talk to Vijay about
         # how to handle other models.
         dataDict = load_LAL_waveform_using_hack(
-                kwargs['approximant'],
-                kwargs['q'],
-                kwargs['chi1'],
-                kwargs['chi2'],
-                kwargs['ecc'],
-                kwargs['mean_ano'],
-                kwargs['Momega0'],
-                kwargs['deltaTOverM'])
+            kwargs['approximant'],
+            kwargs['q'],
+            kwargs['chi1'],
+            kwargs['chi2'],
+            kwargs['ecc'],
+            kwargs['mean_ano'],
+            kwargs['Momega0'],
+            kwargs['deltaTOverM'],
+            kwargs['physicalUnits'])
     else:
         raise Exception("HELP! Only know how to do LAL waveforms for now.")
 
@@ -79,7 +82,7 @@ def load_LAL_waveform(**kwargs):
 
 
 def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
-                                 Momega0, deltaTOverM):
+                                 Momega0, deltaTOverM, physicalUnits=False):
     """Load LAL waveforms."""
     # Many LAL models don't return the modes. So, to get h22 we evaluate the
     # strain at (incl, phi)=(0,0) and divide by Ylm(0,0).  NOTE: This only
@@ -90,7 +93,8 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
     # h = hp -1j * hc
     t, h = generate_LAL_waveform(approximant, q, chi1, chi2,
                                  deltaTOverM, Momega0, eccentricity=ecc,
-                                 phi_ref=phi_ref, inclination=inclination)
+                                 phi_ref=phi_ref, inclination=inclination,
+                                 physicalUnits=physicalUnits)
 
     Ylm = gwtools.harmonics.sYlm(-2, 2, 2, inclination, phi_ref)
     mode_dict = {(2, 2): h/Ylm}
@@ -105,7 +109,8 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
 def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
                           inclination=0, phi_ref=0., longAscNodes=0,
                           eccentricity=0, meanPerAno=0,
-                          alignedSpin=True, lambda1=None, lambda2=None):
+                          alignedSpin=True, lambda1=None, lambda2=None,
+                          physicalUnits=False):
     """Generate waveform for a given approximant using LALSuite.
 
     Returns dimless time and dimless complex strain.
@@ -125,6 +130,7 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     alignedSpin     # assume aligned spin approximant
     lambda1         # tidal parameter for larger BH
     lambda2         # tidal parameter for smaller BH
+    physicalUnits   # if true, return in physical units
 
     return:
     t               # array, dimensionless time
@@ -180,9 +186,9 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
         deltaTOverM*MT, f_low, f_ref, dictParams, approxTag)
 
     h = np.array(hp.data.data - 1.j*hc.data.data)
-    t = deltaTOverM * np.arange(len(h))  # dimensionless time
+    t = deltaTOverM * MT * np.arange(len(h)) if physicalUnits else deltaTOverM * np.arange(len(h))
 
-    return t, h*distance/MT/lal.C_SI
+    return t, h if physicalUnits else h * distance/MT/lal.C_SI
 
 
 def time_to_physical(M):
