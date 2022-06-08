@@ -117,7 +117,7 @@ class eccDefinition:
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_default_width_for_peak_finder(),
+            "width": self.get_width_for_peak_finder_from_phase22(),
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
@@ -279,11 +279,11 @@ class eccDefinition:
             raise KeyError("Exactly one of tref_in and fref_in"
                            " should be specified.")
         elif tref_in is not None:
-            tref_in = np.atleast_1d(tref_in)
+            self.tref_in = np.atleast_1d(tref_in)
         else:
             fref_in = np.atleast_1d(fref_in)
             # get the tref_in and fref_out from fref_in
-            tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
+            self.tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
         # We measure eccentricity and mean anomaly from t_min to t_max.
         # Note that here we do not include the t_max. This is because
         # the mean anomaly computation requires to looking
@@ -291,8 +291,8 @@ class eccDefinition:
         # period.
         # If ref time is t_max, which could be equal to the last peak, then
         # there is no next peak and that would cause a problem.
-        self.tref_out = tref_in[np.logical_and(tref_in < self.t_max,
-                                               tref_in >= self.t_min)]
+        self.tref_out = self.tref_in[np.logical_and(self.tref_in < self.t_max,
+                                                    self.tref_in >= self.t_min)]
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
@@ -303,12 +303,14 @@ class eccDefinition:
                                 f"Length of tref_out {len(self.tref_out)}")
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
-            if tref_in[-1] > self.t_max:
-                raise Exception(f"tref_in is later than t_max={self.t_max}, "
+            if self.tref_in[-1] > self.t_max:
+                raise Exception(f"tref_in {self.tref_in} is later than t_max="
+                                f"{self.t_max}, "
                                 "which corresponds to min(last periastron "
                                 "time, last apastron time).")
-            if tref_in[0] < self.t_min:
-                raise Exception(f"tref_in is earlier than t_min={self.t_min}, "
+            if self.tref_in[0] < self.t_min:
+                raise Exception(f"tref_in {self.tref_in} is earlier than t_min="
+                                f"{self.t_min}, "
                                 "which corresponds to max(first periastron "
                                 "time, first apastron time).")
             raise Exception("tref_out is empty. This can happen if the "
@@ -985,7 +987,7 @@ class eccDefinition:
                 "Sufficient number of troughs are not found."
                 " Can not create an interpolator.")
 
-    def get_default_width_for_peak_finder(
+    def get_width_for_peak_finder_for_dimless_units(
             self,
             width_for_unit_timestep=50):
         """Get the minimal value of width parameter for extrema finding.
@@ -999,6 +1001,11 @@ class eccDefinition:
 
         This function gets an appropriate width by scaling it with the
         time steps in the time array of the waveform data.
+        NOTE: As the function name mentions, this should be used only for
+        dimensionless units. This is because the `width_for_unit_timestep`
+        parameter refers to unit timestep in units of M. It is the fiducial
+        width to use if the time step is 1M. If using time in seconds, this
+        would depend on the total mass.
 
         Parameters:
         ----------
