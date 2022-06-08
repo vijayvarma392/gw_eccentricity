@@ -8,7 +8,6 @@ def test_interface():
     """ Tests that the measure_eccentricity interface is working for all
     implemented methods.
     """
-    extra_kwargs = {"debug": False}
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
                   "q": 1.0,
@@ -27,16 +26,14 @@ def test_interface():
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
             tref_in=-12000,
             method=method,
-            dataDict=dataDict,
-            extra_kwargs=extra_kwargs)
+            dataDict=dataDict)
 
         # Try evaluating at an array of times
         tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
             tref_in=dataDict["t"],
             method=method,
             dataDict=dataDict,
-            return_ecc_method=True,
-            extra_kwargs=extra_kwargs)
+            return_ecc_method=True)
 
         # Make diagnostic plots
         eccMethod.make_diagnostic_plots(usetex=False)
@@ -45,13 +42,11 @@ def test_interface():
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
             fref_in=0.025 / (2 * np.pi),
             method=method,
-            dataDict=dataDict,
-            extra_kwargs=extra_kwargs)
+            dataDict=dataDict)
 
         # Try evaluating at an array of frequencies
         tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
             fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
             method=method,
             dataDict=dataDict,
-            return_ecc_method=True,
-            extra_kwargs=extra_kwargs)
+            return_ecc_method=True)

@@ -8,6 +8,7 @@ Md Arif Shaikh, Mar 29, 2022
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import get_peak_via_quadratic_fit, check_kwargs_and_set_defaults
+from .utils import get_amp_using_all_modes
 from .utils import time_deriv_4thOrder
 from .plot_settings import use_fancy_plotsettings, colorsDict
 import matplotlib.pyplot as plt
@@ -73,7 +74,7 @@ class eccDefinition:
         # amplitude from eccentric amplitude in residual amplitude method
         self.t_merger = get_peak_via_quadratic_fit(
             self.t,
-            self.get_amp_using_all_modes(self.dataDict["hlm"]))[0]
+            get_amp_using_all_modes(self.dataDict["hlm"]))[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
@@ -478,7 +479,7 @@ class eccDefinition:
         # same time as that of the eccentric waveform
         self.t_merger_zeroecc = get_peak_via_quadratic_fit(
             self.t_zeroecc,
-            self.get_amp_using_all_modes(self.dataDict["hlm_zeroecc"]))[0]
+            get_amp_using_all_modes(self.dataDict["hlm_zeroecc"]))[0]
         self.t_zeroecc_shifted = (self.t_zeroecc
                                   - self.t_merger_zeroecc
                                   + self.t_merger)
@@ -1083,21 +1084,3 @@ class eccDefinition:
         # we want to use a width that is always smaller than the separation
         # between extrema, otherwise we might miss a few peaks near merger
         return int(width / 4)
-
-    def get_amp_using_all_modes(self, mode_dict):
-        """Get the amplitude using all the available modes.
-
-        Parameters:
-        ----------
-        mode_dict:
-            Dictionary containing waveform modes.
-
-        Returns:
-            Square root of the qudrature sum of the amplitudes of all the
-            available modes in mode_dict.
-        """
-        available_modes = list(mode_dict.keys())
-        amp = np.zeros(len(mode_dict[available_modes[0]]))
-        for mode in mode_dict.keys():
-            amp += np.abs(mode_dict[mode])
-        return np.sqrt(amp)

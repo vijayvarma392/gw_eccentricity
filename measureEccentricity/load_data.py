@@ -2,6 +2,7 @@
 import numpy as np
 import gwtools
 from .utils import get_peak_via_quadratic_fit
+from .utils import get_amp_using_all_modes
 from .utils import check_kwargs_and_set_defaults
 import h5py
 import lal
@@ -100,7 +101,8 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
     mode_dict = {(2, 2): h/Ylm}
     # Make t = 0 at the merger. This would help when getting
     # residual amplitude by subtracting quasi-circular counterpart
-    t = t - get_peak_via_quadratic_fit(t, np.abs(h))[0]
+    t = t - get_peak_via_quadratic_fit(t,
+                                       get_amp_using_all_modes(mode_dict))[0]
 
     dataDict = {"t": t, "hlm": mode_dict}
     return dataDict
@@ -322,7 +324,9 @@ def load_lvcnr_waveform(**kwargs):
     t = np.arange(len(modes_dict[(2, 2)])) * dt
     t = t / time_to_physical(M)
     # shift the times to make merger a t = 0
-    t = t - get_peak_via_quadratic_fit(t, np.abs(modes_dict[(2, 2)]))[0]
+    t = t - get_peak_via_quadratic_fit(
+        t,
+        get_amp_using_all_modes(modes_dict))[0]
 
     q = m1SI/m2SI
     try:
@@ -431,7 +435,9 @@ def load_EOB_EccTest_file(**kwargs):
     t = f["t"]
     hlm = {(2, 2): f["(2, 2)"]}
     # make t = 0 at the merger
-    t = t - get_peak_via_quadratic_fit(t, np.abs(hlm[(2, 2)]))[0]
+    t = t - get_peak_via_quadratic_fit(
+        t,
+        get_amp_using_all_modes(hlm))[0]
     dataDict = {"t": t, "hlm": hlm}
     if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
         if "filepath_zero_ecc" not in kwargs:
