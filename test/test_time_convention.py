@@ -19,7 +19,7 @@ def test_time_convention():
     extra_kwargs = {"debug": False}
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
-                  "q": 1.0,
+                  "q": 3.0,
                   "chi1": [0.0, 0.0, 0.0],
                   "chi2": [0.0, 0.0, 0.0],
                   "Momega0": 0.01,
