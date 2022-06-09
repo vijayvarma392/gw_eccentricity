@@ -243,6 +243,10 @@ def load_lvcnr_waveform(**kwargs):
         If True returns PhenomT waveform mode for same set of parameters
         except eccentricity set to zero. Default is True.
 
+    num_orbits_to_remove_as_junk: float
+        Number of orbits to throw away as junk from the begining of the NR
+        data. Default is 2.
+
     returns:
     -------
         Dictionary of modes dict, parameter dict and also zero ecc mode dict if
@@ -258,7 +262,8 @@ def load_lvcnr_waveform(**kwargs):
     default_kwargs = {"filepath": None,
                       "deltaTOverM": 0.1,
                       "Momega0": 0,  # 0 means that the full NR waveform is returned
-                      "include_zero_ecc": True}
+                      "include_zero_ecc": True,
+                      "num_orbits_to_remove_as_junk": 2}
 
     kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
                                            "lvcnr kwargs")
@@ -295,6 +300,7 @@ def load_lvcnr_waveform(**kwargs):
         f_low = NRh5File.attrs['f_lower_at_1MSUN'] / M
     f_ref = f_low
     f_low = f_ref
+    print(f_low)
 
     # Generating the NR modes
     values_mode_array = lalsim.SimInspiralWaveformParamsLookupModeArray(
@@ -361,7 +367,10 @@ def load_lvcnr_waveform(**kwargs):
         # calculate the Momega0 so that the length is >= the length of the NR
         # waveform.
         # First we compute the inspiral time of the NR waveform
-        inspiralTime = - t[0] * time_to_physical(M)  # t = 0 at merger
+        inspiralTime = (peak_time_via_quadratic_fit(
+            return_dict["t"],
+            amplitude_using_all_modes(return_dict["hlm"]))[0]
+                         - return_dict["t"][0]) * time_to_physical(M)
         # get the initial frequency to generate waveform of inspiral time
         # roughly equal to that of the NR one.
         # The following function that estimates the initial frequency to
@@ -408,7 +417,27 @@ def load_lvcnr_waveform(**kwargs):
             hlm_zeroecc[key] = hlm_zeroecc[key][start_zeroecc_idx:]
         return_dict.update({'t_zeroecc': t_zeroecc[start_zeroecc_idx:],
                             'hlm_zeroecc': hlm_zeroecc})
-    return return_dict
+    # remove junk from the start of the data
+    phase22 = - np.unwrap(np.angle(return_dict["hlm"][(2, 2)]))
+    # one orbit corresponds to 4pi change in 22 mode
+    # phase
+    idx_junk = np.argmin(
+        np.abs(
+            phase22 - (
+                phase22[0]
+                + kwargs["num_orbits_to_remove_as_junk"] * 4 * np.pi)))
+    dataDict_without_junk = return_dict.copy()
+    dataDict_without_junk["t"] = dataDict_without_junk["t"][idx_junk:]
+    for key in dataDict_without_junk["hlm"]:
+        dataDict_without_junk["hlm"][key]\
+            = dataDict_without_junk["hlm"][key][idx_junk:]
+    if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
+        dataDict_without_junk["t_zeroecc"]\
+            = dataDict_without_junk["t_zeroecc"][idx_junk:]
+        for key in dataDict_without_junk["hlm_zeroecc"]:
+            dataDict_without_junk["hlm_zeroecc"][key]\
+                = dataDict_without_junk["hlm_zeroecc"][key][idx_junk:]
+    return dataDict_without_junk
 
 
 def load_h22_from_EOBfile(EOB_file):
