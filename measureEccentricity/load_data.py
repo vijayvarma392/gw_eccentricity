@@ -243,6 +243,10 @@ def load_lvcnr_waveform(**kwargs):
         If True returns PhenomT waveform mode for same set of parameters
         except eccentricity set to zero. Default is True.
 
+    num_orbits_to_remove_as_junk: float
+        Number of orbits to throw away as junk from the begining of the NR
+        data. Default is 2.
+
     returns:
     -------
         Dictionary of modes dict, parameter dict and also zero ecc mode dict if
@@ -258,7 +262,8 @@ def load_lvcnr_waveform(**kwargs):
     default_kwargs = {"filepath": None,
                       "deltaTOverM": 0.1,
                       "Momega0": 0,  # 0 means that the full NR waveform is returned
-                      "include_zero_ecc": True}
+                      "include_zero_ecc": True,
+                      "num_orbits_to_remove_as_junk": 2}
 
     kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
                                            "lvcnr kwargs")
@@ -268,13 +273,13 @@ def load_lvcnr_waveform(**kwargs):
     dist_mpc = 1  # will be factored out
     f_low = kwargs["Momega0"] / np.pi / time_to_physical(M)
 
-    NRh5File = h5py.File(filepath, 'r')
+    NRh5File = h5py.File(filepath, "r")
     params_NR = lal.CreateDict()
     lalsim.SimInspiralWaveformParamsInsertNumRelData(params_NR, filepath)
 
     # Metadata parameters masses:
-    m1 = NRh5File.attrs['mass1']
-    m2 = NRh5File.attrs['mass2']
+    m1 = NRh5File.attrs["mass1"]
+    m2 = NRh5File.attrs["mass2"]
     m1SI = m1 * M / (m1 + m2) * lal.MSUN_SI
     m2SI = m2 * M / (m1 + m2) * lal.MSUN_SI
 
@@ -292,7 +297,7 @@ def load_lvcnr_waveform(**kwargs):
     # If f_low == 0, update it to the start frequency so that the surrogate
     # gets the right start frequency
     if f_low == 0:
-        f_low = NRh5File.attrs['f_lower_at_1MSUN'] / M
+        f_low = NRh5File.attrs["f_lower_at_1MSUN"] / M
     f_ref = f_low
     f_low = f_ref
 
@@ -336,8 +341,22 @@ def load_lvcnr_waveform(**kwargs):
 
     NRh5File.close()
 
+    # remove junk from the start of the data
+    phase22 = - np.unwrap(np.angle(modes_dict[(2, 2)]))
+    # one orbit corresponds to 4pi change in 22 mode
+    # phase
+    idx_junk = np.argmin(
+        np.abs(
+            phase22 - (
+                phase22[0]
+                + kwargs["num_orbits_to_remove_as_junk"] * 4 * np.pi)))
+    t = t[idx_junk:]
+    for key in modes_dict:
+        modes_dict[key] = modes_dict[key][idx_junk:]
+
     return_dict = {"t": t,
                    "hlm": modes_dict}
+
     params_dict = {"q": q,
                    "chi1": [s1x, s1y, s1z],
                    "chi2": [s2x, s2y, s2z],
@@ -351,17 +370,22 @@ def load_lvcnr_waveform(**kwargs):
                    }
     return_dict.update({"params_dict": params_dict})
 
-    if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
+    if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
         # Keep all other params fixed but set ecc = 0 and generate IMRPhenom
         # waveform
         zero_ecc_kwargs = params_dict.copy()
         zero_ecc_kwargs["ecc"] = 0.0
         zero_ecc_kwargs["approximant"] = "IMRPhenomT"
-        zero_ecc_kwargs['include_zero_ecc'] = False  # to avoid double calc
+        zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
         # calculate the Momega0 so that the length is >= the length of the NR
         # waveform.
-        # First we compute the inspiral time of the NR waveform
-        inspiralTime = - t[0] * time_to_physical(M)  # t = 0 at merger
+        # First we compute the inspiral time of the NR waveform.
+        # get time at merger of the NR waveform
+        t_merger = peak_time_via_quadratic_fit(
+            return_dict["t"],
+            amplitude_using_all_modes(return_dict["hlm"]))[0]
+        inspiralTime = (t_merger
+                        - return_dict["t"][0]) * time_to_physical(M)
         # get the initial frequency to generate waveform of inspiral time
         # roughly equal to that of the NR one.
         # The following function that estimates the initial frequency to
@@ -377,37 +401,39 @@ def load_lvcnr_waveform(**kwargs):
         zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
 
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-        t_zeroecc = dataDict_zero_ecc['t']
+        t_zeroecc = dataDict_zero_ecc["t"]
 
         # if f0 is too small and generate too long zero ecc waveform
         # report that
-        if -t_zeroecc[0] >= - 2 * t[0]:
+        if -t_zeroecc[0] >= - 2 * return_dict["t"][0]:
             warnings.warn("zeroecc waveform is too long. It's "
-                          f"{t_zeroecc[0]/t[0]:.2f} times the ecc waveform.")
+                          f"{t_zeroecc[0]/return_dict['t'][0]:.2f}"
+                          " times the ecc waveform.")
         # We need the zeroecc modes to be long enough, at least the same length
         # as the eccentric one to get the residual amplitude correctly.
         # In case the zeroecc waveform is not long enough we reduce the
         # initial Momega0 by a factor of 2 and generate the waveform again
         # NEED A BETTER SOLUTION to this later
         num_tries = 0
-        while t_zeroecc[0] > t[0]:
+        while t_zeroecc[0] > return_dict["t"][0]:
             zero_ecc_kwargs["Momega0"] = zero_ecc_kwargs["Momega0"] / 2
             dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-            t_zeroecc = dataDict_zero_ecc['t']
+            t_zeroecc = dataDict_zero_ecc["t"]
             num_tries += 1
         if num_tries >= 2:
             warnings.warn("Too many tries to reset Momega0 for generating"
                           " zeroecc modes. Total number of tries = "
                           f"{num_tries}")
-        hlm_zeroecc = dataDict_zero_ecc['hlm']
+        hlm_zeroecc = dataDict_zero_ecc["hlm"]
         # Finally we want to return zeroecc data only about the length of the
         # eccentric waveform and truncate the rest of the waveform to avoid
         # wasting computing resources
-        start_zeroecc_idx = np.argmin(np.abs(t_zeroecc - t[0])) - 1
+        start_zeroecc_idx = np.argmin(
+            np.abs(t_zeroecc - return_dict["t"][0])) - 1
         for key in hlm_zeroecc.keys():
             hlm_zeroecc[key] = hlm_zeroecc[key][start_zeroecc_idx:]
-        return_dict.update({'t_zeroecc': t_zeroecc[start_zeroecc_idx:],
-                            'hlm_zeroecc': hlm_zeroecc})
+        return_dict.update({"t_zeroecc": t_zeroecc[start_zeroecc_idx:],
+                            "hlm_zeroecc": hlm_zeroecc})
     return return_dict
 
 
