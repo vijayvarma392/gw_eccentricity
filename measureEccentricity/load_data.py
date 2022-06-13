@@ -570,6 +570,7 @@ def load_NR(**kwargs):
     m2 = f.attrs["mass2"]
     ecc = f.attrs["eccentricity"]
     mean_ano = f.attrs["mean_anomaly"]
+    f.close()
     params_dict = {"q": m1/m2,
                    "chi1": [s1x, s1y, s1z],
                    "chi2": [s2x, s2y, s2z],
