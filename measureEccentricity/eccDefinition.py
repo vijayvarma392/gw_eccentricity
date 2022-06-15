@@ -271,6 +271,9 @@ class eccDefinition:
         else:
             self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
+        # check that peaks and troughs are appearing alternatively
+        self.check_peaks_and_troughs_appear_alternatingly()
+
         t_peaks = self.t[self.peaks_location]
         t_troughs = self.t[self.troughs_location]
         self.t_max = min(t_peaks[-1], t_troughs[-1])
@@ -362,6 +365,10 @@ class eccDefinition:
 
         # Compute mean anomaly at tref_out
         self.mean_ano_ref = compute_mean_ano(self.tref_out)
+
+        # check if eccenricity is positive
+        if any(self.ecc_ref < 0):
+            warnings.warn("Encountered negative eccentricity.")
 
         # check if eccenricity is monotonic and convex
         if len(self.tref_out) > 1:
@@ -462,6 +469,57 @@ class eccDefinition:
             self.d2ecc_dt = self.d2ecc_dt
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
+
+    def check_peaks_and_troughs_appear_alternatingly(self):
+        """Check that peaks and troughs appear alternatingly."""
+        # if peaks and troughs appear alternatingly, then the number
+        # of peaks and troughs should differ by one.
+        if abs(len(self.peaks_location) - len(self.troughs_location)) >= 2:
+            warnings.warn(
+                "Number of peaks and number of troughs differ by "
+                f"{abs(len(self.peaks_location) - len(self.troughs_location))}"
+                ". This implies that peaks and troughs are not appearing"
+                " alternatingly.")
+        else:
+            # If the number of peaks and troughs differ by zero or one then we
+            # do the following:
+            if len(self.peaks_location) == len(self.troughs_location):
+                # Check the time of the first peak and the first trough
+                # whichever comes first is assigned as arr1 and the other one
+                # as arr2
+                if self.t[self.peaks_location][0] < self.t[self.troughs_location][0]:
+                    arr1 = self.peaks_location
+                    arr2 = self.troughs_location
+                else:
+                    arr2 = self.peaks_location
+                    arr1 = self.troughs_location
+            else:
+                # Check the number of peaks and troughs
+                # whichever is larger is assigned as arr1 and the other one as
+                # arr2
+                if len(self.peaks_location) > len(self.troughs_location):
+                    arr1 = self.peaks_location
+                    arr2 = self.troughs_location
+                else:
+                    arr2 = self.peaks_location
+                    arr1 = self.troughs_location
+            # create a new array which takes elements from arr1 and arr2
+            # alternatingly
+            arr = np.zeros(arr1.shape[0] + arr2.shape[0], dtype=arr1.dtype)
+            # assign every other element to values from arr1 starting from
+            # index = 0
+            arr[::2] = arr1
+            # assign every other element to values from arr2 starting from
+            # index = 1
+            arr[1::2] = arr2
+            # get the time difference between consecutive locations in arr
+            t_diff = np.diff(self.t[arr])
+            # If peaks and troughs appear alternatingly then all the time
+            # differences in t_diff should be positive
+            if any(t_diff < 0):
+                warnings.warn(
+                    "There is at least one instance where "
+                    "peaks and troughs do not appear alternatingly.")
 
     def compute_res_amp_and_omega22(self):
         """Compute residual amp22 and omega22."""
