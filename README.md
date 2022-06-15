@@ -1,3 +1,8 @@
+[![github](https://img.shields.io/badge/GitHub-Eccentricity-blue.svg)](https://github.com/vijayvarma392/Eccentricity)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vijayvarma392/Eccentricity/blob/master/LICENSE)
+[![Build Status](https://github.com/vijayvarma392/Eccentricity/actions/workflows/test.yml/badge.svg)](https://github.com/vijayvarma392/Eccentricity/actions/workflows/test.yml)
+
+
 # Eccentricity
 Defining eccentricity for GW applications. See [wiki](https://github.com/vijayvarma392/Eccentricity/wiki).
 
