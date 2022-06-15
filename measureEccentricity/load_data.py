@@ -285,8 +285,8 @@ def load_lvcnr_waveform(**kwargs):
     m2SI = m2 * M / (m1 + m2) * lal.MSUN_SI
 
     distance = dist_mpc * 1.0e6 * lal.PC_SI
-    # If f_low == 0, update it to the start frequency so that the surrogate
-    # gets the right start frequency
+    # If f_low == 0, update it to the start frequency so that
+    # we get the right start frequency
     if f_low == 0:
         f_low = NRh5File.attrs["f_lower_at_1MSUN"] / M
     f_ref = 0  # Non zero f_ref is not supported since the lvcnr format of the
@@ -341,13 +341,13 @@ def load_lvcnr_waveform(**kwargs):
     NRh5File.close()
 
     # remove junk from the begining of the data
-    t_clean, modes_dict_clean = reomve_junk_from_nr_data(
+    t, modes_dict = reomve_junk_from_nr_data(
         t,
         modes_dict,
         kwargs["num_orbits_to_remove_as_junk"])
 
-    return_dict = {"t": t_clean,
-                   "hlm": modes_dict_clean}
+    return_dict = {"t": t,
+                   "hlm": modes_dict}
 
     params_dict = {"q": q,
                    "chi1": [s1x, s1y, s1z],
@@ -411,7 +411,7 @@ def get_zeroecc_dataDict_for_lvcnr(nr_dataDict):
     s2z = zero_ecc_kwargs["chi2"][2]
     f0 = lalsim.SimIMRSEOBNRv4ROMFrequencyOfTime(
         inspiralTime, m1SI, m2SI, s1z, s2z)
-    # make dimensionless
+    # convert to omega and make dimensionless
     Momega0_zeroecc = f0 * time_dimless_to_mks(M) * np.pi
     zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
 
@@ -591,23 +591,22 @@ def load_lvcnr_hack(**kwargs):
 
     t_interp = np.arange(tstart, tend, kwargs["deltaTOverM"])
 
-    amp22_interp = InterpolatedUnivariateSpline(t_for_amp22, amp22)(t_interp)
-    phase22_interp = InterpolatedUnivariateSpline(t_for_phase22, phase22)(t_interp)
     # NOTE: The data were downsampled using romspline
     # (https://arxiv.org/abs/1611.07529), which uses higher order splines as
     # appropriate, but we are now upsampling with only cubic splines.
     # This can lead to inaccuracies.
-
+    amp22_interp = InterpolatedUnivariateSpline(t_for_amp22, amp22)(t_interp)
+    phase22_interp = InterpolatedUnivariateSpline(t_for_phase22, phase22)(t_interp)
     h22_interp = amp22_interp * np.exp(1j * phase22_interp)
 
     # remove junk data from the beginning
-    t_clean, modes_dict_clean = reomve_junk_from_nr_data(
+    t, modes_dict = reomve_junk_from_nr_data(
         t_interp,
         {(2, 2): h22_interp},
         kwargs["num_orbits_to_remove_as_junk"])
 
-    return_dict = {"t": t_clean,
-                   "hlm": modes_dict_clean}
+    return_dict = {"t": t,
+                   "hlm": modes_dict}
 
     # params
     s1x = f.attrs["spin1x"]
