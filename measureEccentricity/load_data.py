@@ -285,7 +285,12 @@ def load_lvcnr_waveform(**kwargs):
     m2SI = m2 * M / (m1 + m2) * lal.MSUN_SI
 
     distance = dist_mpc * 1.0e6 * lal.PC_SI
-    f_ref = f_low
+    # If f_low == 0, update it to the start frequency so that the surrogate
+    # gets the right start frequency
+    if f_low == 0:
+        f_low = NRh5File.attrs["f_lower_at_1MSUN"] / M
+    f_ref = 0  # Non zero f_ref is not supported since the lvcnr format of the
+    # files we are testing is format 1.
     spins = lalsim.SimInspiralNRWaveformGetSpinsFromHDF5File(f_ref, M,
                                                              filepath)
     s1x = spins[0]
@@ -294,13 +299,6 @@ def load_lvcnr_waveform(**kwargs):
     s2x = spins[3]
     s2y = spins[4]
     s2z = spins[5]
-
-    # If f_low == 0, update it to the start frequency so that the surrogate
-    # gets the right start frequency
-    if f_low == 0:
-        f_low = NRh5File.attrs["f_lower_at_1MSUN"] / M
-    f_ref = f_low
-    f_low = f_ref
 
     # Generating the NR modes
     values_mode_array = lalsim.SimInspiralWaveformParamsLookupModeArray(
@@ -342,21 +340,14 @@ def load_lvcnr_waveform(**kwargs):
 
     NRh5File.close()
 
-    # remove junk from the start of the data
-    phase22 = - np.unwrap(np.angle(modes_dict[(2, 2)]))
-    # one orbit corresponds to 4pi change in 22 mode
-    # phase
-    idx_junk = np.argmin(
-        np.abs(
-            phase22 - (
-                phase22[0]
-                + kwargs["num_orbits_to_remove_as_junk"] * 4 * np.pi)))
-    t = t[idx_junk:]
-    for key in modes_dict:
-        modes_dict[key] = modes_dict[key][idx_junk:]
+    # remove junk from the begining of the data
+    t_clean, modes_dict_clean = reomve_junk_from_nr_data(
+        t,
+        modes_dict,
+        kwargs["num_orbits_to_remove_as_junk"])
 
-    return_dict = {"t": t,
-                   "hlm": modes_dict}
+    return_dict = {"t": t_clean,
+                   "hlm": modes_dict_clean}
 
     params_dict = {"q": q,
                    "chi1": [s1x, s1y, s1z],
@@ -372,70 +363,128 @@ def load_lvcnr_waveform(**kwargs):
     return_dict.update({"params_dict": params_dict})
 
     if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
-        # Keep all other params fixed but set ecc = 0 and generate IMRPhenom
-        # waveform
-        zero_ecc_kwargs = params_dict.copy()
-        zero_ecc_kwargs["ecc"] = 0.0
-        zero_ecc_kwargs["approximant"] = "IMRPhenomT"
-        zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
-        # calculate the Momega0 so that the length is >= the length of the NR
-        # waveform.
-        # First we compute the inspiral time of the NR waveform.
-        # get time at merger of the NR waveform
-        t_merger = peak_time_via_quadratic_fit(
-            return_dict["t"],
-            amplitude_using_all_modes(return_dict["hlm"]))[0]
-        inspiralTime = (t_merger
-                        - return_dict["t"][0]) * time_dimless_to_mks(M)
-        # get the initial frequency to generate waveform of inspiral time
-        # roughly equal to that of the NR one.
-        # The following function that estimates the initial frequency to
-        # generate a waveform with given time to merger needs
-        # the file at
-        # https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
-        # to be present at LAL_DATA_PATH
-        # TODO: Replace this function with one from Phenom models
-        f0 = lalsim.SimIMRSEOBNRv4ROMFrequencyOfTime(
-            inspiralTime, m1SI, m2SI, s1z, s2z)
-        # make dimensionless
-        Momega0_zeroecc = f0 * time_dimless_to_mks(M) * np.pi
-        zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
-
-        dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-        t_zeroecc = dataDict_zero_ecc["t"]
-
-        # if f0 is too small and generate too long zero ecc waveform
-        # report that
-        if -t_zeroecc[0] >= - 2 * return_dict["t"][0]:
-            warnings.warn("zeroecc waveform is too long. It's "
-                          f"{t_zeroecc[0]/return_dict['t'][0]:.2f}"
-                          " times the ecc waveform.")
-        # We need the zeroecc modes to be long enough, at least the same length
-        # as the eccentric one to get the residual amplitude correctly.
-        # In case the zeroecc waveform is not long enough we reduce the
-        # initial Momega0 by a factor of 2 and generate the waveform again
-        # NEED A BETTER SOLUTION to this later
-        num_tries = 0
-        while t_zeroecc[0] > return_dict["t"][0]:
-            zero_ecc_kwargs["Momega0"] = zero_ecc_kwargs["Momega0"] / 2
-            dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-            t_zeroecc = dataDict_zero_ecc["t"]
-            num_tries += 1
-        if num_tries >= 2:
-            warnings.warn("Too many tries to reset Momega0 for generating"
-                          " zeroecc modes. Total number of tries = "
-                          f"{num_tries}")
-        hlm_zeroecc = dataDict_zero_ecc["hlm"]
-        # Finally we want to return zeroecc data only about the length of the
-        # eccentric waveform and truncate the rest of the waveform to avoid
-        # wasting computing resources
-        start_zeroecc_idx = np.argmin(
-            np.abs(t_zeroecc - return_dict["t"][0])) - 1
-        for key in hlm_zeroecc.keys():
-            hlm_zeroecc[key] = hlm_zeroecc[key][start_zeroecc_idx:]
-        return_dict.update({"t_zeroecc": t_zeroecc[start_zeroecc_idx:],
-                            "hlm_zeroecc": hlm_zeroecc})
+        dataDict_zeroecc = get_zeroecc_dataDict_for_lvcnr(return_dict)
+        return_dict.update(dataDict_zeroecc)
     return return_dict
+
+
+def get_zeroecc_dataDict_for_lvcnr(nr_dataDict):
+    """Get the zero ecc data dict corresponding to a nr data.
+
+    Params:
+    -------
+    nr_dataDict:
+        Data Dictionary containing NR data including params_dict.
+    Returns:
+    -------
+    dataDict_zeroecc:
+        Data Dictionary containing zero ecc data.
+    """
+    # Keep all other params fixed but set ecc = 0 and generate IMRPhenomT
+    # waveform
+    zero_ecc_kwargs = nr_dataDict["params_dict"].copy()
+    zero_ecc_kwargs["ecc"] = 0.0
+    zero_ecc_kwargs["approximant"] = "IMRPhenomT"
+    zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
+    # calculate the Momega0 so that the length is >= the length of the NR
+    # waveform.
+    # First we compute the inspiral time of the NR waveform.
+    # get time at merger of the NR waveform
+    t_merger = peak_time_via_quadratic_fit(
+            nr_dataDict["t"],
+            amplitude_using_all_modes(nr_dataDict["hlm"]))[0]
+    M = 10  # will be factored out
+    inspiralTime = (t_merger
+                    - nr_dataDict["t"][0]) * time_dimless_to_mks(M)
+    # get the initial frequency to generate waveform of inspiral time
+    # roughly equal to that of the NR one.
+    # The following function that estimates the initial frequency to
+    # generate a waveform with given time to merger needs
+    # the file at
+    # https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
+    # to be present at LAL_DATA_PATH
+    # TODO: Replace this function with one from Phenom models
+    q = zero_ecc_kwargs["q"]
+    m1SI = q * M / (1 + q) * lal.MSUN_SI
+    m2SI = M / (1 + q) * lal.MSUN_SI
+    s1z = zero_ecc_kwargs["chi1"][2]
+    s2z = zero_ecc_kwargs["chi2"][2]
+    f0 = lalsim.SimIMRSEOBNRv4ROMFrequencyOfTime(
+        inspiralTime, m1SI, m2SI, s1z, s2z)
+    # make dimensionless
+    Momega0_zeroecc = f0 * time_dimless_to_mks(M) * np.pi
+    zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
+
+    dataDict_zeroecc = load_waveform(**zero_ecc_kwargs)
+    t_zeroecc = dataDict_zeroecc["t"]
+
+    # if f0 is too small and generate too long zero ecc waveform
+    # report that
+    if -t_zeroecc[0] >= - 2 * nr_dataDict["t"][0]:
+        warnings.warn("zeroecc waveform is too long. It's "
+                      f"{t_zeroecc[0]/nr_dataDict['t'][0]:.2f}"
+                      " times the ecc waveform.")
+    # We need the zeroecc modes to be long enough, at least the same length
+    # as the eccentric one to get the residual amplitude correctly.
+    # In case the zeroecc waveform is not long enough we reduce the
+    # initial Momega0 by a factor of 2 and generate the waveform again
+    # NEED A BETTER SOLUTION to this later
+    num_tries = 0
+    while t_zeroecc[0] > nr_dataDict["t"][0]:
+        zero_ecc_kwargs["Momega0"] = zero_ecc_kwargs["Momega0"] / 2
+        dataDict_zeroecc = load_waveform(**zero_ecc_kwargs)
+        t_zeroecc = dataDict_zeroecc["t"]
+        num_tries += 1
+    if num_tries >= 2:
+        warnings.warn("Too many tries to reset Momega0 for generating"
+                      " zeroecc modes. Total number of tries = "
+                      f"{num_tries}")
+    hlm_zeroecc = dataDict_zeroecc["hlm"]
+    # Finally we want to return zeroecc data only about the length of the
+    # eccentric waveform and truncate the rest of the waveform to avoid
+    # wasting computing resources
+    start_zeroecc_idx = np.argmin(
+        np.abs(t_zeroecc - nr_dataDict["t"][0])) - 10
+    for key in hlm_zeroecc.keys():
+        hlm_zeroecc[key] = hlm_zeroecc[key][start_zeroecc_idx:]
+
+    return {"t_zeroecc": t_zeroecc[start_zeroecc_idx:],
+            "hlm_zeroecc": hlm_zeroecc}
+
+
+def reomve_junk_from_nr_data(t, modes_dict, num_orbits_to_remove_as_junk):
+    """Remove junk from beginning of NR data.
+
+    Parameters:
+    ----------
+    t:
+        Time array for the NR data.
+    modes_dict:
+        Dictionary containing modes array.
+    num_orbits_to_remove_as_junk:
+        Number of orbits to remove as junk from the begining of NR data.
+
+    Returns:
+    t_clean:
+        Time array corresponding to clean NR data.
+    modes_dict_clean:
+        modes_dict with `num_orbits_to_remove_as_junk` orbits removed from the
+        begining of modes array.
+    """
+    phase22 = - np.unwrap(np.angle(modes_dict[(2, 2)]))
+    # one orbit corresponds to 4pi change in 22 mode
+    # phase
+    idx_junk = np.argmin(
+        np.abs(
+            phase22 - (
+                phase22[0]
+                + num_orbits_to_remove_as_junk * 4 * np.pi)))
+    t_clean = t[idx_junk:]
+    modes_dict_clean = {}
+    for key in modes_dict:
+        modes_dict_clean[key] = modes_dict[key][idx_junk:]
+
+    return t_clean, modes_dict_clean
 
 
 def load_h22_from_EOBfile(EOB_file):
@@ -480,7 +529,7 @@ def load_EOB_EccTest_file(**kwargs):
     return dataDict
 
 
-def load_NR(**kwargs):
+def load_lvcnr_hack(**kwargs):
     """Load 22 mode from lvcnr files using h5py and Interpolation.
 
     NOTE: This is not the recommended way to load lvcnr files.
@@ -544,20 +593,21 @@ def load_NR(**kwargs):
 
     amp22_interp = InterpolatedUnivariateSpline(t_for_amp22, amp22)(t_interp)
     phase22_interp = InterpolatedUnivariateSpline(t_for_phase22, phase22)(t_interp)
+    # NOTE: The data were downsampled using romspline
+    # (https://arxiv.org/abs/1611.07529), which uses higher order splines as
+    # appropriate, but we are now upsampling with only cubic splines.
+    # This can lead to inaccuracies.
 
     h22_interp = amp22_interp * np.exp(1j * phase22_interp)
 
-    # remove junk from the start of the data
-    # one orbit corresponds to 4pi change in 22 mode
-    # phase
-    idx_junk = np.argmin(
-        np.abs(
-            phase22_interp - (
-                phase22_interp[0]
-                + (-1 if (phase22_interp[-1] - phase22_interp[0]) < 0 else 1)
-                * kwargs["num_orbits_to_remove_as_junk"] * 4 * np.pi)))
-    t_interp = t_interp[idx_junk:]
-    h22_interp = h22_interp[idx_junk:]
+    # remove junk data from the beginning
+    t_clean, modes_dict_clean = reomve_junk_from_nr_data(
+        t_interp,
+        {(2, 2): h22_interp},
+        kwargs["num_orbits_to_remove_as_junk"])
+
+    return_dict = {"t": t_clean,
+                   "hlm": modes_dict_clean}
 
     # params
     s1x = f.attrs["spin1x"]
@@ -579,76 +629,10 @@ def load_NR(**kwargs):
                    "deltaTOverM": t_interp[1] - t_interp[0],
                    }
 
-    return_dict = {"t": t_interp,
-                   "hlm": {(2, 2): h22_interp},
-                   "params_dict": params_dict}
+    return_dict.update({"params_dict": params_dict})
 
     if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
-        # Keep all other params fixed but set ecc = 0 and generate IMRPhenom
-        # waveform
-        zero_ecc_kwargs = params_dict.copy()
-        zero_ecc_kwargs["ecc"] = 0.0
-        zero_ecc_kwargs["approximant"] = "IMRPhenomT"
-        zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
-        # calculate the Momega0 so that the length is >= the length of the NR
-        # waveform.
-        # First we compute the inspiral time of the NR waveform.
-        # get time at merger of the NR waveform
-        t_merger = peak_time_via_quadratic_fit(
-            return_dict["t"],
-            amplitude_using_all_modes(return_dict["hlm"]))[0]
-        M = 10  # will be factored out
-        inspiralTime = (t_merger
-                        - return_dict["t"][0]) * time_dimless_to_mks(M)
-        # get the initial frequency to generate waveform of inspiral time
-        # roughly equal to that of the NR one.
-        # The following function that estimates the initial frequency to
-        # generate a waveform with given time to merger needs
-        # the file at
-        # https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
-        # to be present at LAL_DATA_PATH
-        # TODO: Replace this function with one from Phenom models
-        q = zero_ecc_kwargs["q"]
-        m1SI = q * M / (1 + q) * lal.MSUN_SI
-        m2SI = M / (1 + q) * lal.MSUN_SI
-        f0 = lalsim.SimIMRSEOBNRv4ROMFrequencyOfTime(
-            inspiralTime, m1SI, m2SI, s1z, s2z)
-        # make dimensionless
-        Momega0_zeroecc = f0 * time_dimless_to_mks(M) * np.pi
-        zero_ecc_kwargs["Momega0"] = Momega0_zeroecc
+        dataDict_zeroecc = get_zeroecc_dataDict_for_lvcnr(return_dict)
+        return_dict.update(dataDict_zeroecc)
 
-        dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-        t_zeroecc = dataDict_zero_ecc["t"]
-
-        # if f0 is too small and generate too long zero ecc waveform
-        # report that
-        if -t_zeroecc[0] >= - 2 * return_dict["t"][0]:
-            warnings.warn("zeroecc waveform is too long. It's "
-                          f"{t_zeroecc[0]/return_dict['t'][0]:.2f}"
-                          " times the ecc waveform.")
-        # We need the zeroecc modes to be long enough, at least the same length
-        # as the eccentric one to get the residual amplitude correctly.
-        # In case the zeroecc waveform is not long enough we reduce the
-        # initial Momega0 by a factor of 2 and generate the waveform again
-        # NEED A BETTER SOLUTION to this later
-        num_tries = 0
-        while t_zeroecc[0] > return_dict["t"][0]:
-            zero_ecc_kwargs["Momega0"] = zero_ecc_kwargs["Momega0"] / 2
-            dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
-            t_zeroecc = dataDict_zero_ecc["t"]
-            num_tries += 1
-        if num_tries >= 2:
-            warnings.warn("Too many tries to reset Momega0 for generating"
-                          " zeroecc modes. Total number of tries = "
-                          f"{num_tries}")
-        hlm_zeroecc = dataDict_zero_ecc["hlm"]
-        # Finally we want to return zeroecc data only about the length of the
-        # eccentric waveform and truncate the rest of the waveform to avoid
-        # wasting computing resources
-        start_zeroecc_idx = np.argmin(
-            np.abs(t_zeroecc - return_dict["t"][0])) - 10
-        for key in hlm_zeroecc.keys():
-            hlm_zeroecc[key] = hlm_zeroecc[key][start_zeroecc_idx:]
-        return_dict.update({"t_zeroecc": t_zeroecc[start_zeroecc_idx:],
-                            "hlm_zeroecc": hlm_zeroecc})
     return return_dict
