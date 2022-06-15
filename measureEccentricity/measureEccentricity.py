@@ -3,7 +3,7 @@
 ========
 Measure eccentricity and mean anomaly from gravitational waves.
 """
-__copyright__ = "Copyright (C) 2021 Md Arif Shaikh, Vijay Varma"
+__copyright__ = "Copyright (C) 2022 Md Arif Shaikh, Vijay Varma"
 __email__ = "arif.shaikh@icts.res.in, vijay.varma392@gmail.com"
 __status__ = "testing"
 __author__ = "Md Arif Shaikh, Vijay Varma"
