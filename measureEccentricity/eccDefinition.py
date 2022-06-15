@@ -1111,7 +1111,7 @@ class eccDefinition:
         "width" by looking at the time scale over which the phase22 changes by
         about 4pi because the change in phase22 over one orbit would be
         approximately twice the change in the orbital phase which is about 2pi.
-        Finally we divide this by 2 so that the width is always smaller than
+        Finally we divide this by 4 so that the width is always smaller than
         the two consecutive extrema otherwise we risk of missing a few extrema
         very close to the merger.
 
@@ -1153,4 +1153,4 @@ class eccDefinition:
         width = dt / (self.t[1] - self.t[0])
         # we want to use a width that is always smaller than the separation
         # between extrema, otherwise we might miss a few peaks near merger
-        return int(width / 2)
+        return int(width / 4)
