@@ -2,7 +2,7 @@ name: build
 on:
   push:
     paths:
-      - measureEccentricity/**
+      - gw_eccentricity/**
       - test/**
       - 'setup.py'
       - '.github/workflows/test.yml'
