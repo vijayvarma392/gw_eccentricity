@@ -1,13 +1,13 @@
-[![github](https://img.shields.io/badge/GitHub-Eccentricity-blue.svg)](https://github.com/vijayvarma392/Eccentricity)
-[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vijayvarma392/Eccentricity/blob/master/LICENSE)
-[![Build Status](https://github.com/vijayvarma392/Eccentricity/actions/workflows/test.yml/badge.svg)](https://github.com/vijayvarma392/Eccentricity/actions/workflows/test.yml)
+[![github](https://img.shields.io/badge/GitHub-gw_eccentricity-blue.svg)](https://github.com/vijayvarma392/gw_eccentricity)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vijayvarma392/gw_eccentricity/blob/master/LICENSE)
+[![Build Status](https://github.com/vijayvarma392/gw_eccentricity/actions/workflows/test.yml/badge.svg)](https://github.com/vijayvarma392/gw_eccentricity/actions/workflows/test.yml)
 
 
-# Eccentricity
-Defining eccentricity for GW applications. See [wiki](https://github.com/vijayvarma392/Eccentricity/wiki).
+# gw_eccentricity
+Defining eccentricity for GW applications. See [wiki](https://github.com/vijayvarma392/gw_eccentricity/wiki).
 
 ## Automated tests
-Continuous Integration tests are automatically run (using Github Actions) for every pull request.    
+Continuous Integration tests are automatically run (using Github Actions) for every pull request.
 Before pushing, you should run these tests locally by doing the following from the base directory of the repo:
 ```
 py.test test
