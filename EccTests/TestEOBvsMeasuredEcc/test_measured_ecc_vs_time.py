@@ -21,10 +21,10 @@ import matplotlib as mpl
 import argparse
 import warnings
 sys.path.append("../../")
-from measureEccentricity import measure_eccentricity, get_available_methods
-from measureEccentricity.load_data import load_waveform
-from measureEccentricity.utils import SmartFormatter
-from measureEccentricity.plot_settings import use_fancy_plotsettings, figWidthsOneColDict
+from gw_eccentricity import measure_eccentricity, get_available_methods
+from gw_eccentricity.load_data import load_waveform
+from gw_eccentricity.utils import SmartFormatter
+from gw_eccentricity.plot_settings import use_fancy_plotsettings, figWidthsOneColDict
 
 parser = argparse.ArgumentParser(
     description=(__doc__),

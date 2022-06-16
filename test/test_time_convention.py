@@ -1,6 +1,6 @@
-import measureEccentricity
-from measureEccentricity import load_data
-from measureEccentricity import measure_eccentricity
+import gw_eccentricity
+from gw_eccentricity import load_data
+from gw_eccentricity import measure_eccentricity
 import numpy as np
 
 
@@ -41,7 +41,7 @@ def test_time_convention():
                               - dataDict2["t_zeroecc"][-1])
 
     # List of all available methods
-    available_methods = measureEccentricity.get_available_methods()
+    available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
         # FIXEME: Does not work for FrequencyFits, so skipping it for now
         if method == "FrequencyFits":

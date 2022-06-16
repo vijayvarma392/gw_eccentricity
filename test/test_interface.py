@@ -1,6 +1,6 @@
-import measureEccentricity
-from measureEccentricity import load_data
-from measureEccentricity import measure_eccentricity
+import gw_eccentricity
+from gw_eccentricity import load_data
+from gw_eccentricity import measure_eccentricity
 import numpy as np
 
 
@@ -20,7 +20,7 @@ def test_interface():
     dataDict = load_data.load_waveform(**lal_kwargs)
 
     # List of all available methods
-    available_methods = measureEccentricity.get_available_methods()
+    available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
         # Try evaluating at a single time
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
