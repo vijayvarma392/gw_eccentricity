@@ -4,3 +4,8 @@ __pycache__
 *.swp
 *.h5
 /paper
+
+# pypi stuff
+build
+dist
+*.egg-info
