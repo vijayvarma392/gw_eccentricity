@@ -5,21 +5,21 @@ with open("README.md", "rb") as fh:
 
 # Extract code version from __init__.py
 def get_version():
-    with open('measureEccentricity/measureEccentricity.py') as f:
+    with open('gw_eccentricity/gw_eccentricity.py') as f:
         for line in f.readlines():
             if "__version__" in line:
                 return line.split('"')[1]
 
 setuptools.setup(
-    name="measureEccentricity",
+    name="gw_eccentricity",
     version=get_version(),
     author="Md Arif Shaikh, Vijay Varma",
-    author_email="arif.shaikh@icts.res.in, vijay.varma392@gmail.com",
+    author_email="arifshaikh.astro@gmail.com, vijay.varma392@gmail.com",
     description="Measure eccentricity from gravitational waves.",
     keywords='black-holes gravitational-waves',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/vijayvarma392/Eccentricity",
+    url="https://github.com/vijayvarma392/gw_eccentricity",
     packages=setuptools.find_packages(),
     install_requires=[
         'numpy',

@@ -1,6 +1,6 @@
-import measureEccentricity
-from measureEccentricity import load_data
-from measureEccentricity import measure_eccentricity
+import gw_eccentricity
+from gw_eccentricity import load_data
+from gw_eccentricity import measure_eccentricity
 import numpy as np
 
 
@@ -38,7 +38,7 @@ def test_mks_vs_dimless_units():
 
     # List of all available methods
     available_methods = list(
-        measureEccentricity.get_available_methods().keys())
+        gw_eccentricity.get_available_methods().keys())
     # FIXME: not including FrequencyFits since it does not work with MKS units
     # yet
     for method in available_methods:
