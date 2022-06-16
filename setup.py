@@ -3,7 +3,7 @@ import setuptools
 with open("README.md", "rb") as fh:
     long_description = fh.read().decode("UTF-8")
 
-# Extract code version from __init__.py
+# Extract code version from gw_eccentricity.py
 def get_version():
     with open('gw_eccentricity/gw_eccentricity.py') as f:
         for line in f.readlines():
