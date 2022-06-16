@@ -1,7 +1,8 @@
 """gw_eccentricity.
-
 ========
+
 Measure eccentricity and mean anomaly from gravitational waves.
+See https://pypi.org/project/gw_eccentricity for more details.
 """
 __copyright__ = "Copyright (C) 2022 Md Arif Shaikh, Vijay Varma"
 __email__ = "arifshaikh.astro@gmail.com, vijay.varma392@gmail.com"
