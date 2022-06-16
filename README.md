@@ -62,7 +62,7 @@ See this
 for instructions on how to make contributions to this package.
 
 ## Credits
-The code is developed and maintained by [Arif Shaik](https://md-arif-shaikh.github.io/about/), [Vijay
+The main contributors to this code are [Arif Shaik](https://md-arif-shaikh.github.io/about/), [Vijay
 Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/person/54205/2784). You can find the full list of contributors
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
 Please report bugs by raising an issue on our
