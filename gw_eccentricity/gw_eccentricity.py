@@ -53,7 +53,7 @@ def measure_eccentricity(tref_in=None,
                          fref_in=None,
                          dataDict=None,
                          method="Amplitude",
-                         return_ecc_method=False,
+                         return_gwecc_object=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
