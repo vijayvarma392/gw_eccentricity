@@ -52,69 +52,7 @@ All of these can be installed through pip or conda.
 
 
 ## Usage
-We provide ipython examples for usage of different methods.
-
-### Get available methods
-```python
->>> from gw_eccentricity.gw_eccentricity import get_available_methods
->>> list(get_available_methods().keys())
-['Amplitude',
- 'Frequency',
- 'ResidualAmplitude',
- 'ResidualFrequency',
- 'FrequencyFits']
-```
-
-### Measure eccentricity and mean anomaly of `EccentricTD` waveform
-#### Load waveform data
-```python
->>> from gw_eccentricity.load_data import load_waveform
->>> lal_kwargs = {"approximant": "EccentricTD",
-                  "q": 1.0,
-                  "chi1": [0.0, 0.0, 0.0],
-                  "chi2": [0.0, 0.0, 0.0],
-                  "Momega0": 0.01,
-                  "ecc": 0.1,
-                  "mean_ano": 0,
-                  "include_zero_ecc": True}
->>> dataDict = load_waveform("LAL", **lal_kwargs)
-```
-#### Measure eccentricity and mean anomaly at a single time using different methods
-```python
->>> from gw_eccentricity.gw_eccentricity import measure_eccentricity
->>> tref_in = -12000
->>> for method in get_available_methods():
-         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
-         tref_in=tref_in,
-         method=method,
-         dataDict=dataDict,
-         extra_kwargs={"debug": False})
-         print(method, ecc_ref, meanano_ref)
-Amplitude 0.10377888168068325 5.951312106389669
-Frequency 0.1037761976301291 5.95315171561444
-ResidualAmplitude 0.10379109594072847 5.9605101525134865
-ResidualFrequency 0.10379118014589635 5.961429957125872
-FrequencyFits 0.10379128102227173 5.961429957125872
-```
-#### Measure eccentricity and mean anomaly at an array of times using different methods
-```python
->>> from gw_eccentricity.plot_settings import use_fancy_plotsettings
->>> from gw_eccentricity.plot_settings import figWidthsTwoColDict, colorsDict, lstyles
->>> import numpy as np
->>> import matplotlib.pyplot as plt
->>> tref_in = np.arange(-12000, -2000, 0.1)
->>> use_fancy_plotsettings()
->>> fig, ax = plt.subplots(figsize=(figWidthsTwoColDict["Notebook"], 4))
->>> for method in get_available_methods():
-         tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
-         tref_in=tref_in,
-         method=method,
-         dataDict=dataDict,
-         return_ecc_method=True,
-         extra_kwargs={"debug": False})
-         eccMethod.plot_measured_ecc(fig, ax, **{"label": method, "c": colorsDict[method], "ls": lstyles[method]})
-```
-<div> <img src="./notebook/demo_ecc_vs_time.png"></div>
+See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb)
 
 ## Making contributions
 See this
