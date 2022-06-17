@@ -106,12 +106,13 @@ def measure_eccentricity(tref_in=None,
 
     method: str
         Method to define eccentricity. Currently the following methods are implemented
-        - Amplitude
-        - ResidualAmplitude
-        - Frequency
-        - ResidualFrequency
-        - FrequencyFits
+        - "Amplitude"
+        - "ResidualAmplitude"
+        - "Frequency"
+        - "ResidualFrequency"
+        - "FrequencyFits"
         Avialable list of methods could be also obtained using get_available_methods().
+        Default is "Amplitude"
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
@@ -170,7 +171,14 @@ def measure_eccentricity(tref_in=None,
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the peak finding function,
             where it will be (typically) passed to scipy.signal.find_peaks.
-            #FIXME ARIF: Explain how the defaults are set.
+            The default kwargs have the same values as in scipy.signal.find_peaks,
+            Except for "width". The "width" denotes the minimal separation
+            between two consecutive peaks/troughs. This is useful to set to avoid
+            glitches in noisy data being mistaken for peaks/troughs.
+            The default value of "width" set using the phase22.
+            First we get the number of time steps over which the 22 mode phase
+            changes by 4pi at 2 orbits before the merger and then divide it by 4
+            so that we do not miss actual peaks that are very close to the merger.
         debug:
             Run additional sanity checks if debug is True.
             Default: True.
