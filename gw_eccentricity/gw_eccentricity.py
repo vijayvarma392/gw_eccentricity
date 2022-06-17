@@ -243,11 +243,11 @@ def measure_eccentricity(tref_in=None,
     available_methods = get_available_methods()
 
     if method in available_methods:
-        ecc_method = available_methods[method](dataDict,
+        gwecc_object = available_methods[method](dataDict,
                                                spline_kwargs=spline_kwargs,
                                                extra_kwargs=extra_kwargs)
 
-        tref_or_fref_out, ecc_ref, mean_ano_ref = ecc_method.measure_ecc(
+        tref_or_fref_out, ecc_ref, mean_ano_ref = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
         if not return_gwecc_object:
             return tref_or_fref_out, ecc_ref, mean_ano_ref
