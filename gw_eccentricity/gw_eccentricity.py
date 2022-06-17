@@ -65,13 +65,13 @@ def measure_eccentricity(tref_in=None,
 
     The first step is to find the locations of these pericenters and apocenters
     using a extrema finding routine. However, depending on which data we are using,
-    the efficiency of findig all the extrema might vary. This is where different
+    the efficiency of finding all the extrema might vary. This is where different
     methods comes into play. Each method uses a different data to look for the
     locations of the extrema.
 
     Once the locations are found, omega22 values are obtained at those locations
     and interpolants are created using these omega22 at the apocenters and pericenters.
-    Finally these are plugged into Eq. 1 to measure the eccentrcity. Similarly,
+    Finally these are plugged into Eq. 1 to measure the eccentricity. Similarly,
     the locations are used to find the time of the pericenters and apocenters and these
     are used in Eq. 2 to get the mean anomaly.
 
@@ -106,13 +106,18 @@ def measure_eccentricity(tref_in=None,
 
     method: str
         Method to define eccentricity. Currently the following methods are implemented
-        - "Amplitude"
-        - "ResidualAmplitude"
-        - "Frequency"
-        - "ResidualFrequency"
-        - "FrequencyFits"
-        Avialable list of methods could be also obtained using get_available_methods().
-        Default is "Amplitude"
+        - "Amplitude": Uses amplitude of 22 mode to find the extrema locations.
+        - "ResidualAmplitude": Uses residual 22 mode amplitude to find the extrema locations.
+          The residual amplitude is obtained by subtracting the 22 mode amplitude of the
+          quasi-circular counterpart (setting eccentrcity = 0 and keeping other parameters same)
+          from the 22 mode amplitude of the eccentric waveform.
+        - "Frequency": Uses omega of the 22 mode to find the extrema locations.
+        - "ResidualFrequency": Uses residual omega of the 22 mode to find the extrema locations.
+          The residual omega is obtained in the same way as the residual amplitude.
+        - "FrequencyFits": Uses omega of the 22 mode and subtracts a envelope fitting function
+          from it and uses that data to find the extrema locations.
+        Available list of methods could be also obtained using get_available_methods().
+        Default is "Amplitude".
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
@@ -136,11 +141,11 @@ def measure_eccentricity(tref_in=None,
         Some methods require additional data in dataDict. In particular, the
         ResidualAmplitude and ResidualFrequency methods require additional
         keys, "t_zeroecc" and "hlm_zeroecc", which should include the time and
-        modeDict for the quasicircular limit of the eccentric waveform in
+        modeDict for the quasi-circular limit of the eccentric waveform in
         "hlm". For a waveform model, "hlm_zeroecc" can be obtained by
         evaluating the model by keeping the rest of the binary parameters fixed
-        but setting the eccentricity to zero. For NR, if such a quasicircular
-        counterpart is not available, we recommend using quasicircular
+        but setting the eccentricity to zero. For NR, if such a quasi-circular
+        counterpart is not available, we recommend using quasi-circular
         waveforms like NRHybSur3dq8 or PhenomT, depending on the mass ratio and
         spins. We require that "hlm_zeroecc" be at least as long as "hlm" so
         that residual amplitude/frequency can be computed.
@@ -227,7 +232,7 @@ def measure_eccentricity(tref_in=None,
         In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
         is not None, only the data up to that many orbits before merger is
         included when finding the t_peaks/t_troughs. This helps avoid
-        unphysical features like nonmonotonic eccentricity near the merger.
+        nonphysical features like non-monotonic eccentricity near the merger.
 
         fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
         where fmin = omega22_average(tmin)/2/pi, and

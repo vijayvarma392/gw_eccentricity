@@ -28,7 +28,7 @@ class eccDefinition:
             the format {"t": time, "hlm": modeDict, ..}, with
             modeDict = {(l, m): hlm_mode_data}.
             For ResidualAmplitude method, also provide "t_zeroecc" and
-            "hlm_zeroecc", for the quasicircular counterpart.
+            "hlm_zeroecc", for the quasi-circular counterpart.
 
         spline_kwargs:
              Arguments to be passed to InterpolatedUnivariateSpline.
@@ -70,7 +70,7 @@ class eccDefinition:
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
         # We need to know the merger time of eccentric waveform.
-        # This is useful, for example, to substract the quasi circular
+        # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
         self.t_merger = peak_time_via_quadratic_fit(
             self.t,
@@ -128,7 +128,7 @@ class eccDefinition:
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
             "num_orbits_to_exclude_before_merger": 1,
-            "extrema_finding_kwargs": {},   # Gets overriden in methods like
+            "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
             "omega22_averaging_method": "mean_of_extrema_interpolants",
@@ -163,9 +163,9 @@ class eccDefinition:
         spline through extrema, positions of extrema
         """
         extrema_idx = self.find_extrema(extrema_type)
-        # experimenting wih throwing away peaks too close to merger
+        # experimenting with throwing away peaks too close to merger
         # This helps in avoiding unwanted feature in the spline
-        # thorugh the extrema
+        # through the extrema
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             merger_idx = np.argmin(np.abs(self.t - self.t_merger))
             phase22_at_merger = self.phase22[merger_idx]
@@ -177,8 +177,8 @@ class eccDefinition:
                 * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
             idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
                 self.phase22 - phase22_num_orbits_earlier_than_merger))
-            # use only the extrema those are atleast num_orbits away from the
-            # merger to avoid unphysical features like nonmonotonic
+            # use only the extrema those are at least num_orbits away from the
+            # merger to avoid nonphysical features like non-monotonic
             # eccentricity near the merger
             extrema_idx = extrema_idx[extrema_idx
                                       <= idx_num_orbit_earlier_than_merger]
@@ -249,7 +249,7 @@ class eccDefinition:
             In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
             is not None, only the data up to that many orbits before merger is
             included when finding the t_peaks/t_troughs. This helps avoid
-            unphysical features like nonmonotonic eccentricity near the merger.
+            nonphysical features like non-monotonic eccentricity near the merger.
 
             fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
             where fmin = omega22_average(tmin)/2/pi, and
@@ -271,8 +271,8 @@ class eccDefinition:
         else:
             self.omega22_troughs_interp, self.troughs_location = self.interp_extrema("minima")
 
-        # check that peaks and troughs are appearing alternatively
-        self.check_peaks_and_troughs_appear_alternatingly()
+        # check that peaks and troughs are appearing alternately
+        self.check_peaks_and_troughs_appear_alternately()
 
         t_peaks = self.t[self.peaks_location]
         t_troughs = self.t[self.troughs_location]
@@ -331,12 +331,12 @@ class eccDefinition:
 
         # Check if tref_out has a peak before and after.
         # This is required to define mean anomaly.
-        # See explaination on why we do not include the last peak above.
+        # See explanation on why we do not include the last peak above.
         if self.tref_out[0] < t_peaks[0] or self.tref_out[-1] >= t_peaks[-1]:
             raise Exception("Reference time must be within two peaks.")
 
-        # compute eccentricty from the value of omega22_peaks_interp
-        # and omega22_troughs_interp at tref_out using the fromula in
+        # compute eccentricity from the value of omega22_peaks_interp
+        # and omega22_troughs_interp at tref_out using the formula in
         # ref. arXiv:2101.11798 eq. 4
         self.omega22_peak_at_tref_out = self.omega22_peaks_interp(self.tref_out)
         self.omega22_trough_at_tref_out = self.omega22_troughs_interp(self.tref_out)
@@ -366,11 +366,11 @@ class eccDefinition:
         # Compute mean anomaly at tref_out
         self.mean_ano_ref = compute_mean_ano(self.tref_out)
 
-        # check if eccenricity is positive
+        # check if eccentricity is positive
         if any(self.ecc_ref < 0):
             warnings.warn("Encountered negative eccentricity.")
 
-        # check if eccenricity is monotonic and convex
+        # check if eccentricity is monotonic and convex
         if len(self.tref_out) > 1:
             self.check_monotonicity_and_convexity(
                 self.tref_out, self.ecc_ref,
@@ -401,7 +401,7 @@ class eccDefinition:
             too_close_times = t_at_extrema[too_close_idx]
             warnings.warn(f"At least a pair of {extrema_type} are too close."
                           " Minimum orbital phase diff is "
-                          f"{min(orb_phase_diff)}. Times of occurances are"
+                          f"{min(orb_phase_diff)}. Times of occurrences are"
                           f" {too_close_times}")
         if any(np.abs(orb_phase_diff - np.pi)
                < np.abs(orb_phase_diff - 2 * np.pi)):
@@ -419,7 +419,7 @@ class eccDefinition:
             too_far_times = t_at_extrema[too_far_idx]
             warnings.warn(f"At least a pair of {extrema_type} are too far."
                           " Maximum orbital phase diff is "
-                          f"{max(orb_phase_diff)}. Times of occurances are"
+                          f"{max(orb_phase_diff)}. Times of occurrences are"
                           f" {too_far_times}")
         return orb_phase_diff, orb_phase_diff_ratio
 
@@ -431,7 +431,7 @@ class eccDefinition:
 
         parameters:
         tref_out:
-            Output reference time from eccentricty measurement
+            Output reference time from eccentricity measurement
         ecc_ref:
             measured eccentricity at tref_out
         check_convexity:
@@ -458,7 +458,7 @@ class eccDefinition:
         self.t_for_ecc_test = t_for_ecc_test
         self.decc_dt = self.decc_dt
 
-        # Is ecc(t) a monotoniccally decreasing function?
+        # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt > 0):
             warnings.warn("Ecc(t) is non monotonic.")
 
@@ -470,16 +470,16 @@ class eccDefinition:
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
 
-    def check_peaks_and_troughs_appear_alternatingly(self):
-        """Check that peaks and troughs appear alternatingly."""
-        # if peaks and troughs appear alternatingly, then the number
+    def check_peaks_and_troughs_appear_alternately(self):
+        """Check that peaks and troughs appear alternatively."""
+        # if peaks and troughs appear alternating, then the number
         # of peaks and troughs should differ by one.
         if abs(len(self.peaks_location) - len(self.troughs_location)) >= 2:
             warnings.warn(
                 "Number of peaks and number of troughs differ by "
                 f"{abs(len(self.peaks_location) - len(self.troughs_location))}"
                 ". This implies that peaks and troughs are not appearing"
-                " alternatingly.")
+                " alternately.")
         else:
             # If the number of peaks and troughs differ by zero or one then we
             # do the following:
@@ -504,7 +504,7 @@ class eccDefinition:
                     arr2 = self.peaks_location
                     arr1 = self.troughs_location
             # create a new array which takes elements from arr1 and arr2
-            # alternatingly
+            # alternately
             arr = np.zeros(arr1.shape[0] + arr2.shape[0], dtype=arr1.dtype)
             # assign every other element to values from arr1 starting from
             # index = 0
@@ -514,12 +514,12 @@ class eccDefinition:
             arr[1::2] = arr2
             # get the time difference between consecutive locations in arr
             t_diff = np.diff(self.t[arr])
-            # If peaks and troughs appear alternatingly then all the time
+            # If peaks and troughs appear alternately then all the time
             # differences in t_diff should be positive
             if any(t_diff < 0):
                 warnings.warn(
                     "There is at least one instance where "
-                    "peaks and troughs do not appear alternatingly.")
+                    "peaks and troughs do not appear alternately.")
 
     def compute_res_amp_and_omega22(self):
         """Compute residual amp22 and omega22."""
@@ -602,7 +602,7 @@ class eccDefinition:
                              + self.t[self.troughs_location][:-1]) / 2
         omega22_average_troughs = orbital_averaged_omega22_at_extrema(
             np.arange(len(self.troughs_location) - 1), "troughs")
-        # combine results from avergae at peaks and toughs
+        # combine results from average at peaks and toughs
         t_average = np.append(t_average_troughs, t_average_peaks)
         # sort the times
         sorted_idx = np.argsort(t_average)
@@ -613,7 +613,7 @@ class eccDefinition:
                             "monotonically increaing")
         if any(np.diff(omega22_average_troughs) <= 0):
             raise Exception("Omega22 average at troughs are not strictly "
-                            "monotonically increaing")
+                            "monotonically increasing")
         omega22_average = np.append(omega22_average_troughs,
                                     omega22_average_peaks)
         # sort omega22
@@ -674,11 +674,11 @@ class eccDefinition:
 
         Once we get the reference frequencies, we create a spline to get time
         as function of these reference frequencies. This should work if the
-        refrence frequency is monotonic which it should be.
+        reference frequency is monotonic which it should be.
 
         Finally we evaluate this spine on the fref_in to get the tref_in.
         """
-        self.available_averaging_methods = self.get_availabe_omega22_averaging_methods()
+        self.available_averaging_methods = self.get_available_omega22_averaging_methods()
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
             # The fref_in array could have frequencies that is outside the range
@@ -755,10 +755,10 @@ class eccDefinition:
         return fref_out
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
-        """Make dignostic plots for the eccDefinition method.
+        """Make diagnostic plots for the eccDefinition method.
 
-        We plot differenct quantities to asses how well our eccentricity
-        measurment method is working. This could be seen as a diagnostic tool
+        We plot different quantities to asses how well our eccentricity
+        measurement method is working. This could be seen as a diagnostic tool
         to check an implemented method.
 
         We plot the following quantities
