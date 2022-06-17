@@ -53,9 +53,9 @@ class eccDefinition:
                 treat_mid_points_between_peaks_as_troughs:
                     If True, instead of trying to find local minima in the
                     data, we simply find the midpoints between local maxima
-                    and treat them as apastron locations. This is helpful for
-                    eccentricities ~1 where periastrons are easy to find but
-                    apastrons are not.
+                    and treat them as apocenter locations. This is helpful for
+                    eccentricities ~1 where pericenters are easy to find but
+                    apocenters are not.
                     Default: False
         """
         self.dataDict = dataDict
@@ -310,16 +310,16 @@ class eccDefinition:
             if self.tref_in[-1] > self.t_max:
                 raise Exception(f"tref_in {self.tref_in} is later than t_max="
                                 f"{self.t_max}, "
-                                "which corresponds to min(last periastron "
-                                "time, last apastron time).")
+                                "which corresponds to min(last pericenter "
+                                "time, last apocenter time).")
             if self.tref_in[0] < self.t_min:
                 raise Exception(f"tref_in {self.tref_in} is earlier than t_min="
                                 f"{self.t_min}, "
-                                "which corresponds to max(first periastron "
-                                "time, first apastron time).")
+                                "which corresponds to max(first pericenter "
+                                "time, first apocenter time).")
             raise Exception("tref_out is empty. This can happen if the "
                             "waveform has insufficient identifiable "
-                            "periastrons/apastrons.")
+                            "pericenters/apocenters.")
 
         # check separation between extrema
         self.orb_phase_diff_at_peaks, \
@@ -352,8 +352,8 @@ class eccDefinition:
             Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
             Mean anomaly grows linearly in time from 0 to 2 pi over
             the range [t_at_last_peak, t_at_next_peak], where t_at_last_peak
-            is the time at the previous periastron, and t_at_next_peak is
-            the time at the next periastron.
+            is the time at the previous pericenter, and t_at_next_peak is
+            the time at the next pericenter.
             """
             idx_at_last_peak = np.where(t_peaks <= time)[0][-1]
             t_at_last_peak = t_peaks[idx_at_last_peak]
@@ -568,8 +568,8 @@ class eccDefinition:
     def compute_orbital_averaged_omega22_at_extrema(self, t):
         """Compute reference frequency by orbital averaging at extrema.
 
-        We compute the orbital average of omega22 at the periastrons
-        and the apastrons following:
+        We compute the orbital average of omega22 at the pericenters
+        and the apocenters following:
         omega22_avg((t[i]+ t[i+1])/2) = int_t[i]^t[i+1] omega22(t)dt
                                         / (t[i+1] - t[i])
         where t[i] is the time of ith extrema.
@@ -751,7 +751,7 @@ class eccDefinition:
             else:
                 raise Exception("fref_out is empty. This can happen if the "
                                 "waveform has insufficient identifiable "
-                                "periastrons/apastrons.")
+                                "pericenters/apocenters.")
         return fref_out
 
     def make_diagnostic_plots(self, usetex=True, **kwargs):
@@ -866,7 +866,7 @@ class eccDefinition:
             return axNew
 
     def plot_extrema_in_omega22(self, fig=None, ax=None, **kwargs):
-        """Plot omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
+        """Plot omega22, the locations of the apocenters and pericenters, and their corresponding interpolants.
 
         This would show if the method is missing any peaks/troughs or
         selecting one which is not a peak/trough.
@@ -876,10 +876,10 @@ class eccDefinition:
         else:
             axNew = ax
         axNew.plot(self.tref_out, self.omega22_peak_at_tref_out,
-                   c=colorsDict["periastron"], label=r"$\omega_{p}$",
+                   c=colorsDict["pericenter"], label=r"$\omega_{p}$",
                    **kwargs)
         axNew.plot(self.tref_out, self.omega22_trough_at_tref_out,
-                   c=colorsDict["apastron"], label=r"$\omega_{a}$",
+                   c=colorsDict["apocenter"], label=r"$\omega_{a}$",
                    **kwargs)
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t - self.t_merger))
@@ -887,11 +887,11 @@ class eccDefinition:
                    c=colorsDict["default"], label=r"$\omega_{22}$")
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
-                   c=colorsDict["periastron"],
+                   c=colorsDict["pericenter"],
                    marker=".", ls="")
         axNew.plot(self.t[self.troughs_location],
                    self.omega22[self.troughs_location],
-                   c=colorsDict["apastron"],
+                   c=colorsDict["apocenter"],
                    marker=".", ls="")
         axNew.set_xlabel(r"$t$")
         axNew.grid()
@@ -903,7 +903,7 @@ class eccDefinition:
             return axNew
 
     def plot_extrema_in_amp22(self, fig=None, ax=None, **kwargs):
-        """Plot amp22, the locations of the apastrons and periastrons.
+        """Plot amp22, the locations of the apocenters and pericenters.
 
         This would show if the method is missing any peaks/troughs or
         selecting one which is not a peak/trough.
@@ -918,11 +918,11 @@ class eccDefinition:
                    c=colorsDict["default"], label=r"$A_{22}$")
         axNew.plot(self.t[self.peaks_location],
                    self.amp22[self.peaks_location],
-                   c=colorsDict["periastron"],
+                   c=colorsDict["pericenter"],
                    marker=".", ls="", label="Pericenters")
         axNew.plot(self.t[self.troughs_location],
                    self.amp22[self.troughs_location],
-                   c=colorsDict["apastron"],
+                   c=colorsDict["apocenter"],
                    marker=".", ls="", label="Apocenters")
         axNew.set_xlabel(r"$t$")
         axNew.grid()
@@ -948,12 +948,12 @@ class eccDefinition:
             axNew = ax
         tpeaks = self.t[self.peaks_location[1:]]
         axNew.plot(tpeaks[1:], self.orb_phase_diff_ratio_at_peaks[1:],
-                   c=colorsDict["periastron"],
-                   marker=".", label="Periastron phase diff ratio")
+                   c=colorsDict["pericenter"],
+                   marker=".", label="Pericenter phase diff ratio")
         ttroughs = self.t[self.troughs_location[1:]]
         axNew.plot(ttroughs[1:], self.orb_phase_diff_ratio_at_troughs[1:],
-                   c=colorsDict["apastron"],
-                   marker=".", label="Apastron phase diff ratio")
+                   c=colorsDict["apocenter"],
+                   marker=".", label="Apocenter phase diff ratio")
         axNew.set_xlabel(r"$t$")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
@@ -964,7 +964,7 @@ class eccDefinition:
             return axNew
 
     def plot_residual_omega22(self, fig=None, ax=None, **kwargs):
-        """Plot residual omega22, the locations of the apastrons and periastrons, and their corresponding interpolants.
+        """Plot residual omega22, the locations of the apocenters and pericenters, and their corresponding interpolants.
 
         Useful to look for bad omega22 data near merger.
         We also throw away post merger before since it makes the plot
@@ -979,12 +979,12 @@ class eccDefinition:
         axNew.plot(self.t[: end], self.res_omega22[:end], c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.res_omega22[self.peaks_location],
-                   marker=".", ls="", label="Periastron",
-                   c=colorsDict["periastron"])
+                   marker=".", ls="", label="Pericenter",
+                   c=colorsDict["pericenter"])
         axNew.plot(self.t[self.troughs_location],
                    self.res_omega22[self.troughs_location],
-                   marker=".", ls="", label="Apastron",
-                   c=colorsDict["apastron"])
+                   marker=".", ls="", label="Apocenter",
+                   c=colorsDict["apocenter"])
         axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta\omega_{22}$")
@@ -995,7 +995,7 @@ class eccDefinition:
             return axNew
 
     def plot_residual_amp22(self, fig=None, ax=None, **kwargs):
-        """Plot residual amp22, the locations of the apastrons and periastrons, and their corresponding interpolants."""
+        """Plot residual amp22, the locations of the apocenters and pericenters, and their corresponding interpolants."""
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
         else:
@@ -1003,12 +1003,12 @@ class eccDefinition:
         axNew.plot(self.t, self.res_amp22, c=colorsDict["default"])
         axNew.plot(self.t[self.peaks_location],
                    self.res_amp22[self.peaks_location],
-                   c=colorsDict["periastron"],
-                   marker=".", ls="", label="Periastron")
+                   c=colorsDict["pericenter"],
+                   marker=".", ls="", label="Pericenter")
         axNew.plot(self.t[self.troughs_location],
                    self.res_amp22[self.troughs_location],
-                   c=colorsDict["apastron"],
-                   marker=".", ls="", label="Apastron")
+                   c=colorsDict["apocenter"],
+                   marker=".", ls="", label="Apocenter")
         axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta A_{22}$")

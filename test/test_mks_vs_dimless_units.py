@@ -74,18 +74,18 @@ def test_mks_vs_dimless_units():
         # Try evaluating at an array of dimless times
         idx_start = np.argmin(np.abs(dataDict["t"] - (-12000)))
         idx_end = np.argmin(np.abs(dataDict["t"] - (-5000)))
-        tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+        tref_out, ecc_ref, meanano_ref, gwecc_object = measure_eccentricity(
             tref_in=dataDict["t"][idx_start: idx_end],
             method=method,
             dataDict=dataDict,
-            return_ecc_method=True,
+            return_gwecc_object=True,
             extra_kwargs=extra_kwargs)
         # Try evaluating at an array of MKS times
-        tref_out_MKS, ecc_ref_MKS, meanano_ref_MKS, eccMethod_MKS = measure_eccentricity(
+        tref_out_MKS, ecc_ref_MKS, meanano_ref_MKS, gwecc_object_MKS = measure_eccentricity(
             tref_in=dataDictMKS["t"][idx_start: idx_end],
             method=method,
             dataDict=dataDictMKS,
-            return_ecc_method=True,
+            return_gwecc_object=True,
             extra_kwargs=extra_kwargs)
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
@@ -104,7 +104,7 @@ def test_mks_vs_dimless_units():
                      "x = Dimensionless, y = MKS"))
 
         # Try evaluating at single dimensionless frequency
-        fref_in = eccMethod.compute_omega22_average_between_extrema(
+        fref_in = gwecc_object.compute_omega22_average_between_extrema(
             dataDict["t"][idx]) / (2 * np.pi)
         fref_out, ecc_ref, meanano_ref = measure_eccentricity(
             fref_in=fref_in,
@@ -112,7 +112,7 @@ def test_mks_vs_dimless_units():
             dataDict=dataDict,
             extra_kwargs=extra_kwargs)
         # Try evaluating at single MKS frequency
-        fref_in = eccMethod_MKS.compute_omega22_average_between_extrema(
+        fref_in = gwecc_object_MKS.compute_omega22_average_between_extrema(
             dataDictMKS["t"][idx]) / (2 * np.pi)
         fref_out, ecc_ref_MKS, meanano_ref_MKS = measure_eccentricity(
             fref_in=fref_in,
@@ -134,22 +134,22 @@ def test_mks_vs_dimless_units():
                      "x = Dimensionless, y = MKS"))
 
         # Try evaluating at an array of dimensionless frequencies
-        fref_in = eccMethod.compute_omega22_average_between_extrema(
+        fref_in = gwecc_object.compute_omega22_average_between_extrema(
             dataDict["t"][idx: idx+500]) / (2 * np.pi)
-        tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+        tref_out, ecc_ref, meanano_ref, gwecc_object = measure_eccentricity(
             fref_in=fref_in,
             method=method,
             dataDict=dataDict,
-            return_ecc_method=True,
+            return_gwecc_object=True,
             extra_kwargs=extra_kwargs)
         # Try evaluating at an array of MKS frequencies
-        fref_in = eccMethod_MKS.compute_omega22_average_between_extrema(
+        fref_in = gwecc_object_MKS.compute_omega22_average_between_extrema(
             dataDictMKS["t"][idx: idx+500]) / (2 * np.pi)
-        tref_out, ecc_ref_MKS, meanano_ref_MKS, eccMethod = measure_eccentricity(
+        tref_out, ecc_ref_MKS, meanano_ref_MKS, gwecc_object = measure_eccentricity(
             fref_in=fref_in,
             method=method,
             dataDict=dataDictMKS,
-            return_ecc_method=True,
+            return_gwecc_object=True,
             extra_kwargs=extra_kwargs)
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
