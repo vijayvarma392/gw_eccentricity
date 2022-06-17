@@ -58,22 +58,23 @@ def measure_eccentricity(tref_in=None,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
-    Eccentricity and mean anomaly are measured form the gravitational waveform
-    data. Eccentricity is measured using the omega22 values at the pericenters
-    and the apocenters using the definition described in Eq. 1 and mean anomaly
-    is measured using Eq. 2 in arxiv.[TODO: put number here].
+    Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
+    where phi22(t) is the phase of the (2,2) waveform mode. We first construct
+    omega22_peaks(t) and omega22_troughs(t) as spline interpolants between
+    omega22(t) evaluated at periastron and apastron locations, respectively.
+    The eccentricity is defined using these interpolants as described in Eq.(1)
+    of arxiv.xxxx.xxxx. Similarly, the mean anomaly is defined using the
+    periastron locations as described in Eq.(2) of arxiv.xxxx.xxxx.
 
-    The first step is to find the locations of these pericenters and apocenters
-    using a extrema finding routine. However, depending on which data we are using,
-    the efficiency of finding all the extrema might vary. This is where different
-    methods comes into play. Each method uses a different data to look for the
-    locations of the extrema.
+    To find the pericenters/apocenters locations, one can look for extrema in
+    different waveform data, like Amp22(t)/omega22(t), where Amp22(t) is the
+    amplitude of the (2,2) mode. Pericenters correspond to peaks, while
+    apocenters correspond to troughs in the data. The method option (described
+    below) lets you pick which waveform data to use to find extrema.
 
-    Once the locations are found, omega22 values are obtained at those locations
-    and interpolants are created using these omega22 at the apocenters and pericenters.
-    Finally these are plugged into Eq. 1 to measure the eccentricity. Similarly,
-    the locations are used to find the time of the pericenters and apocenters and these
-    are used in Eq. 2 to get the mean anomaly.
+    FIXME ARIF: Fill in arxiv number when available.
+    QUESTION FOR ARIF: Maybe we want to avoid saying peaks/troughs and just say
+    pericenters/apocenters here and in the code?
 
     parameters:
     ----------
@@ -88,8 +89,7 @@ def measure_eccentricity(tref_in=None,
         Given an fref_in, we find the corresponding tref_in such that
         omega22_average(tref_in) = 2 * pi * fref_in. Here, omega22_average(t)
         is a monotonically increasing average frequency that is computed from
-        the instantaneous omega22(t) = dphi22(t)/dt, where phi22(t) is the
-        phase of the (2,2) mode.
+        the instantaneous omega22(t).
 
         NOTE:
         omega22_average is not a moving average; depending on which
@@ -105,19 +105,32 @@ def measure_eccentricity(tref_in=None,
         in Hz.
 
     method: str
-        Method to define eccentricity. Currently the following methods are implemented
-        - "Amplitude": Uses amplitude of 22 mode to find the extrema locations.
-        - "ResidualAmplitude": Uses residual 22 mode amplitude to find the extrema locations.
-          The residual amplitude is obtained by subtracting the 22 mode amplitude of the
-          quasi-circular counterpart (setting eccentrcity = 0 and keeping other parameters same)
-          from the 22 mode amplitude of the eccentric waveform.
-        - "Frequency": Uses omega of the 22 mode to find the extrema locations.
-        - "ResidualFrequency": Uses residual omega of the 22 mode to find the extrema locations.
-          The residual omega is obtained in the same way as the residual amplitude.
-        - "FrequencyFits": Uses omega of the 22 mode and subtracts a envelope fitting function
-          from it and uses that data to find the extrema locations.
-        Available list of methods could be also obtained using get_available_methods().
+        Which waveform data to use for finding extrema. Options are:
+        - "Amplitude": Finds extrema of Amp22(t).
+        - "Frequency": Finds extrema of omega22(t).
+        - "ResidualAmplitude": Finds extrema of resAmp22(t), the residual
+          amplitude, obtained by subtracting the Amp22(t) of the quasi-circular
+          counterpart from the Amp22(t) of the eccentric waveform. The
+          quasi-circular counterpart is described in the documentation of
+          dataDict below.
+        - "ResidualFrequency": Finds extrema of resomega22(t), the residual
+          frequency, obtained by subtracting the omega22(t) of the
+          quasi-circular counterpart from the omega22(t) of the eccentric
+          waveform.
+        - "FrequencyFits": Uses omega22(t) and iteratively subtracts a
+          PN-inspired fitting function from it, and finds extrema of the
+          residual.
         Default is "Amplitude".
+        Available list of methods can be also obtained using
+        get_available_methods().
+        The recommended methods are Amplitude/ResidualAmplitude/FrequencyFits.
+        The Frequency/ResidualFrequency methods can be more sensitive to junk
+        radiation in NR data. The Amplitude method can struggle for very small
+        eccentricities (~1e-3), especially near the merger, as the secular
+        amplitude growth dominates the modulations due to eccentricity, meaning
+        that Amp22(t) no longer has local extrema. This is the main reason for
+        using residual methods like ResidualAmplitude/FrequencyFits, which
+        first remove the secular growth before finding extrema.
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
@@ -174,16 +187,20 @@ def measure_eccentricity(tref_in=None,
             many orbits prior to merger are excluded when finding extrema.
             Default: 1.
         extrema_finding_kwargs:
-            Dictionary of arguments to be passed to the peak finding function,
-            where it will be (typically) passed to scipy.signal.find_peaks.
-            The default kwargs have the same values as in scipy.signal.find_peaks,
-            Except for "width". The "width" denotes the minimal separation
-            between two consecutive peaks/troughs. This is useful to set to avoid
-            glitches in noisy data being mistaken for peaks/troughs.
-            The default value of "width" set using the phase22.
-            First we get the number of time steps over which the 22 mode phase
-            changes by 4pi at 2 orbits before the merger and then divide it by 4
-            so that we do not miss actual peaks that are very close to the merger.
+            Dictionary of arguments to be passed to the extrema finder,
+            scipy.signal.find_peaks.
+            The default kwargs have the same values as in
+            scipy.signal.find_peaks, except for "width". "width" denotes
+            the minimal separation between two consecutive
+            pericenters/apocenters. This is useful to set to avoid glitches
+            in noisy data (like junk radiation in NR) being mistaken for
+            extrema. The default value of "width" is set using phi22(t) near
+            the merger. Starting from 4 cycles before merger, we find the
+            number of time steps taken to cover 2 cycles, let's call this "the
+            gap". Note that 2 cycles of the (2,2) mode is approximately one
+            orbit, so this allows us to approximate the smallest gap between
+            two pericenters/apocenters. However, to be conservative, we divide
+            this gap by 4 and set it as the width parameter for find_peaks.
         debug:
             Run additional sanity checks if debug is True.
             Default: True.
@@ -195,15 +212,15 @@ def measure_eccentricity(tref_in=None,
               interpolant between omega22(t) evaluated at pericenter locations,
               and omega22_troughs(t) is a spline interpolant between omega22(t)
               evaluated at apocenter locations.
-            - "interpolate_orbit_averages_at_extrema": A spline through the orbit averaged
-              omega22(t) evaluated at all available extrema. First, orbit
-              averages are obtained at each pericenter by averaging over the
-              time from the previous pericenter to the current one. Similar
-              orbit averages are done at apocenters. Finally, a spline
-              interpolant is constructed between all of these orbit averages at
-              extrema locations. Due to the nature of the averaging, the first
-              and last extrema need to be excluded, which is why this is not
-              the default method.
+            - "interpolate_orbit_averages_at_extrema": A spline through the
+              orbit averaged omega22(t) evaluated at all available extrema.
+              First, orbit averages are obtained at each pericenter by
+              averaging over the time from the previous pericenter to the
+              current one. Similar orbit averages are done at apocenters.
+              Finally, a spline interpolant is constructed between all of these
+              orbit averages at extrema locations. Due to the nature of the
+              averaging, the first and last extrema need to be excluded, which
+              is why this is not the default method.
             - "omega22_zeroecc": omega22(t) of the zero eccentricity waveform
               is used as a proxy for the average frequency of the eccentric
               waveform.
