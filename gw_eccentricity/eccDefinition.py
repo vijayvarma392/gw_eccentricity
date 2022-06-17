@@ -634,7 +634,7 @@ class eccDefinition:
         return InterpolatedUnivariateSpline(
             self.t_zeroecc_shifted, self.omega22_zeroecc)(t)
 
-    def get_availabe_omega22_averaging_methods(self):
+    def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
         available_methods = {
             "mean_of_extrema_interpolants": self.compute_omega22_average_between_extrema,
