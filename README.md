@@ -8,7 +8,7 @@
 **gw_eccentricity** provides methods to measure eccentricity and mean anomaly
 from gravitational wave signals.
 
-These fits are described in the following paper: <br/>
+These methods are described in the following paper: <br/>
 [1] FIXME.
 
 If you find this package useful in your work, please cite reference [1] and
@@ -40,20 +40,57 @@ python setup.py install
 If you do not have root permissions, replace the last step with
 `python setup.py install --user`
 
-
 ## Dependencies
 
-**FIXME Arif**    
 All of these can be installed through pip or conda.
 * [numpy](https://docs.scipy.org/doc/numpy/user/install.html)
 * [scipy](https://www.scipy.org/install.html)
 * [h5py](http://docs.h5py.org/en/latest/build.html)
 * [lalsuite](https://pypi.org/project/lalsuite)
+* [gwtools](https://pypi.org/project/gwtools/)
+* [palettable](https://pypi.org/project/palettable/)
 
 
 ## Usage
-We provide ipython examples for usage of different methods.   
-**FIXME Arif**    
+We provide ipython examples for usage of different methods.
+
+### Get available methods
+```python
+>>> from gw_eccentricity.gw_eccentricity import get_available_methods
+>>> list(get_available_methods().keys())
+['Amplitude',
+ 'Frequency',
+ 'ResidualAmplitude',
+ 'ResidualFrequency',
+ 'FrequencyFits']
+```
+
+### Measure eccentricity and mean anomaly of `EccentricTD` waveform
+#### Load waveform data
+```python
+>>> from gw_eccentricity.load_data import load_waveform
+>>> lal_kwargs = {"approximant": "EccentricTD",
+                  "q": 1.0,
+                  "chi1": [0.0, 0.0, 0.0],
+                  "chi2": [0.0, 0.0, 0.0],
+                  "Momega0": 0.01,
+                  "ecc": 0.1,
+                  "mean_ano": 0,
+                  "include_zero_ecc": True}
+>>> dataDict = load_waveform("LAL", **lal_kwargs)
+```
+#### Measure eccentricity and mean anomaly at a single time
+```python
+>>> from gw_eccentricity.gw_eccentricity import measure_eccentricity
+>>> tref_in = -12000
+>>> method = "Amplitude"
+>>> tref_out, ecc_ref, meanano_ref = measure_eccentricity(
+	    tref_in=tref_in,
+	    method=method,
+        dataDict=dataDict)
+>>> print(ecc_ref, meanano_ref)
+0.10377888168068325 5.951312106389669
+```
 
 
 ## Making contributions
@@ -62,7 +99,7 @@ See this
 for instructions on how to make contributions to this package.
 
 ## Credits
-The main contributors to this code are [Arif Shaikh](https://md-arif-shaikh.github.io/about/), [Vijay
+The main contributors to this code are [Md Arif Shaikh](https://md-arif-shaikh.github.io/), [Vijay
 Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/person/54205/2784). You can find the full list of contributors
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
 Please report bugs by raising an issue on our
