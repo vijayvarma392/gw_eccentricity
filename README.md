@@ -115,6 +115,7 @@ FrequencyFits 0.10379128102227173 5.961429957125872
          eccMethod.plot_measured_ecc(fig, ax, **{"label": method, "c": colorsDict[method], "ls": lstyles[method]})
 ```
 <div> <img src="./notebook/demo_ecc_vs_time.png"></div>
+
 ## Making contributions
 See this
 [README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
