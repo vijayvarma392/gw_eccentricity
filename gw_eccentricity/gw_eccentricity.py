@@ -177,16 +177,12 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
-            #FIXME ARIF: the first two options should be called:
-            "mean_of_extrema_interpolants" and
-            "interpolate_orbit_averages_at_extrema". And please check if my
-            descriptions are correct.
-            - "average_between_extrema": Mean of omega22_peaks(t) and
+            - "mean_of_extrema_interpolants": Mean of omega22_peaks(t) and
               omega22_troughs(t), where omega22_peaks(t) is a spline
               interpolant between omega22(t) evaluated at pericenter locations,
               and omega22_troughs(t) is a spline interpolant between omega22(t)
               evaluated at apocenter locations.
-            - "orbital_average_at_extrema": A spline through the orbit averaged
+            - "interpolate_orbit_averages_at_extrema": A spline through the orbit averaged
               omega22(t) evaluated at all available extrema. First, orbit
               averages are obtained at each pericenter by averaging over the
               time from the previous pericenter to the current one. Similar
@@ -198,7 +194,7 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the zero eccentricity waveform
               is used as a proxy for the average frequency of the eccentric
               waveform.
-            Default is "average_between_extrema".
+            Default is "mean_of_extrema_interpolants".
         treat_mid_points_between_peaks_as_troughs:
             If True, instead of trying to find local minima in the data, we
             simply find the midpoints between local maxima and treat them as
@@ -225,10 +221,9 @@ def measure_eccentricity(tref_in=None,
         included when finding the t_peaks/t_troughs. This helps avoid
         unphysical features like nonmonotonic eccentricity near the merger.
 
-        #FIXME ARIF: This should be explained using omega22_average(t).
         fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
-        where fmin is the frequency at tmin, and fmax is the frequency at tmax.
-        tmin/tmax are defined above.
+        where fmin = omega22_average(tmin)/2/pi, and
+        fmax = omega22_average(tmax)/2/pi. tmin/tmax are defined above.
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as tref_out/fref_out.

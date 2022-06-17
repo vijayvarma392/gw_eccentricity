@@ -131,7 +131,7 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overriden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega22_averaging_method": "average_between_extrema",
+            "omega22_averaging_method": "mean_of_extrema_interpolants",
             "treat_mid_points_between_peaks_as_troughs": False
             }
         return default_extra_kwargs
@@ -220,12 +220,12 @@ class eccDefinition:
 
             Currently, following options are implemented to calculate the
             omega22_average
-            - "average_between_extrema": Mean of the omega22 given by the
+            - "mean_of_extrema_interpolants": Mean of the omega22 given by the
               spline through the peaks and the spline through the troughs.
-            - "orbital_average_at_extrema": A spline through the orbital
+            - "interpolate_orbit_averages_at_extrema": A spline through the orbital
               averaged omega22 evaluated at all available extrema.
             - "omega22_zeroecc": omega22 of the zero eccentricity waveform
-            The default is "average_between_extrema". A method could be passed
+            The default is "mean_of_extrema_interpolants". A method could be passed
             through the "extra_kwargs" option with the key
             "omega22_averaging_method".
 
@@ -637,8 +637,8 @@ class eccDefinition:
     def get_availabe_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
         available_methods = {
-            "average_between_extrema": self.compute_omega22_average_between_extrema,
-            "orbital_average_at_extrema": self.compute_orbital_averaged_omega22_at_extrema,
+            "mean_of_extrema_interpolants": self.compute_omega22_average_between_extrema,
+            "interpolate_orbit_averages_at_extrema": self.compute_orbital_averaged_omega22_at_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
         return available_methods
@@ -665,12 +665,12 @@ class eccDefinition:
 
         omega22_average(t) could be calculated in the following ways
         - Mean of the omega22 given by the spline through the peaks and the
-          spline through the troughs, we call this "average_between_extrema"
-        - Orbital average at the extrema, we call this "orbital_average_at_extrema"
+          spline through the troughs, we call this "mean_of_extrema_interpolants"
+        - Orbital average at the extrema, we call this "interpolate_orbit_averages_at_extrema"
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
         User can provide a method through the "extra_kwargs" option with the key
-        "omega22_averaging_method". Default is "average_between_extrema"
+        "omega22_averaging_method". Default is "mean_of_extrema_interpolants"
 
         Once we get the reference frequencies, we create a spline to get time
         as function of these reference frequencies. This should work if the
