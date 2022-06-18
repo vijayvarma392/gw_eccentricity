@@ -62,10 +62,12 @@ def measure_eccentricity(tref_in=None,
     Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
     where phi22(t) is the phase of the (2,2) waveform mode. We first construct
     omega22_peaks(t) and omega22_troughs(t) as spline interpolants between
-    omega22(t) evaluated at periastron and apastron locations, respectively.
-    The eccentricity is defined using these interpolants as described in Eq.(1)
-    of arxiv:xxxx.xxxx. Similarly, the mean anomaly is defined using the
-    periastron locations as described in Eq.(2) of arxiv:xxxx.xxxx.
+    omega22(t) evaluated at t_peaks and t_troughs, respectively. t_peaks is a
+    time array of all found pericenters, and t_troughs is a time array of all
+    found apocenters. The eccentricity is defined using these interpolants as
+    described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean anomaly is
+    defined using the periastron locations as described in Eq.(2) of
+    arxiv:xxxx.xxxx.
 
     To find the pericenters/apocenters locations, one can look for extrema in
     different waveform data, like Amp22(t)/omega22(t), where Amp22(t) is the
@@ -242,9 +244,9 @@ def measure_eccentricity(tref_in=None,
             simply find the midpoints between local maxima and treat them as
             apocenter locations. This is helpful for eccentricities ~1 where
             pericenters are easy to find but apocenters are not.
-            Default: False
+            Default: False.
 
-    returns:
+    Returns:
     --------
     tref_out/fref_out:
         If tref_in is provided, tref_out is returned, and if fref_in provided,
@@ -252,30 +254,29 @@ def measure_eccentricity(tref_in=None,
         time/frequency at which eccentricity and mean anomaly are measured.
         Units of tref_out/fref_out are the same as those of tref_in/fref_in.
 
-        tref_out is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
-        where tmax = min(t_peaks[-1], t_troughs[-1]),
-        and tmin = max(t_peaks[0], t_troughs[0]). This is necessary because
-        eccentricity is computed using interpolants of omega22_peaks and
-        omega22_troughs. The above cutoffs ensure that we are not
-        extrapolating in omega22_peaks/omega22_troughs.
-        In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
-        is not None, only the data up to that many orbits before merger is
-        included when finding the t_peaks/t_troughs. This helps avoid
-        nonphysical features like non-monotonic eccentricity near the merger.
+        tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
+        where tmax = min(t_peaks[-1], t_troughs[-1]) and
+              tmin = max(t_peaks[0], t_troughs[0]),
+        As eccentricity measurement relies on the interpolants omega22_peaks(t)
+        and omega22_troughs(t), the above cutoffs ensure that we only compute
+        the eccentricity where both omega22_peaks(t) and omega22_troughs(t) are
+        within their bounds.
 
-        fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
-        where fmin = omega22_average(tmin)/2/pi, and
-        fmax = omega22_average(tmax)/2/pi. tmin/tmax are defined above.
+        fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
+        where fmin = omega22_average(tmin)/2/pi and
+              fmax = omega22_average(tmax)/2/pi, with tmin/tmax same as above.
 
     ecc_ref:
-        Measured eccentricity at tref_out/fref_out. Same type as tref_out/fref_out.
+        Measured eccentricity at tref_out/fref_out. Same type as
+        tref_out/fref_out.
 
     mean_ano_ref:
-        Measured mean anomaly at tref_out/fref_out. Same type as tref_out/fref_out.
+        Measured mean anomaly at tref_out/fref_out. Same type as
+        tref_out/fref_out.
 
     gwecc_object:
-        Method object used to compute eccentricity. Only returned if
-        return_gwecc_object is True.
+        Method object used to compute eccentricity. This can be used to make
+        diagnostic plots. Only returned if return_gwecc_object is True.
     """
     available_methods = get_available_methods()
 
