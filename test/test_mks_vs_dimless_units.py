@@ -37,8 +37,7 @@ def test_mks_vs_dimless_units():
     dataDictMKS = load_data.load_waveform(**lal_kwargs)
 
     # List of all available methods
-    available_methods = list(
-        gw_eccentricity.get_available_methods().keys())
+    available_methods = gw_eccentricity.get_available_methods()
     # FIXME: not including FrequencyFits since it does not work with MKS units
     # yet
     for method in available_methods:

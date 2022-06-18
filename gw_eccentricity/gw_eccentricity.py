@@ -38,17 +38,23 @@ from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmpli
 from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequency
 
 
-def get_available_methods():
-    """Get dictionary of available methods."""
-    models = {
+def get_available_methods(return_dict=False):
+    """Get all available eccDefinition methods.
+    If return_dict is True, returns a dictionary of methods.
+    Else, just returns a list of method names.
+    """
+    methods = {
         "Amplitude": eccDefinitionUsingAmplitude,
         "Frequency": eccDefinitionUsingFrequency,
         "ResidualAmplitude": eccDefinitionUsingResidualAmplitude,
         "ResidualFrequency": eccDefinitionUsingResidualFrequency,
         "FrequencyFits": eccDefinitionUsingFrequencyFits
     }
-    return models
 
+    if return_dict:
+        return methods
+    else:
+        return list(methods.keys())
 
 def measure_eccentricity(tref_in=None,
                          fref_in=None,
@@ -278,7 +284,7 @@ def measure_eccentricity(tref_in=None,
         eccDefinition object used to compute eccentricity. This can be used to
         make diagnostic plots. Only returned if return_gwecc_object is True.
     """
-    available_methods = get_available_methods()
+    available_methods = get_available_methods(return_dict=True)
 
     if method in available_methods:
         gwecc_object = available_methods[method](dataDict,

@@ -43,7 +43,7 @@ parser.add_argument(
     nargs="+",
     default="all",
     help=("EccDefinition method to test. Can be 'all' OR one or more of the "
-          f"methods in {list(get_available_methods())}."))
+          f"methods in {get_available_methods()}."))
 parser.add_argument(
     "--param_set_key", "-p",
     type=str,
@@ -151,7 +151,7 @@ def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
 
 
 if "all" in args.method:
-    args.method = list(get_available_methods().keys())[::-1]
+    args.method = get_available_methods()[::-1]
     # method_str is used in the filename for the output figure
     method_str = "all"
 else:
