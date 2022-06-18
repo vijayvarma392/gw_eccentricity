@@ -2,7 +2,8 @@
 ========
 
 Measure eccentricity and mean anomaly from gravitational waves.
-See https://pypi.org/project/gw_eccentricity for more details.
+See our paper https://arxiv.org/abs/xxxx.xxxx and
+https://pypi.org/project/gw_eccentricity for more details.
 FIXME ARIF: Add arxiv link when available.
 """
 __copyright__ = "Copyright (C) 2022 Md Arif Shaikh, Vijay Varma"
@@ -51,8 +52,8 @@ def get_available_methods():
 
 def measure_eccentricity(tref_in=None,
                          fref_in=None,
-                         dataDict=None,
                          method="Amplitude",
+                         dataDict=None,
                          return_gwecc_object=False,
                          spline_kwargs=None,
                          extra_kwargs=None):
@@ -63,8 +64,8 @@ def measure_eccentricity(tref_in=None,
     omega22_peaks(t) and omega22_troughs(t) as spline interpolants between
     omega22(t) evaluated at periastron and apastron locations, respectively.
     The eccentricity is defined using these interpolants as described in Eq.(1)
-    of arxiv.xxxx.xxxx. Similarly, the mean anomaly is defined using the
-    periastron locations as described in Eq.(2) of arxiv.xxxx.xxxx.
+    of arxiv:xxxx.xxxx. Similarly, the mean anomaly is defined using the
+    periastron locations as described in Eq.(2) of arxiv:xxxx.xxxx.
 
     To find the pericenters/apocenters locations, one can look for extrema in
     different waveform data, like Amp22(t)/omega22(t), where Amp22(t) is the
@@ -72,11 +73,13 @@ def measure_eccentricity(tref_in=None,
     apocenters correspond to troughs in the data. The method option (described
     below) lets you pick which waveform data to use to find extrema.
 
-    FIXME ARIF: Fill in arxiv number when available.
+    FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
+    numbers are right, once the paper is finalized.
     QUESTION FOR ARIF: Maybe we want to avoid saying peaks/troughs and just say
-    pericenters/apocenters here and in the code?
+    pericenters/apocenters here and in the code? Also, get rid of all "astrons"
+    throughout the code/documentation for consistency?
 
-    parameters:
+    Parameters:
     ----------
     tref_in:
         Input reference time at which to measure eccentricity and mean anomaly.
@@ -99,8 +102,8 @@ def measure_eccentricity(tref_in=None,
         Eccentricity and mean anomaly measurements are returned on a subset of
         tref_in/fref_in, called tref_out/fref_out, which are described below.
 
-        If dataDict is provided in dimensionless units, tref_in should in units
-        of M and fref_in should be in units of cycles/M. If dataDict is
+        If dataDict is provided in dimensionless units, tref_in should be in
+        units of M and fref_in should be in units of cycles/M. If dataDict is
         provided in MKS units, t_ref should be in seconds and fref_in should be
         in Hz.
 
@@ -121,86 +124,99 @@ def measure_eccentricity(tref_in=None,
           PN-inspired fitting function from it, and finds extrema of the
           residual.
         Default is "Amplitude".
-        Available list of methods can be also obtained using
-        get_available_methods().
-        The recommended methods are Amplitude/ResidualAmplitude/FrequencyFits.
-        The Frequency/ResidualFrequency methods can be more sensitive to junk
-        radiation in NR data. The Amplitude method can struggle for very small
+        Available list of methods can be also obtained from
+        gw_eccentricity.get_available_methods().
+
+        The Amplitude and Frequency methods can struggle for very small
         eccentricities (~1e-3), especially near the merger, as the secular
-        amplitude growth dominates the modulations due to eccentricity, meaning
-        that Amp22(t) no longer has local extrema. This is the main reason for
-        using residual methods like ResidualAmplitude/FrequencyFits, which
-        first remove the secular growth before finding extrema.
+        amplitude/frequency growth dominates the modulations due to
+        eccentricity, making extrema finding difficult. This is the main reason
+        for using the residual methods,
+        ResidualAmplitude/ResidualFrequency/FrequencyFits, which first remove
+        the secular growth before finding extrema. However, methods that use
+        the frequency for finding extrema
+        (Frequency/ResidualFrequency/FrequencyFits) can be more sensitive to
+        junk radiation in NR data.
+
+        Therefore, the recommended methods are
+        Amplitude/ResidualAmplitude/FrequencyFits.
 
     dataDict:
         Dictionary containing waveform modes dict, time etc.
         Should follow the format:
             dataDict = {"t": time,
-                        "hlm": modeDict, ...
-                        }
-            with modeDict = {(l1, m1): h_{l1, m1},
-                             (l2, m2): h_{l2, m2}, ...
-                            }.
+                        "hlm": modeDict,
+                        "t_zeroecc": time,
+                        "hlm_zeroecc": modeDict, ...
+                       },
+        where time is an array with the same convention as tref_in, and
+        modeDict should have the format:
+            modeDict = {(l1, m1): h_{l1, m1},
+                       (l2, m2): h_{l2, m2}, ...
+                       }.
 
-        We currently only allow time-domain, nonprecessing waveforms with a
-        uniform time array. Please make sure that the time step is small enough
-        that omega22(t) can be accurately computed; we use a 4th-order finite
-        difference scheme. In dimensionless units, we recommend a time step of
-        dtM = 0.1M to be conservative, but you may be able to get away with
-        larger time steps like dtM = 1M. The corresponding time step in seconds
-        would be dtM * M * lal.MTSUN_SI, where M is the total mass in Solar
-        masses.
 
-        Some methods require additional data in dataDict. In particular, the
-        ResidualAmplitude and ResidualFrequency methods require additional
-        keys, "t_zeroecc" and "hlm_zeroecc", which should include the time and
-        modeDict for the quasi-circular limit of the eccentric waveform in
-        "hlm". For a waveform model, "hlm_zeroecc" can be obtained by
-        evaluating the model by keeping the rest of the binary parameters fixed
-        but setting the eccentricity to zero. For NR, if such a quasi-circular
-        counterpart is not available, we recommend using quasi-circular
-        waveforms like NRHybSur3dq8 or PhenomT, depending on the mass ratio and
-        spins. We require that "hlm_zeroecc" be at least as long as "hlm" so
-        that residual amplitude/frequency can be computed.
+        "t_zeroecc" and "hlm_zeroecc" are only required for ResidualAmplitude
+        and ResidualFrequency methods, but if they are provided, they will be
+        used to produce diagnostic plots, which can be helpful for all methods.
+        "t_zeroecc" and "hlm_zeroecc" should include the time and modeDict for
+        the quasi-circular limit of the eccentric waveform in "hlm". For a
+        waveform model, "hlm_zeroecc" can be obtained by evaluating the model
+        by keeping the rest of the binary parameters fixed but setting the
+        eccentricity to zero. For NR, if such a quasi-circular counterpart is
+        not available, we recommend using quasi-circular waveforms like
+        NRHybSur3dq8 or PhenomT, depending on the mass ratio and spins. We
+        require that "hlm_zeroecc" be at least as long as "hlm" so that
+        residual amplitude/frequency can be computed.
+
+        For dataDict, we currently only allow time-domain, nonprecessing
+        waveforms with a uniform time array. Please make sure that the time
+        step is small enough that omega22(t) can be accurately computed; we use
+        a 4th-order finite difference scheme. In dimensionless units, we
+        recommend a time step of dtM = 0.1M to be conservative, but you may be
+        able to get away with larger time steps like dtM = 1M. The
+        corresponding time step in seconds would be dtM * M * lal.MTSUN_SI,
+        where M is the total mass in Solar masses.
 
         The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If additional
         modes are included, they will be used in determining the peak time
-        following Eq.(5) from arxiv:1905.09300. The peak time is used to
+        following Eq.(5) of arxiv:1905.09300. The peak time is used to
         time-align the two waveforms before computing the residual
         amplitude/frequency.
 
     return_gwecc_object: bool
         If true, returns the method object used to compute the eccentricity.
+        This can be used to make diagnostic plots.
         Default is False.
 
     spline_kwargs:
-        Dictionary of arguments to be passed to
-        scipy.interpolate.InterpolatedUnivariateSpline.
+        Dictionary of arguments to be passed to the spline interpolation
+        routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
+        compute omega22_peaks(t) and omega22_troughs(t).
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         num_orbits_to_exclude_before_merger:
             Can be None or a non negative real number.
             If None, the full waveform data (even post-merger) is used for
-            finding extrema, but this might cause issues when interpolating
-            trough the extrema.
-            For a non negative real num_orbits_to_exclude_before_merger, that
+            finding extrema, but this might cause interpolation issues.
+            For a non negative num_orbits_to_exclude_before_merger, that
             many orbits prior to merger are excluded when finding extrema.
             Default: 1.
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,
             scipy.signal.find_peaks.
             The default kwargs have the same values as in
-            scipy.signal.find_peaks, except for "width". "width" denotes
-            the minimal separation between two consecutive
-            pericenters/apocenters. This is useful to set to avoid glitches
-            in noisy data (like junk radiation in NR) being mistaken for
-            extrema. The default value of "width" is set using phi22(t) near
-            the merger. Starting from 4 cycles before merger, we find the
-            number of time steps taken to cover 2 cycles, let's call this "the
-            gap". Note that 2 cycles of the (2,2) mode is approximately one
-            orbit, so this allows us to approximate the smallest gap between
-            two pericenters/apocenters. However, to be conservative, we divide
-            this gap by 4 and set it as the width parameter for find_peaks.
+            scipy.signal.find_peaks, except for "width". "width" denotes the
+            minimal separation between two consecutive pericenters/apocenters.
+            Setting this can help avoid false extrema in noisy data (for
+            example, due to junk radiation in NR). The default value of "width"
+            is set using phi22(t) near the merger. Starting from 4 cycles
+            before merger, we find the number of time steps taken to cover 2
+            cycles, let's call this "the gap". Note that 2 cycles of the (2,2)
+            mode is approximately one orbit, so this allows us to approximate
+            the smallest gap between two pericenters/apocenters. However, to be
+            conservative, we divide this gap by 4 and set it as the width
+            parameter for find_peaks.
         debug:
             Run additional sanity checks if debug is True.
             Default: True.
@@ -208,22 +224,18 @@ def measure_eccentricity(tref_in=None,
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
             - "mean_of_extrema_interpolants": Mean of omega22_peaks(t) and
-              omega22_troughs(t), where omega22_peaks(t) is a spline
-              interpolant between omega22(t) evaluated at pericenter locations,
-              and omega22_troughs(t) is a spline interpolant between omega22(t)
-              evaluated at apocenter locations.
+              omega22_troughs(t) is used as a proxy for the average frequency.
             - "interpolate_orbit_averages_at_extrema": A spline through the
               orbit averaged omega22(t) evaluated at all available extrema.
               First, orbit averages are obtained at each pericenter by
               averaging over the time from the previous pericenter to the
-              current one. Similar orbit averages are done at apocenters.
+              current one. Similar orbit averages are computed at apocenters.
               Finally, a spline interpolant is constructed between all of these
               orbit averages at extrema locations. Due to the nature of the
               averaging, the first and last extrema need to be excluded, which
               is why this is not the default method.
             - "omega22_zeroecc": omega22(t) of the zero eccentricity waveform
-              is used as a proxy for the average frequency of the eccentric
-              waveform.
+              is used as a proxy for the average frequency.
             Default is "mean_of_extrema_interpolants".
         treat_mid_points_between_peaks_as_troughs:
             If True, instead of trying to find local minima in the data, we
