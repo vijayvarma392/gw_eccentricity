@@ -60,13 +60,12 @@ def measure_eccentricity(tref_in=None,
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
     Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
-    where phi22(t) is the phase of the (2,2) waveform mode. We first construct
-    omega22_peaks(t) and omega22_troughs(t) as spline interpolants between
-    omega22(t) evaluated at t_peaks and t_troughs, respectively. t_peaks is a
-    time array of all found pericenters, and t_troughs is a time array of all
-    found apocenters. The eccentricity is defined using these interpolants as
-    described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean anomaly is
-    defined using the periastron locations as described in Eq.(2) of
+    where phi22(t) is the phase of the (2,2) waveform mode. We evaluate
+    omega22(t) at pericenter times, t_peaks, and build an interpolant
+    omega22_peaks(t) using those points. Similarly, we build omega22_troughs(t)
+    using apocenter times, t_troughs. The eccentricity is defined using these
+    interpolants as described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean
+    anomaly is defined using the periastron locations as described in Eq.(2) of
     arxiv:xxxx.xxxx.
 
     To find the pericenters/apocenters locations, one can look for extrema in
