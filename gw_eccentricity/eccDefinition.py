@@ -1093,12 +1093,18 @@ class eccDefinition:
             figNew, axNew = plt.subplots()
         else:
             axNew = ax
-        axNew.plot(self.t, self.data_for_finding_extrema, c=colorsDict["default"])
-        axNew.plot(self.t[self.peaks_location],
+        # To make it for FrequencyFits
+        if hasattr(self, "t_analyse"):
+            t_for_finding_extrema = self.t_analyse
+            self.latest_time_used_for_peak_finding = self.t_analyse[-1]
+        else:
+            t_for_finding_extrema = self.t
+        axNew.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
+        axNew.plot(t_for_finding_extrema[self.peaks_location],
                    self.data_for_finding_extrema[self.peaks_location],
                    c=colorsDict["pericenter"],
                    marker=".", ls="", label="Pericenter")
-        axNew.plot(self.t[self.troughs_location],
+        axNew.plot(t_for_finding_extrema[self.troughs_location],
                    self.data_for_finding_extrema[self.troughs_location],
                    c=colorsDict["apocenter"],
                    marker=".", ls="", label="Apocenter")
