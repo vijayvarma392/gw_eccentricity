@@ -80,13 +80,13 @@ labelSizeDict = {"APS": 9.0,
                  "Elsevier": 8.0,
                  "Springer": 8.0,
                  "Presentation": 8.0,
-                 "Notebook": 12.0}
+                 "Notebook": 14.0}
 fontSizeDict = {"APS": 9.0,
                 "APJ": 8.0,
                 "Elsevier": 8.0,
                 "Springer": 8.0,
                 "Presentation": 8.0,
-                "Notebook": 12.0}
+                "Notebook": 14.0}
 
 
 def use_fancy_plotsettings(usetex=True, journal="Notebook"):
