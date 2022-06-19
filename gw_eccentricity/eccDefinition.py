@@ -536,7 +536,7 @@ class eccDefinition:
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
-        self.t_merger_zeroecc = pericenter_time_via_quadratic_fit(
+        self.t_merger_zeroecc = peak_time_via_quadratic_fit(
             self.t_zeroecc,
             amplitude_using_all_modes(self.dataDict["hlm_zeroecc"]))[0]
         self.t_zeroecc_shifted = (self.t_zeroecc
