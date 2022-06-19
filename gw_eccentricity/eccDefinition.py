@@ -180,6 +180,7 @@ class eccDefinition:
             # use only the extrema those are at least num_orbits away from the
             # merger to avoid nonphysical features like non-monotonic
             # eccentricity near the merger
+            self.latest_time_used_for_peak_finding = self.t[idx_num_orbit_earlier_than_merger]
             extrema_idx = extrema_idx[extrema_idx
                                       <= idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
@@ -754,7 +755,8 @@ class eccDefinition:
                                 "pericenters/apocenters.")
         return fref_out
 
-    def make_diagnostic_plots(self, usetex=True, **kwargs):
+    def make_diagnostic_plots(self, usetex=True, journal="Notebook",
+                              add_help_text=True, **kwargs):
         """Make diagnostic plots for the eccDefinition method.
 
         We plot different quantities to asses how well our eccentricity
@@ -785,27 +787,34 @@ class eccDefinition:
         the residual omega22 would indicate that the data in omega22 is not
         good which might be causing glitches in the measured eccentricity plot.
         """
-        nrows = 7 if "hlm_zeroecc" in self.dataDict else 5
+        nrows = 8 if "hlm_zeroecc" in self.dataDict else 6
         figsize = (12, 4 * nrows)
         default_kwargs = {"nrows": nrows,
-                          "figsize": figsize}
+                          "figsize": figsize,
+                          "sharex": True}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        use_fancy_plotsettings(usetex=usetex)
+        use_fancy_plotsettings(usetex=usetex, journal=journal)
         fig, ax = plt.subplots(**kwargs)
-        self.plot_measured_ecc(fig, ax[0])
-        self.plot_decc_dt(fig, ax[1])
-        self.plot_mean_ano(fig, ax[2])
-        self.plot_extrema_in_omega22(fig, ax[3])
-        self.plot_phase_diff_ratio_between_peaks(fig, ax[4])
+        self.plot_measured_ecc(fig, ax[0], add_help_text=add_help_text)
+        self.plot_decc_dt(fig, ax[1], add_help_text=add_help_text)
+        self.plot_mean_ano(fig, ax[2], add_help_text=add_help_text)
+        self.plot_extrema_in_omega22(fig, ax[3], add_help_text=add_help_text)
+        self.plot_phase_diff_ratio_between_peaks(
+            fig, ax[4],
+            add_help_text=add_help_text)
+        last_idx = 5
         if "hlm_zeroecc" in self.dataDict:
-            self.plot_residual_omega22(fig, ax[5])
-            self.plot_residual_amp22(fig, ax[6])
+            self.plot_residual_omega22(fig, ax[5], add_help_text=add_help_text)
+            self.plot_residual_amp22(fig, ax[6], add_help_text=add_help_text)
+            last_idx += 2
+        self.plot_used_data(fig, ax[last_idx], add_help_text=add_help_text)
         fig.tight_layout()
         return fig, ax
 
-    def plot_measured_ecc(self, fig=None, ax=None, **kwargs):
+    def plot_measured_ecc(self, fig=None, ax=None,
+                          add_help_text=True, **kwargs):
         """Plot measured ecc as function of time."""
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
@@ -824,7 +833,8 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_decc_dt(self, fig=None, ax=None, **kwargs):
+    def plot_decc_dt(self, fig=None, ax=None,
+                     add_help_text=True, **kwargs):
         """Plot decc_dt as function of time to check monotonicity.
 
         If decc_dt becomes positive, ecc(t) is not monotonically decreasing.
@@ -840,13 +850,23 @@ class eccDefinition:
         axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
         axNew.set_xlabel("$t$")
         axNew.set_ylabel(r"$de/dt$")
+        if add_help_text:
+            axNew.text(
+                0.01,
+                0.7,
+                ("We expect decc/dt to be always negative"),
+                ha="left",
+                va="top",
+                transform=axNew.transAxes,
+                fontsize=14)
         axNew.grid()
         if fig is None or ax is None:
             return figNew, axNew
         else:
             return axNew
 
-    def plot_mean_ano(self, fig=None, ax=None, **kwargs):
+    def plot_mean_ano(self, fig=None, ax=None,
+                      add_help_text=True, **kwargs):
         """Plot measured mean anomaly as function of time."""
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
@@ -865,9 +885,11 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_extrema_in_omega22(self, fig=None, ax=None, **kwargs):
-        """Plot omega22, the locations of the apocenters and pericenters, and their corresponding interpolants.
+    def plot_extrema_in_omega22(self, fig=None, ax=None,
+                                add_help_text=True, **kwargs):
+        """Plot omega22, the locations of the apocenters and pericenters.
 
+        Also plots their corresponding interpolants.
         This would show if the method is missing any peaks/troughs or
         selecting one which is not a peak/trough.
         """
@@ -881,9 +903,7 @@ class eccDefinition:
         axNew.plot(self.tref_out, self.omega22_trough_at_tref_out,
                    c=colorsDict["apocenter"], label=r"$\omega_{a}$",
                    **kwargs)
-        # plot only upto merger to make the plot readable
-        end = np.argmin(np.abs(self.t - self.t_merger))
-        axNew.plot(self.t[: end], self.omega22[: end],
+        axNew.plot(self.t, self.omega22,
                    c=colorsDict["default"], label=r"$\omega_{22}$")
         axNew.plot(self.t[self.peaks_location],
                    self.omega22[self.peaks_location],
@@ -893,6 +913,21 @@ class eccDefinition:
                    self.omega22[self.troughs_location],
                    c=colorsDict["apocenter"],
                    marker=".", ls="")
+        # set reasonable ylims
+        ymin = min(self.omega22_trough_at_tref_out)
+        ymax = max(self.omega22_peak_at_tref_out)
+        axNew.set_ylim(ymin, ymax)
+        # add help text
+        if add_help_text:
+            axNew.text(
+                0.01,
+                0.7,
+                ("Note that tref_out excludes the first and last extrema to"
+                 " avoid extrapolation when computing ecc(t)"),
+                ha="left",
+                va="top",
+                transform=axNew.transAxes,
+                fontsize=14)
         axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\omega_{22}$")
@@ -902,7 +937,8 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_extrema_in_amp22(self, fig=None, ax=None, **kwargs):
+    def plot_extrema_in_amp22(self, fig=None, ax=None,
+                              add_help_text=True, **kwargs):
         """Plot amp22, the locations of the apocenters and pericenters.
 
         This would show if the method is missing any peaks/troughs or
@@ -924,6 +960,10 @@ class eccDefinition:
                    self.amp22[self.troughs_location],
                    c=colorsDict["apocenter"],
                    marker=".", ls="", label="Apocenters")
+        # set reasonable ylims
+        ymin = min(self.amp22[self.troughs_location])
+        ymax = max(self.amp22[self.peaks_location])
+        axNew.set_ylim(ymin, ymax)
         axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$A_{22}$")
@@ -933,7 +973,8 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_phase_diff_ratio_between_peaks(self, fig=None, ax=None, **kwargs):
+    def plot_phase_diff_ratio_between_peaks(self, fig=None, ax=None,
+                                            add_help_text=True, **kwargs):
         """Plot phase diff ratio between consecutive as function of time.
 
         Plots deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
@@ -957,14 +998,25 @@ class eccDefinition:
         axNew.set_xlabel(r"$t$")
         axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         axNew.grid()
+        if add_help_text:
+            axNew.text(
+                0.01,
+                0.7,
+                ("Ratio of phase difference between consecutive extrema should not exceed 1.5\n"
+                 "Too large value would indicate missing extrema."),
+                ha="left",
+                va="top",
+                transform=axNew.transAxes,
+                fontsize=14)
         axNew.legend()
         if fig is None or ax is None:
             return figNew, axNew
         else:
             return axNew
 
-    def plot_residual_omega22(self, fig=None, ax=None, **kwargs):
-        """Plot residual omega22, the locations of the apocenters and pericenters, and their corresponding interpolants.
+    def plot_residual_omega22(self, fig=None, ax=None,
+                              add_help_text=True, **kwargs):
+        """Plot residual omega22, the locations of the apocenters and pericenters.
 
         Useful to look for bad omega22 data near merger.
         We also throw away post merger before since it makes the plot
@@ -985,6 +1037,12 @@ class eccDefinition:
                    self.res_omega22[self.troughs_location],
                    marker=".", ls="", label="Apocenter",
                    c=colorsDict["apocenter"])
+        # set reasonable ylims
+        ymin = min(self.res_omega22[self.troughs_location])
+        ymax = max(self.res_omega22[self.peaks_location])
+        # we want to make the ylims symmetric about y=0
+        ylim = max(ymax, -ymin)
+        axNew.set_ylim(-ylim, ylim)
         axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta\omega_{22}$")
@@ -994,8 +1052,9 @@ class eccDefinition:
         else:
             return axNew
 
-    def plot_residual_amp22(self, fig=None, ax=None, **kwargs):
-        """Plot residual amp22, the locations of the apocenters and pericenters, and their corresponding interpolants."""
+    def plot_residual_amp22(self, fig=None, ax=None,
+                            add_help_text=True, **kwargs):
+        """Plot residual amp22, the locations of the apocenters and pericenters."""
         if fig is None or ax is None:
             figNew, axNew = plt.subplots()
         else:
@@ -1009,10 +1068,80 @@ class eccDefinition:
                    self.res_amp22[self.troughs_location],
                    c=colorsDict["apocenter"],
                    marker=".", ls="", label="Apocenter")
+        # set reasonable ylims
+        ymin = min(self.res_amp22[self.troughs_location])
+        ymax = max(self.res_amp22[self.peaks_location])
+        # we want to make the ylims symmetric about y=0
+        ylim = max(ymax, -ymin)
+        axNew.set_ylim(-ylim, ylim)
         axNew.set_xlabel(r"$t$")
         axNew.grid()
         axNew.set_ylabel(r"$\Delta A_{22}$")
         axNew.legend()
+        if fig is None or ax is None:
+            return figNew, axNew
+        else:
+            return axNew
+
+    def plot_used_data(self, fig=None, ax=None,
+                       add_help_text=True, **kwargs):
+        """Plot the data that is being used.
+
+        Also the locations of the apocenters and pericenters.
+        """
+        if fig is None or ax is None:
+            figNew, axNew = plt.subplots()
+        else:
+            axNew = ax
+        axNew.plot(self.t, self.data_for_finding_extrema, c=colorsDict["default"])
+        axNew.plot(self.t[self.peaks_location],
+                   self.data_for_finding_extrema[self.peaks_location],
+                   c=colorsDict["pericenter"],
+                   marker=".", ls="", label="Pericenter")
+        axNew.plot(self.t[self.troughs_location],
+                   self.data_for_finding_extrema[self.troughs_location],
+                   c=colorsDict["apocenter"],
+                   marker=".", ls="", label="Apocenter")
+        # set reasonable ylims
+        ymin = min(self.data_for_finding_extrema[self.troughs_location])
+        ymax = max(self.data_for_finding_extrema[self.peaks_location])
+        # we want to make the ylims symmetric about y=0 when Residual data is used
+        if "Delta" in self.label_for_data_for_finding_extrema:
+            ylim = max(ymax, -ymin)
+            axNew.set_ylim(-ylim, ylim)
+        else:
+            axNew.set_ylim(ymin, ymax)
+        axNew.set_xlabel(r"$t$")
+        axNew.grid()
+        axNew.set_ylabel(self.label_for_data_for_finding_extrema)
+        # Add vertical line to indicate the latest time used for extrema finding
+        axNew.axvline(self.latest_time_used_for_peak_finding, c=colorsDict["vline"])
+        axNew.legend()
+        if add_help_text:
+            axNew.text(
+                0.01,
+                0.7,
+                ("Data being used for finding the extrema."),
+                ha="left",
+                va="top",
+                transform=axNew.transAxes,
+                fontsize=14)
+            axNew.text(
+                self.latest_time_used_for_peak_finding,
+                ymin,
+                ("Latest time used for finding extrema."),
+                ha="right",
+                va="bottom",
+                fontsize=14)
+            if isinstance(self.tref_out, (float, int)):
+                axNew.axvline(self.tref_out, c=colorsDict["peaksvline"])
+                axNew.text(
+                    self.tref_out,
+                    ymin,
+                    (r"$t_{\mathrm{ref}}$"),
+                    ha="right",
+                    va="bottom",
+                fontsize=14)
         if fig is None or ax is None:
             return figNew, axNew
         else:

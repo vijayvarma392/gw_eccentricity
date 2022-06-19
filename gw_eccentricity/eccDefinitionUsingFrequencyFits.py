@@ -107,6 +107,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
+        self.label_for_data_for_finding_extrema = r"$\omega_{22}$"
 
         self.debug=self.extra_kwargs["debug"];
 
