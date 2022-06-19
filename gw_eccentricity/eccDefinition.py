@@ -180,7 +180,7 @@ class eccDefinition:
             # use only the extrema those are at least num_orbits away from the
             # merger to avoid nonphysical features like non-monotonic
             # eccentricity near the merger
-            self.latest_time_used_for_pericenter_finding = self.t[idx_num_orbit_earlier_than_merger]
+            self.latest_time_used_for_extrema_finding = self.t[idx_num_orbit_earlier_than_merger]
             extrema_idx = extrema_idx[extrema_idx
                                       <= idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
@@ -1129,7 +1129,7 @@ class eccDefinition:
         # FIXME: Harald, Arif: Think about how to make this better.
         if hasattr(self, "t_analyse"):
             t_for_finding_extrema = self.t_analyse
-            self.latest_time_used_for_pericenter_finding = self.t_analyse[-1]
+            self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
         else:
             t_for_finding_extrema = self.t
         axNew.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
@@ -1156,7 +1156,7 @@ class eccDefinition:
         axNew.grid()
         axNew.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema finding
-        axNew.axvline(self.latest_time_used_for_pericenter_finding, c=colorsDict["vline"], ls="--")
+        axNew.axvline(self.latest_time_used_for_extrema_finding, c=colorsDict["vline"], ls="--")
         axNew.legend()
         axNew.set_title(
             "Data being used for finding the extrema.",
@@ -1164,7 +1164,7 @@ class eccDefinition:
             fontsize=14)
         if add_help_text:
             axNew.text(
-                self.latest_time_used_for_pericenter_finding,
+                self.latest_time_used_for_extrema_finding,
                 ymin,
                 "Latest time used for finding extrema.",
                 ha="right",
