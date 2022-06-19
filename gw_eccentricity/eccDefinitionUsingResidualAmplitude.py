@@ -1,5 +1,5 @@
 """
-Find peaks and troughs using Residual Amplitude.
+Find pericenters and apocenters using Residual Amplitude.
 
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022

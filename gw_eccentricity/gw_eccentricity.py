@@ -67,23 +67,23 @@ def measure_eccentricity(tref_in=None,
 
     Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
     where phi22(t) is the phase of the (2,2) waveform mode. We evaluate
-    omega22(t) at pericenter times, t_peaks, and build a spline interpolant
-    omega22_peaks(t) using those points. Similarly, we build omega22_troughs(t)
-    using the apocenter times, t_troughs. To find the pericenter/apocenter
+    omega22(t) at pericenter times, t_pericenters, and build a spline interpolant
+    omega22_pericenters(t) using those points. Similarly, we build omega22_apocenters(t)
+    using the apocenter times, t_apocenters. To find the pericenter/apocenter
     locations, one can look for extrema in different waveform data, like
     omega22(t) or Amp22(t), the amplitude of the (2,2) mode. Pericenters
-    correspond to peaks, while apocenters correspond to troughs in the data.
+    correspond to pericenters, while apocenters correspond to apocenters in the data.
     The method option (described below) lets you pick which waveform data to
     use to find extrema.
 
-    The eccentricity is defined using omega22_peaks(t) and omega22_troughs(t),
+    The eccentricity is defined using omega22_pericenters(t) and omega22_apocenters(t),
     as described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean anomaly is
     defined using the pericenter locations as described in Eq.(2) of
     arxiv:xxxx.xxxx.
 
     FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
     numbers are right, once the paper is finalized.
-    QUESTION FOR ARIF: Maybe we want to avoid saying peaks/troughs and just say
+    QUESTION FOR ARIF: Maybe we want to avoid saying pericenters/apocenters and just say
     pericenters/apocenters here and in the code? Also, get rid of all "astrons"
     throughout the code/documentation for consistency?
 
@@ -184,8 +184,8 @@ def measure_eccentricity(tref_in=None,
         where M is the total mass in Solar masses.
 
         The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If additional
-        modes are included, they will be used in determining the peak time
-        following Eq.(5) of arxiv:1905.09300. The peak time is used to
+        modes are included, they will be used in determining the pericenter time
+        following Eq.(5) of arxiv:1905.09300. The pericenter time is used to
         time-align the two waveforms before computing the residual
         amplitude/frequency.
 
@@ -198,7 +198,7 @@ def measure_eccentricity(tref_in=None,
     spline_kwargs:
         Dictionary of arguments to be passed to the spline interpolation
         routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-        compute omega22_peaks(t) and omega22_troughs(t).
+        compute omega22_pericenters(t) and omega22_apocenters(t).
         Defaults are the same as those of InterpolatedUnivariateSpline.
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
@@ -230,8 +230,8 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
-            - "mean_of_extrema_interpolants": The mean of omega22_peaks(t) and
-              omega22_troughs(t) is used as a proxy for the average frequency.
+            - "mean_of_extrema_interpolants": The mean of omega22_pericenters(t) and
+              omega22_apocenters(t) is used as a proxy for the average frequency.
             - "interpolate_orbit_averages_at_extrema": First, orbit averages
               are obtained at each pericenter by averaging omega22(t) over the
               time from the previous pericenter to the current one. Similar
@@ -244,7 +244,7 @@ def measure_eccentricity(tref_in=None,
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
             Default is "mean_of_extrema_interpolants".
-        treat_mid_points_between_peaks_as_troughs:
+        treat_mid_points_between_pericenters_as_apocenters:
             If True, instead of trying to find apocenter locations by looking
             for local minima in the data, we simply find the midpoints between
             pericenter locations and treat them as apocenters. This is helpful
@@ -261,11 +261,11 @@ def measure_eccentricity(tref_in=None,
         Units of tref_out/fref_out are the same as those of tref_in/fref_in.
 
         tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
-        where tmax = min(t_peaks[-1], t_troughs[-1]) and
-              tmin = max(t_peaks[0], t_troughs[0]),
-        As eccentricity measurement relies on the interpolants omega22_peaks(t)
-        and omega22_troughs(t), the above cutoffs ensure that we only compute
-        the eccentricity where both omega22_peaks(t) and omega22_troughs(t) are
+        where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
+              tmin = max(t_pericenters[0], t_apocenters[0]),
+        As eccentricity measurement relies on the interpolants omega22_pericenters(t)
+        and omega22_apocenters(t), the above cutoffs ensure that we only compute
+        the eccentricity where both omega22_pericenters(t) and omega22_apocenters(t) are
         within their bounds.
 
         fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in < fmax],

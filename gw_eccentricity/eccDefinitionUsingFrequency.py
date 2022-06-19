@@ -1,5 +1,5 @@
 """
-Find peaks and troughs using frequency.
+Find pericenters and apocenters using frequency.
 
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
