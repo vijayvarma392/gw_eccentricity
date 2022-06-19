@@ -135,6 +135,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             self.omega22_analyse = self.omega22
             self.phase22_analyse = self.phase22
             self.t_analyse = self.t
+        # FIXME: Harald, Please change this as you see fit
+        self.data_for_finding_extrema = self.omega22_analyse
 
         # TODO - consider whether to also cut from the start
         # (e.g. NR junk radiation)
