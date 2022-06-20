@@ -34,7 +34,10 @@ jobs:
         run: |
           pip install pytest nbconvert ipykernel latex
           # Will only work for ubuntu
-          sudo apt install texlive texlive-latex-extra texlive-fonts-recommended dvipng
+          # See https://stackoverflow.com/questions/58121461/runtimeerror-failed-to-process-string-with-tex-because-latex-could-not-be-found
+          # and https://github.com/garrettj403/SciencePlots/issues/53
+          sudo apt-get install dvipng texlive-latex-extra texlive-fonts-recommended cm-super
+          
 
 
       - name: Install pipenv
