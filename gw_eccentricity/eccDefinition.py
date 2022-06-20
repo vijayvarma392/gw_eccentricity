@@ -759,7 +759,6 @@ class eccDefinition:
             self,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Make diagnostic plots for the eccDefinition method.
@@ -816,7 +815,7 @@ class eccDefinition:
         list_of_plots.append(self.plot_data_used_for_finding_extrema)
 
         # Initiate figure, axis
-        figsize = (figWidthsTwoColDict[journal], 4 * len(list_of_plots))
+        figsize = (12, 4 * len(list_of_plots))
         default_kwargs = {"nrows": len(list_of_plots),
                           "figsize": figsize,
                           "sharex": True}
@@ -824,7 +823,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, journal="Notebook")
         fig, ax = plt.subplots(**kwargs)
 
         # populate figure, axis
@@ -834,7 +833,6 @@ class eccDefinition:
                 ax[idx],
                 add_help_text=add_help_text,
                 usetex=usetex,
-                journal=journal,
                 use_fancy_settings=False)
         fig.tight_layout()
         return fig, ax
@@ -973,11 +971,12 @@ class eccDefinition:
         pad = 0.05 * ymax # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
+        backslashchar = "\\"
         if add_help_text:
             ax.text(
                 0.01,
                 0.7,
-                ("tref_out excludes the first and last extrema to"
+                (f"tref{backslashchar if usetex else ''}_out excludes the first and last extrema to"
                  " avoid extrapolation when\n computing ecc(t)"),
                 ha="left",
                 va="top",
