@@ -72,7 +72,7 @@ figWidthsTwoColDict = {
     "Elsevier": 7.48,
     "Springer": 6.93,
     "Presentation": 4.5,
-    "Notebook": 10
+    "Notebook": 12
 }
 
 labelSizeDict = {"APS": 9.0,

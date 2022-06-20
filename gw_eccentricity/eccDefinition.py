@@ -10,7 +10,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
-from .plot_settings import use_fancy_plotsettings, colorsDict
+from .plot_settings import use_fancy_plotsettings, colorsDict, figWidthsTwoColDict
 import matplotlib.pyplot as plt
 import warnings
 
@@ -755,8 +755,13 @@ class eccDefinition:
                                 "pericenters/apocenters.")
         return fref_out
 
-    def make_diagnostic_plots(self, usetex=True, journal="Notebook",
-                              add_help_text=True, **kwargs):
+    def make_diagnostic_plots(
+            self,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Make diagnostic plots for the eccDefinition method.
 
         We plot different quantities to asses how well our eccentricity
@@ -794,7 +799,7 @@ class eccDefinition:
         Finally, plot
         - data that is being used for finding extrema.
         """
-        # Get correct number of rows.
+        # Make a list of plots we want to add
         # There will be minimum 6 plots.
         # - measured ecc
         # - de/dt
@@ -810,114 +815,147 @@ class eccDefinition:
         # then add one plot of the residual data is not being used for extrema
         # finding since extrema finding data is already plotted in the minimum
         # of 6 plots.
-        nrows = 6
+        list_of_plots = [self.plot_measured_ecc,
+                         self.plot_decc_dt,
+                         self.plot_mean_ano,
+                         self.plot_omega22,
+                         self.plot_phase_diff_ratio_between_pericenters]
         if "hlm_zeroecc" in self.dataDict:
+            # add residual amp22 plot
             if "Delta A" not in self.label_for_data_for_finding_extrema:
-                nrows += 1
+                list_of_plots.append(self.plot_residual_amp22)
+            # add residual omega22 plot
             if "Delta\omega" not in self.label_for_data_for_finding_extrema:
-                nrows += 1
-        figsize = (12, 4 * nrows)
-        default_kwargs = {"nrows": nrows,
+                list_of_plots.append(self.plot_residual_omega22)
+        # add plot of data used for finding extrema
+        list_of_plots.append(self.plot_data_used_for_finding_extrema)
+
+        # Initiate figure, axis
+        figsize = (figWidthsTwoColDict[journal], 4 * len(list_of_plots))
+        default_kwargs = {"nrows": len(list_of_plots),
                           "figsize": figsize,
                           "sharex": True}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        use_fancy_plotsettings(usetex=usetex, journal=journal)
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         fig, ax = plt.subplots(**kwargs)
-        self.plot_measured_ecc(fig, ax[0], add_help_text=add_help_text)
-        self.plot_decc_dt(fig, ax[1], add_help_text=add_help_text)
-        self.plot_mean_ano(fig, ax[2], add_help_text=add_help_text)
-        self.plot_omega22(fig, ax[3], add_help_text=add_help_text)
-        self.plot_phase_diff_ratio_between_pericenters(
-            fig, ax[4],
-            add_help_text=add_help_text)
-        last_idx = 5
-        if "hlm_zeroecc" in self.dataDict:
-            if "Delta\omega" not in self.label_for_data_for_finding_extrema:
-                self.plot_residual_omega22(fig, ax[last_idx], add_help_text=add_help_text)
-                last_idx += 1
-            if "Delta A" not in self.label_for_data_for_finding_extrema:
-                self.plot_residual_amp22(fig, ax[last_idx], add_help_text=add_help_text)
-                last_idx += 1
-        self.plot_data_used_for_finding_extrema(fig, ax[last_idx], add_help_text=add_help_text)
+
+        # populate figure, axis
+        for idx, plot in enumerate(list_of_plots):
+            plot(
+                fig,
+                ax[idx],
+                add_help_text=add_help_text,
+                usetex=usetex,
+                journal=journal,
+                use_fancy_settings=False)
         fig.tight_layout()
         return fig, ax
 
-    def plot_measured_ecc(self, fig=None, ax=None,
-                          add_help_text=True, **kwargs):
+    def plot_measured_ecc(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot measured ecc as function of time."""
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        axNew.plot(self.tref_out, self.ecc_ref, **kwargs)
-        axNew.set_xlabel(r"$t$")
-        axNew.set_ylabel(r"Eccentricity $e$")
-        axNew.grid()
+        ax.plot(self.tref_out, self.ecc_ref, **kwargs)
+        ax.set_xlabel(r"$t$")
+        ax.set_ylabel(r"Eccentricity $e$")
+        ax.grid()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_decc_dt(self, fig=None, ax=None,
-                     add_help_text=True, **kwargs):
+    def plot_decc_dt(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot decc_dt as function of time to check monotonicity.
 
         If decc_dt becomes positive, ecc(t) is not monotonically decreasing.
         """
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        axNew.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
-        axNew.set_xlabel("$t$")
-        axNew.set_ylabel(r"$de/dt$")
+        ax.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
+        ax.set_xlabel("$t$")
+        ax.set_ylabel(r"$de/dt$")
         if add_help_text:
-            axNew.text(
+            ax.text(
                 0.01,
                 0.7,
                 ("We expect decc/dt to be always negative"),
                 ha="left",
                 va="top",
-                transform=axNew.transAxes,
+                transform=ax.transAxes,
                 fontsize=14)
-        axNew.grid()
+        ax.grid()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_mean_ano(self, fig=None, ax=None,
-                      add_help_text=True, **kwargs):
+    def plot_mean_ano(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot measured mean anomaly as function of time."""
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        axNew.plot(self.tref_out, self.mean_ano_ref, **kwargs)
-        axNew.set_xlabel("$t$")
-        axNew.set_ylabel("mean anomaly")
-        axNew.grid()
+        ax.plot(self.tref_out, self.mean_ano_ref, **kwargs)
+        ax.set_xlabel("$t$")
+        ax.set_ylabel("mean anomaly")
+        ax.grid()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_omega22(self, fig=None, ax=None,
-                     add_help_text=True, **kwargs):
+    def plot_omega22(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot omega22, the locations of the apocenters and pericenters.
 
         Also plots their corresponding interpolants.
@@ -925,88 +963,102 @@ class eccDefinition:
         selecting one which is not a pericenter/apocenter.
         """
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
-        axNew.plot(self.tref_out, self.omega22_pericenter_at_tref_out,
-                   c=colorsDict["pericenter"], label=r"$\omega_{p}$",
-                   **kwargs)
-        axNew.plot(self.tref_out, self.omega22_apocenter_at_tref_out,
-                   c=colorsDict["apocenter"], label=r"$\omega_{a}$",
-                   **kwargs)
-        axNew.plot(self.t, self.omega22,
-                   c=colorsDict["default"], label=r"$\omega_{22}$")
-        axNew.plot(self.t[self.pericenters_location],
-                   self.omega22[self.pericenters_location],
-                   c=colorsDict["pericenter"],
-                   marker=".", ls="")
-        axNew.plot(self.t[self.apocenters_location],
-                   self.omega22[self.apocenters_location],
-                   c=colorsDict["apocenter"],
-                   marker=".", ls="")
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
+        ax.plot(self.tref_out, self.omega22_pericenter_at_tref_out,
+                c=colorsDict["pericenter"], label=r"$\omega_{p}$",
+                **kwargs)
+        ax.plot(self.tref_out, self.omega22_apocenter_at_tref_out,
+                c=colorsDict["apocenter"], label=r"$\omega_{a}$",
+                **kwargs)
+        ax.plot(self.t, self.omega22,
+                c=colorsDict["default"], label=r"$\omega_{22}$")
+        ax.plot(self.t[self.pericenters_location],
+                self.omega22[self.pericenters_location],
+                c=colorsDict["pericenter"],
+                marker=".", ls="")
+        ax.plot(self.t[self.apocenters_location],
+                self.omega22[self.apocenters_location],
+                c=colorsDict["apocenter"],
+                marker=".", ls="")
         # set reasonable ylims
         ymin = min(self.omega22_apocenter_at_tref_out)
         ymax = max(self.omega22_pericenter_at_tref_out)
         pad = 0.05 * ymax # 5 % buffer for better visibility
-        axNew.set_ylim(ymin - pad, ymax + pad)
+        ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
         if add_help_text:
-            axNew.text(
+            ax.text(
                 0.01,
                 0.7,
                 ("tref_out excludes the first and last extrema to"
                  " avoid extrapolation when\n computing ecc(t)"),
                 ha="left",
                 va="top",
-                transform=axNew.transAxes,
+                transform=ax.transAxes,
                 fontsize=14)
-        axNew.set_xlabel(r"$t$")
-        axNew.grid()
-        axNew.set_ylabel(r"$\omega_{22}$")
-        axNew.legend()
+        ax.set_xlabel(r"$t$")
+        ax.grid()
+        ax.set_ylabel(r"$\omega_{22}$")
+        ax.legend()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_amp22(self, fig=None, ax=None,
-                   add_help_text=True, **kwargs):
+    def plot_amp22(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot amp22, the locations of the apocenters and pericenters.
 
         This would show if the method is missing any pericenters/apocenters or
         selecting one which is not a pericenter/apocenter.
         """
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         # plot only upto merger to make the plot readable
         end = np.argmin(np.abs(self.t - self.t_merger))
-        axNew.plot(self.t[: end], self.amp22[: end],
-                   c=colorsDict["default"], label=r"$A_{22}$")
-        axNew.plot(self.t[self.pericenters_location],
-                   self.amp22[self.pericenters_location],
-                   c=colorsDict["pericenter"],
-                   marker=".", ls="", label="Pericenters")
-        axNew.plot(self.t[self.apocenters_location],
-                   self.amp22[self.apocenters_location],
-                   c=colorsDict["apocenter"],
-                   marker=".", ls="", label="Apocenters")
+        ax.plot(self.t[: end], self.amp22[: end],
+                c=colorsDict["default"], label=r"$A_{22}$")
+        ax.plot(self.t[self.pericenters_location],
+                self.amp22[self.pericenters_location],
+                c=colorsDict["pericenter"],
+                marker=".", ls="", label="Pericenters")
+        ax.plot(self.t[self.apocenters_location],
+                self.amp22[self.apocenters_location],
+                c=colorsDict["apocenter"],
+                marker=".", ls="", label="Apocenters")
         # set reasonable ylims
         ymin = min(self.amp22[self.apocenters_location])
         ymax = max(self.amp22[self.pericenters_location])
-        axNew.set_ylim(ymin, ymax)
-        axNew.set_xlabel(r"$t$")
-        axNew.grid()
-        axNew.set_ylabel(r"$A_{22}$")
-        axNew.legend()
+        ax.set_ylim(ymin, ymax)
+        ax.set_xlabel(r"$t$")
+        ax.grid()
+        ax.set_ylabel(r"$A_{22}$")
+        ax.legend()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_phase_diff_ratio_between_pericenters(self, fig=None, ax=None,
-                                            add_help_text=True, **kwargs):
+    def plot_phase_diff_ratio_between_pericenters(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot phase diff ratio between consecutive as function of time.
 
         Plots deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
@@ -1016,38 +1068,45 @@ class eccDefinition:
         extrema, and the ratio will go from ~1 to ~2.
         """
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         tpericenters = self.t[self.pericenters_location[1:]]
-        axNew.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
-                   c=colorsDict["pericenter"],
-                   marker=".", label="Pericenter phase diff ratio")
+        ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
+                c=colorsDict["pericenter"],
+                marker=".", label="Pericenter phase diff ratio")
         tapocenters = self.t[self.apocenters_location[1:]]
-        axNew.plot(tapocenters[1:], self.orb_phase_diff_ratio_at_apocenters[1:],
-                   c=colorsDict["apocenter"],
-                   marker=".", label="Apocenter phase diff ratio")
-        axNew.set_xlabel(r"$t$")
-        axNew.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
-        axNew.grid()
+        ax.plot(tapocenters[1:], self.orb_phase_diff_ratio_at_apocenters[1:],
+                c=colorsDict["apocenter"],
+                marker=".", label="Apocenter phase diff ratio")
+        ax.set_xlabel(r"$t$")
+        ax.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
+        ax.grid()
         if add_help_text:
-            axNew.text(
+            ax.text(
                 0.01,
                 0.7,
                 ("Ratio of phase difference between consecutive extrema should not exceed 1.5\n"
                  "Too large value would indicate missing extrema."),
                 ha="left",
                 va="top",
-                transform=axNew.transAxes,
+                transform=ax.transAxes,
                 fontsize=14)
-        axNew.legend()
+        ax.legend()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_residual_omega22(self, fig=None, ax=None,
-                              add_help_text=True, **kwargs):
+    def plot_residual_omega22(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot residual omega22, the locations of the apocenters and pericenters.
 
         Useful to look for bad omega22 data near merger.
@@ -1055,76 +1114,90 @@ class eccDefinition:
         unreadble.
         """
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
-        axNew.plot(self.t, self.res_omega22, c=colorsDict["default"])
-        axNew.plot(self.t[self.pericenters_location],
-                   self.res_omega22[self.pericenters_location],
-                   marker=".", ls="", label="Pericenter",
-                   c=colorsDict["pericenter"])
-        axNew.plot(self.t[self.apocenters_location],
-                   self.res_omega22[self.apocenters_location],
-                   marker=".", ls="", label="Apocenter",
-                   c=colorsDict["apocenter"])
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
+        ax.plot(self.t, self.res_omega22, c=colorsDict["default"])
+        ax.plot(self.t[self.pericenters_location],
+                self.res_omega22[self.pericenters_location],
+                marker=".", ls="", label="Pericenter",
+                c=colorsDict["pericenter"])
+        ax.plot(self.t[self.apocenters_location],
+                self.res_omega22[self.apocenters_location],
+                marker=".", ls="", label="Apocenter",
+                c=colorsDict["apocenter"])
         # set reasonable ylims
         ymin = min(self.res_omega22[self.apocenters_location])
         ymax = max(self.res_omega22[self.pericenters_location])
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
-        axNew.set_ylim(-ylim - pad, ylim + pad)
-        axNew.set_xlabel(r"$t$")
-        axNew.grid()
-        axNew.set_ylabel(r"$\Delta\omega_{22}$")
-        axNew.legend()
+        ax.set_ylim(-ylim - pad, ylim + pad)
+        ax.set_xlabel(r"$t$")
+        ax.grid()
+        ax.set_ylabel(r"$\Delta\omega_{22}$")
+        ax.legend()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_residual_amp22(self, fig=None, ax=None,
-                            add_help_text=True, **kwargs):
+    def plot_residual_amp22(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot residual amp22, the locations of the apocenters and pericenters."""
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
-        axNew.plot(self.t, self.res_amp22, c=colorsDict["default"])
-        axNew.plot(self.t[self.pericenters_location],
-                   self.res_amp22[self.pericenters_location],
-                   c=colorsDict["pericenter"],
-                   marker=".", ls="", label="Pericenter")
-        axNew.plot(self.t[self.apocenters_location],
-                   self.res_amp22[self.apocenters_location],
-                   c=colorsDict["apocenter"],
-                   marker=".", ls="", label="Apocenter")
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
+        ax.plot(self.t, self.res_amp22, c=colorsDict["default"])
+        ax.plot(self.t[self.pericenters_location],
+                self.res_amp22[self.pericenters_location],
+                c=colorsDict["pericenter"],
+                marker=".", ls="", label="Pericenter")
+        ax.plot(self.t[self.apocenters_location],
+                self.res_amp22[self.apocenters_location],
+                c=colorsDict["apocenter"],
+                marker=".", ls="", label="Apocenter")
         # set reasonable ylims
         ymin = min(self.res_amp22[self.apocenters_location])
         ymax = max(self.res_amp22[self.pericenters_location])
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
-        axNew.set_ylim(-ylim - pad, ylim + pad)
-        axNew.set_xlabel(r"$t$")
-        axNew.grid()
-        axNew.set_ylabel(r"$\Delta A_{22}$")
-        axNew.legend()
+        ax.set_ylim(-ylim - pad, ylim + pad)
+        ax.set_xlabel(r"$t$")
+        ax.grid()
+        ax.set_ylabel(r"$\Delta A_{22}$")
+        ax.legend()
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
-    def plot_data_used_for_finding_extrema(self, fig=None, ax=None,
-                       add_help_text=True, **kwargs):
+    def plot_data_used_for_finding_extrema(
+            self,
+            fig=None,
+            ax=None,
+            add_help_text=True,
+            usetex=True,
+            journal="Notebook",
+            use_fancy_settings=True,
+            **kwargs):
         """Plot the data that is being used.
 
         Also the locations of the apocenters and pericenters.
         """
         if fig is None or ax is None:
-            figNew, axNew = plt.subplots()
-        else:
-            axNew = ax
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         # To make it work for FrequencyFits
         # FIXME: Harald, Arif: Think about how to make this better.
         if hasattr(self, "t_analyse"):
@@ -1132,15 +1205,15 @@ class eccDefinition:
             self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
         else:
             t_for_finding_extrema = self.t
-        axNew.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
-        axNew.plot(t_for_finding_extrema[self.pericenters_location],
-                   self.data_for_finding_extrema[self.pericenters_location],
-                   c=colorsDict["pericenter"],
-                   marker=".", ls="", label="Pericenter")
-        axNew.plot(t_for_finding_extrema[self.apocenters_location],
-                   self.data_for_finding_extrema[self.apocenters_location],
-                   c=colorsDict["apocenter"],
-                   marker=".", ls="", label="Apocenter")
+        ax.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
+        ax.plot(t_for_finding_extrema[self.pericenters_location],
+                self.data_for_finding_extrema[self.pericenters_location],
+                c=colorsDict["pericenter"],
+                marker=".", ls="", label="Pericenter")
+        ax.plot(t_for_finding_extrema[self.apocenters_location],
+                self.data_for_finding_extrema[self.apocenters_location],
+                c=colorsDict["apocenter"],
+                marker=".", ls="", label="Apocenter")
         # set reasonable ylims
         ymin = min(self.data_for_finding_extrema[self.apocenters_location])
         ymax = max(self.data_for_finding_extrema[self.pericenters_location])
@@ -1148,22 +1221,22 @@ class eccDefinition:
         if "Delta" in self.label_for_data_for_finding_extrema:
             ylim = max(ymax, -ymin)
             pad = 0.05 * ylim # 5 % buffer for better visibility
-            axNew.set_ylim(-ylim - pad, ylim + pad)
+            ax.set_ylim(-ylim - pad, ylim + pad)
         else:
             pad = 0.05 * ymax
-            axNew.set_ylim(ymin - pad, ymax + pad)
-        axNew.set_xlabel(r"$t$")
-        axNew.grid()
-        axNew.set_ylabel(self.label_for_data_for_finding_extrema)
+            ax.set_ylim(ymin - pad, ymax + pad)
+        ax.set_xlabel(r"$t$")
+        ax.grid()
+        ax.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema finding
-        axNew.axvline(self.latest_time_used_for_extrema_finding, c=colorsDict["vline"], ls="--")
-        axNew.legend()
-        axNew.set_title(
+        ax.axvline(self.latest_time_used_for_extrema_finding, c=colorsDict["vline"], ls="--")
+        ax.legend()
+        ax.set_title(
             "Data being used for finding the extrema.",
             ha="center",
             fontsize=14)
         if add_help_text:
-            axNew.text(
+            ax.text(
                 self.latest_time_used_for_extrema_finding,
                 ymin,
                 "Latest time used for finding extrema.",
@@ -1171,8 +1244,8 @@ class eccDefinition:
                 va="bottom",
                 fontsize=14)
             if isinstance(self.tref_out, (float, int)):
-                axNew.axvline(self.tref_out, c=colorsDict["pericentersvline"])
-                axNew.text(
+                ax.axvline(self.tref_out, c=colorsDict["pericentersvline"])
+                ax.text(
                     self.tref_out,
                     ymin,
                     (r"$t_{\mathrm{ref}}$"),
@@ -1180,9 +1253,9 @@ class eccDefinition:
                     va="bottom",
                 fontsize=14)
         if fig is None or ax is None:
-            return figNew, axNew
+            return figNew, ax
         else:
-            return axNew
+            return ax
 
     def get_apocenters_from_pericenters(self):
         """Get Interpolator through apocenters and their locations.
