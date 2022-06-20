@@ -2,7 +2,10 @@ import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 import platform
 from glob import glob
-import os
+import os, sys, subprocess
+
+git_home = subprocess.check_output(['git', 'rev-parse',
+    '--show-toplevel'], text=True).strip('\n') 
 
 python_version = platform.python_version()
 if python_version[:2] == '2.':
@@ -15,7 +18,7 @@ def test_example_notebooks():
     gw_eccentricity/examples/*.ipynb are working. Since we expect these to be
     used by our users, it would be emabarassing if our own examples failed.
     """
-    notebooks_list = glob('examples/*.ipynb')
+    notebooks_list = glob(f'{git_home}/examples/*.ipynb')
     notebooks_list.sort()
 
     if len(notebooks_list) == 0:
