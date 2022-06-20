@@ -18,6 +18,9 @@ def test_example_notebooks():
     notebooks_list = glob('examples/*.ipynb')
     notebooks_list.sort()
 
+    if len(notebooks_list) == 0:
+        raise Exception("No notebooks found!")
+
     for notebook in notebooks_list:
 
         print(f'testing {notebook}')
