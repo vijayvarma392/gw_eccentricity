@@ -33,6 +33,9 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install pytest nbconvert ipykernel latex
+          # Will only work for ubuntu
+          sudo apt install texlive texlive-latex-extra texlive-fonts-recommended dvipng
+
 
       - name: Install pipenv
         shell: bash -l {0}
