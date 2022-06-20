@@ -791,7 +791,7 @@ class eccDefinition:
         - data that is not being used for finding extrema.
         For example, if method is ResidualAmplitude
         then plot residual omega and vice versa.
-        These two plots with further help in understanding any unwanted feature
+        These two plots further help in understanding any unwanted feature
         in the measured eccentricity vs time plot. For example, non smoothness
         the residual omega22 would indicate that the data in omega22 is not
         good which might be causing glitches in the measured eccentricity plot.
@@ -800,21 +800,6 @@ class eccDefinition:
         - data that is being used for finding extrema.
         """
         # Make a list of plots we want to add
-        # There will be minimum 6 plots.
-        # - measured ecc
-        # - de/dt
-        # - measured mean anomaly
-        # - omega22
-        # - phase22 diff ratio
-        # - data being used for finding extrema
-        # Additional plots are added depending on what method we are using and
-        # what data is available is the dataDict. If zeroecc data is available
-        # but method is not residual method,
-        # we add two plots: residual omega22 and residual amp22.
-        # If the method is a residual method,
-        # then add one plot of the residual data is not being used for extrema
-        # finding since extrema finding data is already plotted in the minimum
-        # of 6 plots.
         list_of_plots = [self.plot_measured_ecc,
                          self.plot_decc_dt,
                          self.plot_mean_ano,
