@@ -239,8 +239,9 @@ def measure_eccentricity(tref_in=None,
               next pericenter. Similarly orbit averages are computed at apocenters.
               Finally, a spline interpolant is constructed between all of these orbit
               averages at extrema locations. Due to the nature of the averaging,
-              the final time over which the spline is constructed is always starts
-              after the first extrema and end before the last extrema.
+              the final time over which the spline is constructed always starts
+              half an orbit after the first extrema and ends half an orbit before
+              the last extrema.
             - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.

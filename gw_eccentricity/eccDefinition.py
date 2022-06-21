@@ -109,8 +109,9 @@ class eccDefinition:
                   next pericenter. Similarly orbit averages are computed at apocenters.
                   Finally, a spline interpolant is constructed between all of these orbit
                   averages at extrema locations. Due to the nature of the averaging,
-                  the final time over which the spline is constructed is always starts
-                  after the first extrema and end before the last extrema.
+                  the final time over which the spline is constructed always starts
+                  half and orbit after the first extrema and ends half an orbit before
+                  the last extrema.
                 - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
                   is used as a proxy for the average frequency. This can only be
                   used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
@@ -834,6 +835,7 @@ class eccDefinition:
             self,
             add_help_text=True,
             usetex=True,
+            journal="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Make diagnostic plots for the eccDefinition method.
@@ -867,11 +869,40 @@ class eccDefinition:
         then plot residual omega and vice versa.
         These two plots further help in understanding any unwanted feature
         in the measured eccentricity vs time plot. For example, non smoothness
-        the residual omega22 would indicate that the data in omega22 is not
+        in the residual omega22 would indicate that the data in omega22 is not
         good which might be causing glitches in the measured eccentricity plot.
 
         Finally, plot
         - data that is being used for finding extrema.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        fig, ax
         """
         # Make a list of plots we want to add
         list_of_plots = [self.plot_measured_ecc,
@@ -897,7 +928,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal="Notebook")
+            use_fancy_plotsettings(usetex=usetex, journal=journal)
         fig, ax = plt.subplots(**kwargs)
 
         # populate figure, axis
@@ -920,7 +951,37 @@ class eccDefinition:
             journal="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot measured ecc as function of time."""
+        """Plot measured ecc as function of time.
+
+                Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        fig, ax
+        """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
         if use_fancy_settings:
@@ -949,6 +1010,35 @@ class eccDefinition:
         """Plot decc_dt as function of time to check monotonicity.
 
         If decc_dt becomes positive, ecc(t) is not monotonically decreasing.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        fig, ax
         """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
@@ -985,7 +1075,38 @@ class eccDefinition:
             journal="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot measured mean anomaly as function of time."""
+        """Plot measured mean anomaly as function of time.
+
+                Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        --------
+        fig, ax
+        """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
         if use_fancy_settings:
@@ -1016,6 +1137,36 @@ class eccDefinition:
         Also plots their corresponding interpolants.
         This would show if the method is missing any pericenters/apocenters or
         selecting one which is not a pericenter/apocenter.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        --------
+        fig, ax
         """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
@@ -1074,6 +1225,36 @@ class eccDefinition:
 
         This would show if the method is missing any pericenters/apocenters or
         selecting one which is not a pericenter/apocenter.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        --------
+        fig, ax
         """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
@@ -1119,6 +1300,36 @@ class eccDefinition:
         This helps to look for missing extrema, as there will be a drastic
         (roughly factor of 2) change in deltaPhi_orb(i) if there is a missing
         extrema, and the ratio will go from ~1 to ~2.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        --------
+        fig, ax
         """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
@@ -1164,6 +1375,36 @@ class eccDefinition:
         Useful to look for bad omega22 data near merger.
         We also throw away post merger before since it makes the plot
         unreadble.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        --------
+        fig, ax
         """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
@@ -1202,7 +1443,38 @@ class eccDefinition:
             journal="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot residual amp22, the locations of the apocenters and pericenters."""
+        """Plot residual amp22, the locations of the apocenters and pericenters.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        --------
+        fig, ax
+        """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
         if use_fancy_settings:
@@ -1243,6 +1515,34 @@ class eccDefinition:
         """Plot the data that is being used.
 
         Also the locations of the apocenters and pericenters.
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure object.
+            Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis object.
+            Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        journal:
+            Set font size, figure size suitable for particular use case. For example,
+            to generate plot for "APS" journals, use journal="APS".
+            For showing plots in a jupyter notebook, use "Notebook" so that
+            plots are bigger and fonts are appropriately larger and so on.
+            See plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+
+        Returns:
+        fig, ax
         """
         if fig is None or ax is None:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
