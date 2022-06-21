@@ -234,12 +234,13 @@ def measure_eccentricity(tref_in=None,
               omega22_apocenters(t) is used as a proxy for the average frequency.
             - "interpolate_orbit_averages_at_extrema": First, orbit averages
               are obtained at each pericenter by averaging omega22(t) over the
-              time from the previous pericenter to the current one. Similar
-              orbit averages are computed at apocenters. Finally, a spline
-              interpolant is constructed between all of these orbit averages at
-              extrema locations. Due to the nature of the averaging, the first
-              and last extrema need to be excluded, which is why this is not
-              the default method.
+              time from the current pericenter to the next one. This average value
+              is associated with the time at mid point between the current and the
+              next pericenter. Similarly orbit averages are computed at apocenters.
+              Finally, a spline interpolant is constructed between all of these orbit
+              averages at extrema locations. Due to the nature of the averaging,
+              the final time over which the spline is constructed is always starts
+              after the first extrema and end before the last extrema.
             - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.

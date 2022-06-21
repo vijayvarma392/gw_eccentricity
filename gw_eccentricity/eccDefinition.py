@@ -24,39 +24,104 @@ class eccDefinition:
         parameters:
         ---------
         dataDict:
-            Dictionary containing waveform modes dict, time etc should follow
-            the format {"t": time, "hlm": modeDict, ..}, with
-            modeDict = {(l, m): hlm_mode_data}.
-            For ResidualAmplitude method, also provide "t_zeroecc" and
-            "hlm_zeroecc", for the quasi-circular counterpart.
+            Dictionary containing waveform modes dict, time etc.
+            Should follow the format:
+                dataDict = {"t": time,
+                            "hlm": modeDict,
+                            "t_zeroecc": time,
+                            "hlm_zeroecc": modeDict, ...
+                           },
+            where time is an array with the same convention as tref_in, and
+            modeDict should have the format:
+                modeDict = {(l1, m1): h_{l1, m1},
+                           (l2, m2): h_{l2, m2}, ...
+                           }.
+
+            "t_zeroecc" and "hlm_zeroecc" are only required for ResidualAmplitude
+            and ResidualFrequency methods, but if they are provided, they will be
+            used to produce additional diagnostic plots, which can be helpful for
+            all methods. "t_zeroecc" and "hlm_zeroecc" should include the time and
+            modeDict for the quasi-circular limit of the eccentric waveform in
+            "hlm". For a waveform model, "hlm_zeroecc" can be obtained by
+            evaluating the model by keeping the rest of the binary parameters fixed
+            but setting the eccentricity to zero. For NR, if such a quasi-circular
+            counterpart is not available, we recommend using quasi-circular
+            waveforms like NRHybSur3dq8 or PhenomT, depending on the mass ratio and
+            spins. We require that "hlm_zeroecc" be at least as long as "hlm" so
+            that residual amplitude/frequency can be computed.
+
+            For dataDict, we currently only allow time-domain, nonprecessing
+            waveforms with a uniform time array. Please make sure that the time
+            step is small enough that omega22(t) can be accurately computed; we use
+            a 4th-order finite difference scheme. In dimensionless units, we
+            recommend a time step of dtM = 0.1M to be conservative, but you may be
+            able to get away with larger time steps like dtM = 1M. The
+            corresponding time step in seconds would be dtM * M * lal.MTSUN_SI,
+            where M is the total mass in Solar masses.
+
+            The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If additional
+            modes are included, they will be used in determining the pericenter time
+            following Eq.(5) of arxiv:1905.09300. The pericenter time is used to
+            time-align the two waveforms before computing the residual
+            amplitude/frequency.
 
         spline_kwargs:
-             Arguments to be passed to InterpolatedUnivariateSpline.
+            Dictionary of arguments to be passed to the spline interpolation
+            routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
+            compute omega22_pericenters(t) and omega22_apocenters(t).
+            Defaults are the same as those of InterpolatedUnivariateSpline.
 
-        extra_kwargs:
-            Any extra kwargs to be passed. Allowed kwargs are
-                num_orbits_to_exclude_before_merger:
-                    Can be None or a non negative real number.
-                    If None, the full waveform data (even post-merger) is used
-                    to measure eccentricity, but this might cause issues when
-                    interpolating through extrema.
-                    For a non negative real
-                    num_orbits_to_exclude_before_merger, that many orbits prior
-                    to merger are excluded when finding extrema.
-                    Default: 1.
-                extrema_finding_kwargs:
-                    Dictionary of arguments to be passed to the peak finding
-                    function (typically scipy.signal.find_peaks).
-                debug:
-                    Run additional sanity checks if True.
-                    Default: True.
-                treat_mid_points_between_pericenters_as_apocenters:
-                    If True, instead of trying to find local minima in the
-                    data, we simply find the midpoints between local maxima
-                    and treat them as apocenter locations. This is helpful for
-                    eccentricities ~1 where pericenters are easy to find but
-                    apocenters are not.
-                    Default: False
+        extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
+            num_orbits_to_exclude_before_merger:
+                Can be None or a non negative number.
+                If None, the full waveform data (even post-merger) is used for
+                finding extrema, but this might cause interpolation issues.
+                For a non negative num_orbits_to_exclude_before_merger, that
+                many orbits prior to merger are excluded when finding extrema.
+                Default: 1.
+            extrema_finding_kwargs:
+                Dictionary of arguments to be passed to the extrema finder,
+                scipy.signal.find_peaks.
+                The Defaults are the same as those of scipy.signal.find_peaks,
+                except for the "width" parameter. "width" denotes the minimum
+                separation between two consecutive pericenters/apocenters. Setting
+                this can help avoid false extrema in noisy data (for example, due
+                to junk radiation in NR). The default for "width" is set using
+                phi22(t) near the merger. Starting from 4 cycles of the (2,2) mode
+                before merger, we find the number of time steps taken to cover 2
+                cycles, let's call this "the gap". Note that 2 cycles of the (2,2)
+                mode is approximately one orbit, so this allows us to approximate
+                the smallest gap between two pericenters/apocenters. However, to be
+                conservative, we divide this gap by 4 and set it as the width
+                parameter for find_peaks.
+            debug:
+                Run additional sanity checks if debug is True.
+                Default: True.
+            omega22_averaging_method:
+                Options for obtaining omega22_average(t) from the instantaneous
+                omega22(t).
+                - "mean_of_extrema_interpolants": The mean of omega22_pericenters(t) and
+                  omega22_apocenters(t) is used as a proxy for the average frequency.
+                - "interpolate_orbit_averages_at_extrema": First, orbit averages
+                  are obtained at each pericenter by averaging omega22(t) over the
+                  time from the current pericenter to the next one. This average value
+                  is associated with the time at mid point between the current and the
+                  next pericenter. Similarly orbit averages are computed at apocenters.
+                  Finally, a spline interpolant is constructed between all of these orbit
+                  averages at extrema locations. Due to the nature of the averaging,
+                  the final time over which the spline is constructed is always starts
+                  after the first extrema and end before the last extrema.
+                - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
+                  is used as a proxy for the average frequency. This can only be
+                  used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
+                Default is "mean_of_extrema_interpolants".
+            treat_mid_points_between_pericenters_as_apocenters:
+                If True, instead of trying to find apocenter locations by looking
+                for local minima in the data, we simply find the midpoints between
+                pericenter locations and treat them as apocenters. This is helpful
+                for eccentricities ~1 where pericenters are easy to find but
+                apocenters are not.
+                Default: False.
         """
         self.dataDict = dataDict
         self.t = self.dataDict["t"]
@@ -194,73 +259,83 @@ class eccDefinition:
                 " Can not create an interpolator.")
 
     def measure_ecc(self, tref_in=None, fref_in=None):
-        """Measure eccentricity and mean anomaly at reference time.
+        """Measure eccentricity and mean anomaly from a gravitational waveform.
+
+        Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
+        where phi22(t) is the phase of the (2,2) waveform mode. We evaluate
+        omega22(t) at pericenter times, t_pericenters, and build a spline interpolant
+        omega22_pericenters(t) using those points. Similarly, we build omega22_apocenters(t)
+        using the apocenter times, t_apocenters. To find the pericenter/apocenter
+        locations, one can look for extrema in different waveform data, like
+        omega22(t) or Amp22(t), the amplitude of the (2,2) mode. Pericenters
+        correspond to pericenters, while apocenters correspond to apocenters in the data.
+        The method option (described below) lets you pick which waveform data to
+        use to find extrema.
+
+        The eccentricity is defined using omega22_pericenters(t) and omega22_apocenters(t),
+        as described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean anomaly is
+        defined using the pericenter locations as described in Eq.(2) of
+        arxiv:xxxx.xxxx.
+
+        FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
+        numbers are right, once the paper is finalized.
+        QUESTION FOR ARIF: Maybe we want to avoid saying pericenters/apocenters and just say
+        pericenters/apocenters here and in the code? Also, get rid of all "astrons"
+        throughout the code/documentation for consistency?
 
         parameters:
         ----------
         tref_in:
-            Input reference time at which to measure eccentricity and mean
-            anomaly.
+            Input reference time at which to measure eccentricity and mean anomaly.
             Can be a single float or an array.
-            NOTE: eccentricity/mean_ano are
-            returned on a different time array tref_out, described below.
 
         fref_in:
-            Input reference frequency at which to measure the eccentricity and
-            mean anomaly. It can be a single float or an array.
-            NOTE: eccentricity/mean anomaly are returned on a different freq
-            array fref_out, described below.
+            Input reference GW frequency at which to measure the eccentricity and
+            mean anomaly. Can be a single float or an array. Only one of
+            tref_in/fref_in should be provided.
 
-            Given an fref_in, we find the corresponding tref_in such that,
-            omega22_average(tref_in) = 2 * pi * fref_in.
-            Here, omega22_average(t) is a monotonically increasing average
-            frequency that is computed from the instantaneous omega22(t).
-            Note that this is not a moving average; depending on which averaging
-            method is used (see the omega22_averaging_method option below),
-            it means slightly different things.
+            Given an fref_in, we find the corresponding tref_in such that
+            omega22_average(tref_in) = 2 * pi * fref_in. Here, omega22_average(t)
+            is a monotonically increasing average frequency that is computed from
+            the instantaneous omega22(t). omega22_average(t) is not a moving
+            average; depending on which averaging method is used (see the
+            omega22_averaging_method option below), it means slightly different
+            things.
 
-            Currently, following options are implemented to calculate the
-            omega22_average
-            - "mean_of_extrema_interpolants": Mean of the omega22 given by the
-              spline through the pericenters and the spline through the apocenters.
-            - "interpolate_orbit_averages_at_extrema": A spline through the orbital
-              averaged omega22 evaluated at all available extrema.
-            - "omega22_zeroecc": omega22 of the zero eccentricity waveform
-            The default is "mean_of_extrema_interpolants". A method could be passed
-            through the "extra_kwargs" option with the key
-            "omega22_averaging_method".
+            Eccentricity and mean anomaly measurements are returned on a subset of
+            tref_in/fref_in, called tref_out/fref_out, which are described below.
+            If dataDict is provided in dimensionless units, tref_in should be in
+            units of M and fref_in should be in units of cycles/M. If dataDict is
+            provided in MKS units, t_ref should be in seconds and fref_in should be
+            in Hz.
 
         returns:
         --------
         tref_out/fref_out:
-            tref_out is the output reference time, while fref_out is the
-            output reference frequency, at which eccentricity and mean anomaly
-            are measured.
+            tref_out/fref_out is the output reference time/frequency at which
+            eccentricity and mean anomaly are measured. If tref_in is provided,
+            tref_out is returned, and if fref_in provided, fref_out is returned.
+            Units of tref_out/fref_out are the same as those of tref_in/fref_in.
 
-            NOTE: Only one of these is returned depending on whether tref_in or
-            fref_in is provided. If tref_in is provided then tref_out is
-            returned and if fref_in provided then fref_out is returned.
+            tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
+            where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
+                  tmin = max(t_pericenters[0], t_apocenters[0]),
+            As eccentricity measurement relies on the interpolants omega22_pericenters(t)
+            and omega22_apocenters(t), the above cutoffs ensure that we only compute
+            the eccentricity where both omega22_pericenters(t) and omega22_apocenters(t) are
+            within their bounds.
 
-            tref_out is set as tref_out = tref_in[tref_in >= tmin && tref_in < tmax],
-            where tmax = min(t_pericenters[-1], t_apocenters[-1]),
-            and tmin = max(t_pericenters[0], t_apocenters[0]). This is necessary because
-            eccentricity is computed using interpolants of omega22_pericenters and
-            omega22_apocenters. The above cutoffs ensure that we are not
-            extrapolating in omega22_pericenters/omega22_apocenters.
-            In addition, if num_orbits_to_exclude_before_merger in extra_kwargs
-            is not None, only the data up to that many orbits before merger is
-            included when finding the t_pericenters/t_apocenters. This helps avoid
-            nonphysical features like non-monotonic eccentricity near the merger.
-
-            fref_out is set as fref_out = fref_in[fref_in >= fmin && fref_in < fmax].
-            where fmin = omega22_average(tmin)/2/pi, and
-            fmax = omega22_average(tmax)/2/pi. tmin/tmax are defined above.
+            fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
+            where fmin = omega22_average(tmin)/2/pi and
+                  fmax = omega22_average(tmax)/2/pi, with tmin/tmax same as above.
 
         ecc_ref:
-            Measured eccentricity at tref_out/fref_out.
+            Measured eccentricity at tref_out/fref_out. Same type as
+            tref_out/fref_out.
 
         mean_ano_ref:
-            Measured mean anomaly at tref_out/fref_out.
+            Measured mean anomaly at tref_out/fref_out. Same type as
+            tref_out/fref_out.
         """
         self.omega22_pericenters_interp, self.pericenters_location = self.interp_extrema("maxima")
         # In some cases it is easier to find the pericenters than finding the
@@ -817,8 +892,7 @@ class eccDefinition:
         # Initiate figure, axis
         figsize = (12, 4 * len(list_of_plots))
         default_kwargs = {"nrows": len(list_of_plots),
-                          "figsize": figsize,
-                          "sharex": True}
+                          "figsize": figsize}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
@@ -834,8 +908,6 @@ class eccDefinition:
                 add_help_text=add_help_text,
                 usetex=usetex,
                 use_fancy_settings=False)
-            # make x label larger
-            ax[idx].set_xlabel(r"$t$", fontsize=18)
         fig.tight_layout()
         return fig, ax
 
@@ -858,9 +930,8 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.tref_out, self.ecc_ref, **kwargs)
-        ax.set_xlabel(r"$t$")
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(r"Eccentricity $e$")
-        ax.grid()
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -888,18 +959,19 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
-        ax.set_xlabel("$t$")
+        ax.set_xlabel("$t$", fontsize=18)
         ax.set_ylabel(r"$de/dt$")
         if add_help_text:
             ax.text(
-                0.01,
-                0.7,
+                0.5,
+                0.98,
                 ("We expect decc/dt to be always negative"),
-                ha="left",
+                ha="center",
                 va="top",
                 transform=ax.transAxes,
                 fontsize=14)
-        ax.grid()
+        # add line to indicate y = 0
+        ax.axhline(0, ls="--")
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -924,9 +996,8 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.tref_out, self.mean_ano_ref, **kwargs)
-        ax.set_xlabel("$t$")
+        ax.set_xlabel("$t$", fontsize=18)
         ax.set_ylabel("mean anomaly")
-        ax.grid()
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -976,16 +1047,15 @@ class eccDefinition:
         backslashchar = "\\"
         if add_help_text:
             ax.text(
-                0.01,
-                0.7,
-                (f"tref{backslashchar if usetex else ''}_out excludes the first and last extrema to"
-                 " avoid extrapolation when\n computing ecc(t)"),
-                ha="left",
+                0.5,
+                0.98,
+                (f"tref{backslashchar if usetex else ''}_out excludes the first and last extrema\n"
+                 " to avoid extrapolation when computing ecc(t)"),
+                ha="center",
                 va="top",
                 transform=ax.transAxes,
                 fontsize=14)
-        ax.set_xlabel(r"$t$")
-        ax.grid()
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(r"$\omega_{22}$")
         ax.legend(frameon=True, loc="upper left")
         if fig is None or ax is None:
@@ -1027,8 +1097,7 @@ class eccDefinition:
         ymin = min(self.amp22[self.apocenters_location])
         ymax = max(self.amp22[self.pericenters_location])
         ax.set_ylim(ymin, ymax)
-        ax.set_xlabel(r"$t$")
-        ax.grid()
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(r"$A_{22}$")
         ax.legend()
         if fig is None or ax is None:
@@ -1065,19 +1134,19 @@ class eccDefinition:
         ax.plot(tapocenters[1:], self.orb_phase_diff_ratio_at_apocenters[1:],
                 c=colorsDict["apocenter"],
                 marker=".", label="Apocenter phase diff ratio")
-        ax.set_xlabel(r"$t$")
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
-        ax.grid()
         if add_help_text:
             ax.text(
-                0.01,
-                0.7,
-                ("Ratio of phase difference between consecutive extrema should not exceed 1.5\n"
-                 "Too large value would indicate missing extrema."),
-                ha="left",
+                0.5,
+                0.98,
+                ("If phase difference exceeds 1.5,\n"
+                 "There may be missing extrema."),
+                ha="center",
                 va="top",
                 transform=ax.transAxes,
                 fontsize=14)
+        ax.set_title("Ratio of phase difference between consecutive extrema", fontsize=14)
         ax.legend(frameon=True)
         if fig is None or ax is None:
             return figNew, ax
@@ -1119,10 +1188,9 @@ class eccDefinition:
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
-        ax.set_xlabel(r"$t$")
-        ax.grid()
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(r"$\Delta\omega_{22}$")
-        ax.legend(frameon=True, loc="upper left")
+        ax.legend(frameon=True, loc="center left")
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1158,8 +1226,7 @@ class eccDefinition:
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
-        ax.set_xlabel(r"$t$")
-        ax.grid()
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(r"$\Delta A_{22}$")
         ax.legend(frameon=True, loc="center left")
         if fig is None or ax is None:
@@ -1213,8 +1280,7 @@ class eccDefinition:
         else:
             pad = 0.05 * ymax
             ax.set_ylim(ymin - pad, ymax + pad)
-        ax.set_xlabel(r"$t$")
-        ax.grid()
+        ax.set_xlabel(r"$t$", fontsize=18)
         ax.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema finding
         latest_time_vline = ax.axvline(
