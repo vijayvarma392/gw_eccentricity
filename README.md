@@ -40,7 +40,7 @@ python setup.py install
 If you do not have root permissions, replace the last step with
 `python setup.py install --user`
 
-## Dependencies
+### Dependencies
 
 All of these can be installed through pip or conda.
 * [numpy](https://docs.scipy.org/doc/numpy/user/install.html)
@@ -54,17 +54,18 @@ All of these can be installed through pip or conda.
 ## Usage
 See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb).
 
-## Making contributions
-See this
-[README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
-for instructions on how to make contributions to this package.
-
 ## Credits
 The main contributors to this code are [Md Arif Shaikh](https://md-arif-shaikh.github.io/), [Vijay
 Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/person/54205/2784). You can find the full list of contributors
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
 Please report bugs by raising an issue on our
 [GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
+
+### Making contributions
+See this
+[README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
+for instructions on how to make contributions to this package.
+
 
 ## Eventually remove
 For quick access to the paper: [![Latest build](https://img.shields.io/badge/PDF-latest-orange.svg?style=flat)](https://github.com/vijayvarma392/measure_eccentricity_paper/blob/pdflatex/paper.pdf)
