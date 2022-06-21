@@ -6,7 +6,7 @@
 
 # Welcome to gw_eccentricity!
 **gw_eccentricity** provides methods to measure eccentricity and mean anomaly
-from gravitational wave signals.
+from gravitational waveforms.
 
 These methods are described in the following paper: <br/>
 [1] FIXME.
@@ -16,8 +16,8 @@ this package.
 
 This package lives on
 [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
-python3, and is tested every week. You can see the current build status of the
-main branch at the top of this page.
+`python3`, and is tested every week. You can see the current build status of
+the main branch at the top of this page.
 
 
 ## Installation
@@ -52,7 +52,7 @@ All of these can be installed through pip or conda.
 
 
 ## Usage
-See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb)
+See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb).
 
 ## Making contributions
 See this
