@@ -930,7 +930,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.tref_out, self.ecc_ref, **kwargs)
-        ax.set_xlabel(r"$t$", fontsize=18)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
         if fig is None or ax is None:
             return figNew, ax
@@ -959,7 +959,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
-        ax.set_xlabel("$t$", fontsize=18)
+        ax.set_xlabel("$t$")
         ax.set_ylabel(r"$de/dt$")
         if add_help_text:
             ax.text(
@@ -968,8 +968,7 @@ class eccDefinition:
                 ("We expect decc/dt to be always negative"),
                 ha="center",
                 va="top",
-                transform=ax.transAxes,
-                fontsize=14)
+                transform=ax.transAxes)
         # add line to indicate y = 0
         ax.axhline(0, ls="--")
         if fig is None or ax is None:
@@ -996,7 +995,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.tref_out, self.mean_ano_ref, **kwargs)
-        ax.set_xlabel("$t$", fontsize=18)
+        ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
         if fig is None or ax is None:
             return figNew, ax
@@ -1053,9 +1052,8 @@ class eccDefinition:
                  " to avoid extrapolation when computing ecc(t)"),
                 ha="center",
                 va="top",
-                transform=ax.transAxes,
-                fontsize=14)
-        ax.set_xlabel(r"$t$", fontsize=18)
+                transform=ax.transAxes)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\omega_{22}$")
         ax.legend(frameon=True, loc="upper left")
         if fig is None or ax is None:
@@ -1097,7 +1095,7 @@ class eccDefinition:
         ymin = min(self.amp22[self.apocenters_location])
         ymax = max(self.amp22[self.pericenters_location])
         ax.set_ylim(ymin, ymax)
-        ax.set_xlabel(r"$t$", fontsize=18)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$A_{22}$")
         ax.legend()
         if fig is None or ax is None:
@@ -1134,7 +1132,7 @@ class eccDefinition:
         ax.plot(tapocenters[1:], self.orb_phase_diff_ratio_at_apocenters[1:],
                 c=colorsDict["apocenter"],
                 marker=".", label="Apocenter phase diff ratio")
-        ax.set_xlabel(r"$t$", fontsize=18)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         if add_help_text:
             ax.text(
@@ -1144,9 +1142,8 @@ class eccDefinition:
                  "There may be missing extrema."),
                 ha="center",
                 va="top",
-                transform=ax.transAxes,
-                fontsize=14)
-        ax.set_title("Ratio of phase difference between consecutive extrema", fontsize=14)
+                transform=ax.transAxes)
+        ax.set_title("Ratio of phase difference between consecutive extrema")
         ax.legend(frameon=True)
         if fig is None or ax is None:
             return figNew, ax
@@ -1188,7 +1185,7 @@ class eccDefinition:
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
-        ax.set_xlabel(r"$t$", fontsize=18)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta\omega_{22}$")
         ax.legend(frameon=True, loc="center left")
         if fig is None or ax is None:
@@ -1226,7 +1223,7 @@ class eccDefinition:
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
-        ax.set_xlabel(r"$t$", fontsize=18)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta A_{22}$")
         ax.legend(frameon=True, loc="center left")
         if fig is None or ax is None:
@@ -1280,7 +1277,7 @@ class eccDefinition:
         else:
             pad = 0.05 * ymax
             ax.set_ylim(ymin - pad, ymax + pad)
-        ax.set_xlabel(r"$t$", fontsize=18)
+        ax.set_xlabel(r"$t$")
         ax.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema finding
         latest_time_vline = ax.axvline(
@@ -1290,12 +1287,10 @@ class eccDefinition:
         ax.legend(handles=[pericenters, apocenters, latest_time_vline],
                   labels=["Pericenters", "Apocenters", "Latest time used for finding extrema."],
                   loc="center left",
-                  frameon=True,
-                  fontsize=14)
+                  frameon=True)
         ax.set_title(
             "Data being used for finding the extrema.",
-            ha="center",
-            fontsize=14)
+            ha="center")
         if add_help_text:
             if isinstance(self.tref_out, (float, int)):
                 ax.axvline(self.tref_out, c=colorsDict["pericentersvline"])
@@ -1304,8 +1299,7 @@ class eccDefinition:
                     ymin,
                     (r"$t_{\mathrm{ref}}$"),
                     ha="right",
-                    va="bottom",
-                fontsize=14)
+                    va="bottom")
         if fig is None or ax is None:
             return figNew, ax
         else:

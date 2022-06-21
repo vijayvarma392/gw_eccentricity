@@ -75,12 +75,18 @@ figWidthsTwoColDict = {
     "Notebook": 12
 }
 
+ticklabelSizeDict = {"APS": 9.0,
+                     "APJ": 8.0,
+                     "Elsevier": 8.0,
+                     "Springer": 8.0,
+                     "Presentation": 8.0,
+                     "Notebook": 14.0}
 labelSizeDict = {"APS": 9.0,
-                 "APJ": 8.0,
-                 "Elsevier": 8.0,
-                 "Springer": 8.0,
-                 "Presentation": 8.0,
-                 "Notebook": 14.0}
+                     "APJ": 8.0,
+                     "Elsevier": 8.0,
+                     "Springer": 8.0,
+                     "Presentation": 8.0,
+                     "Notebook": 18.0}
 fontSizeDict = {"APS": 9.0,
                 "APJ": 8.0,
                 "Elsevier": 8.0,
@@ -100,15 +106,16 @@ def use_fancy_plotsettings(usetex=True, journal="Notebook"):
     rc("axes", prop_cycle=cycler(color=colorsList))  # color cycler
     rc("axes", linewidth=0.6)
     rc("axes", labelsize=labelSizeDict[journal])
-    rc("axes", titlesize=labelSizeDict[journal])
+    rc("axes", titlesize=fontSizeDict[journal])
     # Ticks
-    rc("xtick", labelsize=labelSizeDict[journal])
-    rc("ytick", labelsize=labelSizeDict[journal])
+    rc("xtick", labelsize=ticklabelSizeDict[journal])
+    rc("ytick", labelsize=ticklabelSizeDict[journal])
     rc("xtick", direction="in")
     rc("ytick", direction="in")
     # Legend
     rc("legend", frameon=False)
-    rc("legend", fontsize=labelSizeDict[journal])
+    rc("legend", fontsize=fontSizeDict[journal])
     # Fonts
     rc("font", family="serif")
     rc("font", serif="times")
+    rc("font", size=fontSizeDict[journal])
