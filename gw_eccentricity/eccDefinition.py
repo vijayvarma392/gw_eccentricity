@@ -834,6 +834,8 @@ class eccDefinition:
                 add_help_text=add_help_text,
                 usetex=usetex,
                 use_fancy_settings=False)
+            # make x label larger
+            ax[idx].set_xlabel(r"$t$", fontsize=18)
         fig.tight_layout()
         return fig, ax
 
@@ -985,7 +987,7 @@ class eccDefinition:
         ax.set_xlabel(r"$t$")
         ax.grid()
         ax.set_ylabel(r"$\omega_{22}$")
-        ax.legend()
+        ax.legend(frameon=True, loc="upper left")
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1076,7 +1078,7 @@ class eccDefinition:
                 va="top",
                 transform=ax.transAxes,
                 fontsize=14)
-        ax.legend()
+        ax.legend(frameon=True)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1120,7 +1122,7 @@ class eccDefinition:
         ax.set_xlabel(r"$t$")
         ax.grid()
         ax.set_ylabel(r"$\Delta\omega_{22}$")
-        ax.legend()
+        ax.legend(frameon=True, loc="upper left")
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1159,7 +1161,7 @@ class eccDefinition:
         ax.set_xlabel(r"$t$")
         ax.grid()
         ax.set_ylabel(r"$\Delta A_{22}$")
-        ax.legend()
+        ax.legend(frameon=True, loc="center left")
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1190,14 +1192,16 @@ class eccDefinition:
         else:
             t_for_finding_extrema = self.t
         ax.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
-        ax.plot(t_for_finding_extrema[self.pericenters_location],
-                self.data_for_finding_extrema[self.pericenters_location],
-                c=colorsDict["pericenter"],
-                marker=".", ls="", label="Pericenter")
-        ax.plot(t_for_finding_extrema[self.apocenters_location],
-                self.data_for_finding_extrema[self.apocenters_location],
-                c=colorsDict["apocenter"],
-                marker=".", ls="", label="Apocenter")
+        pericenters, = ax.plot(
+            t_for_finding_extrema[self.pericenters_location],
+            self.data_for_finding_extrema[self.pericenters_location],
+            c=colorsDict["pericenter"],
+            marker=".", ls="")
+        apocenters, = ax.plot(
+            t_for_finding_extrema[self.apocenters_location],
+            self.data_for_finding_extrema[self.apocenters_location],
+            c=colorsDict["apocenter"],
+            marker=".", ls="")
         # set reasonable ylims
         ymin = min(self.data_for_finding_extrema[self.apocenters_location])
         ymax = max(self.data_for_finding_extrema[self.pericenters_location])
@@ -1213,20 +1217,20 @@ class eccDefinition:
         ax.grid()
         ax.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema finding
-        ax.axvline(self.latest_time_used_for_extrema_finding, c=colorsDict["vline"], ls="--")
-        ax.legend()
+        latest_time_vline = ax.axvline(
+            self.latest_time_used_for_extrema_finding,
+            c=colorsDict["vline"], ls="--")
+        # add legends
+        ax.legend(handles=[pericenters, apocenters, latest_time_vline],
+                  labels=["Pericenters", "Apocenters", "Latest time used for finding extrema."],
+                  loc="center left",
+                  frameon=True,
+                  fontsize=14)
         ax.set_title(
             "Data being used for finding the extrema.",
             ha="center",
             fontsize=14)
         if add_help_text:
-            ax.text(
-                self.latest_time_used_for_extrema_finding,
-                ymin,
-                "Latest time used for finding extrema.",
-                ha="right",
-                va="bottom",
-                fontsize=14)
             if isinstance(self.tref_out, (float, int)):
                 ax.axvline(self.tref_out, c=colorsDict["pericentersvline"])
                 ax.text(
