@@ -49,11 +49,11 @@ def test_time_convention():
         eccs = []
         meananos = []
         for data in [dataDict1, dataDict2]:
-            tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+            tref_out, ecc_ref, meanano_ref, gwecc_object = measure_eccentricity(
                 tref_in=data["t"],
                 method=method,
                 dataDict=data,
-                return_ecc_method=True,
+                return_gwecc_object=True,
                 extra_kwargs=extra_kwargs)
             eccs.append(ecc_ref)
             meananos.append(meanano_ref)

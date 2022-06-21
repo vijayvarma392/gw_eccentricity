@@ -44,7 +44,7 @@ parser.add_argument(
     nargs="+",
     default="all",
     help=("EccDefinition method to test. Can be 'all' OR one or more of the "
-          f"methods in {list(get_available_methods())}."))
+          f"methods in {get_available_methods()}."))
 parser.add_argument(
     "--emax",
     type=float,

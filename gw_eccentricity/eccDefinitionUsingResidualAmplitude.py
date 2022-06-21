@@ -1,5 +1,5 @@
 """
-Find peaks and troughs using Residual Amplitude.
+Find pericenters and apocenters using Residual Amplitude.
 
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
@@ -24,6 +24,7 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         of the form `(l, m)`.
         """
         super().__init__(*args, **kwargs)
+        self.label_for_data_for_finding_extrema = r"$\Delta A_{22}$"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""

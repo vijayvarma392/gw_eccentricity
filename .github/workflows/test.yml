@@ -3,12 +3,6 @@ on:
   schedule:
     - cron: "0 12 * * 1"
   push:
-    paths:
-      - gw_eccentricity/**
-      - test/**
-      - 'setup.py'
-      - '.github/workflows/test.yml'
-
 
 jobs:
   build:
@@ -38,7 +32,13 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          pip install pytest
+          pip install pytest nbconvert ipykernel latex
+          # Will only work for ubuntu
+          # See https://stackoverflow.com/questions/58121461/runtimeerror-failed-to-process-string-with-tex-because-latex-could-not-be-found
+          # and https://github.com/garrettj403/SciencePlots/issues/53
+          sudo apt-get install dvipng texlive-latex-extra texlive-fonts-recommended cm-super
+          
+
 
       - name: Install pipenv
         shell: bash -l {0}

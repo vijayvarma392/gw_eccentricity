@@ -30,8 +30,8 @@ colorsList = [colors_gb_14[1],
 
 colorsDict = {
     "default": colors_gb_36[5],
-    "apastron": colors_dj_25[1],
-    "periastron": colors_gb_45[1],
+    "apocenter": colors_dj_25[1],
+    "pericenter": colors_gb_45[1],
     "vline": colors_gb_14[1],
     "peaksvline": colors_aq_15[1],
     "FrequencyFits": colors_dj_25[1],
@@ -72,21 +72,27 @@ figWidthsTwoColDict = {
     "Elsevier": 7.48,
     "Springer": 6.93,
     "Presentation": 4.5,
-    "Notebook": 10
+    "Notebook": 12
 }
 
+ticklabelSizeDict = {"APS": 9.0,
+                     "APJ": 8.0,
+                     "Elsevier": 8.0,
+                     "Springer": 8.0,
+                     "Presentation": 8.0,
+                     "Notebook": 14.0}
 labelSizeDict = {"APS": 9.0,
-                 "APJ": 8.0,
-                 "Elsevier": 8.0,
-                 "Springer": 8.0,
-                 "Presentation": 8.0,
-                 "Notebook": 12.0}
+                     "APJ": 8.0,
+                     "Elsevier": 8.0,
+                     "Springer": 8.0,
+                     "Presentation": 8.0,
+                     "Notebook": 18.0}
 fontSizeDict = {"APS": 9.0,
                 "APJ": 8.0,
                 "Elsevier": 8.0,
                 "Springer": 8.0,
                 "Presentation": 8.0,
-                "Notebook": 12.0}
+                "Notebook": 14.0}
 
 
 def use_fancy_plotsettings(usetex=True, journal="Notebook"):
@@ -100,15 +106,16 @@ def use_fancy_plotsettings(usetex=True, journal="Notebook"):
     rc("axes", prop_cycle=cycler(color=colorsList))  # color cycler
     rc("axes", linewidth=0.6)
     rc("axes", labelsize=labelSizeDict[journal])
-    rc("axes", titlesize=labelSizeDict[journal])
+    rc("axes", titlesize=fontSizeDict[journal])
     # Ticks
-    rc("xtick", labelsize=labelSizeDict[journal])
-    rc("ytick", labelsize=labelSizeDict[journal])
+    rc("xtick", labelsize=ticklabelSizeDict[journal])
+    rc("ytick", labelsize=ticklabelSizeDict[journal])
     rc("xtick", direction="in")
     rc("ytick", direction="in")
     # Legend
     rc("legend", frameon=False)
-    rc("legend", fontsize=labelSizeDict[journal])
+    rc("legend", fontsize=fontSizeDict[journal])
     # Fonts
     rc("font", family="serif")
     rc("font", serif="times")
+    rc("font", size=fontSizeDict[journal])

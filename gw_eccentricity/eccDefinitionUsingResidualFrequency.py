@@ -1,5 +1,5 @@
 """
-Find peaks and troughs using Residual Frequency.
+Find pericenters and apocenters using Residual Frequency.
 
 Part of Eccentricity Definition project.
 Md Arif Shaikh, May 14, 2022
@@ -24,6 +24,7 @@ class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
         of the form `(l, m)`.
         """
         super().__init__(*args, **kwargs)
+        self.label_for_data_for_finding_extrema = r"$\Delta\omega_{22}$"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""

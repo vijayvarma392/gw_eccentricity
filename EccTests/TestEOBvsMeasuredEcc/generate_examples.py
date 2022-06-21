@@ -4,7 +4,7 @@ import glob
 import argparse
 import sys
 sys.path.append("../../")
-from measureEccentricity.utils import SmartFormatter
+from gw_eccentricity.utils import SmartFormatter
 
 
 __doc__ = """This script runs all the tests in the directory.

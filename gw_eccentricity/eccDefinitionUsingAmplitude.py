@@ -1,5 +1,5 @@
 """
-Find peaks and troughs using Amplitude.
+Find pericenters and apocenters using Amplitude.
 
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
@@ -20,6 +20,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         super().__init__(*args, **kwargs)
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
+        self.label_for_data_for_finding_extrema = r"$A_{22}$"
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
@@ -37,22 +38,22 @@ class eccDefinitionUsingAmplitude(eccDefinition):
 
         parameters:
         -----------
-        extrema_type: either maxima, peaks, minima or troughs
+        extrema_type: either maxima, pericenters, minima or apocenters
         extrema_finding_kwargs: Dictionary of arguments to be passed to the
         peak finding function. Here we use scipy.signal.find_peaks for finding
-        peaks. Hence the arguments are those that are allowed in that function
+        extrema. Hence the arguments are those that are allowed in that function
 
         returns:
         ------
         array of positions of extrema.
         """
-        if extrema_type in ["maxima", "peaks"]:
+        if extrema_type in ["maxima", "pericenters"]:
             sign = 1
-        elif extrema_type in ["minima", "troughs"]:
+        elif extrema_type in ["minima", "apocenters"]:
             sign = - 1
         else:
             raise Exception("`extrema_type` must be one of ['maxima', "
-                            "'minima', 'peaks', 'troughs']")
+                            "'minima', 'pericenters', 'apocenters']")
 
         return find_peaks(
             sign * self.data_for_finding_extrema,

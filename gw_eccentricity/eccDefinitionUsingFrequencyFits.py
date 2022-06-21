@@ -107,6 +107,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
+        self.label_for_data_for_finding_extrema = r"$\omega_{22}$"
 
         self.debug=self.extra_kwargs["debug"];
 
@@ -134,6 +135,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             self.omega22_analyse = self.omega22
             self.phase22_analyse = self.phase22
             self.t_analyse = self.t
+        # FIXME: Harald, Please change this as you see fit
+        # In the diagnostic plot, we add a plot that shows which data was
+        # used to find the extrema, i.e., it could be amp, omega or residual
+        # amp and so on. By setting this we make it available for using in
+        # in the plots
+        self.data_for_finding_extrema = self.omega22_analyse
 
         # TODO - consider whether to also cut from the start
         # (e.g. NR junk radiation)

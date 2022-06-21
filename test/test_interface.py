@@ -29,14 +29,14 @@ def test_interface():
             dataDict=dataDict)
 
         # Try evaluating at an array of times
-        tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+        tref_out, ecc_ref, meanano_ref, gwecc_object = measure_eccentricity(
             tref_in=dataDict["t"],
             method=method,
             dataDict=dataDict,
-            return_ecc_method=True)
+            return_gwecc_object=True)
 
         # Make diagnostic plots
-        eccMethod.make_diagnostic_plots(usetex=False)
+        gwecc_object.make_diagnostic_plots(usetex=False)
 
         # Try evaluating at single frequency
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
@@ -45,8 +45,8 @@ def test_interface():
             dataDict=dataDict)
 
         # Try evaluating at an array of frequencies
-        tref_out, ecc_ref, meanano_ref, eccMethod = measure_eccentricity(
+        tref_out, ecc_ref, meanano_ref, gwecc_object = measure_eccentricity(
             fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
             method=method,
             dataDict=dataDict,
-            return_ecc_method=True)
+            return_gwecc_object=True)
