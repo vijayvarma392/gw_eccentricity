@@ -204,7 +204,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             print(f"t_analyse[0]={self.t_analyse[0]}, t_analyse[-1]={self.t_analyse[-1]}, global fit to t<={self.t_analyse[idx_end]}")
         UseAlphaFit=False
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
-        fit_center_time = -5000.
         if UseAlphaFit:
             Tmin = 0.8*self.t_analyse[-1]
             f_fit = envelope_fitting_function2(t0=fit_center_time,
@@ -221,7 +220,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                   ]
             # some hopefully reasonable bounds for global curve_fit
             bounds0 = [[0., 0., 0.],
-                       [1., 10./(-fit_center_time), 1.]]
+                       [10.*f0, 10.*f0/(-fit_center_time), 1.]]
         else:
             f_fit = envelope_fitting_function(t0=fit_center_time,
                                               verbose=False
@@ -229,28 +228,33 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                                               )
             # some reasonable initial guess for curve_fit
             nPN = -3./8  # the PN exponent as approximation
-            f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[-1])
+            f0 = 0.5 * (self.omega22_analyse[0]+self.omega22_analyse[idx_end])
             p0 = [f0,  # function value ~ omega
                   -nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
                   0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
                   ]
             # some hopefully reasonable bounds for global curve_fit
             bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
-                       [1., 10./(-fit_center_time), -fit_center_time]]
+                       [10*f0, 10.*f0/(-fit_center_time), -fit_center_time]]
         if verbose:
             print(f"global fit: guess p0={p0}, bounds={bounds0}")
+ 
+        if pp:
+            fig,axs=plt.subplots(1,2,figsize=(11,4))
+            axs[0].set_title('omega')
+            axs[1].set_title('residual:  omega-f_fit')
+            axs[0].plot(self.t_analyse, self.omega22_analyse, label='omega22')
+            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p0), label='fit initial guess')
+            axs[0].legend();            
+ 
+ 
         p_global, pconv = scipy.optimize.curve_fit(
             f_fit, self.t_analyse[:idx_end],
             self.omega22_analyse[:idx_end], p0=p0,
             bounds=bounds0)
 
         if pp:
-            fig,axs=plt.subplots(1,2,figsize=(11,4))
-            axs[0].set_title('omega')
-            axs[1].set_title('residual:  omega-f_fit')
-            axs[0].plot(self.t_analyse, self.omega22_analyse, label='omega22')
             axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p_global), linewidth=0.5, color='grey', label='fit')
-            axs[0].legend()
             axs[1].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), label='residual')
             fig.savefig(pp,format='pdf')
             plt.close(fig)
@@ -522,7 +526,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         if pp:
             # offset data vertically by 0.001*it, to mitigate lines on top of each other.
             if plot_offset is None:
-                plot_offset=10**int(np.log10(omega_residual_amp/2.))
+                plot_offset=10**np.ceil(np.log10(omega_residual_amp/2.))
 
             line,=axs[0].plot(t[idx_lo:idx_hi], it*plot_offset+ sign*omega_residual, label=f"it={it}")
             if len(idx_extrema)>0:
