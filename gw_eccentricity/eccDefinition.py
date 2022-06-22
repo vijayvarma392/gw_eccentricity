@@ -412,46 +412,19 @@ class eccDefinition:
         if self.tref_out[0] < t_pericenters[0] or self.tref_out[-1] >= t_pericenters[-1]:
             raise Exception("Reference time must be within two pericenters.")
 
-        # compute eccentricity from the value of omega22_pericenters_interp
-        # and omega22_apocenters_interp at tref_out using the formula in
-        # ref. arXiv:2101.11798 eq. 4
-        self.omega22_pericenter_at_tref_out = self.omega22_pericenters_interp(self.tref_out)
-        self.omega22_apocenter_at_tref_out = self.omega22_apocenters_interp(self.tref_out)
-        self.ecc_ref = ((np.sqrt(self.omega22_pericenter_at_tref_out)
-                         - np.sqrt(self.omega22_apocenter_at_tref_out))
-                        / (np.sqrt(self.omega22_pericenter_at_tref_out)
-                           + np.sqrt(self.omega22_apocenter_at_tref_out)))
-
-        @np.vectorize
-        def compute_mean_ano(time):
-            """
-            Compute mean anomaly.
-            Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
-            Mean anomaly grows linearly in time from 0 to 2 pi over
-            the range [t_at_last_pericenter, t_at_next_pericenter], where t_at_last_pericenter
-            is the time at the previous pericenter, and t_at_next_pericenter is
-            the time at the next pericenter.
-            """
-            idx_at_last_pericenter = np.where(t_pericenters <= time)[0][-1]
-            t_at_last_pericenter = t_pericenters[idx_at_last_pericenter]
-            t_at_next_pericenter = t_pericenters[idx_at_last_pericenter + 1]
-            t_since_last_pericenter = time - t_at_last_pericenter
-            current_period = t_at_next_pericenter - t_at_last_pericenter
-            mean_ano_ref = 2 * np.pi * t_since_last_pericenter / current_period
-            return mean_ano_ref
-
+        # compute eccentricity at self.tref_out
+        self.ecc_ref = self.compute_eccentricity(self.tref_out,
+                                            self.omega22_pericenters_interp,
+                                            self.omega22_apocenters_interp)
         # Compute mean anomaly at tref_out
-        self.mean_ano_ref = compute_mean_ano(self.tref_out)
+        self.mean_ano_ref = self.compute_mean_ano(self.tref_out, t_pericenters)
 
         # check if eccentricity is positive
         if any(self.ecc_ref < 0):
             warnings.warn("Encountered negative eccentricity.")
 
         # check if eccentricity is monotonic and convex
-        if len(self.tref_out) > 1:
-            self.check_monotonicity_and_convexity(
-                self.tref_out, self.ecc_ref,
-                debug=self.extra_kwargs["debug"])
+        self.check_monotonicity_and_convexity()
 
         if len(self.tref_out) == 1:
             self.mean_ano_ref = self.mean_ano_ref[0]
@@ -462,6 +435,70 @@ class eccDefinition:
 
         return_array = self.fref_out if fref_in is not None else self.tref_out
         return return_array, self.ecc_ref, self.mean_ano_ref
+
+    def compute_eccentricity(self,
+                             t,
+                             omega22_pericenters_interpolant,
+                             omega22_apocenters_interpolant):
+        """
+        Computer eccentricity at time t.
+
+        Compute eccentricity from the value of omega22_pericenters_interpolant
+        and omega22_apocenters_interpolant at t using the formula in
+        ref. arXiv:2101.11798 Eq. (4).
+
+        Paramerers:
+        -----------
+        t:
+            Time to compute the eccentricity at. May be scalar or an array.
+        omega22_pericenters_interpolant:
+            Interolant of omega22 at the pericenters.
+        omega22_apocenters_interpolant:
+            Interolant of omega22 at the apocenters.
+
+        Returns:
+        --------
+        Eccentricity at t.
+        """
+        omega22_pericenter_at_t = omega22_pericenters_interpolant(t)
+        omega22_apocenter_at_t = omega22_apocenters_interpolant(t)
+        return ((np.sqrt(omega22_pericenter_at_t)
+                 - np.sqrt(omega22_apocenter_at_t))
+                / (np.sqrt(omega22_pericenter_at_t)
+                   + np.sqrt(omega22_apocenter_at_t)))
+
+    def compute_mean_ano(self, t, t_pericenters):
+        """
+        Compute mean anomaly at time t.
+        
+        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
+        Mean anomaly grows linearly in time from 0 to 2 pi over
+        the range [t_at_last_pericenter, t_at_next_pericenter], where t_at_last_pericenter
+        is the time at the previous pericenter, and t_at_next_pericenter is
+        the time at the next pericenter.
+
+        Parameters:
+        -----------
+        t:
+            Time to compute mean anomaly at. Must be a scalar.
+        t_pericenters:
+            Times at the pericenters.
+
+        Returns:
+        --------
+        Mean anomaly at t.
+        """
+        @np.vectorize
+        def mean_ano(t):
+            idx_at_last_pericenter = np.where(t_pericenters <= t)[0][-1]
+            t_at_last_pericenter = t_pericenters[idx_at_last_pericenter]
+            t_at_next_pericenter = t_pericenters[idx_at_last_pericenter + 1]
+            t_since_last_pericenter = t - t_at_last_pericenter
+            current_period = t_at_next_pericenter - t_at_last_pericenter
+            mean_ano_ref = 2 * np.pi * t_since_last_pericenter / current_period
+            return mean_ano_ref
+
+        return mean_ano(t)
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
@@ -500,40 +537,27 @@ class eccDefinition:
                           f" {too_far_times}")
         return orb_phase_diff, orb_phase_diff_ratio
 
-    def check_monotonicity_and_convexity(self, tref_out, ecc_ref,
-                                         check_convexity=False,
-                                         debug=False,
-                                         t_for_ecc_test=None):
+    def check_monotonicity_and_convexity(self,
+                                         check_convexity=False):
         """Check if measured eccentricity is a monotonic function of time.
 
         parameters:
-        tref_out:
-            Output reference time from eccentricity measurement
-        ecc_ref:
-            measured eccentricity at tref_out
         check_convexity:
             In addition to monotonicity, it will check for
             convexity as well. Default is False.
-        debug:
-            If True then warning is generated when length for interpolation
-            is greater than 100000. Default is False.
-        t_for_ecc_test:
-            Time array to build a spline. If None, then uses
-            a new time array with delta_t = 0.1 for same range as in tref_out
-            Default is None.
         """
-        spline = InterpolatedUnivariateSpline(tref_out, ecc_ref)
-        if t_for_ecc_test is None:
-            t_for_ecc_test = np.arange(tref_out[0], tref_out[-1], 0.1)
-            len_t_for_ecc_test = len(t_for_ecc_test)
-            if debug and len_t_for_ecc_test > 1e6:
-                warnings.warn("time array t_for_ecc_test is too long."
-                              f" Length is {len_t_for_ecc_test}")
+        self.t_for_checks = self.dataDict["t"][
+            np.logical_and(self.dataDict["t"] >= self.t_min,
+                           self.dataDict["t"] <= self.t_max)]
+        self.ecc_for_checks = self.compute_eccentricity(
+            self.t_for_checks,
+            self.omega22_pericenters_interp,
+            self.omega22_apocenters_interp)
 
+        spline = InterpolatedUnivariateSpline(self.t_for_checks,
+                                              self.ecc_for_checks)
         # Get derivative of ecc(t) using cubic splines.
-        self.decc_dt = spline.derivative(n=1)(t_for_ecc_test)
-        self.t_for_ecc_test = t_for_ecc_test
-        self.decc_dt = self.decc_dt
+        self.decc_dt = spline.derivative(n=1)(self.t_for_checks)
 
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt > 0):
@@ -542,7 +566,7 @@ class eccDefinition:
         # Is ecc(t) a convex function? That is, is the second
         # derivative always positive?
         if check_convexity:
-            self.d2ecc_dt = spline.derivative(n=2)(t_for_ecc_test)
+            self.d2ecc_dt = spline.derivative(n=2)(self.t_for_checks)
             self.d2ecc_dt = self.d2ecc_dt
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
@@ -923,7 +947,8 @@ class eccDefinition:
         # Initiate figure, axis
         figsize = (12, 4 * len(list_of_plots))
         default_kwargs = {"nrows": len(list_of_plots),
-                          "figsize": figsize}
+                          "figsize": figsize,
+                          "sharex": True}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
@@ -939,6 +964,7 @@ class eccDefinition:
                 add_help_text=add_help_text,
                 usetex=usetex,
                 use_fancy_settings=False)
+            ax[idx].tick_params(labelbottom=True)
         fig.tight_layout()
         return fig, ax
 
@@ -990,7 +1016,7 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        ax.plot(self.tref_out, self.ecc_ref, **kwargs)
+        ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
         if fig is None or ax is None:
@@ -1048,7 +1074,7 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        ax.plot(self.t_for_ecc_test, self.decc_dt, **kwargs)
+        ax.plot(self.t_for_checks, self.decc_dt, **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel(r"$de/dt$")
         if add_help_text:
@@ -1115,7 +1141,9 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        ax.plot(self.tref_out, self.mean_ano_ref, **kwargs)
+        ax.plot(self.t_for_checks,
+                self.compute_mean_ano(self.t_for_checks, self.t[self.pericenters_location]),
+                **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
         if fig is None or ax is None:
@@ -1172,10 +1200,11 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, journal=journal)
-        ax.plot(self.tref_out, self.omega22_pericenter_at_tref_out,
+        ax.plot(self.t_for_checks,
+                self.omega22_pericenters_interp(self.t_for_checks),
                 c=colorsDict["pericenter"], label=r"$\omega_{p}$",
                 **kwargs)
-        ax.plot(self.tref_out, self.omega22_apocenter_at_tref_out,
+        ax.plot(self.t_for_checks, self.omega22_apocenters_interp(self.t_for_checks),
                 c=colorsDict["apocenter"], label=r"$\omega_{a}$",
                 **kwargs)
         ax.plot(self.t, self.omega22,
@@ -1189,8 +1218,10 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        ymin = min(self.omega22_apocenter_at_tref_out)
-        ymax = max(self.omega22_pericenter_at_tref_out)
+        ymin = min(min(self.omega22[self.pericenters_location]),
+                   min(self.omega22[self.apocenters_location]))
+        ymax = max(max(self.omega22[self.pericenters_location]),
+                   max(self.omega22[self.apocenters_location]))
         pad = 0.05 * ymax # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
@@ -1260,9 +1291,7 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, journal=journal)
-        # plot only upto merger to make the plot readable
-        end = np.argmin(np.abs(self.t - self.t_merger))
-        ax.plot(self.t[: end], self.amp22[: end],
+        ax.plot(self.t, self.amp22,
                 c=colorsDict["default"], label=r"$A_{22}$")
         ax.plot(self.t[self.pericenters_location],
                 self.amp22[self.pericenters_location],
@@ -1273,8 +1302,10 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label="Apocenters")
         # set reasonable ylims
-        ymin = min(self.amp22[self.apocenters_location])
-        ymax = max(self.amp22[self.pericenters_location])
+        ymin = min(min(self.amp22[self.pericenters_location]),
+                   min(self.amp22[self.apocenters_location]))
+        ymax = max(max(self.amp22[self.pericenters_location]),
+                   max(self.amp22[self.apocenters_location]))
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$A_{22}$")
@@ -1420,8 +1451,10 @@ class eccDefinition:
                 marker=".", ls="", label="Apocenter",
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        ymin = min(self.res_omega22[self.apocenters_location])
-        ymax = max(self.res_omega22[self.pericenters_location])
+        ymin = min(min(self.res_omega22[self.pericenters_location]),
+                   min(self.res_omega22[self.apocenters_location]))
+        ymax = max(max(self.res_omega22[self.pericenters_location]),
+                   max(self.res_omega22[self.apocenters_location]))
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
@@ -1489,8 +1522,10 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label="Apocenter")
         # set reasonable ylims
-        ymin = min(self.res_amp22[self.apocenters_location])
-        ymax = max(self.res_amp22[self.pericenters_location])
+        ymin = min(min(self.res_amp22[self.pericenters_location]),
+                   min(self.res_amp22[self.apocenters_location]))
+        ymax = max(max(self.res_amp22[self.pericenters_location]),
+                   max(self.res_amp22[self.apocenters_location]))
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
@@ -1567,8 +1602,10 @@ class eccDefinition:
             c=colorsDict["apocenter"],
             marker=".", ls="")
         # set reasonable ylims
-        ymin = min(self.data_for_finding_extrema[self.apocenters_location])
-        ymax = max(self.data_for_finding_extrema[self.pericenters_location])
+        ymin = min(min(self.data_for_finding_extrema[self.pericenters_location]),
+                   min(self.data_for_finding_extrema[self.apocenters_location]))
+        ymax = max(max(self.data_for_finding_extrema[self.pericenters_location]),
+                   max(self.data_for_finding_extrema[self.apocenters_location]))
         # we want to make the ylims symmetric about y=0 when Residual data is used
         if "Delta" in self.label_for_data_for_finding_extrema:
             ylim = max(ymax, -ymin)
