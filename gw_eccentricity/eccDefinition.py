@@ -548,7 +548,7 @@ class eccDefinition:
         """
         self.t_for_checks = self.dataDict["t"][
             np.logical_and(self.dataDict["t"] >= self.t_min,
-                           self.dataDict["t"] <= self.t_max)]
+                           self.dataDict["t"] < self.t_max)]
         self.ecc_for_checks = self.compute_eccentricity(
             self.t_for_checks,
             self.omega22_pericenters_interp,
