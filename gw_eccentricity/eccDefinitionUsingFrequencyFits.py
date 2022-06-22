@@ -422,11 +422,14 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
 
     if pp:
         fig,axs=plt.subplots(1,3,figsize=(11,4))
+        axs[0].set_title('trend-subtracted:  sign*(omega-f_fit)')
+        axs[1].set_title('omega(t)')
+        axs[2].set_title('residual of fit')
 
     while True:
         it = it+1
 
-        if it > 30:
+        if it > 20:
             if pp:
                 #axs[0].legend()
                 fig.savefig(pp,format='pdf')
@@ -453,8 +456,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         maxdt = np.max(np.diff(t[idx_lo:idx_hi]))
         width=int( 0.5* 2 * np.pi / np.max(omega22[idx_lo:idx_hi]) / maxdt )
         omega_residual_amp = max(omega_residual)-min(omega_residual)
-        if verbose:
-            print(f"width for find_peaks = {width}")
+        #if verbose:
+        #    print(f"width for find_peaks = {width}")
 
 
         idx_extrema, properties = scipy.signal.find_peaks(
@@ -466,21 +469,42 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         idx_extrema = idx_extrema+idx_lo
         Nleft = sum(idx_extrema < idx_ref)
         Nright = sum(idx_extrema >= idx_ref)
+
+        if len(idx_extrema)==0:
+            if verbose:
+                print(f"could not identify a single extremum.  This can happen, for instance\n"
+                "for low eccentricity late in the inspiral where the range of omega\n"
+                "is so large that the prominence = 0.03*omega_res_amp cannot be\n"
+                "reached by the small eccentricity oscillations")
+            if pp:
+                #plt.legend()
+                fig.savefig(pp,format='pdf')
+                plt.close(fig)
+            # don't really know what to do if we didn't identify any extrema.  
+            # so return with empty idx_extrema and let upstream code handle this
+            return idx_extrema, p, K, idx_ref
+
+
         # update K based on identified peaks
         if len(idx_extrema)>=2:
             K = ((phase22[idx_extrema[-1]] - phase22[idx_extrema[0]])
                  / (4*np.pi * (len(idx_extrema) - 1)))
         if verbose:
-            print(f"idx_extrema={idx_extrema}, Nleft={Nleft}, "
+            print(f"       idx_extrema={idx_extrema}, Nleft={Nleft}, "
                   f"Nright={Nright}, K={K:5.3f}")
         if pp:
-            axs[0].plot(t[idx_lo:idx_hi], sign*omega_residual, label=f"it={it}")
-            axs[1].plot(t[idx_extrema], omega22[idx_extrema], 'o', label=f"it={it}")
+            # offset data vertically by 0.001*it, to mitigate lines on top of each other.
+            line,=axs[0].plot(t[idx_lo:idx_hi], it*0.001+ sign*omega_residual, label=f"it={it}")
+            if len(idx_extrema)>0:
+                axs[0].plot(t[idx_extrema], it*0.001+sign*omega_residual[idx_extrema-idx_lo],'o',
+                    color=line.get_color())
+            line,=axs[1].plot(t[idx_lo:idx_hi],omega22[idx_lo:idx_hi]+0.001*it)
+            axs[1].plot(t[idx_extrema], omega22[idx_extrema]+0.001*it, 'o', color=line.get_color(), label=f"it={it}")
 
-        if Nright<Nafter  and Nleft==Nbefore:
+        if Nright<Nafter: #  and Nleft==Nbefore:
             Count_Nright_short=Count_Nright_short+1
             if verbose:
-                print(f"Count_Nright_short={Count_Nright_short}")
+                print(f"       Count_Nright_short={Count_Nright_short}")
 
         if Nleft != Nbefore or Nright != Nafter:
             # number of extrema not as we wished, so update [idx_lo, idx_hi]
@@ -489,7 +513,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                     (idx_extrema[Nleft-Nbefore-1]
                      + idx_extrema[Nleft-Nbefore])/2)
                 if verbose:
-                    print(f"idx_lo increased to {idx_lo}")
+                    print(f"       idx_lo increased to {idx_lo}")
             elif Nleft < Nbefore:  # reduce idx_lo to capture one more peak
                 if idx_lo == 0:
                     # no more data to the left, so consider shifting idx_ref
@@ -502,7 +526,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                                            + idx_extrema[tmp + 1])/2)
                             Nright = Nright - 1  # reflect the change in idx_ref to aid in updating idx_hi
                             if verbose:
-                                print(f"idx_ref increased to {idx_ref}")
+                                print(f"       idx_ref increased to {idx_ref}")
                         else:
                             pass
                             # First, wait for the idx_hi-updating below to widen the interval.
@@ -520,14 +544,14 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                     phase_lo = phase22[idx_lo] - K*4*np.pi*0.6
                     idx_lo = np.argmax(phase22 > phase_lo)
                     if verbose:
-                        print(f"idx_lo reduced to {idx_lo}")
+                        print(f"        idx_lo reduced to {idx_lo}")
             # too many peaks to the right right, discard by placing idx_hi
             # between N and N+1's peak to right
             if Nright > Nafter:
                 idx_hi = int((idx_extrema[Nafter-Nright]
                               + idx_extrema[Nafter-Nright-1])/2)
                 if verbose:
-                    print(f"idx_hi reduced to {idx_hi}")
+                    print(f"        idx_hi reduced to {idx_hi}")
             elif Nright < Nafter:  # increase idx_hi to capture one more peak
 
                 # do we have extra data?
@@ -544,11 +568,11 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                         # we have
                         idx_hi = len(phase22)
                     if verbose and idx_hi != old_idx_hi:
-                        print(f"idx_hi increased to {idx_hi}")
+                        print(f"       idx_hi increased to {idx_hi}")
                 else:
                     # we had already fully extended idx_hi in earlier iteration
                     if verbose:
-                        print("idx_hi at its maximum, but still insufficient"
+                        print("        idx_hi at its maximum, but still insufficient "
                               f"Nright={Nright}")
 
             if (idx_lo, idx_hi) != (old_idx_lo, old_idx_hi):
@@ -632,6 +656,6 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
 
         old_extrema = omega22_extrema
         if verbose:
-            print(f"max_delta_omega={max_delta_omega:5.4g} => fit updated to"
+            print(f"       max_delta_omega={max_delta_omega:5.4g} => fit updated to"
                   f" f_fit={f_fit.format(*p)}")
     raise Exception("Should never get here")
