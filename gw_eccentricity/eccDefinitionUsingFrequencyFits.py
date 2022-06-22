@@ -191,7 +191,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema
-
+        if verbose:
+            print(f"t_analyse[0]={self.t_analyse[0]}, t_analyse[-1]={self.t_analyse[-1]}")
         UseAlphaFit=False
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
         if UseAlphaFit:
