@@ -450,7 +450,7 @@ class eccDefinition:
         Paramerers:
         -----------
         t:
-            Time to compute the eccentricity at. May be scalar or an array.
+            Time to compute the eccentricity at. Could be scalar or an array.
         omega22_pericenters_interpolant:
             Interolant of omega22 at the pericenters.
         omega22_apocenters_interpolant:
@@ -480,7 +480,7 @@ class eccDefinition:
         Parameters:
         -----------
         t:
-            Time to compute mean anomaly at. Must be a scalar.
+            Time to compute mean anomaly at. Could be scalar or an array.
         t_pericenters:
             Times at the pericenters.
 
