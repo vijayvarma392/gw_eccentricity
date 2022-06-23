@@ -398,12 +398,9 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     where
       - idx_extrema -- the indices of the identified extrema
                        USUALLY len(idx_extrema) == Nbefore+Nafter
-                       HOWEVER, if Nafer cannot be reached because of
-                       end-of-data, then
-                         a) if one extremum too few is identified, returns
-                            idx_extrema of length Nbefore+Nafter-1
-                         b) if two or more extrema too few are identified,
-                            then raise Exception
+                       HOWEVER, if not enough extrema can be identified (e.g.
+                       end of data), then a shorter or even empty list can
+                       be returned
 
       - p -- the fitting parameters of the best fit through the extrema
       - K -- an updated estimate of the periastron advance K (i.e. the average
@@ -415,12 +412,11 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
 
     ASSUMPTIONS & POSSIBLE FAILURE MODES
       - if increase_idx_ref_if_needed == False, and idx_lo cannot be reduced
-          enough to reach Nbefore -> raise Exception
-      - if identified number of maxima after is exactly below the
-          target Nafter
-          -> return normally, but with len(idx_extrema) **SMALLER** than
-             Nbefore+Nafter. This signals that the end of the data is reached,
-             and that the user should not press to even larger idx_ref.
+        enough to reach Nbefore -> raise Exception
+      - if fewer extrema are identified than requested, then the function will
+        return normally, but with len(idx_extrema) **SMALLER** than
+        Nbefore+Nafter. This signals that the end of the data is reached,
+        and that the user should not press to even larger idx_ref.
     """
     if verbose:
         print(f"FindExtremaNearIdxRef  idx_ref={idx_ref}, K_initial={K:5.3f}, "
