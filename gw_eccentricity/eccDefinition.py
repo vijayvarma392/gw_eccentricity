@@ -2,7 +2,6 @@
 Base module to measure eccentricity and mean anomaly for given waveform data.
 
 Part of Defining eccentricity project
-Md Arif Shaikh, Mar 29, 2022
 """
 
 import numpy as np
@@ -351,10 +350,14 @@ class eccDefinition:
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
 
-        t_pericenters = self.t[self.pericenters_location]
+        self.t_pericenters = self.t[self.pericenters_location]
         t_apocenters = self.t[self.apocenters_location]
-        self.t_max = min(t_pericenters[-1], t_apocenters[-1])
-        self.t_min = max(t_pericenters[0], t_apocenters[0])
+        self.t_max = min(self.t_pericenters[-1], t_apocenters[-1])
+        self.t_min = max(self.t_pericenters[0], t_apocenters[0])
+        # set time for checks and diagnostics
+        self.t_for_checks = self.dataDict["t"][
+            np.logical_and(self.dataDict["t"] >= self.t_min,
+                           self.dataDict["t"] < self.t_max)]
         # check that only one of tref_in or fref_in is provided
         if (tref_in is not None) + (fref_in is not None) != 1:
             raise KeyError("Exactly one of tref_in and fref_in"
@@ -409,15 +412,13 @@ class eccDefinition:
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
         # See explanation on why we do not include the last pericenter above.
-        if self.tref_out[0] < t_pericenters[0] or self.tref_out[-1] >= t_pericenters[-1]:
+        if self.tref_out[0] < self.t_pericenters[0] or self.tref_out[-1] >= self.t_pericenters[-1]:
             raise Exception("Reference time must be within two pericenters.")
 
         # compute eccentricity at self.tref_out
-        self.ecc_ref = self.compute_eccentricity(self.tref_out,
-                                            self.omega22_pericenters_interp,
-                                            self.omega22_apocenters_interp)
+        self.ecc_ref = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
-        self.mean_ano_ref = self.compute_mean_ano(self.tref_out, t_pericenters)
+        self.mean_ano_ref = self.compute_mean_ano(self.tref_out)
 
         # check if eccentricity is positive
         if any(self.ecc_ref < 0):
@@ -436,10 +437,7 @@ class eccDefinition:
         return_array = self.fref_out if fref_in is not None else self.tref_out
         return return_array, self.ecc_ref, self.mean_ano_ref
 
-    def compute_eccentricity(self,
-                             t,
-                             omega22_pericenters_interpolant,
-                             omega22_apocenters_interpolant):
+    def compute_eccentricity(self, t):
         """
         Computer eccentricity at time t.
 
@@ -447,27 +445,25 @@ class eccDefinition:
         and omega22_apocenters_interpolant at t using the formula in
         ref. arXiv:2101.11798 Eq. (4).
 
+        #FIXME: ARIF change the above reference when gw eccentricity paper is out
+
         Paramerers:
         -----------
         t:
             Time to compute the eccentricity at. Could be scalar or an array.
-        omega22_pericenters_interpolant:
-            Interolant of omega22 at the pericenters.
-        omega22_apocenters_interpolant:
-            Interolant of omega22 at the apocenters.
 
         Returns:
         --------
         Eccentricity at t.
         """
-        omega22_pericenter_at_t = omega22_pericenters_interpolant(t)
-        omega22_apocenter_at_t = omega22_apocenters_interpolant(t)
+        omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
+        omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
         return ((np.sqrt(omega22_pericenter_at_t)
                  - np.sqrt(omega22_apocenter_at_t))
                 / (np.sqrt(omega22_pericenter_at_t)
                    + np.sqrt(omega22_apocenter_at_t)))
 
-    def compute_mean_ano(self, t, t_pericenters):
+    def compute_mean_ano(self, t):
         """
         Compute mean anomaly at time t.
         
@@ -477,12 +473,12 @@ class eccDefinition:
         is the time at the previous pericenter, and t_at_next_pericenter is
         the time at the next pericenter.
 
+        #FIXME: ARIF Change the above reference when gw eccentricity paper is out
+
         Parameters:
         -----------
         t:
             Time to compute mean anomaly at. Could be scalar or an array.
-        t_pericenters:
-            Times at the pericenters.
 
         Returns:
         --------
@@ -490,9 +486,9 @@ class eccDefinition:
         """
         @np.vectorize
         def mean_ano(t):
-            idx_at_last_pericenter = np.where(t_pericenters <= t)[0][-1]
-            t_at_last_pericenter = t_pericenters[idx_at_last_pericenter]
-            t_at_next_pericenter = t_pericenters[idx_at_last_pericenter + 1]
+            idx_at_last_pericenter = np.where(self.t_pericenters <= t)[0][-1]
+            t_at_last_pericenter = self.t_pericenters[idx_at_last_pericenter]
+            t_at_next_pericenter = self.t_pericenters[idx_at_last_pericenter + 1]
             t_since_last_pericenter = t - t_at_last_pericenter
             current_period = t_at_next_pericenter - t_at_last_pericenter
             mean_ano_ref = 2 * np.pi * t_since_last_pericenter / current_period
@@ -546,13 +542,8 @@ class eccDefinition:
             In addition to monotonicity, it will check for
             convexity as well. Default is False.
         """
-        self.t_for_checks = self.dataDict["t"][
-            np.logical_and(self.dataDict["t"] >= self.t_min,
-                           self.dataDict["t"] < self.t_max)]
         self.ecc_for_checks = self.compute_eccentricity(
-            self.t_for_checks,
-            self.omega22_pericenters_interp,
-            self.omega22_apocenters_interp)
+            self.t_for_checks)
 
         spline = InterpolatedUnivariateSpline(self.t_for_checks,
                                               self.ecc_for_checks)
@@ -1142,7 +1133,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.t_for_checks,
-                self.compute_mean_ano(self.t_for_checks, self.t[self.pericenters_location]),
+                self.compute_mean_ano(self.t_for_checks),
                 **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
