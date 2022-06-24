@@ -351,13 +351,9 @@ class eccDefinition:
         self.check_pericenters_and_apocenters_appear_alternately()
 
         self.t_pericenters = self.t[self.pericenters_location]
-        t_apocenters = self.t[self.apocenters_location]
-        self.t_max = min(self.t_pericenters[-1], t_apocenters[-1])
-        self.t_min = max(self.t_pericenters[0], t_apocenters[0])
-        # set time for checks and diagnostics
-        self.t_for_checks = self.dataDict["t"][
-            np.logical_and(self.dataDict["t"] >= self.t_min,
-                           self.dataDict["t"] < self.t_max)]
+        self.t_apocenters = self.t[self.apocenters_location]
+        self.t_max = min(self.t_pericenters[-1], self.t_apocenters[-1])
+        self.t_min = max(self.t_pericenters[0], self.t_apocenters[0])
         # check that only one of tref_in or fref_in is provided
         if (tref_in is not None) + (fref_in is not None) != 1:
             raise KeyError("Exactly one of tref_in and fref_in"
@@ -377,6 +373,10 @@ class eccDefinition:
         # there is no next pericenter and that would cause a problem.
         self.tref_out = self.tref_in[np.logical_and(self.tref_in < self.t_max,
                                                     self.tref_in >= self.t_min)]
+        # set time for checks and diagnostics
+        self.t_for_checks = self.dataDict["t"][
+            np.logical_and(self.dataDict["t"] >= self.t_min,
+                           self.dataDict["t"] < self.t_max)]
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
@@ -463,6 +463,28 @@ class eccDefinition:
                 / (np.sqrt(omega22_pericenter_at_t)
                    + np.sqrt(omega22_apocenter_at_t)))
 
+    def derivative_of_eccentricity(self, n=1):
+        """Get derivative of eccentricity.
+
+        Parameters:
+        -----------
+        n: int
+            Order of derivative. Should be 1 or 2, since it uses
+            cubic spine to get the derivatives.
+
+        Returns:
+        --------
+            nth order derivative of eccentricity.
+        """
+        if not hasattr(self, "ecc_for_checks"):
+            self.ecc_for_checks = self.compute_eccentricity(
+                self.t_for_checks)
+
+        spline = InterpolatedUnivariateSpline(self.t_for_checks,
+                                              self.ecc_for_checks)
+        # Get derivative of ecc(t) using cubic splines.
+        return spline.derivative(n=1)(self.t_for_checks)
+        
     def compute_mean_ano(self, t):
         """
         Compute mean anomaly at time t.
@@ -542,13 +564,7 @@ class eccDefinition:
             In addition to monotonicity, it will check for
             convexity as well. Default is False.
         """
-        self.ecc_for_checks = self.compute_eccentricity(
-            self.t_for_checks)
-
-        spline = InterpolatedUnivariateSpline(self.t_for_checks,
-                                              self.ecc_for_checks)
-        # Get derivative of ecc(t) using cubic splines.
-        self.decc_dt = spline.derivative(n=1)(self.t_for_checks)
+        self.decc_dt = self.derivative_of_eccentricity(n=1)
 
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt > 0):
@@ -557,7 +573,7 @@ class eccDefinition:
         # Is ecc(t) a convex function? That is, is the second
         # derivative always positive?
         if check_convexity:
-            self.d2ecc_dt = spline.derivative(n=2)(self.t_for_checks)
+            self.d2ecc_dt = self.derivative_of_eccentricity(n=2)
             self.d2ecc_dt = self.d2ecc_dt
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
@@ -1065,6 +1081,8 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
+        if not hasattr(self, "decc_dt"):
+            self.decc_dt = self.derivative_of_eccentricity(n=1)
         ax.plot(self.t_for_checks, self.decc_dt, **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel(r"$de/dt$")
