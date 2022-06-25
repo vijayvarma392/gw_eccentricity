@@ -456,6 +456,9 @@ class eccDefinition:
         --------
         Eccentricity at t.
         """
+        # Check that t is within tmin and tmax to avoid extrapolation
+        self.check_input_time(t)
+
         omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
         omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
         return ((np.sqrt(omega22_pericenter_at_t)
@@ -463,27 +466,33 @@ class eccDefinition:
                 / (np.sqrt(omega22_pericenter_at_t)
                    + np.sqrt(omega22_apocenter_at_t)))
 
-    def derivative_of_eccentricity(self, n=1):
-        """Get derivative of eccentricity.
+    def derivative_of_eccentricity(self, t, n=1):
+        """Get time derivative of eccentricity.
 
         Parameters:
         -----------
+        t:
+            Times to get the derivative at.
         n: int
             Order of derivative. Should be 1 or 2, since it uses
             cubic spine to get the derivatives.
 
         Returns:
         --------
-            nth order derivative of eccentricity.
+            nth order time derivative of eccentricity.
         """
+        # Check that t is within tmin and tmax to avoid extrapolation
+        self.check_input_time(t)
+
         if not hasattr(self, "ecc_for_checks"):
             self.ecc_for_checks = self.compute_eccentricity(
                 self.t_for_checks)
 
-        spline = InterpolatedUnivariateSpline(self.t_for_checks,
-                                              self.ecc_for_checks)
+        if not hasattr(self, "spline"):
+            self.ecc_spline = InterpolatedUnivariateSpline(self.t_for_checks,
+                                                           self.ecc_for_checks)
         # Get derivative of ecc(t) using cubic splines.
-        return spline.derivative(n=1)(self.t_for_checks)
+        return self.ecc_spline.derivative(n=1)(t)
         
     def compute_mean_ano(self, t):
         """
@@ -506,6 +515,9 @@ class eccDefinition:
         --------
         Mean anomaly at t.
         """
+        # Check that t is within tmin and tmax to avoid extrapolation
+        self.check_input_time(t)
+        
         @np.vectorize
         def mean_ano(t):
             idx_at_last_pericenter = np.where(self.t_pericenters <= t)[0][-1]
@@ -517,6 +529,24 @@ class eccDefinition:
             return mean_ano_ref
 
         return mean_ano(t)
+
+    def check_input_time(self, t):
+        """Check that input time is within tmin and tmax.
+
+        To avoid any extrapolation, check that the input times t are
+        always greater than or equal to tmin and alwas less than tmax.
+        """
+        t = np.atleast_1d(t)
+        if any(t >= self.t_max):
+            raise Exception(f"At least one input time is later than or equal "
+                            f"to t_max={self.t_max}, "
+                            "which corresponds to min(last pericenter "
+                            "time, last apocenter time).")
+        if any(t < self.t_min):
+            raise Exception(f"At least one input time is earlier than t_min="
+                            f"{self.t_min}, "
+                            "which corresponds to max(first pericenter "
+                            "time, first apocenter time).")
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
@@ -564,7 +594,8 @@ class eccDefinition:
             In addition to monotonicity, it will check for
             convexity as well. Default is False.
         """
-        self.decc_dt = self.derivative_of_eccentricity(n=1)
+        self.decc_dt = self.derivative_of_eccentricity(
+            self.t_for_checks, n=1)
 
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt > 0):
@@ -1082,7 +1113,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         if not hasattr(self, "decc_dt"):
-            self.decc_dt = self.derivative_of_eccentricity(n=1)
+            self.decc_dt = self.derivative_of_eccentricity(self.t_for_checks, n=1)
         ax.plot(self.t_for_checks, self.decc_dt, **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel(r"$de/dt$")
