@@ -151,10 +151,12 @@ class eccDefinition:
         # Sanity check various kwargs and set default values
         self.spline_kwargs = check_kwargs_and_set_defaults(
             spline_kwargs, self.get_default_spline_kwargs(),
-            "spline_kwargs")
+            "spline_kwargs",
+           "eccDefinition.get_default_spline_kwargs()" )
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
-            "extra_kwargs")
+            "extra_kwargs",
+            "eccDefinition.get_default_extra_kwargs()")
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
            is not None and \
            self.extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
@@ -165,7 +167,8 @@ class eccDefinition:
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
             self.get_default_extrema_finding_kwargs(),
-            "extrema_finding_kwargs")
+            "extrema_finding_kwargs",
+            "eccDefinition.get_default_extrema_finding_kwargs()")
 
     def get_default_spline_kwargs(self):
         """Defaults for spline settings."""
