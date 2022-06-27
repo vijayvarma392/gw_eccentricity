@@ -154,10 +154,12 @@ class eccDefinition:
         # plot_measured_ecc.
         self.ecc_for_checks = None
         # Spline interpolant of measured eccentricity as function of time built using
-        # ecc_for_checks at t_for_checks.
+        # ecc_for_checks at t_for_checks. This is used to get first/second derivative of
+        # eccentricity with respect to time.
         # Might get redefined in derivative_of_eccentricity.
         self.ecc_interp = None
         # First derivative of eccentricity with respect to time at t_for_checks.
+        # Will be used to check monotonicity, plot decc_dt
         # Might get redefined in check_monotonicity_and_convexity, plot_decc_dt
         self.decc_dt_for_checks = None
 
