@@ -143,12 +143,23 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
-        # Might get redefined in derivative_of_eccentricity, plot_measured_ecc
+        # Measured values of eccentricities to perform diagnostic checks.
+        # For example to plot ecc vs time plot, or checking monotonicity of
+        # eccentricity as a function of time. These are values of eccentricities
+        # measured at t_for_checks where t_for_checks is the time array in
+        # dataDict lying between t_min and t_max.
+        # t_min is max(t_pericenters, t_apocenters) and
+        # t_max is min(t_pericenters, t_apocenters)
+        # Initialy set to None and might get redefined in derivative_of_eccentricity,
+        # plot_measured_ecc.
         self.ecc_for_checks = None
-        # Might get redefined in derivative_of_eccentricity
-        self.ecc_spline = None
+        # Spline interpolant of measured eccentricity as function of time built using
+        # ecc_for_checks at t_for_checks.
+        # Might get redefined in derivative_of_eccentricity.
+        self.ecc_interp = None
+        # First derivative of eccentricity with respect to time at t_for_checks.
         # Might get redefined in check_monotonicity_and_convexity, plot_decc_dt
-        self.decc_dt = None
+        self.decc_dt_for_checks = None
 
         if "hlm_zeroecc" in dataDict:
             self.compute_res_amp_and_omega22()
@@ -494,11 +505,11 @@ class eccDefinition:
             self.ecc_for_checks = self.compute_eccentricity(
                 self.t_for_checks)
 
-        if self.ecc_spline is None:
-            self.ecc_spline = InterpolatedUnivariateSpline(self.t_for_checks,
+        if self.ecc_interp is None:
+            self.ecc_interp = InterpolatedUnivariateSpline(self.t_for_checks,
                                                            self.ecc_for_checks)
         # Get derivative of ecc(t) using cubic splines.
-        return self.ecc_spline.derivative(n=1)(t)
+        return self.ecc_interp.derivative(n=1)(t)
         
     def compute_mean_ano(self, t):
         """
@@ -600,19 +611,19 @@ class eccDefinition:
             In addition to monotonicity, it will check for
             convexity as well. Default is False.
         """
-        if self.decc_dt is None:
-            self.decc_dt = self.derivative_of_eccentricity(
+        if self.decc_dt_for_checks is None:
+            self.decc_dt_for_checks = self.derivative_of_eccentricity(
                 self.t_for_checks, n=1)
 
         # Is ecc(t) a monotonically decreasing function?
-        if any(self.decc_dt > 0):
+        if any(self.decc_dt_for_checks > 0):
             warnings.warn("Ecc(t) is non monotonic.")
 
         # Is ecc(t) a convex function? That is, is the second
         # derivative always positive?
         if check_convexity:
-            self.d2ecc_dt = self.derivative_of_eccentricity(n=2)
-            if any(self.d2ecc_dt > 0):
+            self.d2ecc_dt_for_checks = self.derivative_of_eccentricity(n=2)
+            if any(self.d2ecc_dt_for_checks > 0):
                 warnings.warn("Ecc(t) is concave.")
 
     def check_pericenters_and_apocenters_appear_alternately(self):
@@ -1121,9 +1132,9 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        if self.decc_dt is None:
-            self.decc_dt = self.derivative_of_eccentricity(self.t_for_checks, n=1)
-        ax.plot(self.t_for_checks, self.decc_dt, **kwargs)
+        if self.decc_dt_for_checks is None:
+            self.decc_dt_for_checks = self.derivative_of_eccentricity(self.t_for_checks, n=1)
+        ax.plot(self.t_for_checks, self.decc_dt_for_checks, **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel(r"$de/dt$")
         if add_help_text:
@@ -1651,10 +1662,10 @@ class eccDefinition:
             c=colorsDict["apocenter"],
             marker=".", ls="")
         # set reasonable ylims
-        ymin = min(min(self.data_for_finding_extrema[self.pericenters_location]),
-                   min(self.data_for_finding_extrema[self.apocenters_location]))
-        ymax = max(max(self.data_for_finding_extrema[self.pericenters_location]),
-                   max(self.data_for_finding_extrema[self.apocenters_location]))
+        data = self.data_for_finding_extrema[np.logical_and(t_for_finding_extrema >= self.t_min,
+                                                            t_for_finding_extrema < self.t_max)]
+        ymin = min(data)
+        ymax = max(data)
         # we want to make the ylims symmetric about y=0 when Residual data is used
         if "Delta" in self.label_for_data_for_finding_extrema:
             ylim = max(ymax, -ymin)
