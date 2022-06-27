@@ -143,6 +143,12 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
+        # Might get redefined in derivative_of_eccentricity, plot_measured_ecc
+        self.ecc_for_checks = None
+        # Might get redefined in derivative_of_eccentricity
+        self.ecc_spline = None
+        # Might get redefined in check_monotonicity_and_convexity, plot_decc_dt
+        self.decc_dt = None
 
         if "hlm_zeroecc" in dataDict:
             self.compute_res_amp_and_omega22()
@@ -457,7 +463,7 @@ class eccDefinition:
         Eccentricity at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_input_time(t)
+        self.check_time_limits(t)
 
         omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
         omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
@@ -482,13 +488,13 @@ class eccDefinition:
             nth order time derivative of eccentricity.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_input_time(t)
+        self.check_time_limits(t)
 
-        if not hasattr(self, "ecc_for_checks"):
+        if self.ecc_for_checks is None:
             self.ecc_for_checks = self.compute_eccentricity(
                 self.t_for_checks)
 
-        if not hasattr(self, "spline"):
+        if self.ecc_spline is None:
             self.ecc_spline = InterpolatedUnivariateSpline(self.t_for_checks,
                                                            self.ecc_for_checks)
         # Get derivative of ecc(t) using cubic splines.
@@ -516,7 +522,7 @@ class eccDefinition:
         Mean anomaly at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_input_time(t)
+        self.check_time_limits(t)
         
         @np.vectorize
         def mean_ano(t):
@@ -530,20 +536,20 @@ class eccDefinition:
 
         return mean_ano(t)
 
-    def check_input_time(self, t):
-        """Check that input time is within tmin and tmax.
+    def check_time_limits(self, t):
+        """Check that time t is within tmin and tmax.
 
-        To avoid any extrapolation, check that the input times t are
-        always greater than or equal to tmin and alwas less than tmax.
+        To avoid any extrapolation, check that the times t are
+        always greater than or equal to tmin and always less than tmax.
         """
         t = np.atleast_1d(t)
         if any(t >= self.t_max):
-            raise Exception(f"At least one input time is later than or equal "
+            raise Exception(f"Found times later than or equal "
                             f"to t_max={self.t_max}, "
                             "which corresponds to min(last pericenter "
                             "time, last apocenter time).")
         if any(t < self.t_min):
-            raise Exception(f"At least one input time is earlier than t_min="
+            raise Exception(f"Found times earlier than t_min="
                             f"{self.t_min}, "
                             "which corresponds to max(first pericenter "
                             "time, first apocenter time).")
@@ -594,8 +600,9 @@ class eccDefinition:
             In addition to monotonicity, it will check for
             convexity as well. Default is False.
         """
-        self.decc_dt = self.derivative_of_eccentricity(
-            self.t_for_checks, n=1)
+        if self.decc_dt is None:
+            self.decc_dt = self.derivative_of_eccentricity(
+                self.t_for_checks, n=1)
 
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt > 0):
@@ -605,7 +612,6 @@ class eccDefinition:
         # derivative always positive?
         if check_convexity:
             self.d2ecc_dt = self.derivative_of_eccentricity(n=2)
-            self.d2ecc_dt = self.d2ecc_dt
             if any(self.d2ecc_dt > 0):
                 warnings.warn("Ecc(t) is concave.")
 
@@ -1054,6 +1060,9 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
+        if self.ecc_for_checks is None:
+            self.ecc_for_checks = self.compute_eccentricity(
+                self.t_for_checks)
         ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
@@ -1112,7 +1121,7 @@ class eccDefinition:
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
-        if not hasattr(self, "decc_dt"):
+        if self.decc_dt is None:
             self.decc_dt = self.derivative_of_eccentricity(self.t_for_checks, n=1)
         ax.plot(self.t_for_checks, self.decc_dt, **kwargs)
         ax.set_xlabel("$t$")
