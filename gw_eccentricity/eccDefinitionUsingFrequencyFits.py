@@ -320,6 +320,14 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 print(f"IDX_EXTREMA={idx_extrema}, f_fit={f_fit.format(*p)}, "
                       f"K={K:5.3f}, idx_ref={idx_ref}")
 
+            # decide whether we are going to stop iterating:
+            terminate=False
+            if len(idx_extrema) < 2*N+1:  # didn't find the desired number of extrema
+                terminate=True
+            elif idx_extrema[N]<idx_ref:  
+                # The N+1-st extremum should be *later* than idx_ref.  If not, sth wrong
+                terminate=True
+
             if len(idx_extrema)>=2*N-1:
                 # at most two extrema short of target.  Assume the fit is
                 # good enough to report extrema obtained through it.
@@ -331,19 +339,29 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         t_extrema_refined.append(extrema_refined[0][k])
                         omega22_extrema_refined.append(extrema_refined[1][k])
                         phase22_extrema_refined.append(extrema_refined[2][k])
+                if idx_extrema[N]>idx_ref:
+                    # the N+1-st extremum should be *after* idx_ref.  If it is 
+                    # not, something went wrong, so do not take this extremum
 
+                    # take the extremum in the middle of the fitting interval.
+                    # (if we are short extrema, then there will be fewer to the
+                    # right. To not report those, due to potentially inaccurate 
+                    # fits that close to merger)
+                    extrema.append(idx_extrema[N])
+                    t_extrema_refined.append(extrema_refined[0][N])
+                    omega22_extrema_refined.append(extrema_refined[1][N])
+                    phase22_extrema_refined.append(extrema_refined[2][N])
 
-                # take the extremum in the middle of the fitting interval.
-                # (if we are short extrema, then there will be fewer to the
-                # right. To not report those, due to potentially inaccurate 
-                # fits that close to merger)
-                extrema.append(idx_extrema[N])
-                t_extrema_refined.append(extrema_refined[0][N])
-                omega22_extrema_refined.append(extrema_refined[1][N])
-                phase22_extrema_refined.append(extrema_refined[2][N])
+                if terminate:
+                    # be greedy and take any further extrema we know
+                    for k in range(N+1, len(idx_extrema)):
+                        if idx_extrema[k]>idx_ref:
+                            extrema.append(idx_extrema[k])
+                            t_extrema_refined.append(extrema_refined[0][k])
+                            omega22_extrema_refined.append(extrema_refined[1][k])
+                            phase22_extrema_refined.append(extrema_refined[2][k])
 
-            # if we are any extremas short, stop.         
-            if len(idx_extrema) < 2*N+1:
+            if terminate:
                 #print("WARNING - TOO FEW EXTREMA FOUND. THIS IS LIKELY SIGNAL THAT WE ARE AT MERGER")
                 break
 
