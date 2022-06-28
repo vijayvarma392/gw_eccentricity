@@ -449,7 +449,8 @@ class eccDefinition:
             warnings.warn("Encountered negative eccentricity.")
 
         # check if eccentricity is monotonic and convex
-        self.check_monotonicity_and_convexity()
+        if self.extra_kwargs["debug"]:
+            self.check_monotonicity_and_convexity()
 
         if len(self.tref_out) == 1:
             self.mean_ano_ref = self.mean_ano_ref[0]
