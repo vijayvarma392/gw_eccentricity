@@ -18,6 +18,8 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.cm as cm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
 import warnings
 sys.path.append("../../")
@@ -75,6 +77,13 @@ parser.add_argument(
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
 parser.add_argument(
+    "--slice",
+    type=int,
+    default=1,
+    help=("Slice the EOBeccs array by taking only every nth ecc value given by"
+          " slice. This is useful when we want do not want to loop over all"
+          "the ecc but skip n number of ecc given by slice"))
+parser.add_argument(
     "--paper",
     action="store_true",
     help="Remove markers for paper.")
@@ -99,6 +108,9 @@ extra_kwargs = {"debug": False,
                 # "treat_mid_points_between_peaks_as_troughs": True
                 }
 
+cmap = cm.get_cmap("plasma")
+colors = cmap(np.linspace(0, 1, len(EOBeccs)))
+
 
 def plot_waveform_ecc_vs_model_ecc(methods, key):
     # Get the output figure name
@@ -112,21 +124,42 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     if args.example:
         fig_eob_vs_measured_ecc_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
                                         f".{args.plot_format}")
+        fig_measured_ecc_vs_time_name = (f"{args.fig_dir}/test_measured_ecc_vs_time_example."
+                    f"{args.plot_format}")
     else:
-        fig_eob_vs_measured_ecc_name = (f"{args.fig_dir}/EccTest_set{key}_{method_str}"
+        fig_eob_vs_measured_ecc_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_set{key}_{method_str}"
                                    f".{args.plot_format}")
+        fig_measured_ecc_vs_time_name = (f"{args.fig_dir}/test_measured_ecc_vs_time_set{key}_{method_str}"
+                                         f".{args.plot_format}")
+    # For eob vs measured ecc
     fig_eob_vs_measured_ecc, ax_eob_vs_measured_ecc = plt.subplots(
         figsize=(figWidthsOneColDict[journal], 3))
-    waveform_eccs = []  # ecc as measured by the definition
+    # For measured ecc vs time
+    fig_measured_ecc_vs_time, ax_measured_ecc_vs_time = plt.subplots(
+        nrows=len(methods),
+        figsize=(figWidthsOneColDict[journal], # figure width 
+                 (2 if args.paper else 3) # height of each row
+                 * len(methods) # number of rows
+                 ))
+    # create dictionary to store different quantities for each methods
+    # as we loop over all the eccentricity and methods
+    model_eccs = {} # to keep track of eob input eccentricity
+    measured_eccs = {}  # to keep track of ecc as measured by the definition
+    tmaxList = {}  # to keep track of minimum time in tref_out across all eccs
+    tminList = {}  # to keep track of maximum time in tref_out across all eccs
+    # Initiate the dictionary with an empty list for each method
+    for method in methods:
+        model_eccs.update({method: []})
+        measured_eccs.update({method: []})
+        tmaxList.update({method: []})
+        tminList.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
-    for ecc in tqdm(EOBeccs):
+    for idx0, ecc in tqdm(enumerate(EOBeccs)):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
                     f"Momega0{Momega0:.3f}_meanAno{meanAno:.3f}.h5")
         kwargs = {"filepath": fileName}
-        # Store measured eccs for a given ecc using different methods
-        measured_eccs = []
-        for method in methods:
+        for idx, method in enumerate(methods):
             if "Residual" in method:
                 fileName_zero_ecc = (
                     f"{data_dir}/EccTest_q{q:.2f}_chi1z"
@@ -143,28 +176,70 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                     dataDict=dataDict,
                     method=method,
                     extra_kwargs=extra_kwargs)
+                model_eccs[method] += [ecc]
                 # Get the measured eccentricity at the first available index.
                 # This corresponds to the first extrema that occurs after the
                 # initial time.
-                measured_eccs.append(measured_ecc[0])
+                measured_eccs[method] += [measured_ecc[0]]
+                tmaxList[method] += [tref_out[-1]]
+                tminList[method] += [tref_out[0]]
+                # add measured ecc vs time plot for each method to corresponding axis
+                ax = ax_measured_ecc_vs_time if len(methods) == 1 else ax_measured_ecc_vs_time[idx]
+                # add only for idx0 that are multiples of args.slice. This is to reduce the
+                # number of lines in the plot to make each line plot visible.
+                if idx0 % args.slice == 0:
+                    ax.plot(tref_out, measured_ecc, c=colors[idx0], label=f"{ecc:.7f}")
+                if idx == len(methods) - 1:
+                    ax.set_xlabel(r"$t$ [$M$]")
             except Exception:
                 warnings.warn("Exception raised. Probably too small eccentricity "
                               "to detect any extrema.")
-                measured_eccs.append(np.NAN)
-        # Append list of measured eccs using different methods for a single ecc
-        # to waveform_eccs
-        waveform_eccs.append(measured_eccs)
-    # plot waveform eccs for different methods
-    waveform_eccs = np.array(waveform_eccs)
+    # Iterate over methods to plots measured ecc vs eob eccs collected above
+    # looping over all EOB eccs for each methods.
     for idx, method in enumerate(methods):
+        # plot waveform eccs vs eob eccs for different methods
         ax_eob_vs_measured_ecc.loglog(
-            EOBeccs, waveform_eccs[:, idx], label=f"{method}",
+            model_eccs[method], measured_eccs[method], label=method,
             c=colorsDict.get(method, "C0"),
             ls=lstyles.get(method, "-"),
             lw=lwidths.get(method, 1),
             alpha=lalphas.get(method, 1),
             marker=None if args.paper else "."  # no marker for paper
         )
+        # Customize the measured ecc vs time plots
+        ax = ax_measured_ecc_vs_time if len(methods) == 1 else ax_measured_ecc_vs_time[idx]
+        ax.grid()
+        if len(tmaxList[method]) >= 1:
+            tmin = max(tminList[method])  # choose the shortest
+            tmax = max(tmaxList[method])
+            ymax = max(measured_eccs[method])
+            ymin = min(EOBeccs)
+            ax.set_xlim(tmin, tmax)
+            ax.set_ylim(ymin, ymax)
+        ax.set_ylabel("$e$")
+        ax.set_yscale("log")
+        # add yticks
+        ax.set_yticks(10.0**np.arange(-6.0, 1.0, 2.0))
+        # add text indicating the method used
+        ax.text(0.95, 0.95, method, ha="right", va="top",
+                transform=ax.transAxes, fontsize=10)
+        # add colorbar
+        norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='3%', pad=0.1)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        cbar = fig_measured_ecc_vs_time.colorbar(sm, cax=cax, orientation='vertical')
+        # set yticks on colorbar
+        cbar.ax.set_yticks(10**np.arange(-7.0, 1.0))
+        cbar.ax.tick_params(labelsize=8)
+        cbar.set_label(r"$e_{\mathrm{EOB}}$ at $\omega_0$",
+                       size=10)
+        if idx == 0:
+            ax.set_title(rf"$q={q:.1f}, \chi_{{1z}}={chi1z:.1f}, "
+                         rf"\chi_{{2z}}={chi2z:.1f}$",
+                         ha="center", fontsize=10)
+
+    # Customize measured eccs vs eob eccs
     ax_eob_vs_measured_ecc.set_title(
         rf"$q$={q:.1f}, $\chi_{{1z}}$={chi1z:.1f}, $\chi_{{2z}}$"
         f"={chi2z:.1f}")
@@ -183,8 +258,13 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     ax_eob_vs_measured_ecc.set_ylabel(r"Measured Eccentricity $e$")
     ax_eob_vs_measured_ecc.set_ylim(top=1.0)
     ax_eob_vs_measured_ecc.set_xlim(EOBeccs[0], EOBeccs[-1])
+
+    # save figures
     fig_eob_vs_measured_ecc.savefig(
         f"{fig_eob_vs_measured_ecc_name}",
+        bbox_inches="tight")
+    fig_measured_ecc_vs_time.savefig(
+        f"{fig_measured_ecc_vs_time_name}",
         bbox_inches="tight")
 
 if "all" in args.param_set_key:
