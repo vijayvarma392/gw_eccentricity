@@ -1082,11 +1082,13 @@ class eccDefinition:
             self.ecc_for_checks = self.compute_eccentricity(
                 self.t_for_checks)
         ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
-        # add a vertical line in case of scalar input time/frequency indicating the
+        # add a vertical line in case of scalar input tref_out/fref_out indicating the
         # corresponding reference time
-        if not hasattr(self.tref_out, "len"):
-            ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":")
+        if self.tref_out.size == 1:
+            ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
+                       label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
+            ax.legend()
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
         if fig is None or ax is None:
@@ -1216,11 +1218,13 @@ class eccDefinition:
         ax.plot(self.t_for_checks,
                 self.compute_mean_ano(self.t_for_checks),
                 **kwargs)
-        # add a vertical line in case of scalar input time/frequency indicating the
+        # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
-        if not hasattr(self.tref_out, "len"):
-            ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":")
+        if self.tref_out.size == 1:
+            ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
+                       label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
+            ax.legend()
         ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
         if fig is None or ax is None:
@@ -1301,13 +1305,12 @@ class eccDefinition:
         pad = 0.05 * ymax # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
-        backslashchar = "\\"
         if add_help_text:
             ax.text(
                 0.5,
                 0.98,
-                (f"tref{backslashchar if usetex else ''}_out excludes the first and last extrema\n"
-                 " to avoid extrapolation when computing ecc(t)"),
+                (r"To avoid extrapolation, the first and last extrema are excluded\\"
+                 "when evaluating the $\omega_{a}$/$\omega_{p}$ interpolants."),
                 ha="center",
                 va="top",
                 transform=ax.transAxes)
@@ -1695,7 +1698,9 @@ class eccDefinition:
             self.latest_time_used_for_extrema_finding,
             c=colorsDict["vline"], ls="--",
             label="Latest time used for finding extrema.")
-        if not hasattr(self.tref_out, "len"):
+        # if tref_out/fref_out is scalar then add vertical line to indicate corresponding
+        # reference time.
+        if self.tref_out.size == 1:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
         # add legends
