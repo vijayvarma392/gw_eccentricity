@@ -114,7 +114,7 @@ def use_fancy_plotsettings(usetex=True, journal="Notebook"):
     rc("ytick", direction="in")
     # Legend
     rc("legend", frameon=False)
-    rc("legend", fontsize=fontSizeDict[journal])
+    rc("legend", fontsize=labelSizeDict[journal])
     # Fonts
     rc("font", family="serif")
     rc("font", serif="times")
