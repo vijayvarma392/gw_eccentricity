@@ -33,7 +33,7 @@ colorsDict = {
     "apocenter": colors_dj_25[1],
     "pericenter": colors_gb_45[1],
     "vline": colors_gb_14[1],
-    "peaksvline": colors_aq_15[1],
+    "pericentersvline": colors_aq_15[1],
     "FrequencyFits": colors_dj_25[1],
     "ResidualFrequency": colors_gb_14[1],
     "ResidualAmplitude": colors_gb_45[1],
@@ -114,7 +114,7 @@ def use_fancy_plotsettings(usetex=True, journal="Notebook"):
     rc("ytick", direction="in")
     # Legend
     rc("legend", frameon=False)
-    rc("legend", fontsize=fontSizeDict[journal])
+    rc("legend", fontsize=labelSizeDict[journal])
     # Fonts
     rc("font", family="serif")
     rc("font", serif="times")
