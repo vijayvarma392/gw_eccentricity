@@ -100,62 +100,92 @@ extra_kwargs = {"debug": False,
                 }
 
 
-def plot_waveform_ecc_vs_model_ecc(method, set_key, ax):
-    # We will loop over waveforms with ecc in EOBeccs
-    # However many eccentricity definitions might not work
-    # for all of these waveforms, for example, due to small
-    # eccentricity. Therefore we need to track only those
-    # eob model eccentricity for which the particular
-    # definition works.
+def plot_waveform_ecc_vs_model_ecc(methods, key):
+    # Get the output figure name
+    # method_str is used in the filename for the output figure
+    if "all" in methods:
+        methods = get_available_methods()
+        method_str = "all"
+    else:
+        method_str = "_".join(args.method)
+
+    if args.example:
+        fig_eob_vs_measured_ecc_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
+                                        f".{args.plot_format}")
+    else:
+        fig_eob_vs_measured_ecc_name = (f"{args.fig_dir}/EccTest_set{key}_{method_str}"
+                                   f".{args.plot_format}")
+    fig_eob_vs_measured_ecc, ax_eob_vs_measured_ecc = plt.subplots(
+        figsize=(figWidthsOneColDict[journal], 3))
     waveform_eccs = []  # ecc as measured by the definition
-    model_eccs = []  # ecc that goes in to the waveform generation
-    q, chi1z, chi2z = available_param_sets[set_key]
+    q, chi1z, chi2z = available_param_sets[key]
     for ecc in tqdm(EOBeccs):
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
                     f"Momega0{Momega0:.3f}_meanAno{meanAno:.3f}.h5")
         kwargs = {"filepath": fileName}
-        if "Residual" in method:
-            fileName_zero_ecc = (
-                f"{data_dir}/EccTest_q{q:.2f}_chi1z"
-                f"{chi1z:.2f}_"
-                f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
-                f"Momega0{Momega0_zeroecc:.3f}_meanAno{meanAno:.3f}.h5")
-            kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
-                           "include_zero_ecc": True})
-        dataDict = load_waveform(catalog="EOB", **kwargs)
-        tref_in = dataDict["t"]
-        try:
-            tref_out, measured_ecc, mean_ano = measure_eccentricity(
-                tref_in=tref_in,
-                dataDict=dataDict,
-                method=method,
-                extra_kwargs=extra_kwargs)
-            # Get the measured eccentricity at the first available index.
-            # This corresponds to the first extrema that occurs after the
-            # initial time.
-            waveform_eccs.append(measured_ecc[0])
-            model_eccs.append(ecc)
-        except Exception:
-            warnings.warn("Exception raised. Probably too small eccentricity "
-                          "to detect any extrema.")
-    ax.loglog(model_eccs, waveform_eccs, label=f"{method}",
-              c=colorsDict.get(method, "C0"),
-              ls=lstyles.get(method, "-"),
-              lw=lwidths.get(method, 1),
-              alpha=lalphas.get(method, 1),
-              marker=None if args.paper else "."  # no marker for paper
-              )
-    ax.set_title(rf"$q$={q:.1f}, $\chi_{{1z}}$={chi1z:.1f}, $\chi_{{2z}}$"
-                 f"={chi2z:.1f}")
-
-
-if "all" in args.method:
-    args.method = get_available_methods()[::-1]
-    # method_str is used in the filename for the output figure
-    method_str = "all"
-else:
-    method_str = "_".join(args.method)
+        # Store measured eccs for a given ecc using different methods
+        measured_eccs = []
+        for method in methods:
+            if "Residual" in method:
+                fileName_zero_ecc = (
+                    f"{data_dir}/EccTest_q{q:.2f}_chi1z"
+                    f"{chi1z:.2f}_"
+                    f"chi2z{chi2z:.2f}_EOBecc{0:.10f}_"
+                    f"Momega0{Momega0_zeroecc:.3f}_meanAno{meanAno:.3f}.h5")
+                kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
+                               "include_zero_ecc": True})
+            dataDict = load_waveform(catalog="EOB", **kwargs)
+            tref_in = dataDict["t"]
+            try:
+                tref_out, measured_ecc, mean_ano = measure_eccentricity(
+                    tref_in=tref_in,
+                    dataDict=dataDict,
+                    method=method,
+                    extra_kwargs=extra_kwargs)
+                # Get the measured eccentricity at the first available index.
+                # This corresponds to the first extrema that occurs after the
+                # initial time.
+                measured_eccs.append(measured_ecc[0])
+            except Exception:
+                warnings.warn("Exception raised. Probably too small eccentricity "
+                              "to detect any extrema.")
+                measured_eccs.append(np.NAN)
+        # Append list of measured eccs using different methods for a single ecc
+        # to waveform_eccs
+        waveform_eccs.append(measured_eccs)
+    # plot waveform eccs for different methods
+    waveform_eccs = np.array(waveform_eccs)
+    for idx, method in enumerate(methods):
+        ax_eob_vs_measured_ecc.loglog(
+            EOBeccs, waveform_eccs[:, idx], label=f"{method}",
+            c=colorsDict.get(method, "C0"),
+            ls=lstyles.get(method, "-"),
+            lw=lwidths.get(method, 1),
+            alpha=lalphas.get(method, 1),
+            marker=None if args.paper else "."  # no marker for paper
+        )
+    ax_eob_vs_measured_ecc.set_title(
+        rf"$q$={q:.1f}, $\chi_{{1z}}$={chi1z:.1f}, $\chi_{{2z}}$"
+        f"={chi2z:.1f}")
+    ax_eob_vs_measured_ecc.legend(frameon=True)
+    # set major ticks
+    locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
+    ax_eob_vs_measured_ecc.xaxis.set_major_locator(locmaj)
+    # set minor ticks
+    locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
+                                   numticks=20)
+    ax_eob_vs_measured_ecc.xaxis.set_minor_locator(locmin)
+    ax_eob_vs_measured_ecc.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    # set grid
+    ax_eob_vs_measured_ecc.grid(which="major")
+    ax_eob_vs_measured_ecc.set_xlabel(r"EOB Eccentricity $e_{\mathrm{EOB}}$")
+    ax_eob_vs_measured_ecc.set_ylabel(r"Measured Eccentricity $e$")
+    ax_eob_vs_measured_ecc.set_ylim(top=1.0)
+    ax_eob_vs_measured_ecc.set_xlim(EOBeccs[0], EOBeccs[-1])
+    fig_eob_vs_measured_ecc.savefig(
+        f"{fig_eob_vs_measured_ecc_name}",
+        bbox_inches="tight")
 
 if "all" in args.param_set_key:
     args.param_set_key = list(available_param_sets.keys())
@@ -165,28 +195,4 @@ journal = "APS" if args.paper else "Notebook"
 use_fancy_plotsettings(journal=journal)
 
 for key in args.param_set_key:
-    fig, ax = plt.subplots(figsize=(figWidthsOneColDict[journal], 3))
-    if args.example:
-        fig_name = (f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
-                    f".{args.plot_format}")
-    else:
-        fig_name = (f"{args.fig_dir}/EccTest_set{key}_{method_str}"
-                    f".{args.plot_format}")
-    for idx, method in enumerate(args.method):
-        plot_waveform_ecc_vs_model_ecc(method, key, ax)
-    ax.legend(frameon=True)
-    # set major ticks
-    locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
-    ax.xaxis.set_major_locator(locmaj)
-    # set minor ticks
-    locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
-                                   numticks=20)
-    ax.xaxis.set_minor_locator(locmin)
-    ax.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-    # set grid
-    ax.grid(which="major")
-    ax.set_xlabel(r"EOB Eccentricity $e_{\mathrm{EOB}}$")
-    ax.set_ylabel(r"Measured Eccentricity $e$")
-    ax.set_ylim(top=1.0)
-    ax.set_xlim(EOBeccs[0], EOBeccs[-1])
-    fig.savefig(f"{fig_name}", bbox_inches="tight")
+    plot_waveform_ecc_vs_model_ecc(args.method, key)
