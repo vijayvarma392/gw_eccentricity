@@ -142,9 +142,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # in the plots
         self.data_for_finding_extrema = self.omega22_analyse
 
-        # TODO - consider whether to also cut from the start
-        # (e.g. NR junk radiation)
-
         return
 
     def find_extrema(self, extrema_type="maxima"):
@@ -174,10 +171,24 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # self.omega22_analyse
 
         # DESIRED NUMBER OF EXTREMA left/right DURING FITTING
-        # Code will look for N+1 extrema to the left of idx_ref, and N extrema to the right
+        # Code will look for N extrema to the left of idx_ref, and N+1 extrema to the right
         # TODO - make user-specifiable via option
         N = 3
 
+        # if True, perform an additional fitting step to find the position of
+        # extrema to sub-gridspacing accuracy. 
+        #
+        # The results of this more accurate extrema-determination are collected in 
+        #    self.periastron_info = [t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined]
+        # and/or 
+        #    self.apastron_info = [t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined]
+        #
+        # if False, then self.periastron_info/apastron_info contains the data at the grid-points
+        refine_extrema=self.extra_kwargs["refine_extrema"]
+
+
+        # diagnostic output? 
+        # setting diag_file to a valid pdf-filename will trigger diagnostic plots
         verbose=self.debug
         if verbose:
             diag_file="eccDefinitionUsingFrequencyFitsDiagnosticOutput.pdf"
@@ -193,7 +204,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # global fit as initialization of envelope-subtraced extrema
 
         # use this many orbits from the start of the waveform for the initial global fit.
-        # this helps getting a good enough fit to discern smaller eccentricities
+        # Keeping this initial fit-interval away from merger helps to obtain a good fit 
+        # that also allows to discern small eccentricities
         N_orbits_for_global_fit=10.
         idx_end = np.argmax(self.phase22_analyse > self.phase22_analyse[0] + N_orbits_for_global_fit*4*np.pi)
 
@@ -202,6 +214,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         if verbose:
             print(f"t_analyse[0]={self.t_analyse[0]}, t_analyse[-1]={self.t_analyse[-1]}, global fit to t<={self.t_analyse[idx_end]}")
+        
+        # alpha-fit was an alternative parameterization of the fitting-function
+        # didn't really help in initial experiments, thus disabled.
         UseAlphaFit=False
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
         if UseAlphaFit:
@@ -222,6 +237,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             bounds0 = [[0., 0., 0.],
                        [10.*f0, 10.*f0/(-fit_center_time), 1.]]
         else:
+            # standard fit in terms of f0, f1 and T
             f_fit = envelope_fitting_function(t0=fit_center_time,
                                               verbose=False
                                               #verbose=verbose
@@ -240,6 +256,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             print(f"global fit: guess p0={p0}, bounds={bounds0}")
  
         if pp:
+            # first diagnostic plots.  Will be available even if
+            # scipy.optimize fails
             fig,axs=plt.subplots(1,2,figsize=(11,4))
             axs[0].set_title('omega')
             axs[1].set_title('residual:  omega-f_fit')
@@ -260,16 +278,25 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             plt.close(fig)
 
         # STEP 2
-        # starting at start of data, move through data and do local fits across (2N+1) extrema
-        # for each fit, take the middle one as part of the outptu 
+        # From start of data, move through data and do local fits across (2N+1) extrema.
+        # For each fit, take the middle one as part of the output
 
-        # to collect extrema
+        # collects indices of extrema
         extrema = []
 
+        # collects floating point values associated with extrema
+        # if refine_extrema==true, these will in general be betweem
+        # grid-points
+        t_extrema_refined = []
+        omega22_extrema_refined = []
+        phase22_extrema_refined = []
+
         # estimates for initial start-up values (will be updated as needed)
+        # the 'N-0.001' results in idx_lo=0 in the first iteration, and avoids a
+        # gratuitous idx_lo=1, which wastes one iteration to reach idx_lo=0
         K = 1.2   # periastron-advance rate
         idx_ref = np.argmax(self.phase22_analyse
-                            > self.phase22_analyse[0] + K*N*4*np.pi)
+                            > self.phase22_analyse[0] + K*(N-0.001)*4*np.pi)
         if idx_ref == 0:
             raise Exception("data set too short.")
         p = p_global
@@ -278,7 +305,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             count = count+1
             if verbose:
                 print(f"=== count={count} "+"="*60)
-            idx_extrema, p, K, idx_ref = FindExtremaNearIdxRef(
+            idx_extrema, p, K, idx_ref, extrema_refined = FindExtremaNearIdxRef(
                 self.t_analyse, self.phase22_analyse,
                 self.omega22_analyse,
                 idx_ref,
@@ -286,17 +313,34 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 f_fit, p, bounds0,
                 1e-8,
                 increase_idx_ref_if_needed=True,
+                refine_extrema=refine_extrema,
                 verbose=verbose,
                 pp=pp)
             if verbose:
                 print(f"IDX_EXTREMA={idx_extrema}, f_fit={f_fit.format(*p)}, "
                       f"K={K:5.3f}, idx_ref={idx_ref}")
-            # if we are at most two extrema short, still report the one just found
+
             if len(idx_extrema)>=2*N-1:
-                # if we are at most two extrema short, i.e.  N+1 to the left, 
-                # and at least N-2 to the right of idx_ref, then still assume 
-                # this is a valid extremum and take it
+                # at most two extrema short of target.  Assume the fit is
+                # good enough to report extrema obtained through it.
+                if count==1:
+                    # at first call (at start of waveform, report the extrema
+                    # identified in the left part of the fitting interval
+                    for k in range(0,N):
+                        extrema.append(idx_extrema[k])
+                        t_extrema_refined.append(extrema_refined[0][k])
+                        omega22_extrema_refined.append(extrema_refined[1][k])
+                        phase22_extrema_refined.append(extrema_refined[2][k])
+
+
+                # take the extremum in the middle of the fitting interval.
+                # (if we are short extrema, then there will be fewer to the
+                # right. To not report those, due to potentially inaccurate 
+                # fits that close to merger)
                 extrema.append(idx_extrema[N])
+                t_extrema_refined.append(extrema_refined[0][N])
+                omega22_extrema_refined.append(extrema_refined[1][N])
+                phase22_extrema_refined.append(extrema_refined[2][N])
 
             # if we are any extremas short, stop.         
             if len(idx_extrema) < 2*N+1:
@@ -315,6 +359,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             print(f"Reached end of data.  Identified extrema = {extrema}")
         if pp:  
             pp.close()
+
+        if sign>0:
+            self.periastron_info = [t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined]
+        else:
+            self.apastron_info   = [t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined]
+                
+
         return np.array(extrema)
 
         # Procedure:
@@ -352,6 +403,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                           f_fit, p_initial, bounds,
                           TOL,
                           increase_idx_ref_if_needed=True,
+                          refine_extrema=False,
                           verbose=False,
                           pp=None):
     """given a 22-GW mode (t, phase22, omega22), identify a stretch of data
@@ -381,7 +433,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                     i.e. the increase of phase22/4pi between two extrema
       - f_fit     - fitting function f_fit(t, *p) to use for trend-subtraction
       - p_initial - initial guesses for the best-fit parametes
-      - p_bounds  - bounds for the best-fit parameters
+      - p_bounds  - bounds for the fit-parameters
       - TOL       - iterate until the maximum change in any one omega at an
                     extremum is less tha this TOL
       - increase_idx_ref_if_needed -- if true, allows to increase idx_ref in
@@ -394,7 +446,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
       - pp a PdfPages object for a diagnostic output plot 
 
     RETURNS:
-          idx_extrema, p, K, idx_ref
+          idx_extrema, p, K, idx_ref, extrema_refined
     where
       - idx_extrema -- the indices of the identified extrema
                        USUALLY len(idx_extrema) == Nbefore+Nafter
@@ -408,6 +460,9 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
       - idx_ref -- a (potentially increased) value of idx_ref, so that Nbefore
                    extrema were found between the
                    start of the data and idx_ref
+      - extrema_refined=(t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined)
+             information about the parabolic-fit-refined extrema.  If RefineExtrema==True,
+             these arrays have same length as idx_extrema.  Otherwise, empty.
 
 
     ASSUMPTIONS & POSSIBLE FAILURE MODES
@@ -418,9 +473,11 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         Nbefore+Nafter. This signals that the end of the data is reached,
         and that the user should not press to even larger idx_ref.
     """
+
     if verbose:
         print(f"FindExtremaNearIdxRef  idx_ref={idx_ref}, K_initial={K:5.3f}, "
-              f"p_initial={f_fit.format(*p_initial)}")
+              f"p_initial={f_fit.format(*p_initial)}"
+              f", refine_extrema={refine_extrema}")
 
     # look for somewhat more data than we (probably) need
     DeltaPhase = 4*np.pi*K
@@ -460,7 +517,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     while True:
         it = it+1
         if verbose:
-            print(f"it={it}:  [{idx_lo} / {idx_ref} / {idx_hi}]")
+            print(f"it={it}:  [{idx_lo} / {idx_ref} / {idx_hi}],  K={K:5.3f}")
         omega_residual = omega22[idx_lo:idx_hi] - f_fit(t[idx_lo:idx_hi], *p)
 
         # TODO -- pass user-specified arguments into find_peaks
@@ -494,9 +551,20 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         Nleft = sum(idx_extrema < idx_ref)
         Nright = sum(idx_extrema >= idx_ref)
 
-        if len(idx_extrema)==0 or it>20:
+        # remember info about extrema to be used in rest of this function
+        N_extrema=len(idx_extrema)
+        t_extrema = t[idx_extrema]
+        omega22_extrema = omega22[idx_extrema]
+        phase22_extrema = phase22[idx_extrema]
+        omega_residual_extrema = omega_residual[idx_extrema-idx_lo]  # omega_residual is shorter array
+   
+        if verbose:
+            with np.printoptions(precision=2): # , suppress=True, threshold=5):
+                print(f"       idx_extrema=   {idx_extrema}, Nleft={Nleft}, Nright={Nright}")
+                print(f"       t[idx_extrema]={t_extrema}")
+        if N_extrema==0 or it>20:
             if verbose:
-                if len(idx_extrema)==0:
+                if N_extrema==0:
                     print(f"could not identify a single extremum.  This can happen, for instance\n"
                     "for low eccentricity late in the inspiral where the range of omega\n"
                     "is so large that the prominence = 0.03*omega_res_amp cannot be\n"
@@ -509,27 +577,70 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                 plt.close(fig)
             # don't really know what to do if we didn't identify any extrema.  
             # so return with empty idx_extrema and let upstream code handle this
-            return idx_extrema, p, K, idx_ref
+            return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
+ 
+        if refine_extrema:
+            # perform parabolic fits to omega_residual around each extremum
+            # in order to find the time of extrema to sub-index
+            # accuracy
+            if verbose:
+                print(f"       Refineme {N_extrema} extremas, local fit with Npoints=", end='')
+            for k in range(N_extrema):
+                # length of fitting interval = 0.05radians left/right
+                deltaT = 0.05 / omega22_extrema[k]
+                idx_refine = np.abs( t - t_extrema[k])< deltaT
+                N_refine=sum(idx_refine)  # number of points to be used in fit
+                if verbose: 
+                    print(f"{N_refine}  ",end='')
+                if N_refine>=7:  # enough data for fit
+                    t_parafit=t[idx_refine]
+                    # re-compute fit-subtracted omega_residual, to avoid 
+                    # indexing problems, should idx_lo/idx_high be so close that the 
+                    # parabolic fitting interval extends beyond it
+                    omg_resi_parafit = omega22[idx_refine] - f_fit(t_parafit, *p)
+
+                    parabola=np.polynomial.polynomial.Polynomial.fit(t_parafit, omg_resi_parafit, 2)
+                    t_max=parabola.deriv().roots()[0]
+
+                    # update extrema information
+                    t_extrema[k]=t_max
+
+                    # interpolate omega from fits
+                    # *assumption* the fitting-interval is short enough that this is accurate
+                    omega22_extrema[k] = parabola(t_max) +f_fit(t_max, *p)
+                    
+                    # 3rd order fit to phase to interpolate 
+                    # *assumption* the fitting-interval is short enough that this is accurate
+                    phase_fit = np.polynomial.polynomial.Polynomial.fit(t_parafit, phase22[idx_refine], 3)
+                    phase22_extrema[k] = phase_fit(t_max)
+                else:
+                    pass
+                    # if verbose:
+                    #    print(f"refinement of k={k} has too few points - skip")
+                    
+            if verbose:
+                with np.printoptions(precision=4): # , suppress=True, threshold=5):
+                    print("")
+                    print(f"       Delta t_extrema = {t_extrema - t[idx_extrema]}")
+
 
 
         # update K based on identified peaks
-        if len(idx_extrema)>=2:
-            K = ((phase22[idx_extrema[-1]] - phase22[idx_extrema[0]])
-                 / (4*np.pi * (len(idx_extrema) - 1)))
-        if verbose:
-            print(f"       idx_extrema={idx_extrema}, Nleft={Nleft}, "
-                  f"Nright={Nright}, K={K:5.3f}")
+        if N_extrema>=2:
+            K = ((phase22_extrema[-1] - phase22_extrema[0])
+                 / (4*np.pi * (N_extrema - 1)))
+       
         if pp:
             # offset data vertically by 0.001*it, to mitigate lines on top of each other.
             if plot_offset is None:
                 plot_offset=10**np.ceil(np.log10(omega_residual_amp/2.))
 
             line,=axs[0].plot(t[idx_lo:idx_hi], it*plot_offset+ sign*omega_residual, label=f"it={it}")
-            if len(idx_extrema)>0:
-                axs[0].plot(t[idx_extrema], it*plot_offset+sign*omega_residual[idx_extrema-idx_lo],'o',
+            if N_extrema>0:
+                axs[0].plot(t_extrema, it*plot_offset+sign*omega_residual_extrema,'o',
                     color=line.get_color())
             line,=axs[1].plot(t[idx_lo:idx_hi],omega22[idx_lo:idx_hi]+plot_offset*it)
-            axs[1].plot(t[idx_extrema], omega22[idx_extrema]+plot_offset*it, 'o', color=line.get_color(), label=f"it={it}")
+            axs[1].plot(t_extrema, omega22_extrema+plot_offset*it, 'o', color=line.get_color(), label=f"it={it}")
 
         if Nright<Nafter: #  and Nleft==Nbefore:
             Count_Nright_short=Count_Nright_short+1
@@ -574,7 +685,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                     phase_lo = phase22[idx_lo] - K*4*np.pi*0.6
                     idx_lo = np.argmax(phase22 > phase_lo)
                     if verbose:
-                        print(f"        idx_lo reduced to {idx_lo}")
+                        print(f"       idx_lo reduced to {idx_lo}")
             # too many peaks to the right right, discard by placing idx_hi
             # between N and N+1's peak to right
             if Nright > Nafter:
@@ -618,50 +729,55 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         #  - Nleft + Nright envelope-subtracted extrema, 
         # *or* 
         #  - fewer envelope subtracted extrema and idx_hi at the end of the data 
-
+        #
+        # The following arrays are filled with information at the extrema
+        #   t_extrema, phase22_extrema, omega22_extrema, where: 
+        #      * If refine_extrema==False: the arrays correspond to index positions idx_extrema
+        #      * If refine_extrema==True:  the arrays are refined via fits.
+        #
         # Now check whether omega-envelope fitting has already converged.
         # If yes: return
         # If no:  re-fit envelope
 
-        t_extrema=t[idx_extrema]
-        omega22_extrema = omega22[idx_extrema]
-        if len(omega22_extrema) != len(old_extrema):  # number of extrema can change near merger
+        if N_extrema != len(old_extrema):  
+            # number of extrema has changed since last iteration, so avoid
+            # to compute differences to last-iteration's extrema
             max_delta_omega = 1e99
         else:
             max_delta_omega = max(np.abs(omega22_extrema-old_extrema))
 
-        if Count_Nright_short>=5 or len(idx_extrema)<5 or it>20:
+        if Count_Nright_short>=5 or N_extrema<5 or it>20:
             # safety exit to catch periodic loops
             # note that Count_Nright_short is only increased if Nright<Nafter, 
             # therefore, this will coincide with Nright<Nafter, also signaling
             # that the overall extrema searching is ending.
             # we require **5** extrema, in order to have safety for the **3** parameter fit below
             if verbose:
-                print(f"exiting because Count_right_short={Count_Nright_short} is large, or Nextrema={len(idx_extrema)} is insufficient")
+                print(f"exiting because Count_right_short={Count_Nright_short} is large, or N_extrema={N_extrema} is insufficient")
             if pp:
                 #plt.legend()
                 fig.savefig(pp,format='pdf')
                 plt.close(fig)
-            return idx_extrema, p, K, idx_ref
+            return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
 
 
         if max_delta_omega < TOL:
             # (this cannot trigger on first iteration, due to initialization of old_extrema)
             if verbose:
-                print("extrema & omega(extrema) unchanged.  Done")
+                print(f"max_delta_omega={max_delta_omega:5.4g}<TOL={TOL}.  Done")
             if pp:
                 #plt.legend()
                 fig.savefig(pp,format='pdf')
                 plt.close(fig)
-            return idx_extrema, p, K, idx_ref
+            return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
 
         # termination conditions not met, update fit and continue iterating
 
-        if verbose and False:
-            # begin plotting residuals
-            for deg in [1,2,3]:
-                lin=np.polynomial.polynomial.Polynomial.fit(t_extrema, omega22_extrema, deg)
-                print(f"    fit with deg={deg}: residual={np.linalg.norm(lin(t_extrema)-omega22_extrema)}")
+        #if verbose and False:
+        #    # Perform some polynomial fits (possibly useful for debugging)
+        #    for deg in [1,2,3]:
+        #        lin=np.polynomial.polynomial.Polynomial.fit(t_extrema, omega22_extrema, deg)
+        #        print(f"    fit with deg={deg}: residual={np.linalg.norm(lin(t_extrema)-omega22_extrema)}")
             #axs[2].plot(t_extrema, quad(t_extrema)-omega22_extrema], "o--")
 
         #tmp=bounds[0][2]

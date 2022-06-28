@@ -201,7 +201,8 @@ class eccDefinition:
                                             # eccDefinitionUsingAmplitude
             "debug": True,
             "omega22_averaging_method": "mean_of_extrema_interpolants",
-            "treat_mid_points_between_pericenters_as_apocenters": False
+            "treat_mid_points_between_pericenters_as_apocenters": False,
+            "refine_extrema": False
             }
         return default_extra_kwargs
 
