@@ -1083,7 +1083,7 @@ class eccDefinition:
             self.ecc_for_checks = self.compute_eccentricity(
                 self.t_for_checks)
         ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
-        # add a vertical line in case of scalar input tref_out/fref_out indicating the
+        # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
         if self.tref_out.size == 1:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
