@@ -1084,9 +1084,9 @@ class eccDefinition:
         ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
         # add a vertical line in case of scalar input time/frequency indicating the
         # corresponding reference time
-        if isinstance(self.tref_out, (float, int, np.int64, np.float64)):
+        if not hasattr(self.tref_out, "len"):
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":")
-            ax.plot(self.tref_out, self.compute_eccentricity(self.tref_out), ls="", marker=".")
+            ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
         if fig is None or ax is None:
@@ -1218,9 +1218,9 @@ class eccDefinition:
                 **kwargs)
         # add a vertical line in case of scalar input time/frequency indicating the
         # corresponding reference time
-        if isinstance(self.tref_out, (float, int, np.int64, np.float64)):
+        if not hasattr(self.tref_out, "len"):
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":")
-            ax.plot(self.tref_out, self.compute_mean_ano(self.tref_out), ls="", marker=".")
+            ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
         ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
         if fig is None or ax is None:
@@ -1295,9 +1295,9 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        data = self.omega22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data)
-        ymax = max(data)
+        data_for_ylim = self.omega22[:self.idx_num_orbit_earlier_than_merger]
+        ymin = min(data_for_ylim)
+        ymax = max(data_for_ylim)
         pad = 0.05 * ymax # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
@@ -1378,9 +1378,9 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label="Apocenters")
         # set reasonable ylims
-        data = self.amp22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data)
-        ymax = max(data)
+        data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
+        ymin = min(data_for_ylim)
+        ymax = max(data_for_ylim)
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$A_{22}$")
@@ -1526,9 +1526,9 @@ class eccDefinition:
                 marker=".", ls="", label="Apocenter",
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        data = self.res_omega22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data)
-        ymax = max(data)
+        data_for_ylim = self.res_omega22[:self.idx_num_orbit_earlier_than_merger]
+        ymin = min(data_for_ylim)
+        ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
@@ -1596,9 +1596,9 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label="Apocenter")
         # set reasonable ylims
-        data = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data)
-        ymax = max(data)
+        data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
+        ymin = min(data_for_ylim)
+        ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim # 5 % buffer for better visibility
@@ -1664,26 +1664,22 @@ class eccDefinition:
         else:
             t_for_finding_extrema = self.t
         ax.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
-        pericenters, = ax.plot(
+        ax.plot(
             t_for_finding_extrema[self.pericenters_location],
             self.data_for_finding_extrema[self.pericenters_location],
             c=colorsDict["pericenter"],
-            marker=".", ls="")
+            marker=".", ls="",
+            label="pericenters")
         apocenters, = ax.plot(
             t_for_finding_extrema[self.apocenters_location],
             self.data_for_finding_extrema[self.apocenters_location],
             c=colorsDict["apocenter"],
-            marker=".", ls="")
+            marker=".", ls="",
+            label="apocenters")
         # set reasonable ylims
-        data = self.data_for_finding_extrema[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data)
-        ymax = max(data)
-        #ymin = min(min(self.data_for_finding_extrema[self.pericenters_location]),
-        #           min(self.data_for_finding_extrema[self.apocenters_location]),
-        #           min(data))
-        #ymax = max(max(self.data_for_finding_extrema[self.pericenters_location]),
-        #           max(self.data_for_finding_extrema[self.apocenters_location]),
-        #           data)
+        data_for_ylim = self.data_for_finding_extrema[:self.idx_num_orbit_earlier_than_merger]
+        ymin = min(data_for_ylim)
+        ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0 when Residual data is used
         if "Delta" in self.label_for_data_for_finding_extrema:
             ylim = max(ymax, -ymin)
@@ -1695,20 +1691,15 @@ class eccDefinition:
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema finding
-        latest_time_vline = ax.axvline(
+        ax.axvline(
             self.latest_time_used_for_extrema_finding,
-            c=colorsDict["vline"], ls="--")
-        # legend handles and labels
-        handles = [pericenters, apocenters, latest_time_vline]
-        labels = ["Pericenters", "Apocenters", "Latest time used for finding extrema."]
-        if isinstance(self.tref_out, (float, int, np.int64, np.float64)):
-            tref_vline = ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":")
-            handles.append(tref_vline)
-            labels.append(r"$t_\mathrm{ref}$")
+            c=colorsDict["vline"], ls="--",
+            label="Latest time used for finding extrema.")
+        if not hasattr(self.tref_out, "len"):
+            ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
+                       label=r"$t_\mathrm{ref}$")
         # add legends
-        ax.legend(handles=handles,
-                  labels=labels,
-                  loc="center left",
+        ax.legend(loc="center left",
                   frameon=True)
         # set title
         ax.set_title(
