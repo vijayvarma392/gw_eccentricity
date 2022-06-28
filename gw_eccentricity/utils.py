@@ -52,13 +52,15 @@ def peak_time_via_quadratic_fit(t, func):
 
 def check_kwargs_and_set_defaults(user_kwargs=None,
                                   default_kwargs=None,
-                                  name="user given kwargs"):
+                                  name="user given kwargs",
+                                  location=None):
     """Sanity check user given dicionary of kwargs and set default values.
 
     parameters:
     user_kwargs: Dictionary of kwargs by user
     default_kwargs: Dictionary of default kwargs
-    name: string to represnt the dictionary
+    name: string to represent the dictionary
+    location: string pointing to where the defaults are defined 
 
     returns:
     updated user_kwargs
@@ -71,7 +73,8 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
         if kw not in default_kwargs:
             raise ValueError(f"Invalid key {kw} in {name}."
                              " Should be one of "
-                             f"{list(default_kwargs.keys())}")
+                             f"{list(default_kwargs.keys())}\n"
+                             f"To add a new keyword, please modify {location}")
 
     for kw in default_kwargs.keys():
         if kw not in user_kwargs:
