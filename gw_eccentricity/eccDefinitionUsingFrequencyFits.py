@@ -191,7 +191,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # setting diag_file to a valid pdf-filename will trigger diagnostic plots
         verbose=self.debug
         if verbose:
-            diag_file="eccDefinitionUsingFrequencyFitsDiagnosticOutput.pdf"
+            diag_file=f"Diagnostics-FrequencyFits-{ {-1:'minima', 1:'maxima'}[sign]}.pdf"
         else:
             diag_file=""
 
@@ -262,8 +262,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             axs[0].set_title('omega')
             axs[1].set_title('residual:  omega-f_fit')
             axs[0].plot(self.t_analyse, self.omega22_analyse, label='omega22')
-            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p0), label='fit initial guess')
-            axs[0].legend();            
+            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p0), linewidth=0.5, color='grey', label='f_fit(*p_guess)')
  
  
         p_global, pconv = scipy.optimize.curve_fit(
@@ -272,8 +271,14 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             bounds=bounds0)
 
         if pp:
-            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p_global), linewidth=0.5, color='grey', label='fit')
-            axs[1].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), label='residual')
+            line, =axs[0].plot(self.t_analyse[:idx_end],
+                               f_fit(self.t_analyse[:idx_end], *p_global), label='fit [first 10 orbits]')
+            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p_global), color=line.get_color(), linewidth=0.5)
+
+            line,=axs[1].plot(self.t_analyse[:idx_end],
+                              self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual')
+            axs[1].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), linewidth=0.5, color=line.get_color())
+            axs[0].legend(); 
             fig.savefig(pp,format='pdf')
             plt.close(fig)
 
@@ -291,12 +296,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         omega22_extrema_refined = []
         phase22_extrema_refined = []
 
-        # estimates for initial start-up values (will be updated as needed)
-        # the 'N-0.001' results in idx_lo=0 in the first iteration, and avoids a
-        # gratuitous idx_lo=1, which wastes one iteration to reach idx_lo=0
-        K = 1.2   # periastron-advance rate
+        # estimates for initial start-up values. Because idx_ref
+        # is only allowed to increase, be rather conservative with
+        # its initial guess
+        K = 1.1   # periastron-advance rate
         idx_ref = np.argmax(self.phase22_analyse
-                            > self.phase22_analyse[0] + K*(N-0.001)*4*np.pi)
+                            > self.phase22_analyse[0] + K*(N-1)*4*np.pi)
         if idx_ref == 0:
             raise Exception("data set too short.")
         p = p_global
@@ -532,6 +537,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     # to avoid gaining/loosing extrema simply because the options to
     # find_peaks change.
     prominence=None
+    interval_changed_on_it=-1
     while True:
         it = it+1
         if verbose:
@@ -552,16 +558,22 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
         #    translated into samples using the maximum time-spacing
         if prominence is None:  
             maxdt = np.max(np.diff(t[idx_lo:idx_hi]))
-            width=int( 0.5* 2 * np.pi / np.max(omega22[idx_lo:idx_hi]) / maxdt )
+
+            #  average orbital period during [idx_lo, idx_hi]
+            # idx_hi-1 also works in the case when idx_hi = one-past-last-element
+            T_orbit = (t[idx_hi-1] - t[idx_lo])/(phase22[idx_hi-1] - phase22[idx_lo]) * 4*np.pi
+            # set distance = 1/4 period
+            distance = int(0.25*T_orbit/maxdt)
+
             omega_residual_amp = max(omega_residual)-min(omega_residual)
             prominence=omega_residual_amp*0.03
             if verbose:
-                print(f"       find_peaks: width={width}, prominence={prominence}")
+                print(f"       find_peaks: distance={distance}, prominence={prominence}")
 
 
         idx_extrema, properties = scipy.signal.find_peaks(
             sign*omega_residual,
-                width=width,
+                distance=distance,
                 prominence=prominence
         )
         # add offset due to to calling find_peaks with sliced data
@@ -763,6 +775,19 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             max_delta_omega = 1e99
         else:
             max_delta_omega = max(np.abs(omega22_extrema-old_extrema))
+        if it>=16 \
+            and Nleft==Nbefore and Nright==Nafter \
+            and interval_changed_on_it==it-1:
+            # we have been interating for a while, and the recent change in N_extrema 
+            # points toward a limiting cycle.  Since we just happened to have hit the 
+            # right number of extrema, let's take them and exit.
+            if verbose:
+                print(f"looks like we hit a limiting cycle; presently the number of extrema is correct, so exit")
+            if pp:
+                #plt.legend()
+                fig.savefig(pp,format='pdf')
+                plt.close(fig)
+            return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
 
         if Count_Nright_short>=5 or N_extrema<5 or it>20:
             # safety exit to catch periodic loops
