@@ -923,9 +923,9 @@ class eccDefinition:
             self,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style=None,
             use_fancy_settings=True,
-            two_columns=False,
+            twocol=False,
             **kwargs):
         """Make diagnostic plots for the eccDefinition method.
 
@@ -966,36 +966,35 @@ class eccDefinition:
 
         Parameters:
         -----------
-        fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
-        ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
-            Default is Notebook.
+            If None, then uses "Notebook" when twocol is False and uses "APS"
+            if twocol is True.
+            Default is None.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
-        two_columns:
+        twocol:
             Use a two column grid layout. Default is False.
         **kwargs:
             kwargs to be passed to plt.subplots()
 
         Returns:
-        fig, ax
+        fig:
+            Figure object.
+        axarr:
+            Axes object.
         """
         # Make a list of plots we want to add
         list_of_plots = [self.plot_measured_ecc,
@@ -1012,21 +1011,24 @@ class eccDefinition:
             if "Delta\omega" not in self.label_for_data_for_finding_extrema:
                 list_of_plots.append(self.plot_residual_omega22)
 
+        # Set style if None
+        if style is None:
+            style = "APS" if twocol else "Notebook"
         # Initiate figure, axis
-        nrows = int(np.ceil(len(list_of_plots) / 2)) if two_columns else len(list_of_plots)
-        figsize = (figWidthsTwoColDict[journal],
-                       figHeightsDict[journal] * nrows)
+        nrows = int(np.ceil(len(list_of_plots) / 2)) if twocol else len(list_of_plots)
+        figsize = (figWidthsTwoColDict[style],
+                       figHeightsDict[style] * nrows)
         default_kwargs = {"nrows": nrows,
-                          "ncols": 2 if two_columns else 1,
+                          "ncols": 2 if twocol else 1,
                           "figsize": figsize,
                           "sharex": True}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
-        fig, ax = plt.subplots(**kwargs)
-        axarr = np.reshape(ax, -1, "C")
+            use_fancy_plotsettings(usetex=usetex, style=style)
+        fig, axarr = plt.subplots(**kwargs)
+        axarr = np.reshape(axarr, -1, "C")
 
         # populate figure, axis
         for idx, plot in enumerate(list_of_plots):
@@ -1040,10 +1042,13 @@ class eccDefinition:
             axarr[idx].set_xlabel("")
         # set xlabel in the last row
         axarr[-1].set_xlabel(r"$t$")
-        if two_columns:
+        if twocol:
             axarr[-2].set_xlabel(r"$t$")
+        # delete empty subplots
+        for idx, ax in enumerate(axarr[len(list_of_plots):]):
+            fig.delaxes(ax)
         fig.tight_layout()
-        return fig, ax
+        return fig, axarr
 
     def plot_measured_ecc(
             self,
@@ -1051,7 +1056,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot measured ecc as function of time.
@@ -1070,9 +1075,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1086,9 +1091,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
@@ -1117,7 +1122,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot decc_dt as function of time to check monotonicity.
@@ -1138,9 +1143,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1154,9 +1159,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
@@ -1189,7 +1194,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot measured mean anomaly as function of time.
@@ -1208,9 +1213,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1225,9 +1230,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
@@ -1255,7 +1260,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot omega22, the locations of the apocenters and pericenters.
@@ -1278,9 +1283,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1295,9 +1300,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t_for_checks,
                 self.omega22_pericenters_interp(self.t_for_checks),
                 c=colorsDict["pericenter"], label=r"$\omega_{p}$",
@@ -1324,16 +1329,17 @@ class eccDefinition:
         # add help text
         if add_help_text:
             ax.text(
-                0.5,
+                0.22,
                 0.98,
-                (r"To avoid extrapolation,\\ the first and last extrema are excluded\\"
-                 "when evaluating the $\omega_{a}$/$\omega_{p}$ interpolants."),
-                ha="center",
+                (r"\noindent To avoid extrapolation, first and last\\"
+                 r"extrema are excluded when\\"
+                 r"evaluating $\omega_{a}$/$\omega_{p}$ interpolants"),
+                ha="left",
                 va="top",
                 transform=ax.transAxes)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\omega_{22}$")
-        ax.legend(frameon=True, loc="upper left",
+        ax.legend(frameon=True,
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
@@ -1346,7 +1352,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot amp22, the locations of the apocenters and pericenters.
@@ -1368,9 +1374,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1385,9 +1391,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.amp22,
                 c=colorsDict["default"], label=r"$A_{22}$")
         ax.plot(self.t[self.pericenters_location],
@@ -1417,7 +1423,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot phase diff ratio between consecutive as function of time.
@@ -1442,9 +1448,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1459,9 +1465,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         tpericenters = self.t[self.pericenters_location[1:]]
         ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
                 c=colorsDict["pericenter"],
@@ -1495,7 +1501,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot residual omega22, the locations of the apocenters and pericenters.
@@ -1518,9 +1524,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1535,17 +1541,17 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.res_omega22, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
                 self.res_omega22[self.pericenters_location],
-                marker=".", ls="", label="Pericenter",
+                marker=".", ls="", label="Pericenters",
                 c=colorsDict["pericenter"])
         ax.plot(self.t[self.apocenters_location],
                 self.res_omega22[self.apocenters_location],
-                marker=".", ls="", label="Apocenter",
+                marker=".", ls="", label="Apocenters",
                 c=colorsDict["apocenter"])
         # set reasonable ylims
         data_for_ylim = self.res_omega22[:self.idx_num_orbit_earlier_than_merger]
@@ -1570,7 +1576,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot residual amp22, the locations of the apocenters and pericenters.
@@ -1589,9 +1595,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1606,18 +1612,18 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.res_amp22, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
                 self.res_amp22[self.pericenters_location],
                 c=colorsDict["pericenter"],
-                marker=".", ls="", label="Pericenter")
+                marker=".", ls="", label="Pericenters")
         ax.plot(self.t[self.apocenters_location],
                 self.res_amp22[self.apocenters_location],
                 c=colorsDict["apocenter"],
-                marker=".", ls="", label="Apocenter")
+                marker=".", ls="", label="Apocenters")
         # set reasonable ylims
         data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
@@ -1641,7 +1647,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot the data that is being used.
@@ -1661,9 +1667,9 @@ class eccDefinition:
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
+        style:
             Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
+            to generate plot for "APS" journals, use style="APS".
             For showing plots in a jupyter notebook, use "Notebook" so that
             plots are bigger and fonts are appropriately larger and so on.
             See plot_settings.py for more details.
@@ -1677,9 +1683,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         # To make it work for FrequencyFits
         # FIXME: Harald, Arif: Think about how to make this better.
         if hasattr(self, "t_analyse"):
