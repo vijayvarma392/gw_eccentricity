@@ -384,10 +384,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             pp.close()
 
         if sign>0:
-            self.periastron_info = [t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined]
+            self.periastron_info = [np.array(t_extrema_refined), 
+                                    np.array(omega22_extrema_refined), 
+                                    np.array(phase22_extrema_refined)]
         else:
-            self.apastron_info   = [t_extrema_refined, omega22_extrema_refined, phase22_extrema_refined]
-                
+            self.apastron_info   = [np.array(t_extrema_refined), 
+                                    np.array(omega22_extrema_refined), 
+                                    np.array(phase22_extrema_refined)]
 
         return np.array(extrema)
 
