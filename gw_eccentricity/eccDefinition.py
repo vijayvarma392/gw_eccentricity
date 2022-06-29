@@ -1058,6 +1058,7 @@ class eccDefinition:
             usetex=True,
             style="Notebook",
             use_fancy_settings=True,
+            add_vline_at_tref=True,
             **kwargs):
         """Plot measured ecc as function of time.
 
@@ -1086,6 +1087,9 @@ class eccDefinition:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        add_vline_at_tref:
+            If tref_out is scalar and add_vline_at_tref is True then add a vertical line
+            to indicate the location of tref_out on the time axis.
 
         Returns:
         fig, ax
@@ -1104,7 +1108,7 @@ class eccDefinition:
         ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
         # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
-        if self.tref_out.size == 1:
+        if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
@@ -1196,6 +1200,7 @@ class eccDefinition:
             usetex=True,
             style="Notebook",
             use_fancy_settings=True,
+            add_vline_at_tref=True,
             **kwargs):
         """Plot measured mean anomaly as function of time.
 
@@ -1224,6 +1229,9 @@ class eccDefinition:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        add_vline_at_tref:
+            If tref_out is scalar and add_vline_at_tref is True then add a vertical line
+            to indicate the location of tref_out on the time axis.
 
         Returns:
         --------
@@ -1242,7 +1250,7 @@ class eccDefinition:
                 **kwargs)
         # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
-        if self.tref_out.size == 1:
+        if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
@@ -1649,6 +1657,7 @@ class eccDefinition:
             usetex=True,
             style="Notebook",
             use_fancy_settings=True,
+            add_vline_at_tref=True,
             **kwargs):
         """Plot the data that is being used.
 
@@ -1678,6 +1687,9 @@ class eccDefinition:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        add_vline_at_tref:
+            If tref_out is scalar and add_vline_at_tref is True then add a vertical line
+            to indicate the location of tref_out on the time axis.
 
         Returns:
         fig, ax
@@ -1727,7 +1739,7 @@ class eccDefinition:
             label="Latest time used for finding extrema.")
         # if tref_out/fref_out is scalar then add vertical line to indicate corresponding
         # reference time.
-        if self.tref_out.size == 1:
+        if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
         # add legends
