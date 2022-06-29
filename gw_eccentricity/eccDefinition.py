@@ -9,7 +9,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
-from .plot_settings import use_fancy_plotsettings, colorsDict, figWidthsTwoColDict
+from .plot_settings import use_fancy_plotsettings, colorsDict, figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
 import warnings
 
@@ -925,6 +925,7 @@ class eccDefinition:
             usetex=True,
             journal="Notebook",
             use_fancy_settings=True,
+            two_columns=False,
             **kwargs):
         """Make diagnostic plots for the eccDefinition method.
 
@@ -988,15 +989,20 @@ class eccDefinition:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        two_columns:
+            Use a two column grid layout. Default is False.
+        **kwargs:
+            kwargs to be passed to plt.subplots()
 
         Returns:
         fig, ax
         """
         # Make a list of plots we want to add
         list_of_plots = [self.plot_measured_ecc,
-                         self.plot_decc_dt,
                          self.plot_mean_ano,
                          self.plot_omega22,
+                         self.plot_data_used_for_finding_extrema,
+                         self.plot_decc_dt,
                          self.plot_phase_diff_ratio_between_pericenters]
         if "hlm_zeroecc" in self.dataDict:
             # add residual amp22 plot
@@ -1005,12 +1011,13 @@ class eccDefinition:
             # add residual omega22 plot
             if "Delta\omega" not in self.label_for_data_for_finding_extrema:
                 list_of_plots.append(self.plot_residual_omega22)
-        # add plot of data used for finding extrema
-        list_of_plots.append(self.plot_data_used_for_finding_extrema)
 
         # Initiate figure, axis
-        figsize = (12, 4 * len(list_of_plots))
-        default_kwargs = {"nrows": len(list_of_plots),
+        nrows = int(np.ceil(len(list_of_plots) / 2)) if two_columns else len(list_of_plots)
+        figsize = (figWidthsTwoColDict[journal],
+                       figHeightsDict[journal] * nrows)
+        default_kwargs = {"nrows": nrows,
+                          "ncols": 2 if two_columns else 1,
                           "figsize": figsize,
                           "sharex": True}
         for key in default_kwargs:
@@ -1019,16 +1026,22 @@ class eccDefinition:
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, journal=journal)
         fig, ax = plt.subplots(**kwargs)
+        axarr = np.reshape(ax, -1, "C")
 
         # populate figure, axis
         for idx, plot in enumerate(list_of_plots):
             plot(
                 fig,
-                ax[idx],
+                axarr[idx],
                 add_help_text=add_help_text,
                 usetex=usetex,
                 use_fancy_settings=False)
-            ax[idx].tick_params(labelbottom=True)
+            axarr[idx].tick_params(labelbottom=True)
+            axarr[idx].set_xlabel("")
+        # set xlabel in the last row
+        axarr[-1].set_xlabel(r"$t$")
+        if two_columns:
+            axarr[-2].set_xlabel(r"$t$")
         fig.tight_layout()
         return fig, ax
 
@@ -1090,7 +1103,7 @@ class eccDefinition:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
-            ax.legend()
+            ax.legend(frameon=True, handlelength=1, labelspacing=0.2, columnspacing=1)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
         if fig is None or ax is None:
@@ -1155,12 +1168,14 @@ class eccDefinition:
         ax.set_ylabel(r"$de/dt$")
         if add_help_text:
             ax.text(
-                0.5,
-                0.98,
+                0.05,
+                0.05,
                 ("We expect decc/dt to be always negative"),
-                ha="center",
-                va="top",
+                ha="left",
+                va="bottom",
                 transform=ax.transAxes)
+        # change ticks to scientific notation
+        ax.ticklabel_format(style='sci', scilimits=(-3, 4), axis='y')
         # add line to indicate y = 0
         ax.axhline(0, ls="--")
         if fig is None or ax is None:
@@ -1226,7 +1241,7 @@ class eccDefinition:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
-            ax.legend()
+            ax.legend(frameon=True, handlelength=1, labelspacing=0.2, columnspacing=1)
         ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
         if fig is None or ax is None:
@@ -1311,14 +1326,15 @@ class eccDefinition:
             ax.text(
                 0.5,
                 0.98,
-                (r"To avoid extrapolation, the first and last extrema are excluded\\"
+                (r"To avoid extrapolation,\\ the first and last extrema are excluded\\"
                  "when evaluating the $\omega_{a}$/$\omega_{p}$ interpolants."),
                 ha="center",
                 va="top",
                 transform=ax.transAxes)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\omega_{22}$")
-        ax.legend(frameon=True, loc="upper left")
+        ax.legend(frameon=True, loc="upper left",
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1389,7 +1405,7 @@ class eccDefinition:
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$A_{22}$")
-        ax.legend()
+        ax.legend(handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1461,12 +1477,13 @@ class eccDefinition:
                 0.5,
                 0.98,
                 ("If phase difference exceeds 1.5,\n"
-                 "There may be missing extrema."),
+                 "there may be missing extrema."),
                 ha="center",
                 va="top",
                 transform=ax.transAxes)
         ax.set_title("Ratio of phase difference between consecutive extrema")
-        ax.legend(frameon=True)
+        ax.legend(frameon=True, loc="center left",
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1540,7 +1557,8 @@ class eccDefinition:
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta\omega_{22}$")
-        ax.legend(frameon=True, loc="center left")
+        ax.legend(frameon=True, loc="center left",
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1610,7 +1628,8 @@ class eccDefinition:
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta A_{22}$")
-        ax.legend(frameon=True, loc="center left")
+        ax.legend(frameon=True, loc="center left", handlelength=1, labelspacing=0.2,
+                  columnspacing=1) 
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1674,13 +1693,13 @@ class eccDefinition:
             self.data_for_finding_extrema[self.pericenters_location],
             c=colorsDict["pericenter"],
             marker=".", ls="",
-            label="pericenters")
+            label="Pericenters")
         apocenters, = ax.plot(
             t_for_finding_extrema[self.apocenters_location],
             self.data_for_finding_extrema[self.apocenters_location],
             c=colorsDict["apocenter"],
             marker=".", ls="",
-            label="apocenters")
+            label="Apocenters")
         # set reasonable ylims
         data_for_ylim = self.data_for_finding_extrema[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
@@ -1706,8 +1725,8 @@ class eccDefinition:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
         # add legends
-        ax.legend(loc="center left",
-                  frameon=True)
+        ax.legend(frameon=True, handlelength=1, labelspacing=0.2, columnspacing=1,
+                  loc="upper left")
         # set title
         ax.set_title(
             "Data being used for finding the extrema.",

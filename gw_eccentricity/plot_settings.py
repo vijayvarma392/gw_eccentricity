@@ -75,6 +75,15 @@ figWidthsTwoColDict = {
     "Notebook": 12
 }
 
+figHeightsDict = {
+    "APS": 2,
+    "APJ": 2,
+    "Elsevier": 2,
+    "Springer": 2,
+    "Presentation": 3.0,
+    "Notebook": 4.0
+}
+
 ticklabelSizeDict = {"APS": 9.0,
                      "APJ": 8.0,
                      "Elsevier": 8.0,
@@ -114,7 +123,7 @@ def use_fancy_plotsettings(usetex=True, journal="Notebook"):
     rc("ytick", direction="in")
     # Legend
     rc("legend", frameon=False)
-    rc("legend", fontsize=labelSizeDict[journal])
+    rc("legend", fontsize=fontSizeDict[journal])
     # Fonts
     rc("font", family="serif")
     rc("font", serif="times")
