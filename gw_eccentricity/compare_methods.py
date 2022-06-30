@@ -27,9 +27,13 @@ def compute_errors_between_methods(gwecc_obj1,
         "return_gwecc_object" set to True.
     tmin:
         If not None, errors are computed only for times later than tmin.
+        If None, errors are computed for times later than
+        max(gwecc_obj1.t_max, gwecc_obj2.t_max).
         Default is None.
     tmax:
         If not None, errors are computed only for times earlier than tmax.
+        If None, errors are computed for times earlier than
+        min(gwecc_obj1.t_max, gwecc_obj2.t_max).
         Default is None.
 
     Returns:
@@ -48,28 +52,26 @@ def compute_errors_between_methods(gwecc_obj1,
     # Get the bounds for times within which both methods work
     tMinCommon = max(gwecc_obj1.t_min, gwecc_obj2.t_min)
     tMaxCommon = min(gwecc_obj1.t_max, gwecc_obj2.t_max)
-    # Get common tref_out
-    common_tref_out = gwecc_obj1.tref_out[
-        np.logical_and(gwecc_obj1.tref_out >= tMinCommon,
-                       gwecc_obj1.tref_out < tMaxCommon)]
-    # Truncate common tref_out if tmin/tmax is provided
+
+    # Reset tMinCommon/tMaxCommon if tmin/tmax is provided
     if tmin is not None:
-        if all(common_tref_out < tmin):
+        if tmin > tMaxCommon:
             raise Exception(f"No common time found later than {tmin}")
-        common_tref_out = common_tref_out[common_tref_out >= tmin]
+        tMinCommon = max(tMinCommon, tmin)
     if tmax is not None:
-        if all(common_tref_out > tmax):
+        if tmax < tMinCommon:
             raise Exception(f"No common time found earlier than {tmax}")
-        common_tref_out = common_tref_out[common_tref_out <= tmax]
+        tMaxCommon = min(tMaxCommon, tmax)
 
     # Get indices for the common tref_out
-    common_idx1 = np.logical_and(gwecc_obj1.tref_out >= common_tref_out[0],
-                                 gwecc_obj1.tref_out <= common_tref_out[-1])
-    common_idx2 = np.logical_and(gwecc_obj2.tref_out >= common_tref_out[0],
-                                 gwecc_obj2.tref_out <= common_tref_out[-1])
+    common_idx1 = np.logical_and(gwecc_obj1.tref_out >= tMinCommon,
+                                 gwecc_obj1.tref_out < tMaxCommon)
+    common_idx2 = np.logical_and(gwecc_obj2.tref_out >= tMinCommon,
+                                 gwecc_obj2.tref_out < tMaxCommon)
+    tref_out_1_common = gwecc_obj1.tref_out[common_idx1]
+    tref_out_2_common = gwecc_obj2.tref_out[common_idx2]
     # Check that common tref out is the same.
-    np.testing.assert_allclose(gwecc_obj1.tref_out[common_idx1],
-                               gwecc_obj2.tref_out[common_idx2])
+    np.testing.assert_allclose(tref_out_1_common, tref_out_2_common)
     # Compute errors in eccentricity
     ecc_errors = np.abs(
         gwecc_obj1.ecc_ref[common_idx1] - gwecc_obj2.ecc_ref[common_idx2])
@@ -79,4 +81,4 @@ def compute_errors_between_methods(gwecc_obj1,
     mean_ano_errors = np.abs(
         np.unwrap(gwecc_obj1.mean_ano_ref[common_idx1])
         - np.unwrap(gwecc_obj2.mean_ano_ref[common_idx2]))
-    return gwecc_obj1.tref_out[common_idx1], ecc_errors, mean_ano_errors
+    return tref_out_1_common, ecc_errors, mean_ano_errors
