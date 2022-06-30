@@ -35,7 +35,6 @@ from .eccDefinitionUsingFrequency import eccDefinitionUsingFrequency
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequency
-import numpy as np
 
 
 def get_available_methods(return_dict=False):
@@ -305,81 +304,3 @@ def measure_eccentricity(tref_in=None,
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {list(available_methods.keys())}")
-
-
-def compute_errors_between_methods(gwecc_obj1,
-                                   gwecc_obj2,
-                                   tmin=None,
-                                   tmax=None,
-                                   dt=None):
-    """Compute errors in eccentricity and mean anomaly from two methods.
-
-    This function computes the errors (difference) in the measured value of
-    eccentricity and mean anomaly using two different methods. Since both
-    methods might be not able to measure eccentricity and mean anomaly at
-    the same range of times, this function will return the errors in the region
-    of common times.
-
-    Parameters:
-    -----------
-    gwecc_obj1:
-        gwecc_object using method 1 as returned by
-        gw_eccentricity.measure_eccentricity function with
-        "return_gwecc_object" set to True.
-    gwecc_obj2:
-        gwecc_object using method 2 as returned by
-        gw_eccentricity.measure_eccentricity function with
-        "return_gwecc_object" set to True.
-    tmin:
-        If not None, errors are computed only for times later than tmin.
-        Default is None.
-    tmax:
-        If not None, errors are computed only for times earlier than tmax.
-        Default is None.
-    dt:
-       If not None, this is used as the time step to compute the errors.
-       Default is None.
-
-    Returns:
-    -------
-    t:
-        Times where errors are computed.
-    ecc_errors:
-        Errors in eccentricity measured by method 1 (gwecc_obj1) and
-        method 2 (gwecc_obj2).
-    mean_ano_errors:
-        Errors in mean anomaly measured by method 1 (gwecc_obj1) and
-        method 2 (gwecc_obj2).
-    """
-    # Get the bounds for times within which both methods work
-    tMinCommon = max(gwecc_obj1.t_min, gwecc_obj2.t_min)
-    tMaxCommon = min(gwecc_obj1.t_max, gwecc_obj2.t_max)
-    # Get dt if provided is None
-    if dt is None:
-        # get dt from gwecc_obj1
-        dt1 = gwecc_obj1.t[1] - gwecc_obj1.t[0]
-        # get dt from gwecc_obj1
-        dt2 = gwecc_obj2.t[1] - gwecc_obj2.t[0]
-        # take the minimum of the above two as dt
-        dt = min(dt1, dt2)
-    # Get time array to measure the errors at
-    t = np.arange(tMinCommon, tMaxCommon, dt)
-    # truncate t if tmin/tmax is provided
-    if tmin is not None:
-        if all(t < tmin):
-            raise Exception(f"No common time found later than {tmin}")
-        t = t[t >= tmin]
-    if tmax is not None:
-        if all(t > tmax):
-            raise Exception(f"No common time found earlier than {tmax}")
-        t = t[t <= tmax]
-
-    # Compute errors in eccentricity
-    ecc_errors = (gwecc_obj1.compute_eccentricity(t)
-                  - gwecc_obj2.compute_eccentricity(t))
-    # Compute errors in mean anomaly
-    # We need to unwrap the mean anomaly since zero and
-    # 2pi should be treated as the same and hence zero errors.
-    mean_ano_errors = (np.unwrap(gwecc_obj1.compute_mean_ano(t))
-                       - np.unwrap(gwecc_obj2.compute_mean_ano(t)))
-    return t, ecc_errors, mean_ano_errors
