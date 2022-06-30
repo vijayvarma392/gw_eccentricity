@@ -39,13 +39,26 @@ def compute_errors_between_methods(gwecc_obj1,
     Returns:
     -------
     t:
-        Times where errors are computed.
+        Times where errors are computed. The minimum/maximum t is choosen
+        such that the times in t are common to both methods. That is,
+        tmin = max(gwecc_obj1.t_max, gwecc_obj2.t_max) and
+        tmax = min(gwecc_obj1.t_max, gwecc_obj2.t_max).
+        If in addition, tmin/tmax is not None, then t is further truncated
+        such that t lies within tmin/tmax.
     ecc_errors:
         Absolute errors in eccentricity measured by method 1 (gwecc_obj1) and
         method 2 (gwecc_obj2).
     mean_ano_errors:
         Absolute errors in mean anomaly measured by method 1 (gwecc_obj1) and
         method 2 (gwecc_obj2).
+    ecc_ref_1_common:
+        Eccentricities at t measured using method 1.
+    ecc_ref_2_common:
+        Eccentricities at t measured using method 2.
+    mean_ano_ref_1_common:
+        Mean anomalies at t measured using method 1.
+    mean_ano_ref_2_common:
+        Mean anomalies at t measured using method 2.
     """
     # Check that the gwecc objects were created using same tref_in
     np.testing.assert_allclose(gwecc_obj1.tref_in, gwecc_obj2.tref_in)
@@ -72,13 +85,17 @@ def compute_errors_between_methods(gwecc_obj1,
     tref_out_2_common = gwecc_obj2.tref_out[common_idx2]
     # Check that common tref out is the same.
     np.testing.assert_allclose(tref_out_1_common, tref_out_2_common)
-    # Compute errors in eccentricity
-    ecc_errors = np.abs(
-        gwecc_obj1.ecc_ref[common_idx1] - gwecc_obj2.ecc_ref[common_idx2])
-    # Compute errors in mean anomaly
+    # Compute errors in eccentricity at common tref_out
+    ecc_ref_1_common = gwecc_obj1.ecc_ref[common_idx1]
+    ecc_ref_2_common = gwecc_obj2.ecc_ref[common_idx2]
+    ecc_errors = np.abs(ecc_ref_1_common - ecc_ref_2_common)
+    # Compute errors in mean anomaly at common tref_out
+    mean_ano_ref_1_common = gwecc_obj1.mean_ano_ref[common_idx1]
+    mean_ano_ref_2_common = gwecc_obj2.mean_ano_ref[common_idx2]
     # We need to unwrap the mean anomaly since zero and
-    # 2pi should be treated as the same and hence zero errors.
+    # 2pi should be treated as the same and hence should give zero errors.
     mean_ano_errors = np.abs(
-        np.unwrap(gwecc_obj1.mean_ano_ref[common_idx1])
-        - np.unwrap(gwecc_obj2.mean_ano_ref[common_idx2]))
-    return tref_out_1_common, ecc_errors, mean_ano_errors
+        np.unwrap(mean_ano_ref_1_common)
+        - np.unwrap(mean_ano_ref_2_common))
+    return tref_out_1_common, ecc_errors, mean_ano_errors, ecc_ref_1_common,\
+        ecc_ref_2_common, mean_ano_ref_1_common, mean_ano_ref_2_common
