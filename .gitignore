@@ -15,5 +15,11 @@ dist
 # let's not add such symlinks to the repo to avoid clutter.
 /gw_eccentricity_demo.ipynb
 
+# ignore pdfs, pngs in notebook
+/notebook/*.pdf
+/notebook/*.png
+# ignore csvs in data
+/data/*.csv
+
 
 .DS_Store
