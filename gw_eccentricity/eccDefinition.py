@@ -9,7 +9,8 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
-from .plot_settings import use_fancy_plotsettings, colorsDict, figWidthsTwoColDict
+from .plot_settings import use_fancy_plotsettings, colorsDict
+from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
 import warnings
 
@@ -36,33 +37,34 @@ class eccDefinition:
                            (l2, m2): h_{l2, m2}, ...
                            }.
 
-            "t_zeroecc" and "hlm_zeroecc" are only required for ResidualAmplitude
-            and ResidualFrequency methods, but if they are provided, they will be
-            used to produce additional diagnostic plots, which can be helpful for
-            all methods. "t_zeroecc" and "hlm_zeroecc" should include the time and
-            modeDict for the quasi-circular limit of the eccentric waveform in
-            "hlm". For a waveform model, "hlm_zeroecc" can be obtained by
-            evaluating the model by keeping the rest of the binary parameters fixed
-            but setting the eccentricity to zero. For NR, if such a quasi-circular
-            counterpart is not available, we recommend using quasi-circular
-            waveforms like NRHybSur3dq8 or PhenomT, depending on the mass ratio and
-            spins. We require that "hlm_zeroecc" be at least as long as "hlm" so
-            that residual amplitude/frequency can be computed.
+            "t_zeroecc" and "hlm_zeroecc" are only required for
+            ResidualAmplitude and ResidualFrequency methods, but if they are
+            provided, they will be used to produce additional diagnostic plots,
+            which can be helpful for all methods. "t_zeroecc" and "hlm_zeroecc"
+            should include the time and modeDict for the quasi-circular limit
+            of the eccentric waveform in "hlm". For a waveform model,
+            "hlm_zeroecc" can be obtained by evaluating the model by keeping
+            the rest of the binary parameters fixed but setting the
+            eccentricity to zero. For NR, if such a quasi-circular counterpart
+            is not available, we recommend using quasi-circular waveforms like
+            NRHybSur3dq8 or PhenomT, depending on the mass ratio and spins. We
+            require that "hlm_zeroecc" be at least as long as "hlm" so that
+            residual amplitude/frequency can be computed.
 
             For dataDict, we currently only allow time-domain, nonprecessing
             waveforms with a uniform time array. Please make sure that the time
-            step is small enough that omega22(t) can be accurately computed; we use
-            a 4th-order finite difference scheme. In dimensionless units, we
-            recommend a time step of dtM = 0.1M to be conservative, but you may be
-            able to get away with larger time steps like dtM = 1M. The
+            step is small enough that omega22(t) can be accurately computed; we
+            use a 4th-order finite difference scheme. In dimensionless units,
+            we recommend a time step of dtM = 0.1M to be conservative, but you
+            may be able to get away with larger time steps like dtM = 1M. The
             corresponding time step in seconds would be dtM * M * lal.MTSUN_SI,
             where M is the total mass in Solar masses.
 
-            The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If additional
-            modes are included, they will be used in determining the pericenter time
-            following Eq.(5) of arxiv:1905.09300. The pericenter time is used to
-            time-align the two waveforms before computing the residual
-            amplitude/frequency.
+            The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If
+            additional modes are included, they will be used in determining the
+            pericenter time following Eq.(5) of arxiv:1905.09300. The
+            pericenter time is used to time-align the two waveforms before
+            computing the residual amplitude/frequency.
 
         spline_kwargs:
             Dictionary of arguments to be passed to the spline interpolation
@@ -70,7 +72,8 @@ class eccDefinition:
             compute omega22_pericenters(t) and omega22_apocenters(t).
             Defaults are the same as those of InterpolatedUnivariateSpline.
 
-        extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
+        extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
+            are:
             num_orbits_to_exclude_before_merger:
                 Can be None or a non negative number.
                 If None, the full waveform data (even post-merger) is used for
@@ -80,17 +83,17 @@ class eccDefinition:
                 Default: 1.
             extrema_finding_kwargs:
                 Dictionary of arguments to be passed to the extrema finder,
-                scipy.signal.find_peaks.
-                The Defaults are the same as those of scipy.signal.find_peaks,
-                except for the "width" parameter. "width" denotes the minimum
-                separation between two consecutive pericenters/apocenters. Setting
-                this can help avoid false extrema in noisy data (for example, due
-                to junk radiation in NR). The default for "width" is set using
-                phi22(t) near the merger. Starting from 4 cycles of the (2,2) mode
-                before merger, we find the number of time steps taken to cover 2
-                cycles, let's call this "the gap". Note that 2 cycles of the (2,2)
-                mode is approximately one orbit, so this allows us to approximate
-                the smallest gap between two pericenters/apocenters. However, to be
+                scipy.signal.find_peaks.  The Defaults are the same as those of
+                scipy.signal.find_peaks, except for the "width"
+                parameter. "width" denotes the minimum separation between two
+                consecutive pericenters/apocenters. Setting this can help avoid
+                false extrema in noisy data (for example, due to junk radiation
+                in NR). The default for "width" is set using phi22(t) near the
+                merger. Starting from 4 cycles of the (2,2) mode before merger,
+                we find the number of time steps taken to cover 2 cycles, let's
+                call this "the gap". Note that 2 cycles of the (2,2) mode is
+                approximately one orbit, so this allows us to approximate the
+                smallest gap between two pericenters/apocenters. However, to be
                 conservative, we divide this gap by 4 and set it as the width
                 parameter for find_peaks.
             debug:
@@ -99,28 +102,31 @@ class eccDefinition:
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
                 omega22(t).
-                - "mean_of_extrema_interpolants": The mean of omega22_pericenters(t) and
-                  omega22_apocenters(t) is used as a proxy for the average frequency.
-                - "interpolate_orbit_averages_at_extrema": First, orbit averages
-                  are obtained at each pericenter by averaging omega22(t) over the
-                  time from the current pericenter to the next one. This average value
-                  is associated with the time at mid point between the current and the
-                  next pericenter. Similarly orbit averages are computed at apocenters.
-                  Finally, a spline interpolant is constructed between all of these orbit
-                  averages at extrema locations. Due to the nature of the averaging,
-                  the final time over which the spline is constructed always starts
-                  half and orbit after the first extrema and ends half an orbit before
-                  the last extrema.
-                - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
-                  is used as a proxy for the average frequency. This can only be
-                  used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
+                - "mean_of_extrema_interpolants": The mean of
+                  omega22_pericenters(t) and omega22_apocenters(t) is used as a
+                  proxy for the average frequency.
+                - "interpolate_orbit_averages_at_extrema": First, orbit
+                  averages are obtained at each pericenter by averaging
+                  omega22(t) over the time from the current pericenter to the
+                  next one. This average value is associated with the time at
+                  mid point between the current and the next
+                  pericenter. Similarly orbit averages are computed at
+                  apocenters.  Finally, a spline interpolant is constructed
+                  between all of these orbit averages at extrema locations. Due
+                  to the nature of the averaging, the final time over which the
+                  spline is constructed always starts half and orbit after the
+                  first extrema and ends half an orbit before the last extrema.
+                - "omega22_zeroecc": omega22(t) of the quasi-circular
+                  counterpart is used as a proxy for the average
+                  frequency. This can only be used if "t_zeroecc" and
+                  "hlm_zeroecc" are provided in dataDict.
                 Default is "mean_of_extrema_interpolants".
             treat_mid_points_between_pericenters_as_apocenters:
-                If True, instead of trying to find apocenter locations by looking
-                for local minima in the data, we simply find the midpoints between
-                pericenter locations and treat them as apocenters. This is helpful
-                for eccentricities ~1 where pericenters are easy to find but
-                apocenters are not.
+                If True, instead of trying to find apocenter locations by
+                looking for local minima in the data, we simply find the
+                midpoints between pericenter locations and treat them as
+                apocenters. This is helpful for eccentricities ~1 where
+                pericenters are easy to find but apocenters are not.
                 Default: False.
         """
         self.dataDict = dataDict
@@ -143,26 +149,25 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
-        # Measured values of eccentricities to perform diagnostic checks.
-        # For example to plot ecc vs time plot, or checking monotonicity of
-        # eccentricity as a function of time. These are values of eccentricities
-        # measured at t_for_checks where t_for_checks is the time array in
-        # dataDict lying between t_min and t_max.
-        # t_min is max(t_pericenters, t_apocenters) and
-        # t_max is min(t_pericenters, t_apocenters)
-        # Initially set to None, but will get computed when necessary, in either
-        # derivative_of_eccentricity or plot_measured_ecc.
+        # Measured values of eccentricities to perform diagnostic checks.  For
+        # example to plot ecc vs time plot, or checking monotonicity of
+        # eccentricity as a function of time. These are values of
+        # eccentricities measured at t_for_checks where t_for_checks is the
+        # time array in dataDict lying between t_min and t_max.  t_min is
+        # max(t_pericenters, t_apocenters) and t_max is min(t_pericenters,
+        # t_apocenters) Initially set to None, but will get computed when
+        # necessary, in either derivative_of_eccentricity or plot_measured_ecc.
         self.ecc_for_checks = None
-        # Spline interpolant of measured eccentricity as function of time built using
-        # ecc_for_checks at t_for_checks. This is used to get first/second derivative of
-        # eccentricity with respect to time.
-        # Initially set to None, but will get computed when necessary,
-        # in derivative_of_eccentricity.
+        # Spline interpolant of measured eccentricity as function of time built
+        # using ecc_for_checks at t_for_checks. This is used to get
+        # first/second derivative of eccentricity with respect to time.
+        # Initially set to None, but will get computed when necessary, in
+        # derivative_of_eccentricity.
         self.ecc_interp = None
-        # First derivative of eccentricity with respect to time at t_for_checks.
-        # Will be used to check monotonicity, plot decc_dt
-        # Initially set to None, but will get computed when necessary, either in
-        # check_monotonicity_and_convexity or plot_decc_dt.
+        # First derivative of eccentricity with respect to time at
+        # t_for_checks.  Will be used to check monotonicity, plot decc_dt
+        # Initially set to None, but will get computed when necessary, either
+        # in check_monotonicity_and_convexity or plot_decc_dt.
         self.decc_dt_for_checks = None
 
         if "hlm_zeroecc" in dataDict:
@@ -172,7 +177,7 @@ class eccDefinition:
         self.spline_kwargs = check_kwargs_and_set_defaults(
             spline_kwargs, self.get_default_spline_kwargs(),
             "spline_kwargs",
-           "eccDefinition.get_default_spline_kwargs()" )
+            "eccDefinition.get_default_spline_kwargs()")
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
             "extra_kwargs",
@@ -223,7 +228,7 @@ class eccDefinition:
             "omega22_averaging_method": "mean_of_extrema_interpolants",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False
-            }
+        }
         return default_extra_kwargs
 
     def find_extrema(self, extrema_type="maxima"):
@@ -270,9 +275,10 @@ class eccDefinition:
             # use only the extrema those are at least num_orbits away from the
             # merger to avoid nonphysical features like non-monotonic
             # eccentricity near the merger
-            self.latest_time_used_for_extrema_finding = self.t[self.idx_num_orbit_earlier_than_merger]
-            extrema_idx = extrema_idx[extrema_idx
-                                      <= self.idx_num_orbit_earlier_than_merger]
+            self.latest_time_used_for_extrema_finding \
+                = self.t[self.idx_num_orbit_earlier_than_merger]
+            extrema_idx = extrema_idx[
+                extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
             spline = InterpolatedUnivariateSpline(self.t[extrema_idx],
                                                   self.omega22[extrema_idx],
@@ -286,73 +292,72 @@ class eccDefinition:
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
 
-        Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
-        where phi22(t) is the phase of the (2,2) waveform mode. We evaluate
-        omega22(t) at pericenter times, t_pericenters, and build a spline interpolant
-        omega22_pericenters(t) using those points. Similarly, we build omega22_apocenters(t)
-        using the apocenter times, t_apocenters. To find the pericenter/apocenter
-        locations, one can look for extrema in different waveform data, like
-        omega22(t) or Amp22(t), the amplitude of the (2,2) mode. Pericenters
-        correspond to pericenters, while apocenters correspond to apocenters in the data.
-        The method option (described below) lets you pick which waveform data to
-        use to find extrema.
+        Eccentricity is measured using the GW frequency omega22(t) =
+        dphi22(t)/dt, where phi22(t) is the phase of the (2,2) waveform
+        mode. We evaluate omega22(t) at pericenter times, t_pericenters, and
+        build a spline interpolant omega22_pericenters(t) using those
+        points. Similarly, we build omega22_apocenters(t) using the apocenter
+        times, t_apocenters. To find the pericenter/apocenter locations, one
+        can look for extrema in different waveform data, like omega22(t) or
+        Amp22(t), the amplitude of the (2,2) mode. Pericenters correspond to
+        pericenters, while apocenters correspond to apocenters in the data.
+        The method option (described below) lets you pick which waveform data
+        to use to find extrema.
 
-        The eccentricity is defined using omega22_pericenters(t) and omega22_apocenters(t),
-        as described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean anomaly is
-        defined using the pericenter locations as described in Eq.(2) of
-        arxiv:xxxx.xxxx.
+        The eccentricity is defined using omega22_pericenters(t) and
+        omega22_apocenters(t), as described in Eq.(1) of
+        arxiv:xxxx.xxxx. Similarly, the mean anomaly is defined using the
+        pericenter locations as described in Eq.(2) of arxiv:xxxx.xxxx.
 
         FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
         numbers are right, once the paper is finalized.
-        QUESTION FOR ARIF: Maybe we want to avoid saying pericenters/apocenters and just say
-        pericenters/apocenters here and in the code? Also, get rid of all "astrons"
-        throughout the code/documentation for consistency?
 
         parameters:
         ----------
         tref_in:
-            Input reference time at which to measure eccentricity and mean anomaly.
-            Can be a single float or an array.
+            Input reference time at which to measure eccentricity and mean
+            anomaly.  Can be a single float or an array.
 
         fref_in:
-            Input reference GW frequency at which to measure the eccentricity and
-            mean anomaly. Can be a single float or an array. Only one of
+            Input reference GW frequency at which to measure the eccentricity
+            and mean anomaly. Can be a single float or an array. Only one of
             tref_in/fref_in should be provided.
 
             Given an fref_in, we find the corresponding tref_in such that
-            omega22_average(tref_in) = 2 * pi * fref_in. Here, omega22_average(t)
-            is a monotonically increasing average frequency that is computed from
-            the instantaneous omega22(t). omega22_average(t) is not a moving
-            average; depending on which averaging method is used (see the
-            omega22_averaging_method option below), it means slightly different
-            things.
+            omega22_average(tref_in) = 2 * pi * fref_in. Here,
+            omega22_average(t) is a monotonically increasing average frequency
+            that is computed from the instantaneous
+            omega22(t). omega22_average(t) is not a moving average; depending
+            on which averaging method is used (see the omega22_averaging_method
+            option below), it means slightly different things.
 
-            Eccentricity and mean anomaly measurements are returned on a subset of
-            tref_in/fref_in, called tref_out/fref_out, which are described below.
-            If dataDict is provided in dimensionless units, tref_in should be in
-            units of M and fref_in should be in units of cycles/M. If dataDict is
-            provided in MKS units, t_ref should be in seconds and fref_in should be
-            in Hz.
+            Eccentricity and mean anomaly measurements are returned on a subset
+            of tref_in/fref_in, called tref_out/fref_out, which are described
+            below.  If dataDict is provided in dimensionless units, tref_in
+            should be in units of M and fref_in should be in units of
+            cycles/M. If dataDict is provided in MKS units, t_ref should be in
+            seconds and fref_in should be in Hz.
 
         returns:
         --------
         tref_out/fref_out:
             tref_out/fref_out is the output reference time/frequency at which
             eccentricity and mean anomaly are measured. If tref_in is provided,
-            tref_out is returned, and if fref_in provided, fref_out is returned.
-            Units of tref_out/fref_out are the same as those of tref_in/fref_in.
+            tref_out is returned, and if fref_in provided, fref_out is
+            returned.  Units of tref_out/fref_out are the same as those of
+            tref_in/fref_in.
 
-            tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
-            where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
-                  tmin = max(t_pericenters[0], t_apocenters[0]),
-            As eccentricity measurement relies on the interpolants omega22_pericenters(t)
-            and omega22_apocenters(t), the above cutoffs ensure that we only compute
-            the eccentricity where both omega22_pericenters(t) and omega22_apocenters(t) are
-            within their bounds.
+            tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in <
+            tmax], where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
+            tmin = max(t_pericenters[0], t_apocenters[0]), As eccentricity
+            measurement relies on the interpolants omega22_pericenters(t) and
+            omega22_apocenters(t), the above cutoffs ensure that we only
+            compute the eccentricity where both omega22_pericenters(t) and
+            omega22_apocenters(t) are within their bounds.
 
-            fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
-            where fmin = omega22_average(tmin)/2/pi and
-                  fmax = omega22_average(tmax)/2/pi, with tmin/tmax same as above.
+            fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in <
+            fmax], where fmin = omega22_average(tmin)/2/pi and fmax =
+            omega22_average(tmax)/2/pi, with tmin/tmax same as above.
 
         ecc_ref:
             Measured eccentricity at tref_out/fref_out. Same type as
@@ -362,15 +367,19 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out. Same type as
             tref_out/fref_out.
         """
-        self.omega22_pericenters_interp, self.pericenters_location = self.interp_extrema("maxima")
+        self.omega22_pericenters_interp, self.pericenters_location \
+            = self.interp_extrema("maxima")
         # In some cases it is easier to find the pericenters than finding the
-        # apocenters. For such cases, one can only find the pericenters and use the
-        # mid points between two consecutive pericenters as the location of the
-        # apocenters.
-        if self.extra_kwargs["treat_mid_points_between_pericenters_as_apocenters"]:
-            self.omega22_apocenters_interp, self.apocenters_location = self.get_apocenters_from_pericenters()
+        # apocenters. For such cases, one can only find the pericenters and use
+        # the mid points between two consecutive pericenters as the location of
+        # the apocenters.
+        if self.extra_kwargs[
+                "treat_mid_points_between_pericenters_as_apocenters"]:
+            self.omega22_apocenters_interp, self.apocenters_location \
+                = self.get_apocenters_from_pericenters()
         else:
-            self.omega22_apocenters_interp, self.apocenters_location = self.interp_extrema("minima")
+            self.omega22_apocenters_interp, self.apocenters_location \
+                = self.interp_extrema("minima")
 
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
@@ -388,16 +397,17 @@ class eccDefinition:
         else:
             fref_in = np.atleast_1d(fref_in)
             # get the tref_in and fref_out from fref_in
-            self.tref_in, self.fref_out = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
-        # We measure eccentricity and mean anomaly from t_min to t_max.
-        # Note that here we do not include the t_max. This is because
-        # the mean anomaly computation requires to looking
-        # for a pericenter before and after the ref time to calculate the current
-        # period.
-        # If ref time is t_max, which could be equal to the last pericenter, then
-        # there is no next pericenter and that would cause a problem.
-        self.tref_out = self.tref_in[np.logical_and(self.tref_in < self.t_max,
-                                                    self.tref_in >= self.t_min)]
+            self.tref_in, self.fref_out \
+                = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
+        # We measure eccentricity and mean anomaly from t_min to t_max.  Note
+        # that here we do not include the t_max. This is because the mean
+        # anomaly computation requires to looking for a pericenter before and
+        # after the ref time to calculate the current period.  If ref time is
+        # t_max, which could be equal to the last pericenter, then there is no
+        # next pericenter and that would cause a problem.
+        self.tref_out = self.tref_in[
+            np.logical_and(self.tref_in < self.t_max,
+                           self.tref_in >= self.t_min)]
         # set time for checks and diagnostics
         self.t_for_checks = self.dataDict["t"][
             np.logical_and(self.dataDict["t"] >= self.t_min,
@@ -413,26 +423,31 @@ class eccDefinition:
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
             if self.tref_in[-1] > self.t_max:
-                raise Exception(f"tref_in {self.tref_in} is later than t_max="
-                                f"{self.t_max}, "
-                                "which corresponds to min(last pericenter "
-                                "time, last apocenter time).")
+                raise Exception(
+                    f"tref_in {self.tref_in} is later than t_max="
+                    f"{self.t_max}, "
+                    "which corresponds to min(last pericenter "
+                    "time, last apocenter time).")
             if self.tref_in[0] < self.t_min:
-                raise Exception(f"tref_in {self.tref_in} is earlier than t_min="
-                                f"{self.t_min}, "
-                                "which corresponds to max(first pericenter "
-                                "time, first apocenter time).")
-            raise Exception("tref_out is empty. This can happen if the "
-                            "waveform has insufficient identifiable "
-                            "pericenters/apocenters.")
+                raise Exception(
+                    f"tref_in {self.tref_in} is earlier than t_min="
+                    f"{self.t_min}, "
+                    "which corresponds to max(first pericenter "
+                    "time, first apocenter time).")
+            raise Exception(
+                "tref_out is empty. This can happen if the "
+                "waveform has insufficient identifiable "
+                "pericenters/apocenters.")
 
         # check separation between extrema
         self.orb_phase_diff_at_pericenters, \
             self.orb_phase_diff_ratio_at_pericenters \
-            = self.check_extrema_separation(self.pericenters_location, "pericenters")
+            = self.check_extrema_separation(self.pericenters_location,
+                                            "pericenters")
         self.orb_phase_diff_at_apocenters, \
             self.orb_phase_diff_ratio_at_apocenters \
-            = self.check_extrema_separation(self.apocenters_location, "apocenters")
+            = self.check_extrema_separation(self.apocenters_location,
+                                            "apocenters")
 
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
@@ -465,13 +480,14 @@ class eccDefinition:
 
     def compute_eccentricity(self, t):
         """
-        Computer eccentricity at time t.
+        Compute eccentricity at time t.
 
         Compute eccentricity from the value of omega22_pericenters_interpolant
         and omega22_apocenters_interpolant at t using the formula in
         ref. arXiv:2101.11798 Eq. (4).
 
-        #FIXME: ARIF change the above reference when gw eccentricity paper is out
+        #FIXME: ARIF change the above reference when gw eccentricity paper is
+        #out
 
         Paramerers:
         -----------
@@ -519,18 +535,19 @@ class eccDefinition:
                                                            self.ecc_for_checks)
         # Get derivative of ecc(t) using cubic splines.
         return self.ecc_interp.derivative(n=1)(t)
-        
+
     def compute_mean_ano(self, t):
         """
         Compute mean anomaly at time t.
-        
-        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.
-        Mean anomaly grows linearly in time from 0 to 2 pi over
-        the range [t_at_last_pericenter, t_at_next_pericenter], where t_at_last_pericenter
-        is the time at the previous pericenter, and t_at_next_pericenter is
-        the time at the next pericenter.
 
-        #FIXME: ARIF Change the above reference when gw eccentricity paper is out
+        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.  Mean anomaly
+        grows linearly in time from 0 to 2 pi over the range
+        [t_at_last_pericenter, t_at_next_pericenter], where
+        t_at_last_pericenter is the time at the previous pericenter, and
+        t_at_next_pericenter is the time at the next pericenter.
+
+        #FIXME: ARIF Change the above reference when gw eccentricity paper is
+        #out
 
         Parameters:
         -----------
@@ -543,12 +560,13 @@ class eccDefinition:
         """
         # Check that t is within tmin and tmax to avoid extrapolation
         self.check_time_limits(t)
-        
+
         @np.vectorize
         def mean_ano(t):
             idx_at_last_pericenter = np.where(self.t_pericenters <= t)[0][-1]
             t_at_last_pericenter = self.t_pericenters[idx_at_last_pericenter]
-            t_at_next_pericenter = self.t_pericenters[idx_at_last_pericenter + 1]
+            t_at_next_pericenter = self.t_pericenters[idx_at_last_pericenter
+                                                      + 1]
             t_since_last_pericenter = t - t_at_last_pericenter
             current_period = t_at_next_pericenter - t_at_last_pericenter
             mean_ano_ref = 2 * np.pi * t_since_last_pericenter / current_period
@@ -639,20 +657,22 @@ class eccDefinition:
         """Check that pericenters and apocenters appear alternately."""
         # if pericenters and apocenters appear alternately, then the number
         # of pericenters and apocenters should differ by one.
-        if abs(len(self.pericenters_location) - len(self.apocenters_location)) >= 2:
+        if abs(len(self.pericenters_location)
+               - len(self.apocenters_location)) >= 2:
             warnings.warn(
                 "Number of pericenters and number of apocenters differ by "
                 f"{abs(len(self.pericenters_location) - len(self.apocenters_location))}"
-                ". This implies that pericenters and apocenters are not appearing"
-                " alternately.")
+                ". This implies that pericenters and apocenters are not "
+                "appearing alternately.")
         else:
-            # If the number of pericenters and apocenters differ by zero or one then we
-            # do the following:
+            # If the number of pericenters and apocenters differ by zero or one
+            # then we do the following:
             if len(self.pericenters_location) == len(self.apocenters_location):
-                # Check the time of the first pericenter and the first apocenter
-                # whichever comes first is assigned as arr1 and the other one
-                # as arr2
-                if self.t[self.pericenters_location][0] < self.t[self.apocenters_location][0]:
+                # Check the time of the first pericenter and the first
+                # apocenter whichever comes first is assigned as arr1 and the
+                # other one as arr2
+                if self.t[self.pericenters_location][0] < self.t[
+                        self.apocenters_location][0]:
                     arr1 = self.pericenters_location
                     arr2 = self.apocenters_location
                 else:
@@ -662,7 +682,8 @@ class eccDefinition:
                 # Check the number of pericenters and apocenters
                 # whichever is larger is assigned as arr1 and the other one as
                 # arr2
-                if len(self.pericenters_location) > len(self.apocenters_location):
+                if len(self.pericenters_location) > len(
+                        self.apocenters_location):
                     arr1 = self.pericenters_location
                     arr2 = self.apocenters_location
                 else:
@@ -679,8 +700,8 @@ class eccDefinition:
             arr[1::2] = arr2
             # get the time difference between consecutive locations in arr
             t_diff = np.diff(self.t[arr])
-            # If pericenters and apocenters appear alternately then all the time
-            # differences in t_diff should be positive
+            # If pericenters and apocenters appear alternately then all the
+            # time differences in t_diff should be positive
             if any(t_diff < 0):
                 warnings.warn(
                     "There is at least one instance where "
@@ -742,6 +763,7 @@ class eccDefinition:
         """
         extrema_locations = {"pericenters": self.pericenters_location,
                              "apocenters": self.apocenters_location}
+
         @np.vectorize
         def orbital_averaged_omega22_at_extrema(n, extrema_type="pericenters"):
             """Compute orbital averaged omega22 between n and n+1 extrema."""
@@ -757,14 +779,15 @@ class eccDefinition:
             period = (self.t[extrema_locations[extrema_type][n+1]]
                       - self.t[extrema_locations[extrema_type][n]])
             return integ / period
-        # get the mid points between the pericenters as avg time for pericenters
+        # get the mid points between the pericenters as avg time for
+        # pericenters
         t_average_pericenters = (self.t[self.pericenters_location][1:]
-                           + self.t[self.pericenters_location][:-1]) / 2
+                                 + self.t[self.pericenters_location][:-1]) / 2
         omega22_average_pericenters = orbital_averaged_omega22_at_extrema(
             np.arange(len(self.pericenters_location) - 1), "pericenters")
         # get the mid points between the apocenters as avg time for apocenters
         t_average_apocenters = (self.t[self.apocenters_location][1:]
-                             + self.t[self.apocenters_location][:-1]) / 2
+                                + self.t[self.apocenters_location][:-1]) / 2
         omega22_average_apocenters = orbital_averaged_omega22_at_extrema(
             np.arange(len(self.apocenters_location) - 1), "apocenters")
         # combine results from average at pericenters and toughs
@@ -829,13 +852,16 @@ class eccDefinition:
         and set those to tref_in.
 
         omega22_average(t) could be calculated in the following ways
-        - Mean of the omega22 given by the spline through the pericenters and the
-          spline through the apocenters, we call this "mean_of_extrema_interpolants"
-        - Orbital average at the extrema, we call this "interpolate_orbit_averages_at_extrema"
+        - Mean of the omega22 given by the spline through the pericenters and
+          the spline through the apocenters, we call this
+          "mean_of_extrema_interpolants"
+        - Orbital average at the extrema, we call this
+          "interpolate_orbit_averages_at_extrema"
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
-        User can provide a method through the "extra_kwargs" option with the key
-        "omega22_averaging_method". Default is "mean_of_extrema_interpolants"
+        User can provide a method through the "extra_kwargs" option with the
+        key "omega22_averaging_method". Default is
+        "mean_of_extrema_interpolants"
 
         Once we get the reference frequencies, we create a spline to get time
         as function of these reference frequencies. This should work if the
@@ -843,14 +869,16 @@ class eccDefinition:
 
         Finally we evaluate this spine on the fref_in to get the tref_in.
         """
-        self.available_averaging_methods = self.get_available_omega22_averaging_methods()
+        self.available_averaging_methods \
+            = self.get_available_omega22_averaging_methods()
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
-            # The fref_in array could have frequencies that is outside the range
-            # of frequencies in omega22 average. Therefore, we want to create
-            # a separate array of frequencies fref_out which is created by
-            # taking on those frequencies that falls within the omega22 average
-            # Then proceed to evaluate the tref_in based on these fref_out
+            # The fref_in array could have frequencies that is outside the
+            # range of frequencies in omega22 average. Therefore, we want to
+            # create a separate array of frequencies fref_out which is created
+            # by taking on those frequencies that falls within the omega22
+            # average Then proceed to evaluate the tref_in based on these
+            # fref_out
             fref_out = self.get_fref_out(fref_in, method)
             # get omega22_average by evaluating the omega22_average(t)
             # on t, from tmin to tmax
@@ -923,8 +951,9 @@ class eccDefinition:
             self,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style=None,
             use_fancy_settings=True,
+            twocol=False,
             **kwargs):
         """Make diagnostic plots for the eccDefinition method.
 
@@ -937,9 +966,9 @@ class eccDefinition:
         - decc/dt vs time, this is to test the monotonicity of eccentricity as
           a function of time
         - mean anomaly vs time
-        - omega_22 vs time with the pericenters and apocenters shown. This would show
-          if the method is missing any pericenters/apocenters or selecting one which is
-          not a pericenter/apocenter
+        - omega_22 vs time with the pericenters and apocenters shown. This
+          would show if the method is missing any pericenters/apocenters or
+          selecting one which is not a pericenter/apocenter
         - deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
           change in orbital phase from the previous extrema to the ith extrema.
           This helps to look for missing extrema, as there will be a drastic
@@ -948,9 +977,10 @@ class eccDefinition:
 
         Additionally, we plot the following if data for zero eccentricity is
         provided and method is not residual method
-        - residual amp22 vs time with the location of pericenters and apocenters shown.
-        - residual omega22 vs time with the location of pericenters and apocenters
-          shown.
+        - residual amp22 vs time with the location of pericenters and
+          apocenters shown.
+        - residual omega22 vs time with the location of pericenters and
+          apocenters shown.
         If the method itself uses residual data, then add one plot for
         - data that is not being used for finding extrema.
         For example, if method is ResidualAmplitude
@@ -965,38 +995,41 @@ class eccDefinition:
 
         Parameters:
         -----------
-        fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
-        ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
-            Default is Notebook.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.  If None, then uses "Notebook"
+            when twocol is False and uses "APS" if twocol is True.
+            Default is None.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        twocol:
+            Use a two column grid layout. Default is False.
+        **kwargs:
+            kwargs to be passed to plt.subplots()
 
         Returns:
-        fig, ax
+        fig:
+            Figure object.
+        axarr:
+            Axes object.
         """
         # Make a list of plots we want to add
         list_of_plots = [self.plot_measured_ecc,
-                         self.plot_decc_dt,
                          self.plot_mean_ano,
                          self.plot_omega22,
+                         self.plot_data_used_for_finding_extrema,
+                         self.plot_decc_dt,
                          self.plot_phase_diff_ratio_between_pericenters]
         if "hlm_zeroecc" in self.dataDict:
             # add residual amp22 plot
@@ -1005,32 +1038,46 @@ class eccDefinition:
             # add residual omega22 plot
             if "Delta\omega" not in self.label_for_data_for_finding_extrema:
                 list_of_plots.append(self.plot_residual_omega22)
-        # add plot of data used for finding extrema
-        list_of_plots.append(self.plot_data_used_for_finding_extrema)
 
+        # Set style if None
+        if style is None:
+            style = "APS" if twocol else "Notebook"
         # Initiate figure, axis
-        figsize = (12, 4 * len(list_of_plots))
-        default_kwargs = {"nrows": len(list_of_plots),
+        nrows = int(np.ceil(len(list_of_plots) / 2)) if twocol else len(
+            list_of_plots)
+        figsize = (figWidthsTwoColDict[style],
+                   figHeightsDict[style] * nrows)
+        default_kwargs = {"nrows": nrows,
+                          "ncols": 2 if twocol else 1,
                           "figsize": figsize,
                           "sharex": True}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
-        fig, ax = plt.subplots(**kwargs)
+            use_fancy_plotsettings(usetex=usetex, style=style)
+        fig, axarr = plt.subplots(**kwargs)
+        axarr = np.reshape(axarr, -1, "C")
 
         # populate figure, axis
         for idx, plot in enumerate(list_of_plots):
             plot(
                 fig,
-                ax[idx],
+                axarr[idx],
                 add_help_text=add_help_text,
                 usetex=usetex,
                 use_fancy_settings=False)
-            ax[idx].tick_params(labelbottom=True)
+            axarr[idx].tick_params(labelbottom=True)
+            axarr[idx].set_xlabel("")
+        # set xlabel in the last row
+        axarr[-1].set_xlabel(r"$t$")
+        if twocol:
+            axarr[-2].set_xlabel(r"$t$")
+        # delete empty subplots
+        for idx, ax in enumerate(axarr[len(list_of_plots):]):
+            fig.delaxes(ax)
         fig.tight_layout()
-        return fig, ax
+        return fig, axarr
 
     def plot_measured_ecc(
             self,
@@ -1038,44 +1085,49 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
+            add_vline_at_tref=True,
             **kwargs):
         """Plot measured ecc as function of time.
 
                 Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        add_vline_at_tref:
+            If tref_out is scalar and add_vline_at_tref is True then add a
+            vertical line to indicate the location of tref_out on the time
+            axis.
 
         Returns:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
@@ -1084,13 +1136,14 @@ class eccDefinition:
             self.ecc_for_checks = self.compute_eccentricity(
                 self.t_for_checks)
         ax.plot(self.t_for_checks, self.ecc_for_checks, **kwargs)
-        # add a vertical line in case of scalar tref_out/fref_out indicating the
-        # corresponding reference time
-        if self.tref_out.size == 1:
+        # add a vertical line in case of scalar tref_out/fref_out indicating
+        # the corresponding reference time
+        if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
-            ax.legend()
+            ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
+                      columnspacing=1)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"Eccentricity $e$")
         if fig is None or ax is None:
@@ -1104,7 +1157,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot decc_dt as function of time to check monotonicity.
@@ -1114,23 +1167,23 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
@@ -1141,26 +1194,29 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         if self.decc_dt_for_checks is None:
-            self.decc_dt_for_checks = self.derivative_of_eccentricity(self.t_for_checks, n=1)
+            self.decc_dt_for_checks = self.derivative_of_eccentricity(
+                self.t_for_checks, n=1)
         ax.plot(self.t_for_checks, self.decc_dt_for_checks, **kwargs)
         ax.set_xlabel("$t$")
         ax.set_ylabel(r"$de/dt$")
         if add_help_text:
             ax.text(
-                0.5,
-                0.98,
+                0.05,
+                0.05,
                 ("We expect decc/dt to be always negative"),
-                ha="center",
-                va="top",
+                ha="left",
+                va="bottom",
                 transform=ax.transAxes)
+        # change ticks to scientific notation
+        ax.ticklabel_format(style='sci', scilimits=(-3, 4), axis='y')
         # add line to indicate y = 0
         ax.axhline(0, ls="--")
         if fig is None or ax is None:
@@ -1174,45 +1230,50 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
+            add_vline_at_tref=True,
             **kwargs):
         """Plot measured mean anomaly as function of time.
 
                 Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        add_vline_at_tref:
+            If tref_out is scalar and add_vline_at_tref is True then add a
+            vertical line to indicate the location of tref_out on the time
+            axis.
 
         Returns:
         --------
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         default_kwargs = {"c": colorsDict["default"]}
         for key in default_kwargs:
             if key not in kwargs:
@@ -1222,11 +1283,12 @@ class eccDefinition:
                 **kwargs)
         # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
-        if self.tref_out.size == 1:
+        if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
             ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
-            ax.legend()
+            ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
+                      columnspacing=1)
         ax.set_xlabel("$t$")
         ax.set_ylabel("mean anomaly")
         if fig is None or ax is None:
@@ -1240,7 +1302,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot omega22, the locations of the apocenters and pericenters.
@@ -1252,23 +1314,23 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
@@ -1280,14 +1342,15 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t_for_checks,
                 self.omega22_pericenters_interp(self.t_for_checks),
                 c=colorsDict["pericenter"], label=r"$\omega_{p}$",
                 **kwargs)
-        ax.plot(self.t_for_checks, self.omega22_apocenters_interp(self.t_for_checks),
+        ax.plot(self.t_for_checks, self.omega22_apocenters_interp(
+            self.t_for_checks),
                 c=colorsDict["apocenter"], label=r"$\omega_{a}$",
                 **kwargs)
         ax.plot(self.t, self.omega22,
@@ -1304,21 +1367,23 @@ class eccDefinition:
         data_for_ylim = self.omega22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
-        pad = 0.05 * ymax # 5 % buffer for better visibility
+        pad = 0.05 * ymax  # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
         if add_help_text:
             ax.text(
-                0.5,
+                0.22,
                 0.98,
-                (r"To avoid extrapolation, the first and last extrema are excluded\\"
-                 "when evaluating the $\omega_{a}$/$\omega_{p}$ interpolants."),
-                ha="center",
+                (r"\noindent To avoid extrapolation, first and last\\"
+                 r"extrema are excluded when\\"
+                 r"evaluating $\omega_{a}$/$\omega_{p}$ interpolants"),
+                ha="left",
                 va="top",
                 transform=ax.transAxes)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\omega_{22}$")
-        ax.legend(frameon=True, loc="upper left")
+        ax.legend(frameon=True,
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1330,7 +1395,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot amp22, the locations of the apocenters and pericenters.
@@ -1341,23 +1406,23 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
@@ -1369,9 +1434,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.amp22,
                 c=colorsDict["default"], label=r"$A_{22}$")
         ax.plot(self.t[self.pericenters_location],
@@ -1389,7 +1454,7 @@ class eccDefinition:
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$A_{22}$")
-        ax.legend()
+        ax.legend(handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1401,7 +1466,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot phase diff ratio between consecutive as function of time.
@@ -1415,23 +1480,23 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
@@ -1443,9 +1508,9 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         tpericenters = self.t[self.pericenters_location[1:]]
         ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
                 c=colorsDict["pericenter"],
@@ -1460,13 +1525,14 @@ class eccDefinition:
             ax.text(
                 0.5,
                 0.98,
-                ("If phase difference exceeds 1.5,\n"
-                 "There may be missing extrema."),
+                ("If phase difference ratio exceeds 1.5,\n"
+                 "there might be missing extrema."),
                 ha="center",
                 va="top",
                 transform=ax.transAxes)
         ax.set_title("Ratio of phase difference between consecutive extrema")
-        ax.legend(frameon=True)
+        ax.legend(frameon=True, loc="center left",
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1478,7 +1544,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot residual omega22, the locations of the apocenters and pericenters.
@@ -1490,24 +1556,23 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
-            Default is Notebook.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.  Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
@@ -1518,29 +1583,31 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.res_omega22, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
                 self.res_omega22[self.pericenters_location],
-                marker=".", ls="", label="Pericenter",
+                marker=".", ls="", label="Pericenters",
                 c=colorsDict["pericenter"])
         ax.plot(self.t[self.apocenters_location],
                 self.res_omega22[self.apocenters_location],
-                marker=".", ls="", label="Apocenter",
+                marker=".", ls="", label="Apocenters",
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        data_for_ylim = self.res_omega22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.res_omega22[
+            :self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
-        pad = 0.05 * ylim # 5 % buffer for better visibility
+        pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta\omega_{22}$")
-        ax.legend(frameon=True, loc="center left")
+        ax.legend(frameon=True, loc="center left",
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1552,7 +1619,7 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
             **kwargs):
         """Plot residual amp22, the locations of the apocenters and pericenters.
@@ -1560,23 +1627,23 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
@@ -1588,29 +1655,31 @@ class eccDefinition:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.res_amp22, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
                 self.res_amp22[self.pericenters_location],
                 c=colorsDict["pericenter"],
-                marker=".", ls="", label="Pericenter")
+                marker=".", ls="", label="Pericenters")
         ax.plot(self.t[self.apocenters_location],
                 self.res_amp22[self.apocenters_location],
                 c=colorsDict["apocenter"],
-                marker=".", ls="", label="Apocenter")
+                marker=".", ls="", label="Apocenters")
         # set reasonable ylims
         data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
-        pad = 0.05 * ylim # 5 % buffer for better visibility
+        pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(r"$\Delta A_{22}$")
-        ax.legend(frameon=True, loc="center left")
+        ax.legend(frameon=True, loc="center left", handlelength=1,
+                  labelspacing=0.2,
+                  columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1622,8 +1691,9 @@ class eccDefinition:
             ax=None,
             add_help_text=True,
             usetex=True,
-            journal="Notebook",
+            style="Notebook",
             use_fancy_settings=True,
+            add_vline_at_tref=True,
             **kwargs):
         """Plot the data that is being used.
 
@@ -1631,36 +1701,40 @@ class eccDefinition:
         Parameters:
         -----------
         fig:
-            Figure object to add the plot to. If None, initiates a new figure object.
-            Default is None.
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
         ax:
-            Axis object to add the plot to. If None, initiates a new axis object.
-            Default is None.
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
         add_help_text:
             If True, add text to describe features in the plot.
             Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
-        journal:
-            Set font size, figure size suitable for particular use case. For example,
-            to generate plot for "APS" journals, use journal="APS".
-            For showing plots in a jupyter notebook, use "Notebook" so that
-            plots are bigger and fonts are appropriately larger and so on.
-            See plot_settings.py for more details.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
             Default is Notebook.
         use_fancy_settings:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
+        add_vline_at_tref:
+            If tref_out is scalar and add_vline_at_tref is True then add a
+            vertical line to indicate the location of tref_out on the time
+            axis.
 
         Returns:
         fig, ax
         """
         if fig is None or ax is None:
-            figNew, ax = plt.subplots(figsize = (figWidthsTwoColDict[journal], 4))
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
-            use_fancy_plotsettings(usetex=usetex, journal=journal)
+            use_fancy_plotsettings(usetex=usetex, style=style)
         # To make it work for FrequencyFits
         # FIXME: Harald, Arif: Think about how to make this better.
         if hasattr(self, "t_analyse"):
@@ -1668,46 +1742,51 @@ class eccDefinition:
             self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
         else:
             t_for_finding_extrema = self.t
-        ax.plot(t_for_finding_extrema, self.data_for_finding_extrema, c=colorsDict["default"])
+        ax.plot(t_for_finding_extrema, self.data_for_finding_extrema,
+                c=colorsDict["default"])
         ax.plot(
             t_for_finding_extrema[self.pericenters_location],
             self.data_for_finding_extrema[self.pericenters_location],
             c=colorsDict["pericenter"],
             marker=".", ls="",
-            label="pericenters")
+            label="Pericenters")
         apocenters, = ax.plot(
             t_for_finding_extrema[self.apocenters_location],
             self.data_for_finding_extrema[self.apocenters_location],
             c=colorsDict["apocenter"],
             marker=".", ls="",
-            label="apocenters")
+            label="Apocenters")
         # set reasonable ylims
-        data_for_ylim = self.data_for_finding_extrema[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.data_for_finding_extrema[
+            :self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
-        # we want to make the ylims symmetric about y=0 when Residual data is used
+        # we want to make the ylims symmetric about y=0 when Residual data is
+        # used
         if "Delta" in self.label_for_data_for_finding_extrema:
             ylim = max(ymax, -ymin)
-            pad = 0.05 * ylim # 5 % buffer for better visibility
+            pad = 0.05 * ylim  # 5 % buffer for better visibility
             ax.set_ylim(-ylim - pad, ylim + pad)
         else:
             pad = 0.05 * ymax
             ax.set_ylim(ymin - pad, ymax + pad)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(self.label_for_data_for_finding_extrema)
-        # Add vertical line to indicate the latest time used for extrema finding
+        # Add vertical line to indicate the latest time used for extrema
+        # finding
         ax.axvline(
             self.latest_time_used_for_extrema_finding,
             c=colorsDict["vline"], ls="--",
             label="Latest time used for finding extrema.")
-        # if tref_out/fref_out is scalar then add vertical line to indicate corresponding
-        # reference time.
-        if self.tref_out.size == 1:
+        # if tref_out/fref_out is scalar then add vertical line to indicate
+        # corresponding reference time.
+        if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=r"$t_\mathrm{ref}$")
         # add legends
-        ax.legend(loc="center left",
-                  frameon=True)
+        ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
+                  columnspacing=1,
+                  loc="upper left")
         # set title
         ax.set_title(
             "Data being used for finding the extrema.",
@@ -1721,25 +1800,26 @@ class eccDefinition:
         """Get Interpolator through apocenters and their locations.
 
         This function treats the mid points between two successive pericenters
-        as the location of the apocenter in between the same two pericenters. Thus
-        it does not find the locations of the apocenters using pericenter
-        finder at all. It is useful in situation where finding pericenters
-        is easy but finding the apocenters in between is difficult. This is
-        the case for highly eccentric systems where eccentricity approaches
-        1. For such systems the amp22/omega22 data between the pericenters is almost
+        as the location of the apocenter in between the same two pericenters.
+        Thus it does not find the locations of the apocenters using pericenter
+        finder at all. It is useful in situation where finding pericenters is
+        easy but finding the apocenters in between is difficult. This is the
+        case for highly eccentric systems where eccentricity approaches 1. For
+        such systems the amp22/omega22 data between the pericenters is almost
         flat and hard to find the local minima.
 
         returns:
         ------
         spline through apocenters, positions of apocenters
         """
-        # NOTE: Assuming uniform time steps.
-        # TODO: Make it work for non uniform time steps
-        # In the following we get the location of mid point between ith pericenter
-        # and (i+1)th pericenter as (loc[i] + loc[i+1])/2 where loc is the array
-        # that contains the pericenter locations. This works because time steps are
-        # assumed to be uniform and hence proportional to the time itself.
-        apocenters_idx = (self.pericenters_location[:-1] + self.pericenters_location[1:]) / 2
+        # NOTE: Assuming uniform time steps.  TODO: Make it work for non
+        # uniform time steps In the following we get the location of mid point
+        # between ith pericenter and (i+1)th pericenter as (loc[i] +
+        # loc[i+1])/2 where loc is the array that contains the pericenter
+        # locations. This works because time steps are assumed to be uniform
+        # and hence proportional to the time itself.
+        apocenters_idx = (self.pericenters_location[:-1]
+                          + self.pericenters_location[1:]) / 2
         apocenters_idx = apocenters_idx.astype(int)  # convert to ints
         if len(apocenters_idx) >= 2:
             spline = InterpolatedUnivariateSpline(self.t[apocenters_idx],
@@ -1756,20 +1836,19 @@ class eccDefinition:
             width_for_unit_timestep=50):
         """Get the minimal value of width parameter for extrema finding.
 
-        The extrema finding method, i.e., find_peaks from scipy.signal
-        needs a "width" parameter that is used to determine the minimal
-        separation between consecutive extrema. If the "width" is too small
-        then some noisy features in the signal might be mistaken for extrema
-        and on the other hand if the "width" is too large then we might miss
-        an extrema.
+        The extrema finding method, i.e., find_peaks from scipy.signal needs a
+        "width" parameter that is used to determine the minimal separation
+        between consecutive extrema. If the "width" is too small then some
+        noisy features in the signal might be mistaken for extrema and on the
+        other hand if the "width" is too large then we might miss an extrema.
 
-        This function gets an appropriate width by scaling it with the
-        time steps in the time array of the waveform data.
-        NOTE: As the function name mentions, this should be used only for
-        dimensionless units. This is because the `width_for_unit_timestep`
-        parameter refers to unit timestep in units of M. It is the fiducial
-        width to use if the time step is 1M. If using time in seconds, this
-        would depend on the total mass.
+        This function gets an appropriate width by scaling it with the time
+        steps in the time array of the waveform data.  NOTE: As the function
+        name mentions, this should be used only for dimensionless units. This
+        is because the `width_for_unit_timestep` parameter refers to unit
+        timestep in units of M. It is the fiducial width to use if the time
+        step is 1M. If using time in seconds, this would depend on the total
+        mass.
 
         Parameters:
         ----------
@@ -1817,7 +1896,8 @@ class eccDefinition:
             Minimal width to separate consecutive peaks.
         """
         # get the phase22 at merger.
-        phase22_merger = self.phase22[np.argmin(np.abs(self.t - self.t_merger))]
+        phase22_merger = self.phase22[
+            np.argmin(np.abs(self.t - self.t_merger))]
         # get the time for getting width at num orbits before merger.
         # for 22 mode phase changes about 2 * 2pi for each orbit.
         t_at_num_orbits_before_merger = self.t[
