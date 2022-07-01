@@ -29,6 +29,12 @@ def load_waveform(catalog="LAL", **kwargs):
             raise Exception("Must provide file path to NR waveform")
         return load_lvcnr_waveform(**kwargs)
     elif catalog == "EOB":
+        # check kwargs
+        allowed_kwargs = ["filepath", "filepath_zero_ecc", "include_zero_ecc"]
+        for kw in kwargs:
+            if kw not in allowed_kwargs:
+                raise KeyError(f"{kw} is not a valid keyword."
+                               f" Must be one of {allowed_kwargs}")
         if kwargs["filepath"] is None:
             raise Exception("Must provide file path to EOB waveform")
         if "EccTest" in kwargs["filepath"]:
