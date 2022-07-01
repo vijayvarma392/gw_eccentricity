@@ -1,5 +1,4 @@
 """gw_eccentricity.
-========
 
 Measure eccentricity and mean anomaly from gravitational waves.
 See our paper https://arxiv.org/abs/xxxx.xxxx and
@@ -40,6 +39,7 @@ from .eccDefinitionUsingResidualFrequency import eccDefinitionUsingResidualFrequ
 
 def get_available_methods(return_dict=False):
     """Get all available eccDefinition methods.
+
     If return_dict is True, returns a dictionary of methods.
     Else, just returns a list of method names.
     """
@@ -56,6 +56,7 @@ def get_available_methods(return_dict=False):
     else:
         return list(methods.keys())
 
+
 def measure_eccentricity(tref_in=None,
                          fref_in=None,
                          method="Amplitude",
@@ -67,25 +68,22 @@ def measure_eccentricity(tref_in=None,
 
     Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
     where phi22(t) is the phase of the (2,2) waveform mode. We evaluate
-    omega22(t) at pericenter times, t_pericenters, and build a spline interpolant
-    omega22_pericenters(t) using those points. Similarly, we build omega22_apocenters(t)
-    using the apocenter times, t_apocenters. To find the pericenter/apocenter
-    locations, one can look for extrema in different waveform data, like
-    omega22(t) or Amp22(t), the amplitude of the (2,2) mode. Pericenters
-    correspond to pericenters, while apocenters correspond to apocenters in the data.
-    The method option (described below) lets you pick which waveform data to
-    use to find extrema.
+    omega22(t) at pericenter times, t_pericenters, and build a spline
+    interpolant omega22_pericenters(t) using those points. Similarly, we build
+    omega22_apocenters(t) using the apocenter times, t_apocenters. To find the
+    pericenter/apocenter locations, one can look for extrema in different
+    waveform data, like omega22(t) or Amp22(t), the amplitude of the (2,2)
+    mode. Pericenters correspond to pericenters, while apocenters correspond to
+    apocenters in the data. The method option (described below) lets you pick
+    which waveform data to use to find extrema.
 
-    The eccentricity is defined using omega22_pericenters(t) and omega22_apocenters(t),
-    as described in Eq.(1) of arxiv:xxxx.xxxx. Similarly, the mean anomaly is
-    defined using the pericenter locations as described in Eq.(2) of
-    arxiv:xxxx.xxxx.
+    The eccentricity is defined using omega22_pericenters(t) and
+    omega22_apocenters(t), as described in Eq.(1) of arxiv:xxxx.xxxx.
+    Similarly, the mean anomaly is defined using the pericenter locations as
+    described in Eq.(2) of arxiv:xxxx.xxxx.
 
     FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
     numbers are right, once the paper is finalized.
-    QUESTION FOR ARIF: Maybe we want to avoid saying pericenters/apocenters and just say
-    pericenters/apocenters here and in the code? Also, get rid of all "astrons"
-    throughout the code/documentation for consistency?
 
     Parameters:
     ----------
@@ -230,18 +228,20 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
-            - "mean_of_extrema_interpolants": The mean of omega22_pericenters(t) and
-              omega22_apocenters(t) is used as a proxy for the average frequency.
+            - "mean_of_extrema_interpolants":
+              The mean of omega22_pericenters(t) and omega22_apocenters(t) is
+              used as a proxy for the average frequency.
             - "interpolate_orbit_averages_at_extrema": First, orbit averages
               are obtained at each pericenter by averaging omega22(t) over the
-              time from the current pericenter to the next one. This average value
-              is associated with the time at mid point between the current and the
-              next pericenter. Similarly orbit averages are computed at apocenters.
-              Finally, a spline interpolant is constructed between all of these orbit
-              averages at extrema locations. Due to the nature of the averaging,
-              the final time over which the spline is constructed always starts
-              half an orbit after the first extrema and ends half an orbit before
-              the last extrema.
+              time from the current pericenter to the next one. This average
+              value is associated with the time at mid point between the
+              current and the next pericenter. Similarly orbit averages are
+              computed at apocenters. Finally, a spline interpolant is
+              constructed between all of these orbit averages at extrema
+              locations. Due to the nature of the averaging, the final time
+              over which the spline is constructed always starts half an orbit
+              after the first extrema and ends half an orbit before the last
+              extrema.
             - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
@@ -265,10 +265,11 @@ def measure_eccentricity(tref_in=None,
         tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
         where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
               tmin = max(t_pericenters[0], t_apocenters[0]),
-        As eccentricity measurement relies on the interpolants omega22_pericenters(t)
-        and omega22_apocenters(t), the above cutoffs ensure that we only compute
-        the eccentricity where both omega22_pericenters(t) and omega22_apocenters(t) are
-        within their bounds.
+        As eccentricity measurement relies on the interpolants
+        omega22_pericenters(t) and omega22_apocenters(t), the above cutoffs
+        ensure that we only compute the eccentricity where both
+        omega22_pericenters(t) and omega22_apocenters(t) are within their
+        bounds.
 
         fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
         where fmin = omega22_average(tmin)/2/pi and
@@ -290,14 +291,15 @@ def measure_eccentricity(tref_in=None,
 
     if method in available_methods:
         gwecc_object = available_methods[method](dataDict,
-                                               spline_kwargs=spline_kwargs,
-                                               extra_kwargs=extra_kwargs)
+                                                 spline_kwargs=spline_kwargs,
+                                                 extra_kwargs=extra_kwargs)
 
         tref_or_fref_out, ecc_ref, mean_ano_ref = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
         if not return_gwecc_object:
             return tref_or_fref_out, ecc_ref, mean_ano_ref
         else:
+            gwecc_object.method = method
             return tref_or_fref_out, ecc_ref, mean_ano_ref, gwecc_object
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
