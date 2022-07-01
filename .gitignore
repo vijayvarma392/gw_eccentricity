@@ -14,3 +14,6 @@ dist
 # If you symlink notebooks to the base dir, you can run them directly. But
 # let's not add such symlinks to the repo to avoid clutter.
 /gw_eccentricity_demo.ipynb
+
+
+.DS_Store

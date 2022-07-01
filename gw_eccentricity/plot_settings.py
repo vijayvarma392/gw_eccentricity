@@ -33,7 +33,7 @@ colorsDict = {
     "apocenter": colors_dj_25[1],
     "pericenter": colors_gb_45[1],
     "vline": colors_gb_14[1],
-    "peaksvline": colors_aq_15[1],
+    "pericentersvline": colors_aq_15[1],
     "FrequencyFits": colors_dj_25[1],
     "ResidualFrequency": colors_gb_14[1],
     "ResidualAmplitude": colors_gb_45[1],
@@ -75,6 +75,15 @@ figWidthsTwoColDict = {
     "Notebook": 12
 }
 
+figHeightsDict = {
+    "APS": 2,
+    "APJ": 2,
+    "Elsevier": 2,
+    "Springer": 2,
+    "Presentation": 3.0,
+    "Notebook": 4.0
+}
+
 ticklabelSizeDict = {"APS": 9.0,
                      "APJ": 8.0,
                      "Elsevier": 8.0,
@@ -95,7 +104,7 @@ fontSizeDict = {"APS": 9.0,
                 "Notebook": 14.0}
 
 
-def use_fancy_plotsettings(usetex=True, journal="Notebook"):
+def use_fancy_plotsettings(usetex=True, style="Notebook"):
     """Use fancy plot settings."""
     # Text
     if usetex:
@@ -105,17 +114,17 @@ def use_fancy_plotsettings(usetex=True, journal="Notebook"):
     # Axes
     rc("axes", prop_cycle=cycler(color=colorsList))  # color cycler
     rc("axes", linewidth=0.6)
-    rc("axes", labelsize=labelSizeDict[journal])
-    rc("axes", titlesize=fontSizeDict[journal])
+    rc("axes", labelsize=labelSizeDict[style])
+    rc("axes", titlesize=fontSizeDict[style])
     # Ticks
-    rc("xtick", labelsize=ticklabelSizeDict[journal])
-    rc("ytick", labelsize=ticklabelSizeDict[journal])
+    rc("xtick", labelsize=ticklabelSizeDict[style])
+    rc("ytick", labelsize=ticklabelSizeDict[style])
     rc("xtick", direction="in")
     rc("ytick", direction="in")
     # Legend
     rc("legend", frameon=False)
-    rc("legend", fontsize=fontSizeDict[journal])
+    rc("legend", fontsize=fontSizeDict[style])
     # Fonts
     rc("font", family="serif")
     rc("font", serif="times")
-    rc("font", size=fontSizeDict[journal])
+    rc("font", size=fontSizeDict[style])
