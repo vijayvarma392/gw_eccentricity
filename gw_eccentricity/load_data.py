@@ -108,8 +108,9 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
     mode_dict = {(2, 2): h/Ylm}
     # Make t = 0 at the merger. This would help when getting
     # residual amplitude by subtracting quasi-circular counterpart
-    t = t - peak_time_via_quadratic_fit(t,
-                                        amplitude_using_all_modes(mode_dict))[0]
+    t = t - peak_time_via_quadratic_fit(
+        t,
+        amplitude_using_all_modes(mode_dict))[0]
 
     dataDict = {"t": t, "hlm": mode_dict}
     return dataDict
@@ -125,31 +126,49 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     Returns dimless time and dimless complex strain.
     parameters:
     ----------
-    approximant     # str, name of approximant
-    q               # float, mass ratio q>=1
-    chi1            # array/list of len=3, dimensionless spin vector of larger BH
-    chi2            # array/list of len=3, dimensionless spin vector of smaller BH
-    deltaTOverM     # float, dimensionless time step size
-    Momega0          # float, dimensionless starting orbital frequency for waveform (rad/s)
-    inclination     # float, inclination angle in radians
-    phi_ref         # float, lalsim stuff
-    longAscNodes    # float, Longiture of Ascending nodes
-    eccentricity    # float, Eccentricity
-    meanPerAno      # float, Mean anomaly of periastron
-    alignedSpin     # assume aligned spin approximant
-    lambda1         # tidal parameter for larger BH
-    lambda2         # tidal parameter for smaller BH
-    physicalUnits   # if true, return in physical units
+    approximant: str
+        Name of approximant.
+    q: float
+        Mass ratio q>=1.
+    chi1: array/list of len=3
+        Dimensionless spin vector of larger BH.
+    chi2: array/list of len=3
+        Dimensionless spin vector of smaller BH.
+    deltaTOverM: float
+        Dimensionless time step size.
+    Momega0: float
+        Dimensionless starting orbital frequency for waveform (rad/s).
+    inclination: float
+        Inclination angle in radians.
+    phi_ref: float
+        Lalsim stuff.
+    longAscNodes: float
+        Longiture of Ascending nodes.
+    eccentricity: float
+        Eccentricity.
+    meanPerAno: float
+        Mean anomaly of periastron.
+    alignedSpin:
+        Assume aligned spin approximant.
+    lambda1:
+        Tidal parameter for larger BH.
+    lambda2:
+        Tidal parameter for smaller BH.
+    physicalUnits:
+        If True, return in physical units.
 
     return:
-    t               # array, dimensionless time
-    h               # complex array, dimensionless complex strain h_{+} -i*h_{x}
+    t: array
+        Dimensionless time.
+    h: complex array
+        Dimensionless complex strain h_{+} -i*h_{x}.
     """
     chi1 = np.array(chi1)
     chi2 = np.array(chi2)
 
     if alignedSpin:
-        if np.sum(np.sqrt(chi1[:2]**2)) > 1e-5 or np.sum(np.sqrt(chi2[:2]**2)) > 1e-5:
+        if np.sum(np.sqrt(chi1[:2]**2)) > 1e-5 or np.sum(
+                np.sqrt(chi2[:2]**2)) > 1e-5:
             raise Exception("Got precessing spins for aligned spin "
                             "approximant.")
         if np.sum(np.sqrt(chi1[:2]**2)) != 0:
@@ -195,7 +214,8 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
         deltaTOverM*MT, f_low, f_ref, dictParams, approxTag)
 
     h = np.array(hp.data.data - 1.j*hc.data.data)
-    t = deltaTOverM * MT * np.arange(len(h)) if physicalUnits else deltaTOverM * np.arange(len(h))
+    t = deltaTOverM * MT * np.arange(len(h)) if physicalUnits else (
+        deltaTOverM * np.arange(len(h)))
 
     return t, h if physicalUnits else h * distance/MT/lal.C_SI
 
@@ -205,7 +225,8 @@ def time_dimless_to_mks(M):
 
     parameters
     ----------
-    M: mass of system in the units of solar mass
+    M:
+        Mass of system in the units of solar mass.
 
     Returns
     -------
@@ -219,8 +240,10 @@ def amplitude_dimless_to_mks(M, D):
 
     parameters
     ----------
-    M: mass of the system in units of solar mass
-    D: Luminosity distance in units of megaparsecs
+    M:
+        Mass of the system in units of solar mass.
+    D:
+        Luminosity distance in units of megaparsecs.
 
     Returns
     -------
@@ -259,18 +282,24 @@ def load_lvcnr_waveform(**kwargs):
         Dictionary of modes dict, parameter dict and also zero ecc mode dict if
         include_zero_ecc is True.
 
-    t: time array
-    hlm: dictionary of modes
-    params_dict: dictionary of parameters
-    optionally,
-    t_zeroecc: time array for zero ecc modes
-    hlm_zeroecc: mode dictionary for zero eccentricity
+    t:
+        Time array.
+    hlm:
+        Dictionary of modes.
+    params_dict:
+        Dictionary of parameters.
+    Optionally,
+    t_zeroecc:
+        Time array for zero ecc modes
+    hlm_zeroecc:
+        Mode dictionary for zero eccentricity
     """
-    default_kwargs = {"filepath": None,
-                      "deltaTOverM": 0.1,
-                      "Momega0": 0,  # 0 means that the full NR waveform is returned
-                      "include_zero_ecc": True,
-                      "num_orbits_to_remove_as_junk": 2}
+    default_kwargs = {
+        "filepath": None,
+        "deltaTOverM": 0.1,
+        "Momega0": 0,  # 0 means that the full NR waveform is returned
+        "include_zero_ecc": True,
+        "num_orbits_to_remove_as_junk": 2}
 
     kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
                                            "lvcnr kwargs")
@@ -327,8 +356,9 @@ def load_lvcnr_waveform(**kwargs):
 
     modes_dict = {}
     while modes is not None:
-        modes_dict[(modes.l, modes.m)] = (modes.mode.data.data
-                                          / amplitude_dimless_to_mks(M, dist_mpc))
+        modes_dict[(modes.l, modes.m)] = (
+            modes.mode.data.data
+            / amplitude_dimless_to_mks(M, dist_mpc))
         modes = modes.next
 
     t = np.arange(len(modes_dict[(2, 2)])) * dt
@@ -571,12 +601,17 @@ def load_lvcnr_hack(**kwargs):
         Dictionary of modes dict, parameter dict and also zero ecc mode dict if
         include_zero_ecc is True.
 
-    t: time array
-    hlm: dictionary of modes
-    params_dict: dictionary of parameters
-    optionally,
-    t_zeroecc: time array for zero ecc modes
-    hlm_zeroecc: mode dictionary for zero eccentricity
+    t:
+        Time array.
+    hlm:
+        Dictionary of modes.
+    params_dict:
+        Dictionary of parameters.
+    Optionally,
+    t_zeroecc:
+        Time array for zero ecc modes.
+    hlm_zeroecc:
+        Mode dictionary for zero eccentricity.
     """
     default_kwargs = {"filepath": None,
                       "deltaTOverM": 0.1,
