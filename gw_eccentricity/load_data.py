@@ -17,10 +17,10 @@ def load_waveform(catalog="LAL", **kwargs):
     parameters:
     ----------
     catalog:
-          Waveform type. could be one of 'LAL', 'LVCNR', EOB
+        Waveform type. could be one of ['LAL', 'LVCNR', 'EOB']
 
     kwargs:
-         Kwargs to be passed to the waveform loading functions.
+        Kwargs to be passed to the waveform loading functions.
     """
     if catalog == "LAL":
         return load_LAL_waveform(**kwargs)
@@ -44,8 +44,8 @@ def load_waveform(catalog="LAL", **kwargs):
         else:
             raise Exception("Unknown filepath pattern.")
     else:
-        raise Exception(f"Unknown catalog {catalog}. Should be one of 'LAL',"
-                        " 'LVCNR', 'EOB'")
+        raise Exception(f"Unknown catalog {catalog}. Should be one of ['LAL',"
+                        " 'LVCNR', 'EOB']")
 
 
 def load_LAL_waveform(**kwargs):

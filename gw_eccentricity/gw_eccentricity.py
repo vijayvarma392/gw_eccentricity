@@ -262,7 +262,8 @@ def measure_eccentricity(tref_in=None,
         tref_out is returned, and if fref_in provided, fref_out is returned.
         Units of tref_out/fref_out are the same as those of tref_in/fref_in.
 
-        tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
+        tref_out is set as
+        tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
         where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
               tmin = max(t_pericenters[0], t_apocenters[0]),
         As eccentricity measurement relies on the interpolants
@@ -271,7 +272,8 @@ def measure_eccentricity(tref_in=None,
         omega22_pericenters(t) and omega22_apocenters(t) are within their
         bounds.
 
-        fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
+        fref_out is set as
+        fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
         where fmin = omega22_average(tmin)/2/pi and
               fmax = omega22_average(tmax)/2/pi, with tmin/tmax same as above.
 
