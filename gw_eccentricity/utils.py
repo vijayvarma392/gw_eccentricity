@@ -60,7 +60,7 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
     user_kwargs: Dictionary of kwargs by user
     default_kwargs: Dictionary of default kwargs
     name: string to represent the dictionary
-    location: string pointing to where the defaults are defined 
+    location: string pointing to where the defaults are defined
 
     returns:
     updated user_kwargs
@@ -111,3 +111,21 @@ def time_deriv_4thOrder(y, dt):
     res[-2] = y[-5:].dot(np.array([-1, 6, -18, 10, 3]) / 12.)
     res[-1] = y[-5:].dot(np.array([3, -16, 36, -48, 25]) / 12.)
     return res / dt
+
+
+
+
+def et_from_ew22_0pn(ew22):
+    """
+    Temporal eccentricity at Newtonian order.
+
+     ew22 : eccentricity measured from the 22-mode frequency.
+     Returns: et
+
+    """
+
+    psi = np.arctan2(1.-ew22*ew22,2.*ew22)
+
+    et = np.cos(psi/3.) -  np.sqrt(3)*np.sin(psi/3.)
+
+    return et
