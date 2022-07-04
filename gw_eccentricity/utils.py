@@ -27,9 +27,20 @@ def peak_time_via_quadratic_fit(t, func):
 
     Fits the function to a quadratic over the 5 points closest to the argmax
     func.
-    t : an array of times
-    func : array of function values
-    Returns: tpeak, fpeak
+
+    Parameters:
+    -----------
+    t:
+        An array of times.
+    func:
+        Array of function values.
+
+    Returns:
+    --------
+    tpeak:
+        Time at peak of the function func.
+    fpeak:
+        Value of function func at tpeak.
     """
     # Find the time closest to the peak, making sure we have room on either
     # side
@@ -56,13 +67,19 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
                                   location=None):
     """Sanity check user given dicionary of kwargs and set default values.
 
-    parameters:
-    user_kwargs: Dictionary of kwargs by user
-    default_kwargs: Dictionary of default kwargs
-    name: string to represent the dictionary
-    location: string pointing to where the defaults are defined
+    Parameters:
+    ----------
+    user_kwargs:
+        Dictionary of kwargs by user.
+    default_kwargs:
+        Dictionary of default kwargs.
+    name:
+        string to represent the dictionary
+    location:
+        string pointing to where the defaults are defined
 
-    returns:
+    Returns:
+    --------
     updated user_kwargs
     """
     # make user_kwargs iterable
@@ -97,11 +114,22 @@ class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
 
 
 def time_deriv_4thOrder(y, dt):
-    """
-    Fourth order accurate time derivative.
+    """Fourth order accurate time derivative.
 
     Assuming constant time step.
     Tested for convergence up to 1e-12 level.
+
+    Parameters:
+    -----------
+    y:
+        1d array to take time derivative of.
+    dt:
+        Time step.
+
+    Returns:
+    --------
+    dydt:
+        Fourth order time derivative of y.
     """
     # Use a 5 point stencil
     res = 0*y
@@ -113,7 +141,8 @@ def time_deriv_4thOrder(y, dt):
     res[0] = y[:5].dot(np.array([-25, 48, -36, 16, -3]) / 12.)
     res[-2] = y[-5:].dot(np.array([-1, 6, -18, 10, 3]) / 12.)
     res[-1] = y[-5:].dot(np.array([3, -16, 36, -48, 25]) / 12.)
-    return res / dt
+    dydt = res / dt
+    return dydt
 
 
 def et_from_ew22_0pn(ew22):
