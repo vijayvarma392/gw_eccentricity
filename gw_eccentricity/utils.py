@@ -84,7 +84,10 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
 
 
 class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
-    """Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text."""
+    """Smart Formatter for argparse helper strings.
+
+    Stolen from https://stackoverflow.com/questions/3853722/how-to-insert-newlines-on-argparse-help-text.
+    """
 
     def _split_lines(self, text, width):
         if text.startswith('R|'):
@@ -113,19 +116,20 @@ def time_deriv_4thOrder(y, dt):
     return res / dt
 
 
-
-
 def et_from_ew22_0pn(ew22):
+    """Get temporal eccentricity at Newtonian order.
+
+    Parameters:
+    -----------
+    ew22:
+        eccentricity measured from the 22-mode frequency.
+
+    Returns:
+    --------
+    et:
+        Temporal eccentricity at Newtonian order.
     """
-    Temporal eccentricity at Newtonian order.
-
-     ew22 : eccentricity measured from the 22-mode frequency.
-     Returns: et
-
-    """
-
-    psi = np.arctan2(1.-ew22*ew22,2.*ew22)
-
-    et = np.cos(psi/3.) -  np.sqrt(3)*np.sin(psi/3.)
+    psi = np.arctan2(1. - ew22*ew22, 2.*ew22)
+    et = np.cos(psi/3.) - np.sqrt(3) * np.sin(psi/3.)
 
     return et
