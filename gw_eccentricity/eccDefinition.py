@@ -1921,3 +1921,50 @@ class eccDefinition:
         # we want to use a width that is always smaller than the separation
         # between extrema, otherwise we might miss a few extrema near merger
         return int(width / 4)
+
+    def get_last_good_extrema_from_res_omega22_ratio(self,
+                                                     extrema_locations,
+                                                     max_ratio=1.025):
+        """Get the last good extrema using res_omega22 ratio.
+
+        The condition is that we should not use extrema where the
+        res_omega22 ratio between consecutive extrema exceeds
+        max_ratio.
+
+        In other words, we are looking into the change in the res_omega22
+        between consecutive extrema. If it changes
+        by an amount such that ratio of the res_omega22 at the current extremum
+        to that at the prevoious extremum is greater than max_ratio or less
+        than 1/max_ratio, then either the extremum is at wrong place or the
+        omega22 data at the extremum is not good. Either way, we are better off
+        using data and extrema before such extremum and excluding it and those
+        after it when constructing the omega22 interpolants.
+        """
+        res_omega22_extrema = self.res_omega22[extrema_locations]
+        res_omega22_extrema_ratio = np.abs(
+            res_omega22_extrema[1:]
+            / res_omega22_extrema[:-1])
+        if any(res_omega22_extrema_ratio >= max_ratio):
+            # Since we taking a ratio,
+            # the effective length of the array is reduced by one.
+            # Therefore for to go back to the actual location of
+            # extrema we add 1.
+            last_good_extrema_location = extrema_locations[
+                int(1 + np.where(
+                    res_omega22_extrema_ratio <= max_ratio)[0][-1])]
+            warnings.warn("res_omeg22 at extrema has a jump at "
+                          f"t = {self.t[last_good_extrema_location]}")
+            return last_good_extrema_location
+        if any(res_omega22_extrema_ratio < (1 / max_ratio)):
+            # Since we taking a ratio,
+            # the effective length of the array is reduced by one.
+            # Therefore for to go back to the actual location of
+            # extrema we add 1.
+            last_good_extrema_location = extrema_locations[
+                int(1 + np.where(
+                    res_omega22_extrema_ratio > (1 / max_ratio))[0][-1])]
+            warnings.warn("res_omeg22 at extrema has a jump at "
+                          f"t = {self.t[last_good_extrema_location]}")
+            return last_good_extrema_location
+        else:
+            return extrema_locations[-1]
