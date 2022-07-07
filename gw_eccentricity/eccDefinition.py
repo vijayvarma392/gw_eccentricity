@@ -1944,27 +1944,26 @@ class eccDefinition:
         res_omega22_extrema_ratio = np.abs(
             res_omega22_extrema[1:]
             / res_omega22_extrema[:-1])
+        last_good_extrema_location1 = extrema_locations[-1]
+        last_good_extrema_location2 = extrema_locations[-1]
         if any(res_omega22_extrema_ratio >= max_ratio):
             # Since we taking a ratio,
             # the effective length of the array is reduced by one.
             # Therefore for to go back to the actual location of
             # extrema we add 1.
-            last_good_extrema_location = extrema_locations[
+            last_good_extrema_location1 = extrema_locations[
                 int(1 + np.where(
                     res_omega22_extrema_ratio <= max_ratio)[0][-1])]
             warnings.warn("res_omeg22 at extrema has a jump at "
-                          f"t = {self.t[last_good_extrema_location]}")
-            return last_good_extrema_location
+                          f"t = {self.t[last_good_extrema_location1]}")
         if any(res_omega22_extrema_ratio < (1 / max_ratio)):
             # Since we taking a ratio,
             # the effective length of the array is reduced by one.
             # Therefore for to go back to the actual location of
             # extrema we add 1.
-            last_good_extrema_location = extrema_locations[
+            last_good_extrema_location2 = extrema_locations[
                 int(1 + np.where(
                     res_omega22_extrema_ratio > (1 / max_ratio))[0][-1])]
             warnings.warn("res_omeg22 at extrema has a jump at "
-                          f"t = {self.t[last_good_extrema_location]}")
-            return last_good_extrema_location
-        else:
-            return extrema_locations[-1]
+                          f"t = {self.t[last_good_extrema_location2]}")
+        return min(last_good_extrema_location1, last_good_extrema_location2)
