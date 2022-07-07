@@ -6,6 +6,7 @@ Part of Defining eccentricity project
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import PchipInterpolator
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -18,7 +19,11 @@ import warnings
 class eccDefinition:
     """Measure eccentricity from given waveform data dictionary."""
 
-    def __init__(self, dataDict, spline_kwargs=None, extra_kwargs=None):
+    def __init__(self,
+                 dataDict,
+                 interpolator="InterpolatedUnivariateSpline",
+                 interpolator_kwargs=None,
+                 extra_kwargs=None):
         """Init eccDefinition class.
 
         parameters:
@@ -66,11 +71,18 @@ class eccDefinition:
             pericenter time is used to time-align the two waveforms before
             computing the residual amplitude/frequency.
 
-        spline_kwargs:
-            Dictionary of arguments to be passed to the spline interpolation
-            routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-            compute omega22_pericenters(t) and omega22_apocenters(t).
-            Defaults are the same as those of InterpolatedUnivariateSpline.
+        interpolator: str
+            Interpolation routine to compute omega22_pericenters(t) and
+            omega22_apocenters(t). Currently there are two options to choose an
+            interpolator from
+            - "InterpolatedUnivariateSpline": scipy.interpolate.InterpolatedUnivariateSpline
+            - "PchipInterpolator": scipy.interpolate.PchipInterpolator
+            Default is "InterpolatedUnivariateSpline".
+
+        interpolator_kwargs:
+            Dictionary of arguments to be passed to the interpolator.
+            Defaults are the same as those of the chosen interpolator
+            routine.
 
         extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
             are:
@@ -173,11 +185,19 @@ class eccDefinition:
         if "hlm_zeroecc" in dataDict:
             self.compute_res_amp_and_omega22()
 
+        # interpolators
+        self.available_interpolators = {
+            "InterpolatedUnivariateSpline": InterpolatedUnivariateSpline,
+            "PchipInterpolator": PchipInterpolator
+        }
+        self.interpolator = self.available_interpolators[interpolator]
+
         # Sanity check various kwargs and set default values
-        self.spline_kwargs = check_kwargs_and_set_defaults(
-            spline_kwargs, self.get_default_spline_kwargs(),
-            "spline_kwargs",
-            "eccDefinition.get_default_spline_kwargs()")
+        self.interpolator_kwargs = check_kwargs_and_set_defaults(
+            interpolator_kwargs,
+            self.get_default_interpolator_kwargs()[interpolator],
+            "interpolator_kwargs",
+            "eccDefinition.get_default_interpolator_kwargs()")
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
             "extra_kwargs",
@@ -195,15 +215,20 @@ class eccDefinition:
             "extrema_finding_kwargs",
             "eccDefinition.get_default_extrema_finding_kwargs()")
 
-    def get_default_spline_kwargs(self):
-        """Defaults for spline settings."""
-        default_spline_kwargs = {
+    def get_default_interpolator_kwargs(self):
+        """Defaults for interpolator settings."""
+        default_InterpolatedUnivariateSpline_kwargs = {
             "w": None,
             "bbox": [None, None],
             "k": 3,
             "ext": 2,
             "check_finite": False}
-        return default_spline_kwargs
+        default_PchipInterpolator_kwargs = {
+            "extrapolate": None}
+        return_dict = {
+            "InterpolatedUnivariateSpline": default_InterpolatedUnivariateSpline_kwargs,
+            "PchipInterpolator": default_PchipInterpolator_kwargs}
+        return return_dict
 
     def get_default_extrema_finding_kwargs(self):
         """Defaults for extrema_finding_kwargs."""
@@ -280,10 +305,11 @@ class eccDefinition:
             extrema_idx = extrema_idx[
                 extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
-            spline = InterpolatedUnivariateSpline(self.t[extrema_idx],
-                                                  self.omega22[extrema_idx],
-                                                  **self.spline_kwargs)
-            return spline, extrema_idx
+            interpolator = self.interpolator(
+                self.t[extrema_idx],
+                self.omega22[extrema_idx],
+                **self.interpolator_kwargs)
+            return interpolator, extrema_idx
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."

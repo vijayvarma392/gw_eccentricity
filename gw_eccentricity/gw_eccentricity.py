@@ -62,7 +62,8 @@ def measure_eccentricity(tref_in=None,
                          method="Amplitude",
                          dataDict=None,
                          return_gwecc_object=False,
-                         spline_kwargs=None,
+                         interpolator="InterpolatedUnivariateSpline",
+                         interpolator_kwargs=None,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -193,11 +194,17 @@ def measure_eccentricity(tref_in=None,
         plots.
         Default is False.
 
-    spline_kwargs:
-        Dictionary of arguments to be passed to the spline interpolation
-        routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-        compute omega22_pericenters(t) and omega22_apocenters(t).
-        Defaults are the same as those of InterpolatedUnivariateSpline.
+    interpolator: str
+        Interpolation routine to compute omega22_pericenters(t) and
+        omega22_apocenters(t). Currently there are two options to choose an
+        interpolator from
+        - "InterpolatedUnivariateSpline": scipy.interpolate.InterpolatedUnivariateSpline
+        - "PchipInterpolator": scipy.interpolate.PchipInterpolator
+        Default is "InterpolatedUnivariateSpline".
+
+    interpolator_kwargs:
+        Dictionary of arguments to be passed to the interpolator.  Defaults are
+        the same as those of the chosen interpolator routine.
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         num_orbits_to_exclude_before_merger:
@@ -292,9 +299,11 @@ def measure_eccentricity(tref_in=None,
     available_methods = get_available_methods(return_dict=True)
 
     if method in available_methods:
-        gwecc_object = available_methods[method](dataDict,
-                                                 spline_kwargs=spline_kwargs,
-                                                 extra_kwargs=extra_kwargs)
+        gwecc_object = available_methods[method](
+            dataDict,
+            interpolator=interpolator,
+            interpolator_kwargs=interpolator_kwargs,
+            extra_kwargs=extra_kwargs)
 
         tref_or_fref_out, ecc_ref, mean_ano_ref = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
