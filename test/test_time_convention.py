@@ -16,7 +16,7 @@ def test_time_convention():
     The test expects that the measured eccentricity array and mean anomaly
     array from these two dataDicts should be the same.
     """
-    extra_kwargs = {"debug": True}
+    extra_kwargs = {"debug": False}
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
                   "q": 3.0,
