@@ -16,7 +16,7 @@ def test_time_convention():
     The test expects that the measured eccentricity array and mean anomaly
     array from these two dataDicts should be the same.
     """
-    extra_kwargs = {"debug": False}
+    extra_kwargs = {"debug": True}
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
                   "q": 3.0,
@@ -43,9 +43,6 @@ def test_time_convention():
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
-        # FIXEME: Does not work for FrequencyFits, so skipping it for now
-        if method == "FrequencyFits":
-            continue
         eccs = []
         meananos = []
         for data in [dataDict1, dataDict2]:

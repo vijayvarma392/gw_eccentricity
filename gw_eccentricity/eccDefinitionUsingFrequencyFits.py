@@ -110,7 +110,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.label_for_data_for_finding_extrema = r"$\omega_{22}$"
 
         self.debug=self.extra_kwargs["debug"];
-
         # create the shortened data-set for analysis 
         if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
             merger_idx = np.argmin(np.abs(self.t - self.t_merger))
@@ -124,17 +123,15 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
                 self.phase22 - phase22_num_orbits_earlier_than_merger))
 
-            self.tC_analyse = self.t[:idx_num_orbit_earlier_than_merger]
+            self.t_analyse = self.t[:idx_num_orbit_earlier_than_merger] - self.t_merger
             self.omega22_analyse = self.omega22[
                 :idx_num_orbit_earlier_than_merger]
             self.phase22_analyse = self.phase22[
                 :idx_num_orbit_earlier_than_merger]
-            self.t_analyse = self.t[:idx_num_orbit_earlier_than_merger]
         else:
-            self.t_analyse = self.t
+            self.t_analyse = self.t - self.t_merger
             self.omega22_analyse = self.omega22
             self.phase22_analyse = self.phase22
-            self.t_analyse = self.t
        
         # In the diagnostic plot, we add a plot that shows which data was
         # used to find the extrema, i.e., it could be amp, omega or residual
@@ -261,7 +258,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             # scipy.optimize fails
             fig,axs=plt.subplots(1,3,figsize=(14,4))
             axs[0].set_title('omega')
-            axs[1].set_title('residual:  omega-f_fit')
+            axs[1].set_title('residual:  omega-f_fit (fitted region only)')
+            axs[2].set_title('residual:  omega-f_fit')
             axs[0].plot(self.t_analyse, self.omega22_analyse, label='omega22')
             axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p0), linewidth=0.5, color='grey', label='f_fit(*p_guess)')
  
@@ -281,9 +279,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             line,=axs[1].plot(self.t_analyse[:idx_end],
                               self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual (fitted region only)')
             line,=axs[2].plot(self.t_analyse[:idx_end],
-                              self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual')
-            axs[2].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), linewidth=0.5, color=line.get_color())
+                              self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual (fitted region)')
+            axs[2].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), linewidth=0.5, color=line.get_color(), label='residual (all data)')
             axs[0].legend(); 
+            axs[2].legend(); 
             fig.savefig(pp,format='pdf')
             plt.close(fig)
 
