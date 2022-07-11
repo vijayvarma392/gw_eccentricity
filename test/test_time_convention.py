@@ -43,9 +43,6 @@ def test_time_convention():
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
-        # FIXME: Does not work for FrequencyFits, so skipping it for now
-        if method == "FrequencyFits":
-            continue
         eccs = []
         meananos = []
         for data in [dataDict1, dataDict2]:
