@@ -110,9 +110,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.label_for_data_for_finding_extrema = r"$\omega_{22}$"
 
         self.debug=self.extra_kwargs["debug"];
+
         # create the shortened data-set for analysis 
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            merger_idx = np.argmin(np.abs(self.t - self.t_merger))
+        merger_idx = np.argmin(np.abs(self.t - self.t_merger))
+        idx_end=merger_idx
+        if False and (self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None):
             phase22_at_merger = self.phase22[merger_idx]
             # one orbit changes the 22 mode phase by 4 pi since
             # omega22 = 2 omega_orb
@@ -120,18 +122,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 phase22_at_merger
                 - 4 * np.pi
                 * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
-                self.phase22 - phase22_num_orbits_earlier_than_merger))
+            idx_end = np.argmin(np.abs(self.phase22 - phase22_num_orbits_earlier_than_merger))
 
-            self.t_analyse = self.t[:idx_num_orbit_earlier_than_merger] - self.t_merger
-            self.omega22_analyse = self.omega22[
-                :idx_num_orbit_earlier_than_merger]
-            self.phase22_analyse = self.phase22[
-                :idx_num_orbit_earlier_than_merger]
-        else:
-            self.t_analyse = self.t - self.t_merger
-            self.omega22_analyse = self.omega22
-            self.phase22_analyse = self.phase22
+        self.t_analyse = self.t[:idx_end] - self.t_merger
+        self.omega22_analyse = self.omega22[:idx_end]
+        self.phase22_analyse = self.phase22[:idx_end]
        
         # In the diagnostic plot, we add a plot that shows which data was
         # used to find the extrema, i.e., it could be amp, omega or residual
@@ -569,8 +564,9 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             #  average orbital period during [idx_lo, idx_hi]
             # idx_hi-1 also works in the case when idx_hi = one-past-last-element
             T_orbit = (t[idx_hi-1] - t[idx_lo])/(phase22[idx_hi-1] - phase22[idx_lo]) * 4*np.pi
-            # set distance = 1/4 period
-            distance = int(0.25*T_orbit/maxdt)
+
+            # set distance = 60% of period.  This should exclude spurious extrema due to noise
+            distance = int(0.6*T_orbit/maxdt)
 
             omega_residual_amp = max(omega_residual)-min(omega_residual)
             prominence=omega_residual_amp*0.03
