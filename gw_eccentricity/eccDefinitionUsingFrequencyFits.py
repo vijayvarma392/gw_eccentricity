@@ -72,7 +72,7 @@ class envelope_fitting_function2:
         n = -f1/f0*T_m_t0
         A = f0*(T_m_t0)**(-n)
         T = T_m_t0 + self.t0
-        return f"{A:.3g}({T:+.2f}-t)^{n:.3f}"
+        return f"{A:.4g}({T:+.3f}-t)^{n:.4f}"
 
     def __call__(self, t, f0, f1, alpha):
         """Call."""
@@ -253,12 +253,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
                        [10*f0, 10.*f0/(-fit_center_time), -fit_center_time]]
         if verbose:
-            print(f"global fit: guess p0={p0}, bounds={bounds0}")
+            print(f"global fit: guess p0={p0},  t_center={fit_center_time}")
+            print(f"            bounds={bounds0}")
  
         if pp:
             # first diagnostic plots.  Will be available even if
             # scipy.optimize fails
-            fig,axs=plt.subplots(1,2,figsize=(11,4))
+            fig,axs=plt.subplots(1,3,figsize=(14,4))
             axs[0].set_title('omega')
             axs[1].set_title('residual:  omega-f_fit')
             axs[0].plot(self.t_analyse, self.omega22_analyse, label='omega22')
@@ -269,6 +270,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             f_fit, self.t_analyse[:idx_end],
             self.omega22_analyse[:idx_end], p0=p0,
             bounds=bounds0)
+        if verbose:
+            print(f"            result p_global={p_global}")
 
         if pp:
             line, =axs[0].plot(self.t_analyse[:idx_end],
@@ -276,8 +279,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p_global), color=line.get_color(), linewidth=0.5)
 
             line,=axs[1].plot(self.t_analyse[:idx_end],
+                              self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual (fitted region only)')
+            line,=axs[2].plot(self.t_analyse[:idx_end],
                               self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual')
-            axs[1].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), linewidth=0.5, color=line.get_color())
+            axs[2].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), linewidth=0.5, color=line.get_color())
             axs[0].legend(); 
             fig.savefig(pp,format='pdf')
             plt.close(fig)
