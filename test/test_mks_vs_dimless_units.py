@@ -38,11 +38,7 @@ def test_mks_vs_dimless_units():
 
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
-    # FIXME: not including FrequencyFits since it does not work with MKS units
-    # yet
     for method in available_methods:
-        if method == "FrequencyFits":
-            continue
         # Try evaluating at a single dimless time t = -12000
         idx = np.argmin(np.abs(dataDict["t"] - (-12000)))
         tref_out, ecc_ref, meanano_ref = measure_eccentricity(
