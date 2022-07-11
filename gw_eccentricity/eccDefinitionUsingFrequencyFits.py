@@ -565,8 +565,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             # idx_hi-1 also works in the case when idx_hi = one-past-last-element
             T_orbit = (t[idx_hi-1] - t[idx_lo])/(phase22[idx_hi-1] - phase22[idx_lo]) * 4*np.pi
 
-            # set distance = 60% of period.  This should exclude spurious extrema due to noise
-            distance = int(0.6*T_orbit/maxdt)
+            # set distance = 75% of period.  This should exclude spurious extrema due to noise
+            distance = int(0.75*T_orbit/maxdt)
 
             omega_residual_amp = max(omega_residual)-min(omega_residual)
             prominence=omega_residual_amp*0.03
