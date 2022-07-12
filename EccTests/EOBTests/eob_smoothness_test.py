@@ -104,6 +104,10 @@ parser.add_argument(
     "--paper",
     action="store_true",
     help="Remove markers for paper.")
+parser.add_argument("--debug_index", type=int, default=None,
+                    help="Only analyse the waveform with this index, and enable debugging output")
+parser.add_argument("--verbose", action='store_true', default=False,
+                    help="increase verbosity")
 
 args = parser.parse_args()
 
@@ -128,6 +132,9 @@ data_dir = args.data_dir + "/Non-Precessing/EOB/"
 extra_kwargs = {"debug": False,
                 # "treat_mid_points_between_peaks_as_troughs": True
                 }
+
+if not args.debug_index is None:
+    extra_kwargs['debug']=True 
 
 cmap = cm.get_cmap("plasma")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
@@ -183,11 +190,18 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         tmaxList.update({method: []})
         tminList.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
-    for idx0, ecc in tqdm(enumerate(EOBeccs)):
+    for idx0, ecc in tqdm(enumerate(EOBeccs), disable=args.verbose):
+
+        # in debugging mode, skip all but debug_index:
+        if not args.debug_index is None:
+            if idx0!=args.debug_index: continue 
+
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
                     f"Momega0{Momega0:.3f}_meanAno{meanAno:.3f}.h5")
         kwargs = {"filepath": fileName}
+        if args.verbose:
+            print(f"idx={idx0}, {fileName}")
         # check if any residual method is in methods. If yes then load
         # zeroecc waveforms also.
         if "ResidualAmplitude" in methods or "ResidualFrequency" in methods:
@@ -226,8 +240,11 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 if idx == len(methods) - 1:
                     ax_ecc_vs_t[idx].set_xlabel(r"$t$ [$M$]")
             except Exception:
-                warnings.warn("Exception raised. Probably too small"
-                              " eccentricity to detect any extrema.")
+                if args.debug_index is None:
+                    warnings.warn("Exception raised. Probably too small"
+                                  " eccentricity to detect any extrema.")
+                else:
+                    raise  # if debugging, print entire traceback
     # Iterate over methods to plots measured ecc at the first extrema vs eob
     # eccs collected above looping over all EOB eccs for each methods
     for idx, method in enumerate(methods):
