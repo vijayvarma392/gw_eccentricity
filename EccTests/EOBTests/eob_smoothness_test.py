@@ -105,7 +105,7 @@ parser.add_argument(
     action="store_true",
     help="Remove markers for paper.")
 parser.add_argument("--debug_index", type=int, default=None,
-                    help="Only analyse the wveform with this index, and enable debugging output")
+                    help="Only analyse the waveform with this index, and enable debugging output")
 parser.add_argument("--verbose", action='store_true', default=False,
                     help="increase verbosity")
 
