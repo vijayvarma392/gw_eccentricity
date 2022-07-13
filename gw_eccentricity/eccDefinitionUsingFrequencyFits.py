@@ -395,11 +395,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             # shift idx_ref one extremum to the right, in preparation for the next extrema-search
             idx_ref = int(0.5*(idx_extrema[N]+idx_extrema[N+1]))
 
-            if count > 1000:
+            if count > 10000:
                 if pp:
                     pp.close()
-                raise Exception("Detected more than 1000 extrema.  This has triggered a saftey exception."
-                "If your waveform is really this long, you can reomve this exception and try again.")
+                raise Exception("Detected more than 10000 extrema.  This has triggered a saftey exception."
+                "If your waveform is really this long, please remove this exception and run again.")
         if verbose:
             print(f"Reached end of data.  Identified extrema = {extrema}")
         if pp:  
