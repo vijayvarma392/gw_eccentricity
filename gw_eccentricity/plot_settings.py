@@ -29,7 +29,7 @@ colorsList = [colors_gb_14[1],
               colors_dj_25[1]]
 
 colorsDict = {
-    "default": colors_gb_36[5],
+    "default": colors_dj_25[3],  # colors_gb_36[5],
     "apocenter": colors_dj_25[1],
     "pericenter": colors_gb_45[1],
     "vline": colors_gb_14[1],
@@ -38,7 +38,7 @@ colorsDict = {
     "ResidualFrequency": colors_gb_14[1],
     "ResidualAmplitude": colors_gb_45[1],
     "Frequency": colors_aq_15[1],
-    "Amplitude": colors_gb_36[5],
+    "Amplitude": colors_dj_25[3]  # colors_gb_36[5],
 }
 
 lstyles = {"Amplitude": "solid",
