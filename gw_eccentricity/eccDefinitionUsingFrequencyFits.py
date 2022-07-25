@@ -251,7 +251,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         if pp:
             # first diagnostic plots.  Will be available even if
             # scipy.optimize fails
-            fig,axs=plt.subplots(1,3,figsize=(14,4))
+            fig,axs=plt.subplots(1,3,figsize=(12,4))
             axs[0].set_title('omega')
             axs[1].set_title('residual:  omega-f_fit (fitted region only)')
             axs[2].set_title('residual:  omega-f_fit')
@@ -277,7 +277,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                               self.omega22_analyse[:idx_end]-f_fit(self.t_analyse[:idx_end], *p_global), label='residual (fitted region)')
             axs[2].plot(self.t_analyse, self.omega22_analyse-f_fit(self.t_analyse, *p_global), linewidth=0.5, color=line.get_color(), label='residual (all data)')
             axs[0].legend(); 
-            axs[2].legend(); 
+            axs[2].legend();
+            fig.tight_layout()
             fig.savefig(pp,format='pdf')
             plt.close(fig)
 
@@ -305,6 +306,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             raise Exception("data set too short.")
         p = p_global
         count = 0
+        extra_extrema, extra_extrema_t, extra_extrema_omega22, extra_extrema_phase22 = [], [], [], []
         while True:
             count = count+1
             if verbose:
@@ -319,7 +321,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 increase_idx_ref_if_needed=True,
                 refine_extrema=refine_extrema,
                 verbose=verbose,
-                pp=pp)
+                pp=pp,
+                plot_info=f"count={count}")
             if verbose:
                 print(f"IDX_EXTREMA={idx_extrema}, f_fit={f_fit.format(*p)}, "
                       f"K={K:5.3f}, idx_ref={idx_ref}")
@@ -356,6 +359,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     omega22_extrema_refined.append(extrema_refined[1][N])
                     phase22_extrema_refined.append(extrema_refined[2][N])
 
+                    # also store additional extrema, just in case we want to return them
+                    extra_extrema=idx_extrema[N+1:]
+                    extra_extrema_t = extrema_refined[0][N+1:]
+                    extra_extrema_omega22 = extrema_refined[1][N+1:]
+                    extra_extrema_phase22 = extrema_refined[2][N+1:]
+                    
                 if terminate:
                     # be greedy and take any further extrema we know
                     for k in range(N+1, len(idx_extrema)):
@@ -364,7 +373,21 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                             t_extrema_refined.append(extrema_refined[0][k])
                             omega22_extrema_refined.append(extrema_refined[1][k])
                             phase22_extrema_refined.append(extrema_refined[2][k])
+            else:
+                # more than two extrema short.  In this case, don't trust the fit anymore,
+                # but rather report the extema found in the last iteration
 
+                # sanity check: if we have too few extrema, ten terminate must be set, too.
+                if not terminate:
+                    raise Exception("Logical error -- should never get here")
+                if verbose:
+                    print("terminating with very few extrema in this iteration. Take left-over extrema from previous iteration")
+                    print(f"extra_extrema_t={extra_extrema_t}")
+                extrema.extend(extra_extrema)
+                t_extrema_refined.extend(extra_extrema_t)
+                omega22_extrema_refined.extend(extra_extrema_omega22)
+                phase22_extrema_refined.extend(extra_extrema_phase22)
+                
             if terminate:
                 #print("WARNING - TOO FEW EXTREMA FOUND. THIS IS LIKELY SIGNAL THAT WE ARE AT MERGER")
                 break
@@ -372,11 +395,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             # shift idx_ref one extremum to the right, in preparation for the next extrema-search
             idx_ref = int(0.5*(idx_extrema[N]+idx_extrema[N+1]))
 
-            if count > 1000:
+            if count > 10000:
                 if pp:
                     pp.close()
-                raise Exception("Detected more than 1000 extrema.  This has triggered a saftey exception."
-                "If your waveform is really this long, you can reomve this exception and try again.")
+                raise Exception("Detected more than 10000 extrema.  This has triggered a saftey exception."
+                "If your waveform is really this long, please remove this exception and run again.")
         if verbose:
             print(f"Reached end of data.  Identified extrema = {extrema}")
         if pp:  
@@ -430,7 +453,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                           increase_idx_ref_if_needed=True,
                           refine_extrema=False,
                           verbose=False,
-                          pp=None):
+                          pp=None,
+                          plot_info=""):
     """given a 22-GW mode (t, phase22, omega22), identify a stretch of data
     [idx_lo, idx_hi] centered roughly around the index idx_ref which satisfies
     the following properties:
@@ -468,7 +492,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                                       preserve monotonicity to help tracing
                                       out an inspiral)
 
-      - pp a PdfPages object for a diagnostic output plot 
+      - pp a PdfPages object for a diagnostic output plot
+      - plot_info -- string placed into the title of the diagnostic plot
 
     RETURNS:
           idx_extrema, p, K, idx_ref, extrema_refined
@@ -528,7 +553,8 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
     Count_Nright_short=0
 
     if pp:
-        fig,axs=plt.subplots(1,3,figsize=(11,4))
+        fig,axs=plt.subplots(1,3,figsize=(12,4))
+        fig.suptitle(plot_info, x=0.02, ha='left')
         axs[0].set_title('trend-subtracted:  sign*(omega-f_fit)',fontsize='small')
         axs[1].set_title('omega(t)')
         axs[2].set_title('residual of fit')
@@ -595,23 +621,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             with np.printoptions(precision=2): # , suppress=True, threshold=5):
                 print(f"       idx_extrema=   {idx_extrema}, Nleft={Nleft}, Nright={Nright}")
                 print(f"       t[idx_extrema]={t_extrema}")
-        if N_extrema==0 or it>20:
-            if verbose:
-                if N_extrema==0:
-                    print(f"could not identify a single extremum.  This can happen, for instance\n"
-                    "for low eccentricity late in the inspiral where the range of omega\n"
-                    "is so large that the prominence = 0.03*omega_res_amp cannot be\n"
-                    "reached by the small eccentricity oscillations")
-                else:
-                    print(f"interval finding failed after it={it} iterations.  Exit")
-            if pp:
-                #plt.legend()
-                fig.savefig(pp,format='pdf')
-                plt.close(fig)
-            # don't really know what to do if we didn't identify any extrema.  
-            # so return with empty idx_extrema and let upstream code handle this
-            return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
- 
+
         if refine_extrema:
             # perform parabolic fits to omega_residual around each extremum
             # in order to find the time of extrema to sub-index
@@ -664,7 +674,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                  / (4*np.pi * (N_extrema - 1)))
        
         if pp:
-            # offset data vertically by 0.001*it, to mitigate lines on top of each other.
+            # offset data vertically by 10^k*it
             if plot_offset is None:
                 plot_offset=10**np.ceil(np.log10(omega_residual_amp/2.))
 
@@ -680,6 +690,26 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
             if verbose:
                 print(f"       Count_Nright_short={Count_Nright_short}")
 
+        if N_extrema==0 or it>20:
+            if verbose:
+                if N_extrema==0:
+                    print(f"could not identify a single extremum.  This can happen, for instance\n"
+                    "for low eccentricity late in the inspiral where the range of omega\n"
+                    "is so large that the prominence = 0.03*omega_res_amp cannot be\n"
+                    "reached by the small eccentricity oscillations")
+                else:
+                    print(f"interval finding failed after it={it} iterations.  Exit")
+            if pp:
+                #plt.legend()
+                fig.tight_layout()
+                fig.savefig(pp,format='pdf')
+                plt.close(fig)
+            # don't really know what to do if we didn't identify any extrema.  
+            # so return with empty idx_extrema and let upstream code handle this
+            return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
+ 
+
+                
         if Nleft != Nbefore or Nright != Nafter:
             # number of extrema not as we wished, so update [idx_lo, idx_hi]
             if Nleft > Nbefore:  # too many peaks left, discard by placing idx_lo between N and N+1's peak to left
@@ -788,6 +818,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                 print(f"looks like we hit a limiting cycle; presently the number of extrema is correct, so exit")
             if pp:
                 #plt.legend()
+                fig.tight_layout()
                 fig.savefig(pp,format='pdf')
                 plt.close(fig)
             return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
@@ -802,6 +833,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                 print(f"exiting because Count_right_short={Count_Nright_short} is large, or N_extrema={N_extrema} is insufficient")
             if pp:
                 #plt.legend()
+                fig.tight_layout()
                 fig.savefig(pp,format='pdf')
                 plt.close(fig)
             return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
@@ -813,6 +845,7 @@ def FindExtremaNearIdxRef(t, phase22, omega22,
                 print(f"max_delta_omega={max_delta_omega:5.4g}<TOL={TOL}.  Done")
             if pp:
                 #plt.legend()
+                fig.tight_layout()
                 fig.savefig(pp,format='pdf')
                 plt.close(fig)
             return idx_extrema, p, K, idx_ref, [t_extrema, omega22_extrema, phase22_extrema]
