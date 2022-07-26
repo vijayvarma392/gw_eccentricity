@@ -91,11 +91,11 @@ ticklabelSizeDict = {"APS": 9.0,
                      "Presentation": 8.0,
                      "Notebook": 14.0}
 labelSizeDict = {"APS": 9.0,
-                     "APJ": 8.0,
-                     "Elsevier": 8.0,
-                     "Springer": 8.0,
-                     "Presentation": 8.0,
-                     "Notebook": 18.0}
+                 "APJ": 8.0,
+                 "Elsevier": 8.0,
+                 "Springer": 8.0,
+                 "Presentation": 8.0,
+                 "Notebook": 18.0}
 fontSizeDict = {"APS": 9.0,
                 "APJ": 8.0,
                 "Elsevier": 8.0,
@@ -128,3 +128,26 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
     rc("font", family="serif")
     rc("font", serif="times")
     rc("font", size=fontSizeDict[style])
+
+
+# Dictionary of labels to use in plots.
+labelsDict = {
+    "eccentricity": r"Eccentricity $e_{\mathrm{gw}}$",
+    "mean_anomaly": r"Mean Anomaly $l_{\mathrm{gw}}$ [rad]",
+    "omega22_pericenters": r"$\omega^{p}_{22}$",
+    "omega22_apocenters": r"$\omega^{a}_{22}$",
+    "omega22_average": r"$\omega^{\mathrm{avg}}_{22}$",
+    "eob_eccentricity": r"$e_{\mathrm{EOB}}$",
+    "t": r"$t$",
+    "t_dimless": r"$t$ [$M$]",
+    "omega22_dimless": r"$\omega_{22}$ [rad/$M$]",
+    "pericenters": "Pericenters",
+    "apocenters": "Apocenters",
+    "amp22": r"$A_{22}$",
+    "omega22": r"$\omega_{22}$",
+    "res_omega22": r"$\Delta\omega_{22}$",
+    "res_omega22_dimless": r"$\Delta\omega_{22}$ [rad/$M$]",
+    "res_amp22": r"$\Delta A_{22}$",
+    "t_ref": r"$t_\mathrm{ref}$",
+    "dedt": r"$de/dt$"
+}
