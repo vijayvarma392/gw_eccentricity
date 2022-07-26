@@ -105,7 +105,7 @@ class eccDefinition:
                 - "mean_of_extrema_interpolants": The mean of
                   omega22_pericenters(t) and omega22_apocenters(t) is used as a
                   proxy for the average frequency.
-                - "interpolate_orbit_averages_at_extrema": First, orbit
+                - "mean_motion": First, orbit
                   averages are obtained at each pericenter by averaging
                   omega22(t) over the time from the current pericenter to the
                   next one. This average value is associated with the time at
@@ -120,7 +120,7 @@ class eccDefinition:
                   counterpart is used as a proxy for the average
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
-                Default is "mean_of_extrema_interpolants".
+                Default is "mean_motion".
             treat_mid_points_between_pericenters_as_apocenters:
                 If True, instead of trying to find apocenter locations by
                 looking for local minima in the data, we simply find the
@@ -225,7 +225,7 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega22_averaging_method": "mean_of_extrema_interpolants",
+            "omega22_averaging_method": "mean_motion",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False
         }
@@ -826,7 +826,7 @@ class eccDefinition:
         """Return available omega22 averaging methods."""
         available_methods = {
             "mean_of_extrema_interpolants": self.compute_omega22_average_between_extrema,
-            "interpolate_orbit_averages_at_extrema": self.compute_orbital_averaged_omega22_at_extrema,
+            "mean_motion": self.compute_orbital_averaged_omega22_at_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
         return available_methods
@@ -856,7 +856,7 @@ class eccDefinition:
           the spline through the apocenters, we call this
           "mean_of_extrema_interpolants"
         - Orbital average at the extrema, we call this
-          "interpolate_orbit_averages_at_extrema"
+          "mean_motion"
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
         User can provide a method through the "extra_kwargs" option with the
