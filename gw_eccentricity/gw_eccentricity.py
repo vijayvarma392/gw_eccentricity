@@ -281,12 +281,16 @@ def measure_eccentricity(tref_in=None,
         t_min_for_omega22_average/t_max_for_omega22_average is the same as
         tmin/tmax described above.
         However, for "mean_motion" (default method),
-        t_min_for_omega22_average is half orbit later than tmin and
-        t_max_for_omega22_average is half orbit earlier than tmax.
+        t_min_for_omega22_average starts at or later than tmin and
+        t_max_for_omega22_average ends at or earlier than tmax.
         This is due to the fact that, for "mean_motion" the orbital average
         of omega22 between ith and (i+1)th extrema is associated with a
         time at midpoints between these two extrema, i. e.,
-        t = (t[i] + t[i+1]) / 2.
+        t = (t[i] + t[i+1]) / 2 giving an array of average times
+        (t_average). Since the eccentricity measurement is valid only
+        within tmin and tmax, we finally set
+        t_min_for_omega22_average = max(min(t_average), tmin) and
+        t_max_for_omega22_average = min(max(t_average), tmax)
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as
