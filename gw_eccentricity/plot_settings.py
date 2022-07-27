@@ -128,6 +128,8 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
     rc("font", family="serif")
     rc("font", serif="times")
     rc("font", size=fontSizeDict[style])
+    # Lines
+    rc("lines", linewidth=1.0)
 
 
 # Dictionary of labels to use in plots.
