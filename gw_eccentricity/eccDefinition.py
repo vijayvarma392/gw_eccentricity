@@ -9,7 +9,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
-from .plot_settings import use_fancy_plotsettings, colorsDict
+from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
 import warnings
@@ -490,6 +490,24 @@ class eccDefinition:
         return_array = self.fref_out if fref_in is not None else self.tref_out
         return return_array, self.ecc_ref, self.mean_ano_ref
 
+    def et_from_ew22_0pn(self, ew22):
+        """Get temporal eccentricity at Newtonian order.
+
+        Parameters:
+        -----------
+        ew22:
+            eccentricity measured from the 22-mode frequency.
+
+        Returns:
+        --------
+        et:
+            Temporal eccentricity at Newtonian order.
+        """
+        psi = np.arctan2(1. - ew22*ew22, 2.*ew22)
+        et = np.cos(psi/3.) - np.sqrt(3) * np.sin(psi/3.)
+
+        return et
+
     def compute_eccentricity(self, t):
         """
         Compute eccentricity at time t.
@@ -515,10 +533,12 @@ class eccDefinition:
 
         omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
         omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
-        return ((np.sqrt(omega22_pericenter_at_t)
+        ew22 = ((np.sqrt(omega22_pericenter_at_t)
                  - np.sqrt(omega22_apocenter_at_t))
                 / (np.sqrt(omega22_pericenter_at_t)
                    + np.sqrt(omega22_apocenter_at_t)))
+        # get the  temporal eccentricity from ew22
+        return self.et_from_ew22_0pn(ew22)
 
     def derivative_of_eccentricity(self, t, n=1):
         """Get time derivative of eccentricity.
@@ -1101,9 +1121,9 @@ class eccDefinition:
             axarr[idx].tick_params(labelbottom=True)
             axarr[idx].set_xlabel("")
         # set xlabel in the last row
-        axarr[-1].set_xlabel(r"$t$")
+        axarr[-1].set_xlabel(labelsDict["t"])
         if twocol:
-            axarr[-2].set_xlabel(r"$t$")
+            axarr[-2].set_xlabel(labelsDict["t"])
         # delete empty subplots
         for idx, ax in enumerate(axarr[len(list_of_plots):]):
             fig.delaxes(ax)
@@ -1171,12 +1191,12 @@ class eccDefinition:
         # the corresponding reference time
         if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
-                       label=r"$t_\mathrm{ref}$")
+                       label=labelsDict["t_ref"])
             ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
             ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
                       columnspacing=1)
-        ax.set_xlabel(r"$t$")
-        ax.set_ylabel(r"Eccentricity $e$")
+        ax.set_xlabel(labelsDict["t"])
+        ax.set_ylabel(labelsDict["eccentricity"])
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1236,8 +1256,8 @@ class eccDefinition:
             self.decc_dt_for_checks = self.derivative_of_eccentricity(
                 self.t_for_checks, n=1)
         ax.plot(self.t_for_checks, self.decc_dt_for_checks, **kwargs)
-        ax.set_xlabel("$t$")
-        ax.set_ylabel(r"$de/dt$")
+        ax.set_xlabel(labelsDict["t"])
+        ax.set_ylabel(labelsDict["dedt"])
         if add_help_text:
             ax.text(
                 0.05,
@@ -1316,12 +1336,12 @@ class eccDefinition:
         # corresponding reference time
         if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
-                       label=r"$t_\mathrm{ref}$")
+                       label=labelsDict["t_ref"])
             ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
             ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
                       columnspacing=1)
-        ax.set_xlabel("$t$")
-        ax.set_ylabel("mean anomaly")
+        ax.set_xlabel(labelsDict["t"])
+        ax.set_ylabel(labelsDict["mean_anomaly"])
         if fig is None or ax is None:
             return figNew, ax
         else:
@@ -1378,14 +1398,16 @@ class eccDefinition:
             use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t_for_checks,
                 self.omega22_pericenters_interp(self.t_for_checks),
-                c=colorsDict["pericenter"], label=r"$\omega_{p}$",
+                c=colorsDict["pericenter"],
+                label=labelsDict["omega22_pericenters"],
                 **kwargs)
         ax.plot(self.t_for_checks, self.omega22_apocenters_interp(
             self.t_for_checks),
-                c=colorsDict["apocenter"], label=r"$\omega_{a}$",
+                c=colorsDict["apocenter"],
+                label=labelsDict["omega22_apocenters"],
                 **kwargs)
         ax.plot(self.t, self.omega22,
-                c=colorsDict["default"], label=r"$\omega_{22}$")
+                c=colorsDict["default"], label=labelsDict["omega22"])
         ax.plot(self.t[self.pericenters_location],
                 self.omega22[self.pericenters_location],
                 c=colorsDict["pericenter"],
@@ -1412,7 +1434,7 @@ class eccDefinition:
                 va="top",
                 transform=ax.transAxes)
         ax.set_xlabel(r"$t$")
-        ax.set_ylabel(r"$\omega_{22}$")
+        ax.set_ylabel(labelsDict["omega22"])
         ax.legend(frameon=True,
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
@@ -1469,22 +1491,22 @@ class eccDefinition:
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t, self.amp22,
-                c=colorsDict["default"], label=r"$A_{22}$")
+                c=colorsDict["default"], label=labelsDict["amp22"])
         ax.plot(self.t[self.pericenters_location],
                 self.amp22[self.pericenters_location],
                 c=colorsDict["pericenter"],
-                marker=".", ls="", label="Pericenters")
+                marker=".", ls="", label=labelsDict["pericenters"])
         ax.plot(self.t[self.apocenters_location],
                 self.amp22[self.apocenters_location],
                 c=colorsDict["apocenter"],
-                marker=".", ls="", label="Apocenters")
+                marker=".", ls="", labels=labelsDict["apocenters"])
         # set reasonable ylims
         data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         ax.set_ylim(ymin, ymax)
-        ax.set_xlabel(r"$t$")
-        ax.set_ylabel(r"$A_{22}$")
+        ax.set_xlabel(labelsDict["t"])
+        ax.set_ylabel(labelsDict["amp22"])
         ax.legend(handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
@@ -1550,7 +1572,7 @@ class eccDefinition:
         ax.plot(tapocenters[1:], self.orb_phase_diff_ratio_at_apocenters[1:],
                 c=colorsDict["apocenter"],
                 marker=".", label="Apocenter phase diff ratio")
-        ax.set_xlabel(r"$t$")
+        ax.set_xlabel(labelsDict["t"])
         ax.set_ylabel(r"$\Delta \Phi_{orb}[i] / \Delta \Phi_{orb}[i-1]$")
         if add_help_text:
             ax.text(
@@ -1620,11 +1642,11 @@ class eccDefinition:
         ax.plot(self.t, self.res_omega22, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
                 self.res_omega22[self.pericenters_location],
-                marker=".", ls="", label="Pericenters",
+                marker=".", ls="", label=labelsDict["pericenters"],
                 c=colorsDict["pericenter"])
         ax.plot(self.t[self.apocenters_location],
                 self.res_omega22[self.apocenters_location],
-                marker=".", ls="", label="Apocenters",
+                marker=".", ls="", label=labelsDict["apocenters"],
                 c=colorsDict["apocenter"])
         # set reasonable ylims
         data_for_ylim = self.res_omega22[
@@ -1635,8 +1657,8 @@ class eccDefinition:
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
-        ax.set_xlabel(r"$t$")
-        ax.set_ylabel(r"$\Delta\omega_{22}$")
+        ax.set_xlabel(labelsDict["t"])
+        ax.set_ylabel(labelsDict["res_omega22"])
         ax.legend(frameon=True, loc="center left",
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
@@ -1693,11 +1715,11 @@ class eccDefinition:
         ax.plot(self.t[self.pericenters_location],
                 self.res_amp22[self.pericenters_location],
                 c=colorsDict["pericenter"],
-                marker=".", ls="", label="Pericenters")
+                marker=".", ls="", label=labelsDict["pericenters"])
         ax.plot(self.t[self.apocenters_location],
                 self.res_amp22[self.apocenters_location],
                 c=colorsDict["apocenter"],
-                marker=".", ls="", label="Apocenters")
+                marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
         data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
@@ -1706,8 +1728,8 @@ class eccDefinition:
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
-        ax.set_xlabel(r"$t$")
-        ax.set_ylabel(r"$\Delta A_{22}$")
+        ax.set_xlabel(labelsDict["t"])
+        ax.set_ylabel(labelsDict["res_amp22"])
         ax.legend(frameon=True, loc="center left", handlelength=1,
                   labelspacing=0.2,
                   columnspacing=1)
@@ -1780,13 +1802,13 @@ class eccDefinition:
             self.data_for_finding_extrema[self.pericenters_location],
             c=colorsDict["pericenter"],
             marker=".", ls="",
-            label="Pericenters")
+            label=labelsDict["pericenters"])
         apocenters, = ax.plot(
             t_for_finding_extrema[self.apocenters_location],
             self.data_for_finding_extrema[self.apocenters_location],
             c=colorsDict["apocenter"],
             marker=".", ls="",
-            label="Apocenters")
+            label=labelsDict["apocenters"])
         # set reasonable ylims
         data_for_ylim = self.data_for_finding_extrema[
             :self.idx_num_orbit_earlier_than_merger]
@@ -1801,7 +1823,7 @@ class eccDefinition:
         else:
             pad = 0.05 * ymax
             ax.set_ylim(ymin - pad, ymax + pad)
-        ax.set_xlabel(r"$t$")
+        ax.set_xlabel(labelsDict["t"])
         ax.set_ylabel(self.label_for_data_for_finding_extrema)
         # Add vertical line to indicate the latest time used for extrema
         # finding
@@ -1813,7 +1835,7 @@ class eccDefinition:
         # corresponding reference time.
         if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
-                       label=r"$t_\mathrm{ref}$")
+                       label=labelsDict["t_ref"])
         # add legends
         ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
                   columnspacing=1,

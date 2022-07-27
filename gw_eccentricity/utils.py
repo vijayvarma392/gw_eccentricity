@@ -143,22 +143,3 @@ def time_deriv_4thOrder(y, dt):
     res[-1] = y[-5:].dot(np.array([3, -16, 36, -48, 25]) / 12.)
     dydt = res / dt
     return dydt
-
-
-def et_from_ew22_0pn(ew22):
-    """Get temporal eccentricity at Newtonian order.
-
-    Parameters:
-    -----------
-    ew22:
-        eccentricity measured from the 22-mode frequency.
-
-    Returns:
-    --------
-    et:
-        Temporal eccentricity at Newtonian order.
-    """
-    psi = np.arctan2(1. - ew22*ew22, 2.*ew22)
-    et = np.cos(psi/3.) - np.sqrt(3) * np.sin(psi/3.)
-
-    return et
