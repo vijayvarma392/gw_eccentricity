@@ -356,8 +356,20 @@ class eccDefinition:
             omega22_apocenters(t) are within their bounds.
 
             fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in <
-            fmax], where fmin = omega22_average(tmin)/2/pi and fmax =
-            omega22_average(tmax)/2/pi, with tmin/tmax same as above.
+            fmax], where fmin = omega22_average(t_min_for_omega22_average)/2/pi
+            and fmax = omega22_average(t_max_for_omega22_average)/2/pi.
+            t_min_for_omega22_average/t_max_for_omega22_average depends on the
+            omega22 averaging method. For "mean_of_extrema_interpolants" and
+            "omega22_zeroecc",
+            t_min_for_omega22_average/t_max_for_omega22_average is the same as
+            tmin/tmax described above.
+            However, for "mean_motion" (default method),
+            t_min_for_omega22_average is half orbit later than tmin and
+            t_max_for_omega22_average is half orbit earlier than tmax.
+            This is due to the fact that, for "mean_motion" the orbital average
+            of omega22 between ith and (i+1)th extrema is associated with a
+            time at midpoints between these two extrema, i. e.,
+            t = (t[i] + t[i+1]) / 2.
 
         ecc_ref:
             Measured eccentricity at tref_out/fref_out. Same type as
@@ -751,6 +763,24 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
+    def get_t_average_for_mean_motion(self):
+        """Get the time array for average omega22 for mean motion."""
+        # get the mid points between the pericenters as avg time for
+        # pericenters
+        t_average_pericenters = (
+            self.t[self.pericenters_location][1:]
+            + self.t[self.pericenters_location][:-1]) / 2
+        # get the mid points between the apocenters as avg time for
+        # apocenters
+        t_average_apocenters = (
+            self.t[self.apocenters_location][1:]
+            + self.t[self.apocenters_location][:-1]) / 2
+        t_average = np.append(t_average_apocenters, t_average_pericenters)
+        # sort the times
+        sorted_idx = np.argsort(t_average)
+        t_average = t_average[sorted_idx]
+        return t_average, sorted_idx
+
     def compute_orbital_averaged_omega22_at_extrema(self, t):
         """Compute reference frequency by orbital averaging at extrema.
 
@@ -779,22 +809,12 @@ class eccDefinition:
             period = (self.t[extrema_locations[extrema_type][n+1]]
                       - self.t[extrema_locations[extrema_type][n]])
             return integ / period
-        # get the mid points between the pericenters as avg time for
-        # pericenters
-        t_average_pericenters = (self.t[self.pericenters_location][1:]
-                                 + self.t[self.pericenters_location][:-1]) / 2
         omega22_average_pericenters = orbital_averaged_omega22_at_extrema(
             np.arange(len(self.pericenters_location) - 1), "pericenters")
-        # get the mid points between the apocenters as avg time for apocenters
-        t_average_apocenters = (self.t[self.apocenters_location][1:]
-                                + self.t[self.apocenters_location][:-1]) / 2
         omega22_average_apocenters = orbital_averaged_omega22_at_extrema(
             np.arange(len(self.apocenters_location) - 1), "apocenters")
         # combine results from average at pericenters and toughs
-        t_average = np.append(t_average_apocenters, t_average_pericenters)
-        # sort the times
-        sorted_idx = np.argsort(t_average)
-        t_average = t_average[sorted_idx]
+        t_average, sorted_idx = self.get_t_average_for_mean_motion()
         # check if the average omega22 are monotonically increasing
         if any(np.diff(omega22_average_pericenters) <= 0):
             raise Exception("Omega22 average at pericenters are not strictly "
@@ -806,7 +826,8 @@ class eccDefinition:
                                     omega22_average_pericenters)
         # sort omega22
         omega22_average = omega22_average[sorted_idx]
-        return InterpolatedUnivariateSpline(t_average, omega22_average)(t)
+        return InterpolatedUnivariateSpline(
+            t_average, omega22_average, ext=2)(t)
 
     def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
@@ -820,7 +841,7 @@ class eccDefinition:
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
         return InterpolatedUnivariateSpline(
-            self.t_zeroecc_shifted, self.omega22_zeroecc)(t)
+            self.t_zeroecc_shifted, self.omega22_zeroecc, ext=2)(t)
 
     def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
@@ -846,9 +867,10 @@ class eccDefinition:
         We first compute omega22_average(t) using the instantaneous omega22(t),
         which can be done in different ways as described below. Then, we keep
         only the allowed frequencies in fref_in by doing
-        fref_out = fref_in[fref_in >= omega22_average(tmin) / (2 pi) &&
-                           fref_in < omega22_average(tmax) / (2 pi)]
-        Finally, we find the times where omega22_average(t) = 2 * pi * fref_out,
+        fref_out = fref_in[
+            fref_in >= omega22_average(t_min_for_omega22_average) / (2 pi) &&
+            fref_in < omega22_average(t_max_for_omega22_average) / (2 pi)]
+        Finally, we find the times where omega22_average(t) = 2*pi*fref_out,
         and set those to tref_in.
 
         omega22_average(t) could be calculated in the following ways
@@ -861,7 +883,7 @@ class eccDefinition:
 
         User can provide a method through the "extra_kwargs" option with the
         key "omega22_averaging_method". Default is
-        "mean_of_extrema_interpolants"
+        "mean_motion"
 
         Once we get the reference frequencies, we create a spline to get time
         as function of these reference frequencies. This should work if the
@@ -883,7 +905,8 @@ class eccDefinition:
             # get omega22_average by evaluating the omega22_average(t)
             # on t, from tmin to tmax
             self.t_for_omega22_average = self.t[
-                np.logical_and(self.t >= self.t_min, self.t < self.t_max)]
+                np.logical_and(self.t >= self.t_min_for_omega22_average,
+                               self.t < self.t_max_for_omega22_average)]
             self.omega22_average = self.available_averaging_methods[
                 method](self.t_for_omega22_average)
             # check if average omega22 is monotonically increasing
@@ -919,14 +942,22 @@ class eccDefinition:
         -------
         fref_out:
             Slice of fref_in that satisfies
-            fref_in >= omega22_average(t_min) / 2 pi and
-            fref_in < omega22_average(t_max) / 2 pi
+            fref_in >= omega22_average(t_min_for_omega22_average) / 2 pi and
+            fref_in < omega22_average(t_max_for_omega22_average) / 2 pi
         """
+        # set t_min/t_max for omega22 averaging
+        if method == "mean_motion":
+            t_average, sorted_idx = self.get_t_average_for_mean_motion()
+            self.t_min_for_omega22_average = min(t_average)
+            self.t_max_for_omega22_average = max(t_average)
+        else:
+            self.t_min_for_omega22_average = self.t_min
+            self.t_max_for_omega22_average = self.t_max
         # get min an max value f22_average from omega22_average
-        self.omega22_average_min = self.available_averaging_methods[
-            method](self.t_min)
-        self.omega22_average_max = self.available_averaging_methods[
-            method](self.t_max)
+        self.omega22_average_min = self.available_averaging_methods[method](
+            self.t_min_for_omega22_average)
+        self.omega22_average_max = self.available_averaging_methods[method](
+            self.t_max_for_omega22_average)
         self.f22_average_min = self.omega22_average_min / (2 * np.pi)
         self.f22_average_max = self.omega22_average_max / (2 * np.pi)
         fref_out = fref_in[

@@ -272,10 +272,21 @@ def measure_eccentricity(tref_in=None,
         omega22_pericenters(t) and omega22_apocenters(t) are within their
         bounds.
 
-        fref_out is set as
-        fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
-        where fmin = omega22_average(tmin)/2/pi and
-              fmax = omega22_average(tmax)/2/pi, with tmin/tmax same as above.
+        fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in <
+        fmax], where fmin = omega22_average(t_min_for_omega22_average)/2/pi
+        and fmax = omega22_average(t_max_for_omega22_average)/2/pi.
+        t_min_for_omega22_average/t_max_for_omega22_average depends on the
+        omega22 averaging method. For "mean_of_extrema_interpolants" and
+        "omega22_zeroecc",
+        t_min_for_omega22_average/t_max_for_omega22_average is the same as
+        tmin/tmax described above.
+        However, for "mean_motion" (default method),
+        t_min_for_omega22_average is half orbit later than tmin and
+        t_max_for_omega22_average is half orbit earlier than tmax.
+        This is due to the fact that, for "mean_motion" the orbital average
+        of omega22 between ith and (i+1)th extrema is associated with a
+        time at midpoints between these two extrema, i. e.,
+        t = (t[i] + t[i+1]) / 2.
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as
