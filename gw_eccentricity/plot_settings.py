@@ -157,5 +157,6 @@ labelsDict = {
     "omega_start": r"$\omega_0$",
     "q": r"$q$",
     "chi1z": r"$\chi_{1z}$",
-    "chi2z": r"$\chi_{2z}$"
+    "chi2z": r"$\chi_{2z}$",
+    "h22_real": r"Re[$h_{22}$]"
 }
