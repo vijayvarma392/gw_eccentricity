@@ -272,25 +272,11 @@ def measure_eccentricity(tref_in=None,
         omega22_pericenters(t) and omega22_apocenters(t) are within their
         bounds.
 
-        fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in <
-        fmax], where fmin = omega22_average(t_min_for_omega22_average)/2/pi
-        and fmax = omega22_average(t_max_for_omega22_average)/2/pi.
-        t_min_for_omega22_average/t_max_for_omega22_average depends on the
-        omega22 averaging method. For "mean_of_extrema_interpolants" and
-        "omega22_zeroecc",
-        t_min_for_omega22_average/t_max_for_omega22_average is the same as
-        tmin/tmax described above.
-        However, for "mean_motion" (default method),
-        t_min_for_omega22_average starts at or later than tmin and
-        t_max_for_omega22_average ends at or earlier than tmax.
-        This is due to the fact that, for "mean_motion" the orbital average
-        of omega22 between ith and (i+1)th extrema is associated with a
-        time at midpoints between these two extrema, i. e.,
-        t = (t[i] + t[i+1]) / 2 giving an array of average times
-        (t_average). Since the eccentricity measurement is valid only
-        within tmin and tmax, we finally set
-        t_min_for_omega22_average = max(min(t_average), tmin) and
-        t_max_for_omega22_average = min(max(t_average), tmax)
+        fref_out is set as
+        fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
+        where fref_min/fref_max are minimum/maximum allowed refrence
+        frequency. See eccDefinition.get_fref_bounds for details on how
+        fref_min/fref_max is set.
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as
