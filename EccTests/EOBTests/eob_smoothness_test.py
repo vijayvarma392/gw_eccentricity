@@ -34,6 +34,7 @@ import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
 import warnings
+import pandas as pd
 sys.path.append("../../")
 from gw_eccentricity import measure_eccentricity, get_available_methods
 from gw_eccentricity.load_data import load_waveform
@@ -104,10 +105,17 @@ parser.add_argument(
     "--paper",
     action="store_true",
     help="Remove markers for paper.")
-parser.add_argument("--debug_index", type=int, default=None,
-                    help="Only analyse the waveform with this index, and enable debugging output")
-parser.add_argument("--verbose", action='store_true', default=False,
-                    help="increase verbosity")
+parser.add_argument(
+    "--debug_index",
+    type=int,
+    default=None,
+    help=("Only analyse the waveform with this index, "
+          "and enable debugging output"))
+parser.add_argument(
+    "--verbose",
+    action='store_true',
+    default=False,
+    help="increase verbosity")
 
 args = parser.parse_args()
 
@@ -133,8 +141,8 @@ extra_kwargs = {"debug": False,
                 # "treat_mid_points_between_peaks_as_troughs": True
                 }
 
-if not args.debug_index is None:
-    extra_kwargs['debug']=True 
+if args.debug_index is not None:
+    extra_kwargs['debug'] = True
 
 cmap = cm.get_cmap("plasma")
 colors = cmap(np.linspace(0, 1, len(EOBeccs)))
@@ -183,18 +191,23 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     # extrema.
     tmaxList = {}  # To keep track of minimum time in tref_out across all eccs.
     tminList = {}  # To keep track of maximum time in tref_out across all eccs.
+    failed_eccs = {}  # To keep track of failed cases.
+    failed_indices = {}  # To Keep track of failed indices
     # Initiate the dictionary with an empty list for each method
     for method in methods:
         model_eccs.update({method: []})
         measured_eccs_at_start.update({method: []})
         tmaxList.update({method: []})
         tminList.update({method: []})
+        failed_eccs.update({method: []})
+        failed_indices.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
     for idx0, ecc in tqdm(enumerate(EOBeccs), disable=args.verbose):
 
         # in debugging mode, skip all but debug_index:
-        if not args.debug_index is None:
-            if idx0!=args.debug_index: continue 
+        if args.debug_index is not None:
+            if idx0 != args.debug_index:
+                continue
 
         fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
                     f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
@@ -240,6 +253,9 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 if idx == len(methods) - 1:
                     ax_ecc_vs_t[idx].set_xlabel(r"$t$ [$M$]")
             except Exception:
+                # collected failures
+                failed_eccs[method] += [ecc]
+                failed_indices[method] += [idx0]
                 if args.debug_index is None:
                     warnings.warn("Exception raised. Probably too small"
                                   " eccentricity to detect any extrema.")
@@ -319,6 +335,24 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     fig_ecc_vs_t.savefig(
         f"{fig_ecc_vs_t_name}",
         bbox_inches="tight")
+    return failed_eccs, failed_indices
+
+
+def report_failures(failed_eccs, failed_indices, methods):
+    """Report failed cases."""
+    for method in methods:
+        num_failures = len(failed_eccs[method])
+        print(f"================{method}============================")
+        if num_failures == 0:
+            print("All cases passed!")
+        else:
+            print(f"{num_failures} {'case' if num_failures == 1 else 'cases'} "
+                  "failed.")
+            df = pd.DataFrame({
+                "Case indices": failed_indices[method],
+                "Eccentricity": failed_eccs[method]
+            })
+            print(df)
 
 
 if "all" in args.param_set_key:
@@ -329,4 +363,7 @@ style = "APS" if args.paper else "Notebook"
 use_fancy_plotsettings(style=style)
 
 for key in args.param_set_key:
-    plot_waveform_ecc_vs_model_ecc(args.method, key)
+    failed_eccs, failed_indices = plot_waveform_ecc_vs_model_ecc(
+        args.method, key)
+    print(f"================Failure reports for set {key}===================")
+    report_failures(failed_eccs, failed_indices, args.method)
