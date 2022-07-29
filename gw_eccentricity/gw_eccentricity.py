@@ -274,9 +274,11 @@ def measure_eccentricity(tref_in=None,
 
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
-        where fref_min/fref_max are minimum/maximum allowed refrence
-        frequency. See eccDefinition.get_fref_bounds for details on how
-        fref_min/fref_max is set.
+        where fref_min/fref_max are minimum/maximum allowed reference
+        frequency. where fref_min = omega22_average(tmin_for_fref)/2/pi
+        and fref_max = omega22_average(tmax_for_fref)/2/pi.
+        See eccDefinition.get_fref_bounds for how tmin_for_fref and
+        tmax_for_fref are obtained.
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as

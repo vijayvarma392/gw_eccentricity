@@ -359,9 +359,11 @@ class eccDefinition:
 
             fref_out is set as
             fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
-            where fref_min/fref_max are minimum/maximum allowed refrence
-            frequency. See get_fref_bounds for details on how fref_min/fref_max
-            is set.
+            where fref_min/fref_max are minimum/maximum allowed reference
+            frequency. where fref_min = omega22_average(tmin_for_fref)/2/pi
+            and fref_max = omega22_average(tmax_for_fref)/2/pi.
+            See get_fref_bounds for how tmin_for_fref and tmax_for_fref are
+            obtained.
 
         ecc_ref:
             Measured eccentricity at tref_out/fref_out. Same type as
@@ -779,15 +781,19 @@ class eccDefinition:
                             - self.omega22_zeroecc_interp)
 
     def get_t_average_for_mean_motion(self):
-        """Get the time array associated with the fref from mean motion.
+        """Get the time array associated with the fref for mean motion.
 
-        t_average_pericenters are the the times at mid points between
-        consecutive pericenters. We associate time (t[i] + t[i+1]) / 2 with the
-        mean motion calculated between ith and (i+1)th pericenter.  And
-        similary we calculate the t_average_apocenters. we combine these two
-        arrays and sort it to get the combined t_average that we associate with
-        the mean motion computed at pericenters and apocenters and combined in
-        the same way.
+        t_average_pericenters are the times at midpoints between consecutive
+        pericenters. We associate time (t[i] + t[i+1]) / 2 with the mean motion
+        calculated between ith and (i+1)th pericenter. That is,
+        omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
+                                             / (t[i+1] - t[i]),
+        where t[i] is the time at the ith pericenter.
+        And similarly, we calculate the t_average_apocenters. We combine these
+        two arrays and sort them to get the combined t_average that we
+        associate with the mean motion computed at pericenters and apocenters
+        computed as described above and combined in the same way using the
+        same sorted_idx used for sorting the combined t_average.
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -883,7 +889,7 @@ class eccDefinition:
         When the input is frequencies where eccentricity/mean anomaly is to be
         measured, we internally want to map the input frequencies to a tref_in
         and then we proceed to calculate the eccentricity and mean anomaly for
-        these tref_in in the same way as we do when the input array was time
+        this tref_in in the same way as we do when the input array was time
         instead of frequencies.
 
         We first compute omega22_average(t) using the instantaneous omega22(t),
@@ -904,15 +910,15 @@ class eccDefinition:
           "mean_motion"
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
-        User can provide a method through the "extra_kwargs" option with the
+        Users can provide a method through the "extra_kwargs" option with the
         key "omega22_averaging_method". Default is
         "mean_motion"
 
         Once we get the reference frequencies, we create a spline to get time
-        as function of these reference frequencies. This should work if the
+        as a function of these reference frequencies. This should work if the
         reference frequency is monotonic which it should be.
 
-        Finally we evaluate this spine on the fref_in to get the tref_in.
+        Finally, we evaluate this spine on the fref_in to get the tref_in.
         """
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
@@ -957,19 +963,20 @@ class eccDefinition:
     def get_fref_bounds(self, method):
         """Get the allowed min and max reference frequency of 22 mode.
 
-        Depending the omega22 averaging method, this function returns the
+        Depending on the omega22 averaging method, this function returns the
         minimum and maximum allowed reference frequency of 22 mode.
 
         We first find the minimum and maximum time, called tmin_for_fref and
         tmax_for_fref, respectively, that falls with tmin and tmax and also
         where omega22 average value exists.
         For "mean_motion" tmin_for_fref >= tmin and tmax_for_fref <= tmax.
-        This is due to the fact that, for "mean_motion" the orbital average
+        This is because for "mean_motion" the orbital average
         of omega22 between ith and (i+1)th extrema is associated with a
         time at midpoints between these two extrema, i. e.,
         t = (t[i] + t[i+1]) / 2 giving an array of average times
-        (t_average). Since the eccentricity measurement is valid only
-        within tmin and tmax, we then set
+        (called t_average. See get_t_average_for_mean_motion for more details).
+        Since the eccentricity measurement is valid only within tmin and tmax,
+        we then set
         tmin_for_fref = max(min(t_average), tmin) and
         tmax_for_fref = min(max(t_average), tmax).
         For other methods, tmin_for_fref/tmax_for_fref is the same as
