@@ -11,24 +11,95 @@ import warnings
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 
-def load_waveform(catalog="LAL", **kwargs):
+def load_waveform(origin="LAL", **kwargs):
     """Load waveform from lvcnr file or LAL.
 
     parameters:
     ----------
-    catalog:
-        Waveform type. could be one of ['LAL', 'LVCNR', 'EOB']
-
+    origin: str
+        The origin of the waveform to be provided.  This can be one of
+        - "LAL": Compute waveform by a call to the LAL-library.
+        - "LVCNR": Import waveform by reading a file in the LVCNR-data format.
+        - "EOB": Import EOB waveform generated using SEOBNRv4EHM
+            (arxiv:2112.06952).
+        In each case, the `kwargs` dictionary provides the needed information
+        to uniquely specify the waveform.
     kwargs:
-        Kwargs to be passed to the waveform loading functions.
+        Kwargs dictionary to be passed to the waveform loading functions.
+        As mentioned above, the dictionary would depend on the `origin`
+        of the waveform to be loaded/imported/generated.
+        - "LAL": For generating waveform calling the LAL library. See
+            load_LAL_waveform_using_hack for the list of arguments.
+            approximant:
+                Required, No default, raises exception if it's not
+                included in kwargs,
+            q:
+                Mass ratio of the system. Required in kwargs, No default.
+            chi1:
+                3-element list of spin components of the 1st Black hole,
+                Required in kwargs, No default.
+            chi2:
+                3-element list of spin components of the 1st Black hole,
+                Required in kwargs, No default.
+            ecc:
+                Eccentricity, Required in kwargs, No default.
+            mean_ano:
+                Mean anomaly, Required in kwargs, No default.
+            Momega0:
+                Starting frequency, Required in kwargs, No default.
+            deltaTOverM:
+                Time steps, default is 0.1.
+            physicalUnits:
+                If True returns modes in MKS units.
+                Default is False.
+            include_zero_ecc: If True, quasicircular waveform is created and
+                returned. The quasicircular waveform is generated using the
+                same set of parameters except eccentricity set to zero.
+                In some cases, e=0 is not supported and we set it small value
+                like e=1e-5. No default. Not required.
+
+        - "LVCNR": For importing NR waveform in LVCNR format the function
+            load_lvcnr_waveform is called. The default kwargs are:
+            {
+            "filepath": None,
+            "deltaTOverM": 0.1,
+            "Momega0": 0,  # 0 means that the full NR waveform is returned
+            "include_zero_ecc": True,
+            "num_orbits_to_remove_as_junk": 2
+            }
+            filepath:
+                Path to the LVCNR file. Default is None.
+            deltaTOverM:
+                See above under "LAL". Default is 0.1.
+            Momega0:
+                See above under "LAL". Default is 0. 0 means that the full NR
+                waveform is returned
+            num_orbits_to_remove_as_junk:
+                Number of orbits that is to be removed before returning the
+                waveform modes. Default is 2.
+            include_zero_ecc:
+                See above under "LAL".
+        - "EOB": For importing EOB waveforms generated using SEOBNRv4EHM.
+            filepath:
+                Path to the EOB file. No default. Required in kwargs.
+            include_zero_ecc:
+                See above under "LAL".
+            filepath_zero_ecc:
+                Path to the waveform file containing quasicircular waveform
+                modes. Required only if include_zero_ecc is True. No default.
+    Returns:
+    --------
+    dataDict:
+        Dictionary of time, modes etc. For detailed structure of the returnde
+        dataDict see gw_eccentricity.measure_eccentricity.
     """
-    if catalog == "LAL":
+    if origin == "LAL":
         return load_LAL_waveform(**kwargs)
-    elif catalog == "LVCNR":
+    elif origin == "LVCNR":
         if kwargs["filepath"] is None:
             raise Exception("Must provide file path to NR waveform")
         return load_lvcnr_waveform(**kwargs)
-    elif catalog == "EOB":
+    elif origin == "EOB":
         # check kwargs
         allowed_kwargs = ["filepath", "filepath_zero_ecc", "include_zero_ecc"]
         for kw in kwargs:
@@ -44,7 +115,7 @@ def load_waveform(catalog="LAL", **kwargs):
         else:
             raise Exception("Unknown filepath pattern.")
     else:
-        raise Exception(f"Unknown catalog {catalog}. Should be one of ['LAL',"
+        raise Exception(f"Unknown origin {origin}. Should be one of ['LAL',"
                         " 'LVCNR', 'EOB']")
 
 

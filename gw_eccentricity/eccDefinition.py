@@ -24,47 +24,55 @@ class eccDefinition:
         parameters:
         ---------
         dataDict:
-            Dictionary containing waveform modes dict, time etc.
-            Should follow the format:
-                dataDict = {"t": time,
-                            "hlm": modeDict,
-                            "t_zeroecc": time,
-                            "hlm_zeroecc": modeDict, ...
-                           },
-            where time is an array with the same convention as tref_in, and
-            modeDict should have the format:
-                modeDict = {(l1, m1): h_{l1, m1},
-                           (l2, m2): h_{l2, m2}, ...
-                           }.
-
-            "t_zeroecc" and "hlm_zeroecc" are only required for
+        Dictionary containing waveform modes dict, time etc.
+        Should follow the format:
+            dataDict = {"t": time,
+                        "hlm": modeDict,
+                        "t_zeroecc": time,
+                        "hlm_zeroecc": modeDict,
+                       },
+        - "t": 1d array of times with the same convention as tref_in.
+            - This is the time array associated with the waveform modes.
+            - It should uniformly sampled. Please make sure that the time
+            step is small enough that omega22(t) can be accurately computed.
+            We use a 4th-order finite difference scheme. In dimensionless
+            units, we recommend a time step of dtM = 0.1M to be conservative,
+            but you may be able to get away with larger time steps like
+            dtM = 1M. The corresponding time step in seconds would be
+            dtM * M * lal.MTSUN_SI, where M is the total mass in Solar masses.
+        - "hlm": Dictionary of waveform modes. It should have the format:
+            modeDict = {(l1, m1): h_{l1, m1},
+                       (l2, m2): h_{l2, m2}, ...
+                       },
+            where h_{l, m} is a 1d complex array representing the (l, m) mode.
+        - "t_zeroecc": 1d array of uniformly spaced times associated with the
+            waveform modes of the quasicircular waveform (described below).
+            Should follow the same standard as required by "t"
+            (described above).
+        - "hlm_zeroecc": Dictionary of quasicircular waveform modes. Should be
+            of the same format as "hlm".
+            - For a waveform model, "hlm_zeroecc" can be obtained by evaluating
+            the model by keeping the rest of the binary parameters fixed (same
+            as the ones used to generate "hlm") but setting the eccentricity to
+            zero.
+            - For NR, if such a quasicircular counterpart is not available, we
+            recommend using quasi-circular waveforms like NRHybSur3dq8 or
+            PhenomT, depending on the mass ratio and spins.
+            - We require that "hlm_zeroecc" be at least as long as "hlm" so
+            that residual amplitude/frequency can be computed.
+            - "t_zeroecc" and and "hlm_zeroecc" are only required for
             ResidualAmplitude and ResidualFrequency methods, but if they are
             provided, they will be used to produce additional diagnostic plots,
-            which can be helpful for all methods. "t_zeroecc" and "hlm_zeroecc"
-            should include the time and modeDict for the quasi-circular limit
-            of the eccentric waveform in "hlm". For a waveform model,
-            "hlm_zeroecc" can be obtained by evaluating the model by keeping
-            the rest of the binary parameters fixed but setting the
-            eccentricity to zero. For NR, if such a quasi-circular counterpart
-            is not available, we recommend using quasi-circular waveforms like
-            NRHybSur3dq8 or PhenomT, depending on the mass ratio and spins. We
-            require that "hlm_zeroecc" be at least as long as "hlm" so that
-            residual amplitude/frequency can be computed.
+            which can be helpful for all methods.
 
-            For dataDict, we currently only allow time-domain, nonprecessing
-            waveforms with a uniform time array. Please make sure that the time
-            step is small enough that omega22(t) can be accurately computed; we
-            use a 4th-order finite difference scheme. In dimensionless units,
-            we recommend a time step of dtM = 0.1M to be conservative, but you
-            may be able to get away with larger time steps like dtM = 1M. The
-            corresponding time step in seconds would be dtM * M * lal.MTSUN_SI,
-            where M is the total mass in Solar masses.
+        For dataDict, We currently only allow time-domain, nonprecessing
+        waveforms.
 
-            The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If
-            additional modes are included, they will be used in determining the
-            pericenter time following Eq.(5) of arxiv:1905.09300. The
-            pericenter time is used to time-align the two waveforms before
-            computing the residual amplitude/frequency.
+        The (2, 2) mode is always required in "hlm"/"hlm_zeroecc". If
+        additional modes are included, they will be used in determining the
+        merger-time of the waveform as the global maximum of A(t) following
+        Eq.(5) of arxiv:1905.09300. The merger-time is used to time-align
+        the two waveforms before computing the residual amplitude/frequency.
 
         spline_kwargs:
             Dictionary of arguments to be passed to the spline interpolation
