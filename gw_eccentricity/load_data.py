@@ -544,8 +544,8 @@ def load_h22_from_EOBfile(EOB_file):
 def load_EOB_EccTest_file(**kwargs):
     """Load EOB files for testing EccDefinition."""
     f = h5py.File(kwargs["filepath"], "r")
-    t = f["t"]
-    hlm = {(2, 2): f["(2, 2)"]}
+    t = f["t"][:]
+    hlm = {(2, 2): f["(2, 2)"][:]}
     # make t = 0 at the merger
     t = t - peak_time_via_quadratic_fit(
         t,
