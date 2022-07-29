@@ -393,8 +393,11 @@ class eccDefinition:
             raise KeyError("Exactly one of tref_in and fref_in"
                            " should be specified.")
         elif tref_in is not None:
+            tref_in_dtype = type(tref_in)
             self.tref_in = np.atleast_1d(tref_in)
         else:
+            fref_in_dtype = type(fref_in)
+            tref_in_dtype = fref_in_dtype
             fref_in = np.atleast_1d(fref_in)
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
@@ -468,12 +471,22 @@ class eccDefinition:
         if self.extra_kwargs["debug"]:
             self.check_monotonicity_and_convexity()
 
-        if len(self.tref_out) == 1:
+        # If tref_in is float/int, return a float
+        if tref_in_dtype == int or tref_in_dtype == float:
             self.mean_ano_ref = self.mean_ano_ref[0]
             self.ecc_ref = self.ecc_ref[0]
             self.tref_out = self.tref_out[0]
-        if fref_in is not None and len(self.fref_out) == 1:
-            self.fref_out = self.fref_out[0]
+        # If tref_in is a list, return a list
+        if tref_in_dtype == list:
+            self.mean_ano_ref = list(self.mean_ano_ref)
+            self.ecc_ref = list(self.ecc_ref)
+            self.tref_out = list(self.tref_out)
+
+        if fref_in is not None:
+            if fref_in_dtype == int or fref_in_dtype == float:
+                self.fref_out = self.fref_out[0]
+            if fref_in_dtype == list:
+                self.fref_out = list(self.fref_out)
 
         return_array = self.fref_out if fref_in is not None else self.tref_out
         return return_array, self.ecc_ref, self.mean_ano_ref
