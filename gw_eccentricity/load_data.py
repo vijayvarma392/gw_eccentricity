@@ -29,68 +29,16 @@ def load_waveform(origin="LAL", **kwargs):
         As mentioned above, the dictionary would depend on the `origin`
         of the waveform to be loaded/imported/generated.
         - "LAL": For generating waveform calling the LAL library. See
-            load_LAL_waveform_using_hack for the list of arguments.
-            approximant:
-                Required, No default, raises exception if it's not
-                included in kwargs,
-            q:
-                Mass ratio of the system. Required in kwargs, No default.
-            chi1:
-                3-element list of spin components of the 1st Black hole,
-                Required in kwargs, No default.
-            chi2:
-                3-element list of spin components of the 1st Black hole,
-                Required in kwargs, No default.
-            ecc:
-                Eccentricity, Required in kwargs, No default.
-            mean_ano:
-                Mean anomaly, Required in kwargs, No default.
-            Momega0:
-                Starting frequency, Required in kwargs, No default.
-            deltaTOverM:
-                Time steps, default is 0.1.
-            physicalUnits:
-                If True returns modes in MKS units.
-                Default is False.
-            include_zero_ecc: If True, quasicircular waveform is created and
-                returned. The quasicircular waveform is generated using the
-                same set of parameters except eccentricity set to zero.
-                In some cases, e=0 is not supported and we set it small value
-                like e=1e-5. No default. Not required.
-
+            load_data.load_LAL_waveform for the allowed kwargs and defaults.
         - "LVCNR": For importing NR waveform in LVCNR format the function
-            load_lvcnr_waveform is called. The default kwargs are:
-            {
-            "filepath": None,
-            "deltaTOverM": 0.1,
-            "Momega0": 0,  # 0 means that the full NR waveform is returned
-            "include_zero_ecc": True,
-            "num_orbits_to_remove_as_junk": 2
-            }
-            filepath:
-                Path to the LVCNR file. Default is None.
-            deltaTOverM:
-                See above under "LAL". Default is 0.1.
-            Momega0:
-                See above under "LAL". Default is 0. 0 means that the full NR
-                waveform is returned
-            num_orbits_to_remove_as_junk:
-                Number of orbits that is to be removed before returning the
-                waveform modes. Default is 2.
-            include_zero_ecc:
-                See above under "LAL".
+            load_data.load_lvcnr_waveform is called. Look for the allowed
+            and default list of kwargs there.
         - "EOB": For importing EOB waveforms generated using SEOBNRv4EHM.
-            filepath:
-                Path to the EOB file. No default. Required in kwargs.
-            include_zero_ecc:
-                See above under "LAL".
-            filepath_zero_ecc:
-                Path to the waveform file containing quasicircular waveform
-                modes. Required only if include_zero_ecc is True. No default.
+            See load_data.load_EOB_EccTest_file for allowed kwargs.
     Returns:
     --------
     dataDict:
-        Dictionary of time, modes etc. For detailed structure of the returnde
+        Dictionary of time, modes etc. For detailed structure of the returned
         dataDict see gw_eccentricity.measure_eccentricity.
     """
     if origin == "LAL":
@@ -120,33 +68,76 @@ def load_waveform(origin="LAL", **kwargs):
 
 
 def load_LAL_waveform(**kwargs):
-    """FIXME add some documentation."""
-    # FIXME: Generalize this
-    if 'deltaTOverM' not in kwargs:
-        kwargs['deltaTOverM'] = 0.1
-    if 'physicalUnits' not in kwargs:
-        kwargs['physicalUnits'] = False
+    """Load waveforms calling the LAL Library.
 
-    if 'approximant' in kwargs:
-        # FIXME, this assumes single mode models, talk to Vijay about
-        # how to handle other models.
-        dataDict = load_LAL_waveform_using_hack(
-            kwargs['approximant'],
-            kwargs['q'],
-            kwargs['chi1'],
-            kwargs['chi2'],
-            kwargs['ecc'],
-            kwargs['mean_ano'],
-            kwargs['Momega0'],
-            kwargs['deltaTOverM'],
-            kwargs['physicalUnits'])
-    else:
-        raise Exception("HELP! Only know how to do LAL waveforms for now.")
+    The kwargs could be the following:
+    approximant: str
+        Name of the waveform model to be used for generating the waveform.
+        default is "EccentricTD".
+    q: float
+        Mass ratio of the system.
+        default is 1.
+    chi1: 1d array of size 3
+        3-element 1d array of spin components of the 1st Black hole.
+        default is [0.0, 0.0, 0.0].
+    chi2: 1d array of size 3
+        3-element 1d array of spin components of the 1st Black hole.
+        default is [0.0, 0.0, 0.0].
+    ecc: float
+        Initial eccentricity of the binary at Momega0 (see below).
+        default is 1e-5.
+    mean_ano: float
+        Initial Mean anomaly of the bianry at Momega0 (see below).
+        default is 0.0.
+    Momega0: float
+        Starting orbital frequency in dimensionless units.
+        default is 0.01.
+    deltaTOverM: float
+        Time steps in dimensionless units. default is 0.1.
+    physicalUnits: bool
+        If True returns modes in MKS units.
+        Default is False.
+    include_zero_ecc: bool
+        If True, quasicircular waveform is created and
+        returned. The quasicircular waveform is generated using the
+        same set of parameters except eccentricity set to zero.
+        In some cases, e=0 is not supported and we set it small value
+        like e=1e-5.
+        Default is False.
+    """
+    default_lal_kwargs = {
+        "approximant": "EccentricTD",
+        "q": 1.0,
+        "chi1": [0.0, 0.0, 0.0],
+        "chi2": [0.0, 0.0, 0.0],
+        "ecc": 1e-5,
+        "mean_ano": 0.0,
+        "Momega0": 0.01,
+        "deltaTOverM": 0.1,
+        "physicalUnits": False,
+        "include_zero_ecc": False
+    }
 
-    if ('include_zero_ecc' in kwargs) and kwargs['include_zero_ecc']:
+    # check and set default kwargs
+    check_kwargs_and_set_defaults(kwargs, default_lal_kwargs, "LAL Kwarsgs",
+                                  "load_data.load_LAL_waveform")
+    # FIXME, this assumes single mode models, talk to Vijay about
+    # how to handle other models.
+    dataDict = load_LAL_waveform_using_hack(
+        kwargs['approximant'],
+        kwargs['q'],
+        kwargs['chi1'],
+        kwargs['chi2'],
+        kwargs['ecc'],
+        kwargs['mean_ano'],
+        kwargs['Momega0'],
+        kwargs['deltaTOverM'],
+        kwargs['physicalUnits'])
+
+    if kwargs['include_zero_ecc']:
         # Keep all other params fixed but set ecc=0.
         zero_ecc_kwargs = kwargs.copy()
-        # FIXME: Stupic EccentricTD only works for finite ecc
+        # FIXME: Stupid EccentricTD only works for finite ecc
         if kwargs["approximant"] == "EccentricTD":
             zero_ecc_kwargs['ecc'] = 1e-5
         else:
@@ -613,7 +604,22 @@ def load_h22_from_EOBfile(EOB_file):
 
 
 def load_EOB_EccTest_file(**kwargs):
-    """Load EOB files for testing EccDefinition."""
+    """Load EOB files for testing EccDefinition.
+
+    These files were
+    generated using SEOBNRv4EHM model. Allowed kwargs are
+
+    filepath:
+        Path to the EOB file. No default. Required in kwargs.
+    include_zero_ecc:
+        If True, loads the quasicircular waveform modes also.
+        This requires providing the path to quasicircular waveform
+        file, see "filepath_zeroecc" below.
+    filepath_zero_ecc:
+        Path to the waveform file containing quasicircular waveform
+        modes. Required only if include_zero_ecc is True.
+        No default.
+    """
     f = h5py.File(kwargs["filepath"], "r")
     t = f["t"]
     hlm = {(2, 2): f["(2, 2)"]}

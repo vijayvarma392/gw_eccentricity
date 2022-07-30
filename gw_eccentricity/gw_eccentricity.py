@@ -146,33 +146,67 @@ def measure_eccentricity(tref_in=None,
         Amplitude/ResidualAmplitude/FrequencyFits.
 
     dataDict:
-        Dictionary containing waveform modes dict, time etc.
-        Should follow the format:
+        Dictionary containing waveform modes dict, time etc.  Should follow the
+        format:
             dataDict = {"t": time,
                         "hlm": modeDict,
                         "t_zeroecc": time,
                         "hlm_zeroecc": modeDict,
+                        ...
                        },
-        - "t": 1d array of times with the same convention as tref_in.
+        While dataDict must contain "t" and "hlm" (described below), it can
+        contain additional pieces of information needed for further computation
+        by the library as well as just for storing information for the
+        user. For example "t_zeroecc" and "hlm_zeroecc" (described below) are
+        used for measuring eccentricity using residual amplitude/frequency but
+        are otherwise not necessary. The "..."  implies any other information
+        the user might be interested to store in the dataDict which might not
+        be necessary for the eccentricty measurement purpose. In this sense,
+        dataDict does not have a strict list of keys and contains information
+        in addition to the required ones. One example of such additional
+        information could be a dictionary of the parameters, say "param_dict",
+        that was used to generate the waveform. See
+        get_recognized_dataDict_keys to see what keys are recognized to avoid
+        unintentionally providing the wrong keys. If any keys are not in this
+        list a warning is raised so that the user becomes aware of this.
+
+        Below we describe some of the keys that are recognized (but do not mean
+        only allowed ones) by the library.
+        - "t": 1d array of times.
             - This is the time array associated with the waveform modes.
-            - It should uniformly sampled. Please make sure that the time
+            - It should be uniformly sampled. Please make sure that the time
             step is small enough that omega22(t) can be accurately computed.
             We use a 4th-order finite difference scheme. In dimensionless
             units, we recommend a time step of dtM = 0.1M to be conservative,
-            but you may be able to get away with larger time steps like
-            dtM = 1M. The corresponding time step in seconds would be
-            dtM * M * lal.MTSUN_SI, where M is the total mass in Solar masses.
+            but you may be able to get away with larger time steps like dtM =
+            1M. The corresponding time step in seconds would be dtM * M *
+            lal.MTSUN_SI, where M is the total mass in Solar masses.
+            - There is no requirement of the waveform peak occuring at a
+            specific time like t=0 or so. Eccentricity measurement would work
+            independent of where in time the peak occurs.
         - "hlm": Dictionary of waveform modes. It should have the format:
             modeDict = {(l1, m1): h_{l1, m1},
                        (l2, m2): h_{l2, m2}, ...
                        },
             where h_{l, m} is a 1d complex array representing the (l, m) mode.
-        - "t_zeroecc": 1d array of uniformly spaced times associated with the
-            waveform modes of the quasicircular waveform (described below).
-            Should follow the same standard as required by "t"
-            (described above).
-        - "hlm_zeroecc": Dictionary of quasicircular waveform modes. Should be
-            of the same format as "hlm".
+        - "t_zeroecc": 1d array of times associated with the waveform modes
+            "hlm_zeroecc" (described below) of the quasicircular waveform.
+            - Should be uniformly spaced.
+            - The time steps should follow the same rule as "t" (described
+            above) but need not be the same as in "t" since we anyway
+            interpolate the quasicircular data on the time array "t".
+            - Similar to "t", there is no requirement of the peak of
+            quasicircular waveform modes occuring at any specific time. Also
+            the time where the peak occurs need not be the same as that for the
+            eccentric waveform. The alignement of the peaks of the eccentric
+            and the quasicircular waveform modes are done internally before
+            computing the residual quantities like residual
+            amplitude/frequency.
+            - We require that "hlm_zeroecc" be at least as long as "hlm" so
+            that residual amplitude/frequency can be computed.  That is, we
+            need t_zeroecc[0] <= t[0]
+        - "hlm_zeroecc": Dictionary of quasicircular waveform modes. Should
+            be of the same format as "hlm".
             - For a waveform model, "hlm_zeroecc" can be obtained by evaluating
             the model by keeping the rest of the binary parameters fixed (same
             as the ones used to generate "hlm") but setting the eccentricity to
@@ -180,8 +214,6 @@ def measure_eccentricity(tref_in=None,
             - For NR, if such a quasicircular counterpart is not available, we
             recommend using quasi-circular waveforms like NRHybSur3dq8 or
             PhenomT, depending on the mass ratio and spins.
-            - We require that "hlm_zeroecc" be at least as long as "hlm" so
-            that residual amplitude/frequency can be computed.
             - "t_zeroecc" and and "hlm_zeroecc" are only required for
             ResidualAmplitude and ResidualFrequency methods, but if they are
             provided, they will be used to produce additional diagnostic plots,
@@ -193,8 +225,9 @@ def measure_eccentricity(tref_in=None,
         The (2, 2) mode is always required in "hlm"/"hlm_zeroecc". If
         additional modes are included, they will be used in determining the
         merger-time of the waveform as the global maximum of A(t) following
-        Eq.(5) of arxiv:1905.09300. The merger-time is used to time-align
-        the two waveforms before computing the residual amplitude/frequency.
+        Eq.(5) of arxiv:1905.09300. The merger-time is used to time-align the
+        "hlm" and "hlm_zeroecc" before computing the residual
+        amplitude/frequency.
 
     return_gwecc_object: bool
         If True, returns the eccDefinition object used to compute the
