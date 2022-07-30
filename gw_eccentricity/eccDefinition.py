@@ -360,7 +360,7 @@ class eccDefinition:
             fref_out is set as
             fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
             where fref_min/fref_max are minimum/maximum allowed reference
-            frequency. where fref_min = omega22_average(tmin_for_fref)/2/pi
+            frequencies, with fref_min = omega22_average(tmin_for_fref)/2/pi
             and fref_max = omega22_average(tmax_for_fref)/2/pi.
             See get_fref_bounds for how tmin_for_fref and tmax_for_fref are
             obtained.
@@ -789,11 +789,9 @@ class eccDefinition:
         omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
                                              / (t[i+1] - t[i]),
         where t[i] is the time at the ith pericenter.
-        And similarly, we calculate the t_average_apocenters. We combine these
-        two arrays and sort them to get the combined t_average that we
-        associate with the mean motion computed at pericenters and apocenters
-        computed as described above and combined in the same way using the
-        same sorted_idx used for sorting the combined t_average.
+        And similarly, we calculate the t_average_apocenters. We combine
+        We combine t_average_pericenters and t_average_apocenters, and sort
+        them to obtain t_average.
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -820,6 +818,7 @@ class eccDefinition:
                                         / (t[i+1] - t[i])
         where t[i] is the time of ith extrema.
         We do this for pericenters and apocenters and combine the results
+        and sort them using sorted indices from get_t_average_for_mean_motion.
         """
         extrema_locations = {"pericenters": self.pericenters_location,
                              "apocenters": self.apocenters_location}
