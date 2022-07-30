@@ -50,8 +50,7 @@ parser.add_argument(
     "--data_dir", "-d",
     type=str,
     default="../../data/ecc_waveforms",
-    help=("Base directory where waveform files are stored. You can get this "
-          "from home/md.shaikh/ecc_waveforms on CIT."))
+    help=("Base directory where waveform files are stored."))
 parser.add_argument(
     "--method", "-m",
     type=str,
