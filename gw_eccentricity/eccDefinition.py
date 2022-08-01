@@ -796,8 +796,8 @@ class eccDefinition:
                                              / (t[i+1] - t[i]),
         where t[i] is the time at the ith pericenter.
         And similarly, we calculate the t_average_apocenters. We combine
-        We combine t_average_pericenters and t_average_apocenters, and sort
-        them to obtain t_average.
+        t_average_pericenters and t_average_apocenters, and sort them to obtain
+        t_average.
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -857,7 +857,9 @@ class eccDefinition:
                             "monotonically increasing")
         omega22_average = np.append(omega22_average_apocenters,
                                     omega22_average_pericenters)
-        # sort omega22
+        # We now sort omega22_average using the same array of indices that was
+        # used to obtain the t_average in the function
+        # eccDefinition.get_t_average_for_mean_motion.
         omega22_average = omega22_average[self.sorted_idx_mean_motion]
         return InterpolatedUnivariateSpline(
             self.t_average_mean_motion, omega22_average, ext=2)(t)
