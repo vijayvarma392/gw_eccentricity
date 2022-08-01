@@ -459,8 +459,11 @@ class eccDefinition:
             raise KeyError("Exactly one of tref_in and fref_in"
                            " should be specified.")
         elif tref_in is not None:
+            tref_in_ndim = np.ndim(tref_in)
             self.tref_in = np.atleast_1d(tref_in)
         else:
+            fref_in_ndim = np.ndim(fref_in)
+            tref_in_ndim = fref_in_ndim
             fref_in = np.atleast_1d(fref_in)
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
@@ -518,7 +521,8 @@ class eccDefinition:
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
         # See explanation on why we do not include the last pericenter above.
-        if self.tref_out[0] < self.t_pericenters[0] or self.tref_out[-1] >= self.t_pericenters[-1]:
+        if self.tref_out[0] < self.t_pericenters[0] \
+           or self.tref_out[-1] >= self.t_pericenters[-1]:
             raise Exception("Reference time must be within two pericenters.")
 
         # compute eccentricity at self.tref_out
@@ -534,11 +538,13 @@ class eccDefinition:
         if self.extra_kwargs["debug"]:
             self.check_monotonicity_and_convexity()
 
-        if len(self.tref_out) == 1:
+        # If tref_in is a scalar, return a scalar
+        if tref_in_ndim == 0:
             self.mean_ano_ref = self.mean_ano_ref[0]
             self.ecc_ref = self.ecc_ref[0]
             self.tref_out = self.tref_out[0]
-        if fref_in is not None and len(self.fref_out) == 1:
+
+        if fref_in is not None and fref_in_ndim == 0:
             self.fref_out = self.fref_out[0]
 
         return_array = self.fref_out if fref_in is not None else self.tref_out
