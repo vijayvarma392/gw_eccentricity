@@ -231,7 +231,7 @@ def measure_eccentricity(tref_in=None,
             - "mean_of_extrema_interpolants":
               The mean of omega22_pericenters(t) and omega22_apocenters(t) is
               used as a proxy for the average frequency.
-            - "interpolate_orbit_averages_at_extrema": First, orbit averages
+            - "mean_motion": First, orbit averages
               are obtained at each pericenter by averaging omega22(t) over the
               time from the current pericenter to the next one. This average
               value is associated with the time at mid point between the
@@ -245,7 +245,7 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
-            Default is "mean_of_extrema_interpolants".
+            Default is "mean_motion".
         treat_mid_points_between_pericenters_as_apocenters:
             If True, instead of trying to find apocenter locations by looking
             for local minima in the data, we simply find the midpoints between
@@ -273,9 +273,12 @@ def measure_eccentricity(tref_in=None,
         bounds.
 
         fref_out is set as
-        fref_out = fref_in[fref_in >= fmin & fref_in < fmax],
-        where fmin = omega22_average(tmin)/2/pi and
-              fmax = omega22_average(tmax)/2/pi, with tmin/tmax same as above.
+        fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
+        where fref_min/fref_max are minimum/maximum allowed reference
+        frequency. where fref_min = omega22_average(tmin_for_fref)/2/pi
+        and fref_max = omega22_average(tmax_for_fref)/2/pi.
+        See eccDefinition.get_fref_bounds for how tmin_for_fref and
+        tmax_for_fref are obtained.
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as
