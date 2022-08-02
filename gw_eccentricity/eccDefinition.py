@@ -236,10 +236,6 @@ class eccDefinition:
             "t_zeroecc",        # time array of quasicircular waveform
             "hlm_zeroecc",      # Dict of quasicircular waveform modes
             "param_dict",       # dictionary of parameters of the waveform
-            "amplm",            # Dict of amplitude of modes
-            "phaselm",          # Dict of phase of modes
-            "amplm_zeroecc",    # Dict of amplitude of quasicircular modes
-            "phaselm_zeroecc"   # Dict of phase of quasicircular modes
         ]
         return list_of_keys
 
