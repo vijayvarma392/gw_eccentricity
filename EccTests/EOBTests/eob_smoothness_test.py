@@ -50,8 +50,7 @@ parser.add_argument(
     "--data_dir", "-d",
     type=str,
     default="../../data/ecc_waveforms",
-    help=("Base directory where waveform files are stored. You can get this "
-          "from home/md.shaikh/ecc_waveforms on CIT."))
+    help=("Base directory where waveform files are stored."))
 parser.add_argument(
     "--method", "-m",
     type=str,
@@ -225,7 +224,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 f"Momega0{Momega0_zeroecc:.3f}_meanAno{meanAno:.3f}.h5")
             kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                            "include_zero_ecc": True})
-        dataDict = load_waveform(catalog="EOB", **kwargs)
+        dataDict = load_waveform(origin="EOB", **kwargs)
         tref_in = dataDict["t"]
         for idx, method in enumerate(methods):
             try:

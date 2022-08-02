@@ -24,47 +24,74 @@ class eccDefinition:
         parameters:
         ---------
         dataDict:
-            Dictionary containing waveform modes dict, time etc.
-            Should follow the format:
+            Dictionary containing waveform modes dict, time etc.  Should follow
+            the format:
                 dataDict = {"t": time,
                             "hlm": modeDict,
                             "t_zeroecc": time,
-                            "hlm_zeroecc": modeDict, ...
+                            "hlm_zeroecc": modeDict,
+                            ...
                            },
-            where time is an array with the same convention as tref_in, and
-            modeDict should have the format:
+            While dataDict must contain "t" and "hlm" (described below), it can
+            contain additional pieces of information needed for further
+            computation by the library as well as just for storing information
+            for the user. "t_zeroecc" and and "hlm_zeroecc" are only required
+            for ResidualAmplitude and ResidualFrequency methods, but if they
+            are provided, they will be used to produce additional diagnostic
+            plots, which can be helpful for all methods. The "..."  implies
+            any other information the user might be interested to store in the
+            dataDict which might not be necessary for the eccentricty
+            measurement purpose. In this sense, dataDict does not have a strict
+            list of keys and can contain information in addition to the
+            required ones. One example of such additional information could be
+            a dictionary of the parameters, say "param_dict", that was used to
+            generate the waveform. See get_recognized_dataDict_keys to see what
+            keys are recognized to avoid unintentionally providing the wrong
+            keys. If any keys are not in this list a warning is raised and will
+            be ignored.
+
+            Below we describe the keys that are recognized by the library.
+            - "t": 1d array of times.
+                - This is the time array associated with the waveform modes.
+                - It should be uniformly sampled. Please make sure that the
+                time step is small enough that omega22(t) can be accurately
+                computed, where omega22(t) is the orbital frequency of the (2,
+                2) mode.  We use a 4th-order finite difference scheme. In
+                dimensionless units, we recommend a time step of dtM = 0.1M to
+                be conservative, but you may be able to get away with larger
+                time steps like dtM = 1M. The corresponding time step in
+                seconds would be dtM * M * lal.MTSUN_SI, where M is the total
+                mass in Solar masses.
+                - There is no requirement of the waveform peak occuring at a
+                specific time like t=0, for example. Eccentricity measurement
+                works independently of where in time the peak occurs.
+            - "hlm": Dictionary of waveform modes. It should have the format:
                 modeDict = {(l1, m1): h_{l1, m1},
                            (l2, m2): h_{l2, m2}, ...
-                           }.
+                           },
+                where h_{l, m} is a 1d complex array representing the (l, m)
+                mode.  Should contain at least the (2, 2) mode.
+            - "t_zeroecc": 1d array of times associated with the waveform modes
+                "hlm_zeroecc" (described below) of the quasicircular waveform.
+                - Should be uniformly spaced, but does not have to follow the
+                  same time step as for "t", as long as the step size is small
+                  enough to compute the frequency. Similarly, peak time can be
+                  arbitrary.
+                - We require that "hlm_zeroecc" be at least as long as "hlm" so
+                that residual amplitude/frequency can be computed.
+            - "hlm_zeroecc": Dictionary of quasicircular waveform modes. Should
+                be of the same format as "hlm".
+                - For a waveform model, "hlm_zeroecc" can be obtained by
+                evaluating the model by keeping the rest of the binary
+                parameters fixed (same as the ones used to generate "hlm") but
+                setting the eccentricity to zero.
+                - Should contain at least the (2, 2) mode.
+                - For NR, if such a quasicircular counterpart is not available,
+                we recommend using quasi-circular waveforms like NRHybSur3dq8
+                or PhenomT, depending on the mass ratio and spins.
 
-            "t_zeroecc" and "hlm_zeroecc" are only required for
-            ResidualAmplitude and ResidualFrequency methods, but if they are
-            provided, they will be used to produce additional diagnostic plots,
-            which can be helpful for all methods. "t_zeroecc" and "hlm_zeroecc"
-            should include the time and modeDict for the quasi-circular limit
-            of the eccentric waveform in "hlm". For a waveform model,
-            "hlm_zeroecc" can be obtained by evaluating the model by keeping
-            the rest of the binary parameters fixed but setting the
-            eccentricity to zero. For NR, if such a quasi-circular counterpart
-            is not available, we recommend using quasi-circular waveforms like
-            NRHybSur3dq8 or PhenomT, depending on the mass ratio and spins. We
-            require that "hlm_zeroecc" be at least as long as "hlm" so that
-            residual amplitude/frequency can be computed.
-
-            For dataDict, we currently only allow time-domain, nonprecessing
-            waveforms with a uniform time array. Please make sure that the time
-            step is small enough that omega22(t) can be accurately computed; we
-            use a 4th-order finite difference scheme. In dimensionless units,
-            we recommend a time step of dtM = 0.1M to be conservative, but you
-            may be able to get away with larger time steps like dtM = 1M. The
-            corresponding time step in seconds would be dtM * M * lal.MTSUN_SI,
-            where M is the total mass in Solar masses.
-
-            The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If
-            additional modes are included, they will be used in determining the
-            pericenter time following Eq.(5) of arxiv:1905.09300. The
-            pericenter time is used to time-align the two waveforms before
-            computing the residual amplitude/frequency.
+            For dataDict, We currently only allow time-domain, nonprecessing
+            waveforms.
 
         spline_kwargs:
             Dictionary of arguments to be passed to the spline interpolation
@@ -130,6 +157,12 @@ class eccDefinition:
                 Default: False.
         """
         self.dataDict = dataDict
+        # check if there are any keys that are not recognized
+        self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
+        for kw in self.dataDict.keys():
+            if kw not in self.recognized_dataDict_keys:
+                warnings.warn(
+                    f"kw {kw} is not a recognized key word in dataDict.")
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -196,6 +229,17 @@ class eccDefinition:
             "eccDefinition.get_default_extrema_finding_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega22_averaging_methods()
+
+    def get_recognized_dataDict_keys(self):
+        """Get the list of recognized keys in dataDict."""
+        list_of_keys = [
+            "t",                # time array of waveform modes
+            "hlm",              # Dict of eccentric waveform modes
+            "t_zeroecc",        # time array of quasicircular waveform
+            "hlm_zeroecc",      # Dict of quasicircular waveform modes
+            "param_dict",       # dictionary of parameters of the waveform
+        ]
+        return list_of_keys
 
     def get_default_spline_kwargs(self):
         """Defaults for spline settings."""
