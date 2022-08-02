@@ -237,7 +237,6 @@ class eccDefinition:
             "hlm",              # Dict of eccentric waveform modes
             "t_zeroecc",        # time array of quasicircular waveform
             "hlm_zeroecc",      # Dict of quasicircular waveform modes
-            "param_dict",       # dictionary of parameters of the waveform
         ]
         return list_of_keys
 

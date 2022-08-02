@@ -67,23 +67,24 @@ def measure_eccentricity(tref_in=None,
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
     Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
-    where phi22(t) is the phase of the (2,2) waveform mode. We evaluate
-    omega22(t) at pericenter times, t_pericenters, and build a spline
-    interpolant omega22_pericenters(t) using those points. Similarly, we build
-    omega22_apocenters(t) using the apocenter times, t_apocenters. To find the
-    pericenter/apocenter locations, one can look for extrema in different
+    where phi22(t) is the phase of the (2,2) waveform mode. We currently only
+    allow time-domain, nonprecessing waveforms. We evaluate omega22(t) at
+    pericenter times, t_pericenters, and build a spline interpolant
+    omega22_pericenters(t) using those points. Similarly, we build
+    omega22_apocenters(t) using omega22(t) at the apocenter times,
+    t_apocenters. Finally, eccentricity is defined using omega22_pericenters(t)
+    and omega22_apocenters(t), as described in Eq.(1) of arxiv:xxxx.xxxx. Mean
+    anomaly is defined using t_pericenters, as described in Eq.(2) of
+    arxiv:xxxx.xxxx.
+
+    FIXME ARIF: In the above text, fill in arxiv number when available. Make
+    sure the above Eq numbers are right, once the paper is finalized.
+
+    To find t_pericenters/t_apocenters, one can look for extrema in different
     waveform data, like omega22(t) or Amp22(t), the amplitude of the (2,2)
-    mode. Pericenters correspond to pericenters, while apocenters correspond to
-    apocenters in the data. The method option (described below) lets you pick
-    which waveform data to use to find extrema.
-
-    The eccentricity is defined using omega22_pericenters(t) and
-    omega22_apocenters(t), as described in Eq.(1) of arxiv:xxxx.xxxx.
-    Similarly, the mean anomaly is defined using the pericenter locations as
-    described in Eq.(2) of arxiv:xxxx.xxxx.
-
-    FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
-    numbers are right, once the paper is finalized.
+    mode. Pericenters correspond to peaks, while apocenters correspond to
+    troughs in the data. The method option (described below) lets you pick
+    which waveform data to use to find t_pericenters/t_apocenters.
 
     Parameters:
     ----------
@@ -98,11 +99,10 @@ def measure_eccentricity(tref_in=None,
 
         Given an fref_in, we find the corresponding tref_in such that
         omega22_average(tref_in) = 2 * pi * fref_in. Here, omega22_average(t)
-        is a monotonically increasing average frequency that is computed from
-        the instantaneous omega22(t). omega22_average(t) is not a moving
-        average; depending on which averaging method is used (see the
-        omega22_averaging_method option below), it means slightly different
-        things.
+        is a monotonically increasing average frequency obtained from the
+        instantaneous omega22(t). omega22_average(t) defaults to the mean
+        motion, but other options are available (see omega22_averaging_method
+        below).
 
         Eccentricity and mean anomaly measurements are returned on a subset of
         tref_in/fref_in, called tref_out/fref_out, which are described below.
@@ -116,13 +116,13 @@ def measure_eccentricity(tref_in=None,
         - "Amplitude": Finds extrema of Amp22(t).
         - "Frequency": Finds extrema of omega22(t).
         - "ResidualAmplitude": Finds extrema of resAmp22(t), the residual
-          amplitude, obtained by subtracting the Amp22(t) of the quasi-circular
+          amplitude, obtained by subtracting the Amp22(t) of the quasicircular
           counterpart from the Amp22(t) of the eccentric waveform. The
-          quasi-circular counterpart is described in the documentation of
+          quasicircular counterpart is described in the documentation of
           dataDict below.
         - "ResidualFrequency": Finds extrema of resomega22(t), the residual
           frequency, obtained by subtracting the omega22(t) of the
-          quasi-circular counterpart from the omega22(t) of the eccentric
+          quasicircular counterpart from the omega22(t) of the eccentric
           waveform.
         - "FrequencyFits": Uses omega22(t) and iteratively subtracts a
           PN-inspired fitting function from it, and finds extrema of the
@@ -146,70 +146,57 @@ def measure_eccentricity(tref_in=None,
         Amplitude/ResidualAmplitude/FrequencyFits.
 
     dataDict:
-        Dictionary containing waveform modes dict, time etc.  Should follow the
+        Dictionary containing waveform modes dict, time etc. Should follow the
         format:
-            dataDict = {"t": time,
-                        "hlm": modeDict,
-                        "t_zeroecc": time,
-                        "hlm_zeroecc": modeDict,
-                        ...
-                       },
-        While dataDict must contain "t" and "hlm" (described below), it can
-        contain additional pieces of information needed for further computation
-        by the library as well as just for storing information for the
-        user. "t_zeroecc" and and "hlm_zeroecc" are only required for
-        ResidualAmplitude and ResidualFrequency methods, but if they are
-        provided, they will be used to produce additional diagnostic plots,
-        which can be helpful for all methods. The "..."  implies any other
-        information the user might be interested to store in the dataDict which
-        might not be necessary for the eccentricty measurement purpose. In this
-        sense, dataDict does not have a strict list of keys and can contain
-        information in addition to the required ones. One example of such
-        additional information could be a dictionary of the parameters, say
-        "param_dict", that was used to generate the waveform. See
-        get_recognized_dataDict_keys to see what keys are recognized to avoid
-        unintentionally providing the wrong keys. If any keys are not in this
-        list a warning is raised and will be ignored.
+        dataDict = {"t": time,
+                    "hlm": modeDict,
+                    "t_zeroecc": time,
+                    "hlm_zeroecc": modeDict,
+                   },
+        "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc" are only
+        required for ResidualAmplitude and ResidualFrequency methods, but if
+        provided, they are used for additional diagnostic plots, which can be
+        helpful for all methods. Any other keys in dataDict will be ignored,
+        with a warning.
 
-        Below we describe the keys that are recognized by the library.
+        The recognized keys are:
         - "t": 1d array of times.
-            - This is the time array associated with the waveform modes.
-            - It should be uniformly sampled. Please make sure that the time
-            step is small enough that omega22(t) can be accurately computed.
-            We use a 4th-order finite difference scheme. In dimensionless
-            units, we recommend a time step of dtM = 0.1M to be conservative,
-            but you may be able to get away with larger time steps like dtM =
-            1M. The corresponding time step in seconds would be dtM * M *
-            lal.MTSUN_SI, where M is the total mass in Solar masses.
-            - There is no requirement of the waveform peak occuring at a
-            specific time like t=0, for example. Eccentricity measurement works
-            independently of where in time the peak occurs.
-        - "hlm": Dictionary of waveform modes. It should have the format:
-            modeDict = {(l1, m1): h_{l1, m1},
-                       (l2, m2): h_{l2, m2}, ...
-                       },
-            where h_{l, m} is a 1d complex array representing the (l, m) mode.
-            Should contain at least the (2, 2) mode.
-        - "t_zeroecc": 1d array of times associated with the waveform modes
-            "hlm_zeroecc" (described below) of the quasicircular waveform.
-            - Should be uniformly spaced, but does not have to follow the same
-              time step as for "t", as long as the step size is small enough to
-              compute the frequency. Similarly, peak time can be arbitrary.
+            - Should be uniformly sampled, with a small enough time step
+              that omega22(t) can be accurately computed. We use a 4th-order
+              finite difference scheme. In dimensionless units, we recommend a
+              time step of dtM = 0.1M to be conservative, but you may be able
+              to get away with larger time steps like dtM = 1M. The
+              corresponding time step in seconds would be
+              dtM * M * lal.MTSUN_SI, where M is the total mass in Solar
+              masses.
+            - We do not require the waveform peak amplitude to occur at any
+              specific time, but tref_in should follow the same convention for
+              peak time as "t".
+        - "hlm": Dictionary of waveform modes associated with "t".
+            - Should have the format:
+                modeDict = {(l1, m1): h_{l1, m1},
+                            (l2, m2): h_{l2, m2},
+                            ...
+                           },
+                where h_{l, m} is a 1d complex array representing the (l, m)
+                waveform mode. Should contain at least the (2, 2) mode, but
+                more modes can be included, as indicated by the ellipsis '...'
+                above.
+        - "t_zeroecc" and "hlm_zeroecc":
+            - Same as above, but for the quasicircular counterpart to the
+              eccentric waveform. The quasicircular counterpart can be obtained
+              by evaluating a waveform model by keeping the rest of the binary
+              parameters fixed (same as the ones used to generate "hlm") but
+              setting the eccentricity to zero. For NR, if such a quasicircular
+              counterpart is not available, we recommend using quasicircular
+              models like NRHybSur3dq8 or PhenomT, depending on the mass ratio
+              and spins.
+            - "t_zeroecc" should be uniformly spaced, but does not have to
+              follow the same time step as that of "t", as long as the step
+              size is small enough to compute the frequency. Similarly, peak
+              time does not have to match that of "t".
             - We require that "hlm_zeroecc" be at least as long as "hlm" so
-            that residual amplitude/frequency can be computed.
-        - "hlm_zeroecc": Dictionary of quasicircular waveform modes. Should
-            be of the same format as "hlm".
-            - For a waveform model, "hlm_zeroecc" can be obtained by evaluating
-            the model by keeping the rest of the binary parameters fixed (same
-            as the ones used to generate "hlm") but setting the eccentricity to
-            zero.
-            - Should contain at least the (2, 2) mode.
-            - For NR, if such a quasicircular counterpart is not available, we
-            recommend using quasi-circular waveforms like NRHybSur3dq8 or
-            PhenomT, depending on the mass ratio and spins.
-
-        For dataDict, We currently only allow time-domain, nonprecessing
-        waveforms.
+              that residual amplitude/frequency can be computed.
 
     return_gwecc_object: bool
         If True, returns the eccDefinition object used to compute the
@@ -252,21 +239,20 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
+            - "mean_motion": First, orbit averages are obtained at each
+              pericenter by averaging omega22(t) over the time from the current
+              pericenter to the next one. This average value is associated with
+              the time at mid point between the current and the next
+              pericenter. Similarly orbit averages are computed at apocenters.
+              Finally, a spline interpolant is constructed between all of these
+              orbit averages at extrema locations. Due to the nature of the
+              averaging, the final time over which the spline is constructed
+              always starts half an orbit after the first extrema and ends half
+              an orbit before the last extrema.
             - "mean_of_extrema_interpolants":
               The mean of omega22_pericenters(t) and omega22_apocenters(t) is
               used as a proxy for the average frequency.
-            - "mean_motion": First, orbit averages
-              are obtained at each pericenter by averaging omega22(t) over the
-              time from the current pericenter to the next one. This average
-              value is associated with the time at mid point between the
-              current and the next pericenter. Similarly orbit averages are
-              computed at apocenters. Finally, a spline interpolant is
-              constructed between all of these orbit averages at extrema
-              locations. Due to the nature of the averaging, the final time
-              over which the spline is constructed always starts half an orbit
-              after the first extrema and ends half an orbit before the last
-              extrema.
-            - "omega22_zeroecc": omega22(t) of the quasi-circular counterpart
+            - "omega22_zeroecc": omega22(t) of the quasicircular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
             Default is "mean_motion".
@@ -294,15 +280,16 @@ def measure_eccentricity(tref_in=None,
         omega22_pericenters(t) and omega22_apocenters(t), the above cutoffs
         ensure that we only compute the eccentricity where both
         omega22_pericenters(t) and omega22_apocenters(t) are within their
-        bounds.
+        bounds. See eccDefinition.measure_ecc() for why the upper limit does
+        not use <=.
 
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
         where fref_min/fref_max are minimum/maximum allowed reference
-        frequency. where fref_min = omega22_average(tmin_for_fref)/2/pi
+        frequency, with fref_min = omega22_average(tmin_for_fref)/2/pi
         and fref_max = omega22_average(tmax_for_fref)/2/pi.
-        See eccDefinition.get_fref_bounds for how tmin_for_fref and
-        tmax_for_fref are obtained.
+        tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
+        eccDefinition.get_fref_bounds() for details.
 
     ecc_ref:
         Measured eccentricity at tref_out/fref_out. Same type as
