@@ -38,7 +38,7 @@ class eccDefinition:
             for the user. "t_zeroecc" and and "hlm_zeroecc" are only required
             for ResidualAmplitude and ResidualFrequency methods, but if they
             are provided, they will be used to produce additional diagnostic
-            plots, which can be helpful for all methods.. The "..."  implies
+            plots, which can be helpful for all methods. The "..."  implies
             any other information the user might be interested to store in the
             dataDict which might not be necessary for the eccentricty
             measurement purpose. In this sense, dataDict does not have a strict
