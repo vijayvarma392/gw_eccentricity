@@ -67,7 +67,7 @@ def measure_eccentricity(tref_in=None,
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
     Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
-    where phi22(t) is the phase of the (2,2) waveform mode. We currently only
+    where phi22(t) is the phase of the (2, 2) waveform mode. We currently only
     allow time-domain, nonprecessing waveforms. We evaluate omega22(t) at
     pericenter times, t_pericenters, and build a spline interpolant
     omega22_pericenters(t) using those points. Similarly, we build
@@ -81,7 +81,7 @@ def measure_eccentricity(tref_in=None,
     sure the above Eq numbers are right, once the paper is finalized.
 
     To find t_pericenters/t_apocenters, one can look for extrema in different
-    waveform data, like omega22(t) or Amp22(t), the amplitude of the (2,2)
+    waveform data, like omega22(t) or Amp22(t), the amplitude of the (2, 2)
     mode. Pericenters correspond to peaks, while apocenters correspond to
     troughs in the data. The method option (described below) lets you pick
     which waveform data to use to find t_pericenters/t_apocenters.
@@ -245,10 +245,13 @@ def measure_eccentricity(tref_in=None,
               the time at mid point between the current and the next
               pericenter. Similarly orbit averages are computed at apocenters.
               Finally, a spline interpolant is constructed between all of these
-              orbit averages at extrema locations. Due to the nature of the
-              averaging, the final time over which the spline is constructed
-              always starts half an orbit after the first extrema and ends half
-              an orbit before the last extrema.
+              orbit averages at extrema locations. However, since the
+              eccentricity measurement is allowed only between tmin and tmax,
+              the final time over which the spline is constructed starts at >=
+              tmin and ends at < tmax. See documentation of tref_out/fref_out
+              for tmin/tmax. For more details, see
+              eccDefinition.get_t_average_for_mean_motion and
+              eccDefinition.compute_mean_motion_at_extrema
             - "mean_of_extrema_interpolants":
               The mean of omega22_pericenters(t) and omega22_apocenters(t) is
               used as a proxy for the average frequency.
