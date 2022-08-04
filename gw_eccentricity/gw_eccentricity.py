@@ -245,13 +245,10 @@ def measure_eccentricity(tref_in=None,
               the time at mid point between the current and the next
               pericenter. Similarly orbit averages are computed at apocenters.
               Finally, a spline interpolant is constructed between all of these
-              orbit averages at extrema locations. However, since the
-              eccentricity measurement is allowed only between tmin and tmax,
-              the final time over which the spline is constructed starts at >=
-              tmin and ends at < tmax. See documentation of tref_out/fref_out
-              for tmin/tmax. For more details, see
-              eccDefinition.get_t_average_for_mean_motion and
-              eccDefinition.compute_mean_motion_at_extrema
+              orbit averages at extrema locations. However, the final time over
+              which the spline is constructed is constrained to be between
+              tmin_for_fref and tmax_for_fref which are close to tmin and tmax,
+              respectively. See eccDefinition.get_fref_bounds() for details.
             - "mean_of_extrema_interpolants":
               The mean of omega22_pericenters(t) and omega22_apocenters(t) is
               used as a proxy for the average frequency.
