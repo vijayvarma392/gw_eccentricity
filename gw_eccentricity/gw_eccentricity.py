@@ -222,23 +222,20 @@ def measure_eccentricity(tref_in=None,
             Dictionary of arguments to be passed to the extrema finder,
             scipy.signal.find_peaks.
             The Defaults are the same as those of scipy.signal.find_peaks,
-            except for the "width" and "rel_height" parameters.
-            - "width" denotes the minimum width of an extrema. Setting this can
-              help avoid false extrema in noisy data (for example, due to junk
-              radiation in NR). The default for "width" is set using phi22(t)
-              near the merger. Starting from 4 cycles of the (2, 2) mode before
-              merger, we find the number of time steps taken to cover 2 cycles,
-              let's call this "the gap". Note that 2 cycles of the (2, 2) mode
-              is approximately one orbit, so this allows us to approximate the
-              smallest gap between two pericenters/apocenters. However, to be
-              conservative, we divide this gap by 4 and set it as the width
-              parameter for find_peaks. See
-              eccDefinition.get_width_for_peak_finder_from_phase22 for more
-              details.
-            - "rel_height" is the relative height at which the peak width is
-              measured as a percentage of its prominence. The default value is
-              1.0 which calculates the width of the peak at its lowest contour
-              line.
+            except for the "width".
+            "width" denotes the minimum width of an extrema. The width of an
+            extremum is measured at `rel_height=0.5` which is the Full Width at
+            Half Maximum (FWHM). Setting this can help avoid false extrema in
+            noisy data (for example, due to junk radiation in NR). The default
+            for "width" is set using phi22(t) near the merger. Starting from 4
+            cycles of the (2, 2) mode before the merger, we find the number of
+            time steps taken to cover 2 cycles, let's call this "the gap". Note
+            that 2 cycles of the (2, 2) mode are approximately one orbit, so
+            this allows us to approximate the smallest gap between two
+            pericenters/apocenters. However, to be conservative, we divide this
+            gap by 4 and set it as the width parameter for find_peaks. See
+            eccDefinition.get_width_for_peak_finder_from_phase22 for more
+            details.
         debug:
             Run additional sanity checks if debug is True.
             Default: True.

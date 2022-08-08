@@ -95,24 +95,22 @@ class eccDefinition:
                 Dictionary of arguments to be passed to the extrema finder,
                 scipy.signal.find_peaks.
                 The Defaults are the same as those of scipy.signal.find_peaks,
-                except for the "width" and "rel_height" parameters.
-                - "width" denotes the minimum width of an extrema. Setting this
-                  can help avoid false extrema in noisy data (for example, due
-                  to junk radiation in NR). The default for "width" is set
-                  using phi22(t) near the merger. Starting from 4 cycles of the
-                  (2, 2) mode before merger, we find the number of time steps
-                  taken to cover 2 cycles, let's call this "the gap". Note that
-                  2 cycles of the (2, 2) mode is approximately one orbit, so
-                  this allows us to approximate the smallest gap between two
-                  pericenters/apocenters. However, to be conservative, we
-                  divide this gap by 4 and set it as the width parameter for
-                  find_peaks. See
-                  eccDefinition.get_width_for_peak_finder_from_phase22 for more
-                  details.
-                - "rel_height" is the relative height at which the peak width
-                  is measured as a percentage of its prominence. The default
-                  value is 1.0 which calculates the width of the peak at its
-                  lowest contour line.
+                except for the "width".
+                "width" denotes the minimum width of an extrema. The width of
+                an extremum is measured at `rel_height=0.5` which is the Full
+                Width at Half Maximum (FWHM). Setting this can help avoid false
+                extrema in noisy data (for example, due to junk radiation in
+                NR). The default for "width" is set using phi22(t) near the
+                merger. Starting from 4 cycles of the (2, 2) mode before the
+                merger, we find the number of time steps taken to cover 2
+                cycles, let's call this "the gap". Note that 2 cycles of the
+                (2, 2) mode are approximately one orbit, so this allows us to
+                approximate the smallest gap between two
+                pericenters/apocenters. However, to be conservative, we divide
+                this gap by 4 and set it as the width parameter for
+                find_peaks. See
+                eccDefinition.get_width_for_peak_finder_from_phase22 for more
+                details.
             debug:
                 Run additional sanity checks if debug is True.
                 Default: True.
@@ -250,7 +248,7 @@ class eccDefinition:
             "prominence": None,
             "width": self.get_width_for_peak_finder_from_phase22(),
             "wlen": None,
-            "rel_height": 1.0,
+            "rel_height": 0.5,
             "plateau_size": None}
         return default_extrema_finding_kwargs
 
@@ -829,15 +827,16 @@ class eccDefinition:
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
-        t_average_pericenters = (
-            self.t[self.pericenters_location][1:]
-            + self.t[self.pericenters_location][:-1]) / 2
+        self.t_average_pericenters \
+            = 0.5 * (self.t[self.pericenters_location][:-1]
+                     + self.t[self.pericenters_location][1:])
         # get the mid points between the apocenters as avg time for
         # apocenters
-        t_average_apocenters = (
-            self.t[self.apocenters_location][1:]
-            + self.t[self.apocenters_location][:-1]) / 2
-        t_average = np.append(t_average_apocenters, t_average_pericenters)
+        self.t_average_apocenters \
+            = 0.5 * (self.t[self.apocenters_location][:-1]
+                     + self.t[self.apocenters_location][1:])
+        t_average = np.append(self.t_average_apocenters,
+                              self.t_average_pericenters)
         # sort the times
         sorted_idx = np.argsort(t_average)
         t_average = t_average[sorted_idx]
@@ -854,37 +853,22 @@ class eccDefinition:
         We do this for pericenters and apocenters and combine the results
         and sort them using sorted indices from get_t_average_for_mean_motion.
         """
-        extrema_locations = {"pericenters": self.pericenters_location,
-                             "apocenters": self.apocenters_location}
-
-        @np.vectorize
-        def mean_motion_at_extrema(n, extrema_type="pericenters"):
-            """Compute orbital averaged omega22 between n and n+1 extrema."""
-            # integrate omega22 between n and n+1 extrema
-            # We do not need to do the integration here since
-            # we already have phase22 available to us which is
-            # nothing but the integration of omega22 over time.
-            # We want to integrate from nth extrema to n+1 extrema
-            # which is equivalent to phase difference between
-            # these two extrema
-            integ = (self.phase22[extrema_locations[extrema_type][n+1]]
-                     - self.phase22[extrema_locations[extrema_type][n]])
-            period = (self.t[extrema_locations[extrema_type][n+1]]
-                      - self.t[extrema_locations[extrema_type][n]])
-            return integ / period
-        omega22_average_pericenters = mean_motion_at_extrema(
-            np.arange(len(self.pericenters_location) - 1), "pericenters")
-        omega22_average_apocenters = mean_motion_at_extrema(
-            np.arange(len(self.apocenters_location) - 1), "apocenters")
-        # check if the average omega22 are monotonically increasing
-        if any(np.diff(omega22_average_pericenters) <= 0):
+        # integration of omega22(t) from t[i] to t[i+1] is the same
+        # as taking the difference of phase22(t) between t[i] and t[i+1]
+        self.omega22_average_pericenters \
+            = (np.diff(self.phase22[self.pericenters_location])
+               / np.diff(self.t[self.pericenters_location]))
+        self.omega22_average_apocenters \
+            = (np.diff(self.phase22[self.apocenters_location])
+               / np.diff(self.t[self.apocenters_location]))
+        if any(np.diff(self.omega22_average_pericenters) <= 0):
             raise Exception("Omega22 average at pericenters are not strictly "
                             "monotonically increaing")
-        if any(np.diff(omega22_average_apocenters) <= 0):
+        if any(np.diff(self.omega22_average_apocenters) <= 0):
             raise Exception("Omega22 average at apocenters are not strictly "
                             "monotonically increasing")
-        omega22_average = np.append(omega22_average_apocenters,
-                                    omega22_average_pericenters)
+        omega22_average = np.append(self.omega22_average_apocenters,
+                                    self.omega22_average_pericenters)
         # We now sort omega22_average using the same array of indices that was
         # used to obtain the t_average in the function
         # eccDefinition.get_t_average_for_mean_motion.
@@ -2016,11 +2000,8 @@ class eccDefinition:
         computed internally using scipy.signal.peak_widths. By default, the
         width is calculated at `rel_height=0.5` which gives the so-called Full
         Width at Half Maximum (FWHM). `rel_height` is provided as a percentage
-        of the `prominence`. However, for our purpose, it is useful to set
-        `rel_height=1.0` which would compute the width at the lowest contour
-        line and therefore would be close to the separation between the two
-        troughs surrounding the peak as much as possible. For details
-        see the documentation of scipy.signal.peak_widths.
+        of the `prominence`. For details see the documentation of
+        scipy.signal.peak_widths.
 
         If the `width` is too small then some noisy features in
         the signal might be mistaken for extrema and on the other hand if the
