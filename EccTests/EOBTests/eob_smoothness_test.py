@@ -120,9 +120,9 @@ args = parser.parse_args()
 # check that given method is available
 for method in args.method:
     if method not in get_available_methods():
-        raise Exception(f"Method {method} is not an allowed method."
-                        f" Must be one of {get_available_methods()}"
-                        " or `all` for using all available methods.")
+        raise KeyError(f"Method {method} is not an allowed method."
+                       f" Must be one of {get_available_methods()}"
+                       " or `all` for using all available methods.")
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
     "1": [1, 0, 0],
@@ -132,9 +132,9 @@ available_param_sets = {
 # check that given param set is available
 for p in args.param_set_key:
     if p not in available_param_sets:
-        raise Exception(f"Param set key {p} is not an allowed param set key."
-                        f" Must be one of {list(available_param_sets.keys())}"
-                        " or `all` for using all available param set keys.")
+        raise KeyError(f"Param set key {p} is not an allowed param set key."
+                       f" Must be one of {list(available_param_sets.keys())}"
+                       " or `all` for using all available param set keys.")
 
 EOBeccs = 10**np.linspace(-7, 0, 150)
 Momega0 = 0.01
