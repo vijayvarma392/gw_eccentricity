@@ -1359,7 +1359,7 @@ class eccDefinition:
             **kwargs):
         """Plot measured mean anomaly as function of time.
 
-                Parameters:
+        Parameters:
         -----------
         fig:
             Figure object to add the plot to. If None, initiates a new figure
@@ -1571,7 +1571,7 @@ class eccDefinition:
         ax.plot(self.t[self.apocenters_location],
                 self.amp22[self.apocenters_location],
                 c=colorsDict["apocenter"],
-                marker=".", ls="", labels=labelsDict["apocenters"])
+                marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
         data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
