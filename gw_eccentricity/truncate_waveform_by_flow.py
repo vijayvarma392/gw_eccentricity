@@ -6,6 +6,7 @@ import copy
 
 def truncate_waveform_by_flow(dataDict=None,
                               flow=None,
+                              m_max=None,
                               method="Amplitude",
                               spline_kwargs=None,
                               extra_kwargs=None):
@@ -21,13 +22,13 @@ def truncate_waveform_by_flow(dataDict=None,
     are < flow and therefore the t >= tlow part of the waveform would
     retain all the frequencies that are >= flow. Note that the t >= tlow part
     could contain some frequencies < flow but that is fine, all we need is not
-    to loose any frequencies >= flow.
+    to lose any frequencies >= flow.
 
     This could be done by using the frequency interpolant omega22_p(t) through
     the pericenters because
     1. It is monotonic function of time.
-    2. If at a time tlow, omega22_p(tlow) = 2*pi*flow, then all frequencies
-    that are >= flow would be at t >= tlow.
+    2. If at a time tlow, omega22_p(tlow) * (m_max/2) = 2*pi*flow, then all
+    frequencies that are >= flow would be at t >= tlow.
 
     Thus, we find tlow such that omega22_a(tlow) = 2*pi*flow and truncate the
     waveform by retaing only the part where t >= tlow.
@@ -44,6 +45,11 @@ def truncate_waveform_by_flow(dataDict=None,
     flow: float
         Lower cutoff frequency to truncate the given waveform modes.
         The truncated waveform would have all the frequencies that are >= flow.
+    m_max: int
+        Maximum `m' to acount for while setting the tlow for truncation.
+        If None, then it is set using the highest availbe `m' from the modes
+        in the dataDict.
+        Default is None.
     method: str
         Method to find the locations of the apocenters.
         See gw_eccentricity.get_available_modes for available modes.
@@ -74,6 +80,10 @@ def truncate_waveform_by_flow(dataDict=None,
                                                  extra_kwargs=extra_kwargs)
         omega22_pericenters_interp, pericenters_locations\
             = gwecc_object.interp_extrema("pericenters")
+    # If m_max is provide, get the highest available `m' from the dataDict
+    if m_max is None:
+        modes = gwecc_object.dataDict["hlm"].keys()
+        m_max = max([m for (l, m) in modes])
     # Find time where omega22_apocenter_interp(tlow) = 2 * pi * flow
     tmin = gwecc_object.t[pericenters_locations[0]]
     tmax = gwecc_object.t[pericenters_locations[-1]]
@@ -83,7 +93,8 @@ def truncate_waveform_by_flow(dataDict=None,
     gwecc_object.f22_pericenters_interp \
         = omega22_pericenters_interp(gwecc_object.t_pericenters_interp)/2/np.pi
 
-    idx_low = np.where(gwecc_object.f22_pericenters_interp >= flow)[0][0]
+    idx_low = np.where(
+        gwecc_object.f22_pericenters_interp * (m_max/2) >= flow)[0][0]
     tlow = gwecc_object.t_pericenters_interp[idx_low]
 
     truncatedDict = copy.deepcopy(dataDict)
@@ -93,6 +104,7 @@ def truncate_waveform_by_flow(dataDict=None,
     truncatedDict["t"] = truncatedDict["t"][truncatedDict["t"] >= tlow]
 
     gwecc_object.method = method
+    gwecc_object.m_max = m_max
     gwecc_object.tlow_for_trucating = tlow
     gwecc_object.truncatedDict = truncatedDict
     gwecc_object.f_low_for_truncating = flow
