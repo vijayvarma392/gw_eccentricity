@@ -13,7 +13,7 @@ def truncate_waveform_by_flow(dataDict=None,
     """Truncate waveform by flow.
 
     Eccentric waveforms have a non-monotonic instantaneous frequency.
-    Therefore, truncating waveform by demanding that the truncated waveform
+    Therefore, truncating the waveform by demanding that the truncated waveform
     should contain all frequencies that are greater than or equal to a given
     minimum frequency, say flow, must be done carefully since the instantaneous
     frequency can be equal to the given flow at multiple points in time.
@@ -26,12 +26,12 @@ def truncate_waveform_by_flow(dataDict=None,
 
     This could be done by using the frequency interpolant omega22_p(t) through
     the pericenters because
-    1. It is monotonic function of time.
+    1. It is a monotonic function of time.
     2. If at a time tlow, omega22_p(tlow) * (m_max/2) = 2*pi*flow, then all
     frequencies that are >= flow would be at t >= tlow.
 
     Thus, we find tlow such that omega22_a(tlow) = 2*pi*flow and truncate the
-    waveform by retaing only the part where t >= tlow.
+    waveform by retaning only the part where t >= tlow.
 
     Paramerers:
     -----------
@@ -46,15 +46,15 @@ def truncate_waveform_by_flow(dataDict=None,
         Lower cutoff frequency to truncate the given waveform modes.
         The truncated waveform would have all the frequencies that are >= flow.
     m_max: int
-        Maximum `m' to acount for while setting the tlow for truncation.
-        If None, then it is set using the highest availbe `m' from the modes
+        Maximum `m' to account for while setting the tlow for truncation.
+        If None, then it is set using the highest available `m' from the modes
         in the dataDict.
         Default is None.
     method: str
         Method to find the locations of the apocenters.
         See gw_eccentricity.get_available_modes for available modes.
     spline_kwargs: dict
-        Dictionary of arguments to be provided the the
+        Dictionary of arguments to be provided to the
         scipy.interpolate.InterpolatedUnivariatespline interpolant
         to create an interpolant of omega22 at the apocenters.
         Default values are set using eccDefinition.get_default_spline_kwargs.
