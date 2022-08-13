@@ -24,47 +24,57 @@ class eccDefinition:
         parameters:
         ---------
         dataDict:
-            Dictionary containing waveform modes dict, time etc.
-            Should follow the format:
-                dataDict = {"t": time,
-                            "hlm": modeDict,
-                            "t_zeroecc": time,
-                            "hlm_zeroecc": modeDict, ...
-                           },
-            where time is an array with the same convention as tref_in, and
-            modeDict should have the format:
-                modeDict = {(l1, m1): h_{l1, m1},
-                           (l2, m2): h_{l2, m2}, ...
-                           }.
+            Dictionary containing waveform modes dict, time etc. Should follow
+            the format:
+            dataDict = {"t": time,
+                        "hlm": modeDict,
+                        "t_zeroecc": time,
+                        "hlm_zeroecc": modeDict,
+                       },
+            "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc" are only
+            required for ResidualAmplitude and ResidualFrequency methods, but
+            if provided, they are used for additional diagnostic plots, which
+            can be helpful for all methods. Any other keys in dataDict will be
+            ignored, with a warning.
 
-            "t_zeroecc" and "hlm_zeroecc" are only required for
-            ResidualAmplitude and ResidualFrequency methods, but if they are
-            provided, they will be used to produce additional diagnostic plots,
-            which can be helpful for all methods. "t_zeroecc" and "hlm_zeroecc"
-            should include the time and modeDict for the quasi-circular limit
-            of the eccentric waveform in "hlm". For a waveform model,
-            "hlm_zeroecc" can be obtained by evaluating the model by keeping
-            the rest of the binary parameters fixed but setting the
-            eccentricity to zero. For NR, if such a quasi-circular counterpart
-            is not available, we recommend using quasi-circular waveforms like
-            NRHybSur3dq8 or PhenomT, depending on the mass ratio and spins. We
-            require that "hlm_zeroecc" be at least as long as "hlm" so that
-            residual amplitude/frequency can be computed.
-
-            For dataDict, we currently only allow time-domain, nonprecessing
-            waveforms with a uniform time array. Please make sure that the time
-            step is small enough that omega22(t) can be accurately computed; we
-            use a 4th-order finite difference scheme. In dimensionless units,
-            we recommend a time step of dtM = 0.1M to be conservative, but you
-            may be able to get away with larger time steps like dtM = 1M. The
-            corresponding time step in seconds would be dtM * M * lal.MTSUN_SI,
-            where M is the total mass in Solar masses.
-
-            The (2,2) mode is always required in "hlm"/"hlm_zeroecc". If
-            additional modes are included, they will be used in determining the
-            pericenter time following Eq.(5) of arxiv:1905.09300. The
-            pericenter time is used to time-align the two waveforms before
-            computing the residual amplitude/frequency.
+            The recognized keys are:
+            - "t": 1d array of times.
+                - Should be uniformly sampled, with a small enough time step
+                  that omega22(t) can be accurately computed. We use a
+                  4th-order finite difference scheme. In dimensionless units,
+                  we recommend a time step of dtM = 0.1M to be conservative,
+                  but you may be able to get away with larger time steps like
+                  dtM = 1M. The corresponding time step in seconds would be dtM
+                  * M * lal.MTSUN_SI, where M is the total mass in Solar
+                  masses.
+                - We do not require the waveform peak amplitude to occur at any
+                  specific time, but tref_in should follow the same convention
+                  for peak time as "t".
+            - "hlm": Dictionary of waveform modes associated with "t".
+                - Should have the format:
+                    modeDict = {(l1, m1): h_{l1, m1},
+                                (l2, m2): h_{l2, m2},
+                                ...
+                               },
+                    where h_{l, m} is a 1d complex array representing the (l,
+                    m) waveform mode. Should contain at least the (2, 2) mode,
+                    but more modes can be included, as indicated by the
+                    ellipsis '...'  above.
+            - "t_zeroecc" and "hlm_zeroecc":
+                - Same as above, but for the quasicircular counterpart to the
+                  eccentric waveform. The quasicircular counterpart can be
+                  obtained by evaluating a waveform model by keeping the rest
+                  of the binary parameters fixed (same as the ones used to
+                  generate "hlm") but setting the eccentricity to zero. For NR,
+                  if such a quasicircular counterpart is not available, we
+                  recommend using quasicircular models like NRHybSur3dq8 or
+                  PhenomT, depending on the mass ratio and spins.
+                - "t_zeroecc" should be uniformly spaced, but does not have to
+                  follow the same time step as that of "t", as long as the step
+                  size is small enough to compute the frequency. Similarly,
+                  peak time does not have to match that of "t".
+                - We require that "hlm_zeroecc" be at least as long as "hlm" so
+                  that residual amplitude/frequency can be computed.
 
         spline_kwargs:
             Dictionary of arguments to be passed to the spline interpolation
@@ -83,44 +93,48 @@ class eccDefinition:
                 Default: 1.
             extrema_finding_kwargs:
                 Dictionary of arguments to be passed to the extrema finder,
-                scipy.signal.find_peaks.  The Defaults are the same as those of
-                scipy.signal.find_peaks, except for the "width"
-                parameter. "width" denotes the minimum separation between two
-                consecutive pericenters/apocenters. Setting this can help avoid
-                false extrema in noisy data (for example, due to junk radiation
-                in NR). The default for "width" is set using phi22(t) near the
-                merger. Starting from 4 cycles of the (2,2) mode before merger,
-                we find the number of time steps taken to cover 2 cycles, let's
-                call this "the gap". Note that 2 cycles of the (2,2) mode is
-                approximately one orbit, so this allows us to approximate the
-                smallest gap between two pericenters/apocenters. However, to be
-                conservative, we divide this gap by 4 and set it as the width
-                parameter for find_peaks.
+                scipy.signal.find_peaks.
+                The Defaults are the same as those of scipy.signal.find_peaks,
+                except for the "width", which sets the minimum allowed "full
+                width at half maximum" for the extrema. Setting this can help
+                avoid false extrema in noisy data (for example, due to junk
+                radiation in NR). The default for "width" is set using phi22(t)
+                near the merger. Starting from 4 cycles of the (2, 2) mode
+                before the merger, we find the number of time steps taken to
+                cover 2 cycles, let's call this "the gap". Note that 2 cycles
+                of the (2, 2) mode are approximately one orbit, so this allows
+                us to approximate the smallest gap between two
+                pericenters/apocenters. However, to be conservative, we divide
+                this gap by 4 and set it as the width parameter for
+                find_peaks. See
+                eccDefinition.get_width_for_peak_finder_from_phase22 for more
+                details.
             debug:
                 Run additional sanity checks if debug is True.
                 Default: True.
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
                 omega22(t).
+                - "mean_motion": First, orbit averages are obtained at each
+                  pericenter by averaging omega22(t) over the time from the
+                  current pericenter to the next one. This average value is
+                  associated with the time at mid point between the current and
+                  the next pericenter. Similarly orbit averages are computed at
+                  apocenters.  Finally, a spline interpolant is constructed
+                  between all of these orbit averages at extrema
+                  locations. However, the final time over which the spline is
+                  constructed is constrained to be between tmin_for_fref and
+                  tmax_for_fref which are close to tmin and tmax,
+                  respectively. See eccDefinition.get_fref_bounds() for
+                  details.
                 - "mean_of_extrema_interpolants": The mean of
                   omega22_pericenters(t) and omega22_apocenters(t) is used as a
                   proxy for the average frequency.
-                - "interpolate_orbit_averages_at_extrema": First, orbit
-                  averages are obtained at each pericenter by averaging
-                  omega22(t) over the time from the current pericenter to the
-                  next one. This average value is associated with the time at
-                  mid point between the current and the next
-                  pericenter. Similarly orbit averages are computed at
-                  apocenters.  Finally, a spline interpolant is constructed
-                  between all of these orbit averages at extrema locations. Due
-                  to the nature of the averaging, the final time over which the
-                  spline is constructed always starts half and orbit after the
-                  first extrema and ends half an orbit before the last extrema.
-                - "omega22_zeroecc": omega22(t) of the quasi-circular
+                - "omega22_zeroecc": omega22(t) of the quasicircular
                   counterpart is used as a proxy for the average
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
-                Default is "mean_of_extrema_interpolants".
+                Default is "mean_motion".
             treat_mid_points_between_pericenters_as_apocenters:
                 If True, instead of trying to find apocenter locations by
                 looking for local minima in the data, we simply find the
@@ -130,6 +144,12 @@ class eccDefinition:
                 Default: False.
         """
         self.dataDict = dataDict
+        # check if there are any keys that are not recognized
+        self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
+        for kw in self.dataDict.keys():
+            if kw not in self.recognized_dataDict_keys:
+                warnings.warn(
+                    f"kw {kw} is not a recognized key word in dataDict.")
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -153,8 +173,8 @@ class eccDefinition:
         # example to plot ecc vs time plot, or checking monotonicity of
         # eccentricity as a function of time. These are values of
         # eccentricities measured at t_for_checks where t_for_checks is the
-        # time array in dataDict lying between t_min and t_max.  t_min is
-        # max(t_pericenters, t_apocenters) and t_max is min(t_pericenters,
+        # time array in dataDict lying between tmin and tmax.  tmin is
+        # max(t_pericenters, t_apocenters) and tmax is min(t_pericenters,
         # t_apocenters) Initially set to None, but will get computed when
         # necessary, in either derivative_of_eccentricity or plot_measured_ecc.
         self.ecc_for_checks = None
@@ -194,6 +214,18 @@ class eccDefinition:
             self.get_default_extrema_finding_kwargs(),
             "extrema_finding_kwargs",
             "eccDefinition.get_default_extrema_finding_kwargs()")
+        self.available_averaging_methods \
+            = self.get_available_omega22_averaging_methods()
+
+    def get_recognized_dataDict_keys(self):
+        """Get the list of recognized keys in dataDict."""
+        list_of_keys = [
+            "t",                # time array of waveform modes
+            "hlm",              # Dict of eccentric waveform modes
+            "t_zeroecc",        # time array of quasicircular waveform
+            "hlm_zeroecc",      # Dict of quasicircular waveform modes
+        ]
+        return list_of_keys
 
     def get_default_spline_kwargs(self):
         """Defaults for spline settings."""
@@ -225,7 +257,7 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega22_averaging_method": "mean_of_extrema_interpolants",
+            "omega22_averaging_method": "mean_motion",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False
         }
@@ -293,24 +325,19 @@ class eccDefinition:
         """Measure eccentricity and mean anomaly from a gravitational waveform.
 
         Eccentricity is measured using the GW frequency omega22(t) =
-        dphi22(t)/dt, where phi22(t) is the phase of the (2,2) waveform
-        mode. We evaluate omega22(t) at pericenter times, t_pericenters, and
-        build a spline interpolant omega22_pericenters(t) using those
-        points. Similarly, we build omega22_apocenters(t) using the apocenter
-        times, t_apocenters. To find the pericenter/apocenter locations, one
-        can look for extrema in different waveform data, like omega22(t) or
-        Amp22(t), the amplitude of the (2,2) mode. Pericenters correspond to
-        pericenters, while apocenters correspond to apocenters in the data.
-        The method option (described below) lets you pick which waveform data
-        to use to find extrema.
+        dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
+        mode. We currently only allow time-domain, nonprecessing waveforms. We
+        evaluate omega22(t) at pericenter times, t_pericenters, and build a
+        spline interpolant omega22_pericenters(t) using those
+        points. Similarly, we build omega22_apocenters(t) using omega22(t) at
+        the apocenter times, t_apocenters. Finally, eccentricity is defined
+        using omega22_pericenters(t) and omega22_apocenters(t), as described in
+        Eq.(1) of arxiv:xxxx.xxxx. Mean anomaly is defined using t_pericenters,
+        as described in Eq.(2) of arxiv:xxxx.xxxx.
 
-        The eccentricity is defined using omega22_pericenters(t) and
-        omega22_apocenters(t), as described in Eq.(1) of
-        arxiv:xxxx.xxxx. Similarly, the mean anomaly is defined using the
-        pericenter locations as described in Eq.(2) of arxiv:xxxx.xxxx.
-
-        FIXME ARIF: Fill in arxiv number when available. Make sure the above Eq
-        numbers are right, once the paper is finalized.
+        FIXME ARIF: In the above text, fill in arxiv number when
+        available. Make sure the above Eq numbers are right, once the paper is
+        finalized.
 
         parameters:
         ----------
@@ -326,10 +353,9 @@ class eccDefinition:
             Given an fref_in, we find the corresponding tref_in such that
             omega22_average(tref_in) = 2 * pi * fref_in. Here,
             omega22_average(t) is a monotonically increasing average frequency
-            that is computed from the instantaneous
-            omega22(t). omega22_average(t) is not a moving average; depending
-            on which averaging method is used (see the omega22_averaging_method
-            option below), it means slightly different things.
+            obtained from the instantaneous omega22(t). omega22_average(t)
+            defaults to the mean motion, but other options are available (see
+            omega22_averaging_method below).
 
             Eccentricity and mean anomaly measurements are returned on a subset
             of tref_in/fref_in, called tref_out/fref_out, which are described
@@ -355,9 +381,13 @@ class eccDefinition:
             compute the eccentricity where both omega22_pericenters(t) and
             omega22_apocenters(t) are within their bounds.
 
-            fref_out is set as fref_out = fref_in[fref_in >= fmin & fref_in <
-            fmax], where fmin = omega22_average(tmin)/2/pi and fmax =
-            omega22_average(tmax)/2/pi, with tmin/tmax same as above.
+            fref_out is set as
+            fref_out = fref_in[fref_in >= fref_min && frf_in< fref_max],
+            where fref_min/fref_max are minimum/maximum allowed reference
+            frequency, with fref_min = omega22_average(tmin_for_fref)/2/pi
+            and fref_max = omega22_average(tmax_for_fref)/2/pi.
+            tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
+            eccDefinition.get_fref_bounds() for details.
 
         ecc_ref:
             Measured eccentricity at tref_out/fref_out. Same type as
@@ -386,8 +416,11 @@ class eccDefinition:
 
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
-        self.t_max = min(self.t_pericenters[-1], self.t_apocenters[-1])
-        self.t_min = max(self.t_pericenters[0], self.t_apocenters[0])
+        self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
+        self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
+        # Get the minimum and maximum allowed reference frequency
+        self.fref_min, self.fref_max = self.get_fref_bounds(
+            self.extra_kwargs["omega22_averaging_method"])
         # check that only one of tref_in or fref_in is provided
         if (tref_in is not None) + (fref_in is not None) != 1:
             raise KeyError("Exactly one of tref_in and fref_in"
@@ -402,19 +435,19 @@ class eccDefinition:
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
                 = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
-        # We measure eccentricity and mean anomaly from t_min to t_max.  Note
-        # that here we do not include the t_max. This is because the mean
+        # We measure eccentricity and mean anomaly from tmin to tmax.  Note
+        # that here we do not include the tmax. This is because the mean
         # anomaly computation requires to looking for a pericenter before and
         # after the ref time to calculate the current period.  If ref time is
-        # t_max, which could be equal to the last pericenter, then there is no
+        # tmax, which could be equal to the last pericenter, then there is no
         # next pericenter and that would cause a problem.
         self.tref_out = self.tref_in[
-            np.logical_and(self.tref_in < self.t_max,
-                           self.tref_in >= self.t_min)]
+            np.logical_and(self.tref_in < self.tmax,
+                           self.tref_in >= self.tmin)]
         # set time for checks and diagnostics
         self.t_for_checks = self.dataDict["t"][
-            np.logical_and(self.dataDict["t"] >= self.t_min,
-                           self.dataDict["t"] < self.t_max)]
+            np.logical_and(self.dataDict["t"] >= self.tmin,
+                           self.dataDict["t"] < self.tmax)]
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
@@ -425,16 +458,16 @@ class eccDefinition:
                                 f"Length of tref_out {len(self.tref_out)}")
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
-            if self.tref_in[-1] > self.t_max:
+            if self.tref_in[-1] > self.tmax:
                 raise Exception(
-                    f"tref_in {self.tref_in} is later than t_max="
-                    f"{self.t_max}, "
+                    f"tref_in {self.tref_in} is later than tmax="
+                    f"{self.tmax}, "
                     "which corresponds to min(last pericenter "
                     "time, last apocenter time).")
-            if self.tref_in[0] < self.t_min:
+            if self.tref_in[0] < self.tmin:
                 raise Exception(
-                    f"tref_in {self.tref_in} is earlier than t_min="
-                    f"{self.t_min}, "
+                    f"tref_in {self.tref_in} is earlier than tmin="
+                    f"{self.tmin}, "
                     "which corresponds to max(first pericenter "
                     "time, first apocenter time).")
             raise Exception(
@@ -607,14 +640,14 @@ class eccDefinition:
         always greater than or equal to tmin and always less than tmax.
         """
         t = np.atleast_1d(t)
-        if any(t >= self.t_max):
+        if any(t >= self.tmax):
             raise Exception(f"Found times later than or equal "
-                            f"to t_max={self.t_max}, "
+                            f"to tmax={self.tmax}, "
                             "which corresponds to min(last pericenter "
                             "time, last apocenter time).")
-        if any(t < self.t_min):
-            raise Exception(f"Found times earlier than t_min="
-                            f"{self.t_min}, "
+        if any(t < self.tmin):
+            raise Exception(f"Found times earlier than tmin="
+                            f"{self.tmin}, "
                             "which corresponds to max(first pericenter "
                             "time, first apocenter time).")
 
@@ -777,7 +810,37 @@ class eccDefinition:
         self.res_omega22 = (self.omega22
                             - self.omega22_zeroecc_interp)
 
-    def compute_orbital_averaged_omega22_at_extrema(self, t):
+    def get_t_average_for_mean_motion(self):
+        """Get the time array associated with the fref for mean motion.
+
+        t_average_pericenters are the times at midpoints between consecutive
+        pericenters. We associate time (t[i] + t[i+1]) / 2 with the mean motion
+        calculated between ith and (i+1)th pericenter. That is,
+        omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
+                                             / (t[i+1] - t[i]),
+        where t[i] is the time at the ith pericenter.
+        And similarly, we calculate the t_average_apocenters. We combine
+        t_average_pericenters and t_average_apocenters, and sort them to obtain
+        t_average.
+        """
+        # get the mid points between the pericenters as avg time for
+        # pericenters
+        self.t_average_pericenters \
+            = 0.5 * (self.t[self.pericenters_location][:-1]
+                     + self.t[self.pericenters_location][1:])
+        # get the mid points between the apocenters as avg time for
+        # apocenters
+        self.t_average_apocenters \
+            = 0.5 * (self.t[self.apocenters_location][:-1]
+                     + self.t[self.apocenters_location][1:])
+        t_average = np.append(self.t_average_apocenters,
+                              self.t_average_pericenters)
+        # sort the times
+        sorted_idx = np.argsort(t_average)
+        t_average = t_average[sorted_idx]
+        return t_average, sorted_idx
+
+    def compute_mean_motion_at_extrema(self, t):
         """Compute reference frequency by orbital averaging at extrema.
 
         We compute the orbital average of omega22 at the pericenters
@@ -786,53 +849,30 @@ class eccDefinition:
                                         / (t[i+1] - t[i])
         where t[i] is the time of ith extrema.
         We do this for pericenters and apocenters and combine the results
+        and sort them using sorted indices from get_t_average_for_mean_motion.
         """
-        extrema_locations = {"pericenters": self.pericenters_location,
-                             "apocenters": self.apocenters_location}
-
-        @np.vectorize
-        def orbital_averaged_omega22_at_extrema(n, extrema_type="pericenters"):
-            """Compute orbital averaged omega22 between n and n+1 extrema."""
-            # integrate omega22 between n and n+1 extrema
-            # We do not need to do the integration here since
-            # we already have phase22 available to us which is
-            # nothing but the integration of omega22 over time.
-            # We want to integrate from nth extrema to n+1 extrema
-            # which is equivalent to phase difference between
-            # these two extrema
-            integ = (self.phase22[extrema_locations[extrema_type][n+1]]
-                     - self.phase22[extrema_locations[extrema_type][n]])
-            period = (self.t[extrema_locations[extrema_type][n+1]]
-                      - self.t[extrema_locations[extrema_type][n]])
-            return integ / period
-        # get the mid points between the pericenters as avg time for
-        # pericenters
-        t_average_pericenters = (self.t[self.pericenters_location][1:]
-                                 + self.t[self.pericenters_location][:-1]) / 2
-        omega22_average_pericenters = orbital_averaged_omega22_at_extrema(
-            np.arange(len(self.pericenters_location) - 1), "pericenters")
-        # get the mid points between the apocenters as avg time for apocenters
-        t_average_apocenters = (self.t[self.apocenters_location][1:]
-                                + self.t[self.apocenters_location][:-1]) / 2
-        omega22_average_apocenters = orbital_averaged_omega22_at_extrema(
-            np.arange(len(self.apocenters_location) - 1), "apocenters")
-        # combine results from average at pericenters and toughs
-        t_average = np.append(t_average_apocenters, t_average_pericenters)
-        # sort the times
-        sorted_idx = np.argsort(t_average)
-        t_average = t_average[sorted_idx]
-        # check if the average omega22 are monotonically increasing
-        if any(np.diff(omega22_average_pericenters) <= 0):
+        # integration of omega22(t) from t[i] to t[i+1] is the same
+        # as taking the difference of phase22(t) between t[i] and t[i+1]
+        self.omega22_average_pericenters \
+            = (np.diff(self.phase22[self.pericenters_location])
+               / np.diff(self.t[self.pericenters_location]))
+        self.omega22_average_apocenters \
+            = (np.diff(self.phase22[self.apocenters_location])
+               / np.diff(self.t[self.apocenters_location]))
+        if any(np.diff(self.omega22_average_pericenters) <= 0):
             raise Exception("Omega22 average at pericenters are not strictly "
                             "monotonically increaing")
-        if any(np.diff(omega22_average_apocenters) <= 0):
+        if any(np.diff(self.omega22_average_apocenters) <= 0):
             raise Exception("Omega22 average at apocenters are not strictly "
                             "monotonically increasing")
-        omega22_average = np.append(omega22_average_apocenters,
-                                    omega22_average_pericenters)
-        # sort omega22
-        omega22_average = omega22_average[sorted_idx]
-        return InterpolatedUnivariateSpline(t_average, omega22_average)(t)
+        omega22_average = np.append(self.omega22_average_apocenters,
+                                    self.omega22_average_pericenters)
+        # We now sort omega22_average using the same array of indices that was
+        # used to obtain the t_average in the function
+        # eccDefinition.get_t_average_for_mean_motion.
+        omega22_average = omega22_average[self.sorted_idx_mean_motion]
+        return InterpolatedUnivariateSpline(
+            self.t_average_mean_motion, omega22_average, ext=2)(t)
 
     def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
@@ -846,13 +886,13 @@ class eccDefinition:
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
         return InterpolatedUnivariateSpline(
-            self.t_zeroecc_shifted, self.omega22_zeroecc)(t)
+            self.t_zeroecc_shifted, self.omega22_zeroecc, ext=2)(t)
 
     def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
         available_methods = {
             "mean_of_extrema_interpolants": self.compute_omega22_average_between_extrema,
-            "interpolate_orbit_averages_at_extrema": self.compute_orbital_averaged_omega22_at_extrema,
+            "mean_motion": self.compute_mean_motion_at_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
         return available_methods
@@ -866,15 +906,17 @@ class eccDefinition:
         When the input is frequencies where eccentricity/mean anomaly is to be
         measured, we internally want to map the input frequencies to a tref_in
         and then we proceed to calculate the eccentricity and mean anomaly for
-        these tref_in in the same way as we do when the input array was time
+        this tref_in in the same way as we do when the input array was time
         instead of frequencies.
 
         We first compute omega22_average(t) using the instantaneous omega22(t),
         which can be done in different ways as described below. Then, we keep
         only the allowed frequencies in fref_in by doing
-        fref_out = fref_in[fref_in >= omega22_average(tmin) / (2 pi) &&
-                           fref_in < omega22_average(tmax) / (2 pi)]
-        Finally, we find the times where omega22_average(t) = 2 * pi * fref_out,
+        fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
+        Where fref_min/fref_max is the minimum/maximum allowed reference
+        frequency for the given omega22 averaging method. See get_fref_bounds
+        for more details.
+        Finally, we find the times where omega22_average(t) = 2*pi*fref_out,
         and set those to tref_in.
 
         omega22_average(t) could be calculated in the following ways
@@ -882,44 +924,49 @@ class eccDefinition:
           the spline through the apocenters, we call this
           "mean_of_extrema_interpolants"
         - Orbital average at the extrema, we call this
-          "interpolate_orbit_averages_at_extrema"
+          "mean_motion"
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
-        User can provide a method through the "extra_kwargs" option with the
+        Users can provide a method through the "extra_kwargs" option with the
         key "omega22_averaging_method". Default is
-        "mean_of_extrema_interpolants"
+        "mean_motion"
 
         Once we get the reference frequencies, we create a spline to get time
-        as function of these reference frequencies. This should work if the
+        as a function of these reference frequencies. This should work if the
         reference frequency is monotonic which it should be.
 
-        Finally we evaluate this spine on the fref_in to get the tref_in.
+        Finally, we evaluate this spine on the fref_in to get the tref_in.
         """
-        self.available_averaging_methods \
-            = self.get_available_omega22_averaging_methods()
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
             # The fref_in array could have frequencies that is outside the
             # range of frequencies in omega22 average. Therefore, we want to
             # create a separate array of frequencies fref_out which is created
             # by taking on those frequencies that falls within the omega22
-            # average Then proceed to evaluate the tref_in based on these
+            # average. Then proceed to evaluate the tref_in based on these
             # fref_out
             fref_out = self.get_fref_out(fref_in, method)
-            # get omega22_average by evaluating the omega22_average(t)
-            # on t, from tmin to tmax
+            # Now that we have fref_out, we want to know the corresponding
+            # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
+            # This is done by first creating an interpolant of time as function
+            # of omega22_average.
+            # We get omega22_average by evaluating the omega22_average(t)
+            # on t, from tmin_for_fref to tmax_for_fref
             self.t_for_omega22_average = self.t[
-                np.logical_and(self.t >= self.t_min, self.t < self.t_max)]
+                np.logical_and(self.t >= self.tmin_for_fref,
+                               self.t < self.tmax_for_fref)]
             self.omega22_average = self.available_averaging_methods[
                 method](self.t_for_omega22_average)
             # check if average omega22 is monotonically increasing
             if any(np.diff(self.omega22_average) <= 0):
                 warnings.warn(f"Omega22 average from method {method} is not "
                               "monotonically increasing.")
-            t_of_fref_out = InterpolatedUnivariateSpline(
+            # Create the t of fref interpolant
+            t_of_fref = InterpolatedUnivariateSpline(
                 self.omega22_average / (2 * np.pi),
-                self.t_for_omega22_average)
-            tref_in = t_of_fref_out(fref_out)
+                self.t_for_omega22_average,
+                ext=2)
+            tref_in = t_of_fref(fref_out)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
                 warnings.warn(f"tref_in from fref_in using method {method} is"
@@ -929,6 +976,64 @@ class eccDefinition:
             raise KeyError(f"Omega22 averaging method {method} does not exist."
                            " Must be one of "
                            f"{list(self.available_averaging_methods.keys())}")
+
+    def get_fref_bounds(self, method):
+        """Get the allowed min and max reference frequency of 22 mode.
+
+        Depending on the omega22 averaging method, this function returns the
+        minimum and maximum allowed reference frequency of 22 mode.
+
+        We first find the minimum and maximum time, called tmin_for_fref and
+        tmax_for_fref, respectively, that falls with tmin and tmax and also
+        where omega22 average value exists.
+        For "mean_motion" tmin_for_fref >= tmin and tmax_for_fref <= tmax.
+        This is because for "mean_motion" the orbital average
+        of omega22 between ith and (i+1)th extrema is associated with a
+        time at midpoints between these two extrema, i. e.,
+        t = (t[i] + t[i+1]) / 2 giving an array of average times
+        (called t_average. See get_t_average_for_mean_motion for more details).
+        Since the eccentricity measurement is valid only within tmin and tmax,
+        we then set
+        tmin_for_fref = max(min(t_average), tmin) and
+        tmax_for_fref = min(max(t_average), tmax).
+        For other methods, tmin_for_fref/tmax_for_fref is the same as
+        tmin/tmax.
+
+        Once we have the tmin_for_fref/tmax_for_fref, the allowed bounds on
+        fref is obtained by evaluating the omega22_average function at these
+        times.
+        fref_min = omega22_average(tmin_for_fref)/2/pi
+        fref_max = omega22_average(tmax_for_fref)/2/pi
+
+        Parameters:
+        -----------
+        method:
+            Omega22 averaging methods.
+            See get_available_omega22_averaging_methods for available methods.
+
+        Returns:
+        fref_min:
+            Minimum allowed reference frequency.
+        fref_max:
+            Maximum allowed reference frequency.
+        --------
+        """
+        if method == "mean_motion":
+            self.t_average_mean_motion, self.sorted_idx_mean_motion \
+                = self.get_t_average_for_mean_motion()
+            self.tmin_for_fref = max(min(self.t_average_mean_motion),
+                                     self.tmin)
+            self.tmax_for_fref = min(max(self.t_average_mean_motion),
+                                     self.tmax)
+        else:
+            self.tmin_for_fref = self.tmin
+            self.tmax_for_fref = self.tmax
+        # get min an max value fref from omega22_average
+        fref_min = self.available_averaging_methods[method](
+            self.tmin_for_fref)/2/np.pi
+        fref_max = self.available_averaging_methods[method](
+            self.tmax_for_fref)/2/np.pi
+        return fref_min, fref_max
 
     def get_fref_out(self, fref_in, method):
         """Get fref_out from fref_in that falls within the valid average f22 range.
@@ -944,29 +1049,21 @@ class eccDefinition:
         Returns:
         -------
         fref_out:
-            Slice of fref_in that satisfies
-            fref_in >= omega22_average(t_min) / 2 pi and
-            fref_in < omega22_average(t_max) / 2 pi
+            Slice of fref_in that satisfies:
+            fref_in >= fref_min && fref_in < fref_max
         """
-        # get min an max value f22_average from omega22_average
-        self.omega22_average_min = self.available_averaging_methods[
-            method](self.t_min)
-        self.omega22_average_max = self.available_averaging_methods[
-            method](self.t_max)
-        self.f22_average_min = self.omega22_average_min / (2 * np.pi)
-        self.f22_average_max = self.omega22_average_max / (2 * np.pi)
         fref_out = fref_in[
-            np.logical_and(fref_in >= self.f22_average_min,
-                           fref_in < self.f22_average_max)]
+            np.logical_and(fref_in >= self.fref_min,
+                           fref_in < self.fref_max)]
         if len(fref_out) == 0:
-            if fref_in[0] < self.f22_average_min:
+            if fref_in[0] < self.fref_min:
                 raise Exception("fref_in is earlier than minimum available "
                                 "frequency "
-                                f"{self.f22_average_min}")
-            if fref_in[-1] > self.f22_average_max:
+                                f"{self.fref_min}")
+            if fref_in[-1] > self.fref_max:
                 raise Exception("fref_in is later than maximum available "
                                 "frequency "
-                                f"{self.f22_average_max}")
+                                f"{self.fref_max}")
             else:
                 raise Exception("fref_out is empty. This can happen if the "
                                 "waveform has insufficient identifiable "
@@ -1262,7 +1359,7 @@ class eccDefinition:
             **kwargs):
         """Plot measured mean anomaly as function of time.
 
-                Parameters:
+        Parameters:
         -----------
         fig:
             Figure object to add the plot to. If None, initiates a new figure
@@ -1474,7 +1571,7 @@ class eccDefinition:
         ax.plot(self.t[self.apocenters_location],
                 self.amp22[self.apocenters_location],
                 c=colorsDict["apocenter"],
-                marker=".", ls="", labels=labelsDict["apocenters"])
+                marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
         data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
         ymin = min(data_for_ylim)
@@ -1862,13 +1959,11 @@ class eccDefinition:
     def get_width_for_peak_finder_for_dimless_units(
             self,
             width_for_unit_timestep=50):
-        """Get the minimal value of width parameter for extrema finding.
+        """Get the minimal value of `width` parameter for extrema finding.
 
-        The extrema finding method, i.e., find_peaks from scipy.signal needs a
-        "width" parameter that is used to determine the minimal separation
-        between consecutive extrema. If the "width" is too small then some
-        noisy features in the signal might be mistaken for extrema and on the
-        other hand if the "width" is too large then we might miss an extrema.
+        See the documentation under
+        eccDefinition.get_width_for_peak_finder_from_phase22
+        for why this is useful to set when calling scipy.signal.find_peaks.
 
         This function gets an appropriate width by scaling it with the time
         steps in the time array of the waveform data.  NOTE: As the function
@@ -1892,36 +1987,46 @@ class eccDefinition:
 
     def get_width_for_peak_finder_from_phase22(self,
                                                num_orbits_before_merger=2):
-        """Get the minimal value of width parameter for extrema finding.
+        """Get the minimal value of `width` parameter for extrema finding.
 
-        The extrema finding method, i.e., find_peaks from scipy.signal
-        needs a "width" parameter that is used to determine the minimal
-        separation between consecutive extrema. If the "width" is too small
-        then some noisy features in the signal might be mistaken for extrema
-        and on the other hand if the "width" is too large then we might miss
-        an extrema.
+        The extrema finding method, i.e., find_peaks from scipy.signal uses the
+        `width` parameter to filter the array of peak locations using the
+        condition that each peak in the filtered array has a width >= the value
+        of `width`. Finally, the filtered array of peak locations is returned.
 
-        This function tries to use the phase22 to get a reasonable value of
-        "width" by looking at the time scale over which the phase22 changes by
-        about 4pi because the change in phase22 over one orbit would be
-        approximately twice the change in the orbital phase which is about 2pi.
-        Finally we divide this by 4 so that the width is always smaller than
-        the two consecutive extrema otherwise we risk of missing a few extrema
-        very close to the merger.
+        The widths of the peaks in the initial array of peak locations are
+        computed internally using scipy.signal.peak_widths. By default, the
+        width is calculated at `rel_height=0.5` which gives the so-called Full
+        Width at Half Maximum (FWHM). `rel_height` is provided as a percentage
+        of the `prominence`. For details see the documentation of
+        scipy.signal.peak_widths.
+
+        If the `width` is too small then some noisy features in
+        the signal might be mistaken for extrema and on the other hand if the
+        `width` is too large then we might miss an extremum.
+
+        This function uses phase22 (phase of the (2, 2) mode) to get a
+        reasonable value of `width` by looking at the time scale over which the
+        phase22 changes by about 4pi because the change in phase22 over one
+        orbit would be approximately twice the change in the orbital phase
+        which is about 2pi.  Finally, we divide this by 4 so that the `width`
+        is always smaller than the separation between the two troughs
+        surrounding the current peak. Otherwise, we risk missing a
+        few extrema very close to the merger.
 
         Parameters:
         ----------
         num_orbits_before_merger:
-            Number of orbits before merger to get the time at which the width
+            Number of orbits before merger to get the time at which the `width`
             parameter is determined. We want to do this near the merger as this
-            is where the time between extrema is the smallest, and the width
-            parameter sets the minimal separation between peaks.
+            is where the time between extrema is the smallest, and the `width`
+            parameter sets the minimal width of a peak in the signal.
             Default is 2.
 
         Returns:
         -------
         width:
-            Minimal width to separate consecutive peaks.
+            Minimal `width` to filter out noisy extrema.
         """
         # get the phase22 at merger.
         phase22_merger = self.phase22[
@@ -1946,6 +2051,7 @@ class eccDefinition:
               - t_at_num_orbits_before_merger)
         # get the width using dt and the time step
         width = dt / (self.t[1] - self.t[0])
-        # we want to use a width that is always smaller than the separation
-        # between extrema, otherwise we might miss a few extrema near merger
+        # we want to use a width to select a peak/trough such that it is always
+        # smaller than the separation between the troughs/peaks surrounding the
+        # given peak/trough, otherwise we might miss a few extrema near merger
         return int(width / 4)

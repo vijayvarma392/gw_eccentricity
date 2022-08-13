@@ -33,14 +33,13 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
-import warnings
 import pandas as pd
 sys.path.append("../../")
 from gw_eccentricity import measure_eccentricity, get_available_methods
 from gw_eccentricity.load_data import load_waveform
 from gw_eccentricity.utils import SmartFormatter
 from gw_eccentricity.plot_settings import use_fancy_plotsettings, figWidthsOneColDict
-from gw_eccentricity.plot_settings import colorsDict, lwidths, lalphas, lstyles
+from gw_eccentricity.plot_settings import colorsDict, lwidths, lalphas, lstyles, labelsDict
 
 parser = argparse.ArgumentParser(
     description=(__doc__),
@@ -50,8 +49,7 @@ parser.add_argument(
     "--data_dir", "-d",
     type=str,
     default="../../data/ecc_waveforms",
-    help=("Base directory where waveform files are stored. You can get this "
-          "from home/md.shaikh/ecc_waveforms on CIT."))
+    help=("Base directory where waveform files are stored."))
 parser.add_argument(
     "--method", "-m",
     type=str,
@@ -119,6 +117,25 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+# check that given method is available
+for method in args.method:
+    if method not in get_available_methods():
+        raise KeyError(f"Method {method} is not an allowed method."
+                       f" Must be one of {get_available_methods()}"
+                       " or `all` for using all available methods.")
+# Format: [q, chi1z, chi2z]
+available_param_sets = {
+    "1": [1, 0, 0],
+    "2": [2, 0.5, 0.5],
+    "3": [4, -0.6, -0.6],
+    "4": [6, 0.4, -0.4]}
+# check that given param set is available
+for p in args.param_set_key:
+    if p not in available_param_sets:
+        raise KeyError(f"Param set key {p} is not an allowed param set key."
+                       f" Must be one of {list(available_param_sets.keys())}"
+                       " or `all` for using all available param set keys.")
+
 EOBeccs = 10**np.linspace(-7, 0, 150)
 Momega0 = 0.01
 # We generate the waveforms with initial mean anomaly = pi/2 so that over the
@@ -128,18 +145,10 @@ Momega0 = 0.01
 # instantaneous frequency is close to the orbit averaged frequency.
 meanAno = np.pi/2
 Momega0_zeroecc = 0.002
-# Format: [q, chi1z, chi2z]
-available_param_sets = {
-    "1": [1, 0, 0],
-    "2": [2, 0.5, 0.5],
-    "3": [4, -0.6, -0.6],
-    "4": [6, 0.4, -0.4]}
 data_dir = args.data_dir + "/Non-Precessing/EOB/"
 
 # set debug to False
-extra_kwargs = {"debug": False,
-                # "treat_mid_points_between_peaks_as_troughs": True
-                }
+extra_kwargs = {"debug": False}
 
 if args.debug_index is not None:
     extra_kwargs['debug'] = True
@@ -174,7 +183,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
             f".{args.plot_format}")
     # For eob vs measured ecc at the first extrema
     fig_ecc_at_start, ax_ecc_at_start = plt.subplots(
-        figsize=(figWidthsOneColDict[style], 3))
+        figsize=(figWidthsOneColDict[style], 2 if args.paper else 3))
     # For measured ecc vs time
     fig_ecc_vs_t, ax_ecc_vs_t = plt.subplots(
         nrows=len(methods),
@@ -225,7 +234,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 f"Momega0{Momega0_zeroecc:.3f}_meanAno{meanAno:.3f}.h5")
             kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
                            "include_zero_ecc": True})
-        dataDict = load_waveform(catalog="EOB", **kwargs)
+        dataDict = load_waveform(origin="EOB", **kwargs)
         tref_in = dataDict["t"]
         for idx, method in enumerate(methods):
             try:
@@ -251,16 +260,18 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                     ax_ecc_vs_t[idx].plot(tref_out, measured_ecc,
                                           c=colors[idx0], label=f"{ecc:.7f}")
                 if idx == len(methods) - 1:
-                    ax_ecc_vs_t[idx].set_xlabel(r"$t$ [$M$]")
-            except Exception:
+                    ax_ecc_vs_t[idx].set_xlabel(labelsDict["t_dimless"])
+            except Exception as e:
                 # collected failures
                 failed_eccs[method] += [ecc]
                 failed_indices[method] += [idx0]
                 if args.debug_index is None:
-                    warnings.warn("Exception raised. Probably too small"
-                                  " eccentricity to detect any extrema.")
+                    # If verbose, print the exception message
+                    if args.verbose:
+                        print(f"Exception raised with the message {e}")
                 else:
-                    raise  # if debugging, print entire traceback
+                    # if debugging, print entire traceback
+                    raise
     # Iterate over methods to plots measured ecc at the first extrema vs eob
     # eccs collected above looping over all EOB eccs for each methods
     for idx, method in enumerate(methods):
@@ -283,14 +294,13 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
             ymin = min(EOBeccs)
             ax_ecc_vs_t[idx].set_xlim(tmin, tmax)
             ax_ecc_vs_t[idx].set_ylim(ymin, ymax)
-        ax_ecc_vs_t[idx].set_ylabel("$e$")
+        ax_ecc_vs_t[idx].set_ylabel(labelsDict["eccentricity"])
         ax_ecc_vs_t[idx].set_yscale("log")
         # Add yticks.
         ax_ecc_vs_t[idx].set_yticks(10.0**np.arange(-6.0, 1.0, 2.0))
         # Add text indicating the method used
         ax_ecc_vs_t[idx].text(0.95, 0.95, method, ha="right", va="top",
-                              transform=ax_ecc_vs_t[idx].transAxes,
-                              fontsize=10)
+                              transform=ax_ecc_vs_t[idx].transAxes)
         # Add colorbar
         norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
         divider = make_axes_locatable(ax_ecc_vs_t[idx])
@@ -300,31 +310,40 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         # Set yticks on colorbar
         cbar.ax.set_yticks(10**np.arange(-7.0, 1.0))
         cbar.ax.tick_params(labelsize=8)
-        cbar.set_label(r"$e_{\mathrm{EOB}}$ at $\omega_0$",
-                       size=10)
+        cbar.set_label(
+            rf"{labelsDict['eob_eccentricity']} at "
+            rf"{labelsDict['omega_start']}",
+            size=10)
         if idx == 0:
             ax_ecc_vs_t[idx].set_title(
-                rf"$q={q:.1f}, \chi_{{1z}}={chi1z:.1f}, "
-                rf"\chi_{{2z}}={chi2z:.1f}$",
-                ha="center", fontsize=10)
+                rf"{labelsDict['q']}={q:.1f}, "
+                fr"{labelsDict['chi1z']}={chi1z:.1f}, "
+                rf"{labelsDict['chi2z']}={chi2z:.1f}",
+                ha="center")
 
     # Customize measured eccs at the first extrema vs eob eccs
     ax_ecc_at_start.set_title(
-        rf"$q$={q:.1f}, $\chi_{{1z}}$={chi1z:.1f}, $\chi_{{2z}}$"
-        f"={chi2z:.1f}")
+        rf"{labelsDict['q']}={q:.1f}, "
+        fr"{labelsDict['chi1z']}={chi1z:.1f}, "
+        rf"{labelsDict['chi2z']}={chi2z:.1f}",
+        ha="center")
     ax_ecc_at_start.legend(frameon=True)
     # Set major ticks
     locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
     ax_ecc_at_start.xaxis.set_major_locator(locmaj)
+    ax_ecc_at_start.yaxis.set_major_locator(locmaj)
     # Set minor ticks
     locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
                                    numticks=20)
     ax_ecc_at_start.xaxis.set_minor_locator(locmin)
     ax_ecc_at_start.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    ax_ecc_at_start.yaxis.set_minor_locator(locmin)
+    ax_ecc_at_start.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
     # Set grid
     ax_ecc_at_start.grid(which="major")
-    ax_ecc_at_start.set_xlabel(r"EOB Eccentricity $e_{\mathrm{EOB}}$")
-    ax_ecc_at_start.set_ylabel(r"Measured Eccentricity $e$")
+    ax_ecc_at_start.set_xlabel(rf"{labelsDict['eob_eccentricity']} at "
+                               rf"{labelsDict['omega_start']}")
+    ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
     ax_ecc_at_start.set_ylim(top=1.0)
     ax_ecc_at_start.set_xlim(EOBeccs[0], EOBeccs[-1])
 

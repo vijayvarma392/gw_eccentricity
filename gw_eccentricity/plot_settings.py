@@ -128,6 +128,8 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
     rc("font", family="serif")
     rc("font", serif="times")
     rc("font", size=fontSizeDict[style])
+    # Lines
+    rc("lines", linewidth=1.0)
 
 
 # Dictionary of labels to use in plots.
@@ -137,6 +139,7 @@ labelsDict = {
     "omega22_pericenters": r"$\omega^{p}_{22}$",
     "omega22_apocenters": r"$\omega^{a}_{22}$",
     "omega22_average": r"$\omega^{\mathrm{avg}}_{22}$",
+    "omega22_average_dimless": r"$\omega^{\mathrm{avg}}_{22}$ [rad/$M$]",
     "eob_eccentricity": r"$e_{\mathrm{EOB}}$",
     "t": r"$t$",
     "t_dimless": r"$t$ [$M$]",
@@ -149,5 +152,13 @@ labelsDict = {
     "res_omega22_dimless": r"$\Delta\omega_{22}$ [rad/$M$]",
     "res_amp22": r"$\Delta A_{22}$",
     "t_ref": r"$t_\mathrm{ref}$",
-    "dedt": r"$de/dt$"
+    "dedt": r"$de/dt$",
+    "mean_of_interpolants": r"Mean of $\omega^p_{22}$ and $\omega^a_{22}$",
+    "mean_motion": r"Mean motion",
+    "omega22_zeroecc": r"$\omega_{22}$ of quasicircular counterpart",
+    "omega_start": r"$\omega_0$",
+    "q": r"$q$",
+    "chi1z": r"$\chi_{1z}$",
+    "chi2z": r"$\chi_{2z}$",
+    "h22_real": r"Re[$h_{22}$]"
 }
