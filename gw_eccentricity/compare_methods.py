@@ -28,12 +28,12 @@ def compute_errors_between_methods(gwecc_obj1,
     tmin:
         If not None, errors are computed only for times later than tmin.
         If None, errors are computed for times later than
-        max(gwecc_obj1.t_max, gwecc_obj2.t_max).
+        max(gwecc_obj1.tmin, gwecc_obj2.tmin).
         Default is None.
     tmax:
         If not None, errors are computed only for times earlier than tmax.
         If None, errors are computed for times earlier than
-        min(gwecc_obj1.t_max, gwecc_obj2.t_max).
+        min(gwecc_obj1.tmax, gwecc_obj2.tmax).
         Default is None.
 
     Returns:
@@ -41,8 +41,8 @@ def compute_errors_between_methods(gwecc_obj1,
     t:
         Times where errors are computed. The minimum/maximum t is choosen
         such that the times in t are common to both methods. That is,
-        tmin = max(gwecc_obj1.t_max, gwecc_obj2.t_max) and
-        tmax = min(gwecc_obj1.t_max, gwecc_obj2.t_max).
+        tmin = max(gwecc_obj1.tmin, gwecc_obj2.tmin) and
+        tmax = min(gwecc_obj1.tmax, gwecc_obj2.tmax).
         If in addition, tmin/tmax is not None, then t is further truncated
         such that t lies within tmin/tmax.
     ecc_errors:
@@ -63,8 +63,8 @@ def compute_errors_between_methods(gwecc_obj1,
     # Check that the gwecc objects were created using same tref_in
     np.testing.assert_allclose(gwecc_obj1.tref_in, gwecc_obj2.tref_in)
     # Get the bounds for times within which both methods work
-    tMinCommon = max(gwecc_obj1.t_min, gwecc_obj2.t_min)
-    tMaxCommon = min(gwecc_obj1.t_max, gwecc_obj2.t_max)
+    tMinCommon = max(gwecc_obj1.tmin, gwecc_obj2.tmin)
+    tMaxCommon = min(gwecc_obj1.tmax, gwecc_obj2.tmax)
 
     # Reset tMinCommon/tMaxCommon if tmin/tmax is provided
     if tmin is not None:
