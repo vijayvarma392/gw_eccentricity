@@ -5,10 +5,12 @@ smoothly as a function of the internal eccentricity definition used by Toni's
 EOB model. The EOB waveforms that are used for this test are generated from a
 fixed mass ratio, spins, and either a fixed Momega0 (the initial dimless
 orbital frequency) or fixed length (varying the initial frequency), with
-eccentricity varying from 1e-7 to 1. We try to measure the eccentricity from
-these waveforms using different eccentricity definitions. We test the
-smoothness of the measured eccentricities compared to the eob eccentricities
-used by the waveform model to generate the waveforms in the following two ways:
+eccentricity varying from 1e-7 to 1 (for fixed Momega0) or to 0.89 (for fixed
+length since ecc > 0.89 generates inaccurate waveforms of length 20000M). We
+try to measure the eccentricity from these waveforms using different
+eccentricity definitions. We test the smoothness of the measured eccentricities
+compared to the eob eccentricities used by the waveform model to generate the
+waveforms in the following two ways:
 
 - For each waveform, we measure the eccentricity at the very first extrema
 (pericenter or apocenter). That way, the measured eccentricity is also at
@@ -161,7 +163,6 @@ if args.debug_index is not None:
     extra_kwargs['debug'] = True
 
 cmap = cm.get_cmap("plasma")
-colors = cmap(np.linspace(0, 1, len(EOBeccs)))
 
 
 def get_file_name(key, ecc):
@@ -238,6 +239,11 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         failed_eccs.update({method: []})
         failed_indices.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
+    if key in list(available_param_sets.keys())[4:]:
+        # For Fixed length cases, ecc works upto 0.89, therefore we change the
+        # last two eccentricities to 0.85 and 0.89.
+        EOBeccs[-2:] = [0.85, 0.89]
+    colors = cmap(np.linspace(0, 1, len(EOBeccs)))
     for idx0, ecc in tqdm(enumerate(EOBeccs), disable=args.verbose):
 
         # in debugging mode, skip all but debug_index:
@@ -312,7 +318,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
             ymax = max(measured_eccs_at_start[method])
             ymin = min(EOBeccs)
             if key in list(available_param_sets.keys())[4:]:
-                tmin = min(tminList[method])  # choose the longest
+                tmin = -20000
             ax_ecc_vs_t[idx].set_xlim(tmin, tmax)
             ax_ecc_vs_t[idx].set_ylim(ymin, ymax)
         ax_ecc_vs_t[idx].set_ylabel(labelsDict["eccentricity"])
@@ -333,7 +339,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         cbar.ax.tick_params(labelsize=8)
         cbar.set_label(
             rf"{labelsDict['eob_eccentricity']} at "
-            rf"{labelsDict['omega_start']}",
+            rf"{labelsDict['t_start']}",
             size=10)
         if idx == 0:
             ax_ecc_vs_t[idx].set_title(
@@ -363,7 +369,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     # Set grid
     ax_ecc_at_start.grid(which="major")
     ax_ecc_at_start.set_xlabel(rf"{labelsDict['eob_eccentricity']} at "
-                               rf"{labelsDict['omega_start']}")
+                               rf"{labelsDict['t_start']}")
     ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
     ax_ecc_at_start.set_ylim(top=1.0)
     ax_ecc_at_start.set_xlim(EOBeccs[0], EOBeccs[-1])
