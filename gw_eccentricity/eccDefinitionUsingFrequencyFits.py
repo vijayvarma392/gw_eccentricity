@@ -564,7 +564,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             Nbefore+Nafter. This signals that the end of the data is reached,
             and that the user should not press to even larger idx_ref.
         """
-
         if verbose:
             print(f"FindExtremaNearIdxRef  idx_ref={idx_ref}, "
                   f"K_initial={K:5.3f}, "
@@ -574,11 +573,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # look for somewhat more data than we (probably) need
         DeltaPhase = 4*np.pi*K
         idx_lo = np.argmax(
-            self.phase22 > self.phase22[idx_ref] - DeltaPhase*Nbefore)
+            self.phase22_analyse > self.phase22_analyse[idx_ref] - DeltaPhase*Nbefore)
         idx_hi = np.argmax(
-            self.phase22 > self.phase22[idx_ref] + DeltaPhase*Nafter)
+            self.phase22_analyse > self.phase22_analyse[idx_ref] + DeltaPhase*Nafter)
         if idx_hi == 0:
-            idx_hi = len(self.phase22)
+            idx_hi = len(self.phase22_analyse)
             if verbose:
                 print("WARNING: reaching end of data, so close to merger")
         p = p_initial
@@ -618,8 +617,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             if verbose:
                 print(f"it={it}:  [{idx_lo} / {idx_ref} / {idx_hi}],  "
                       f"K={K:5.3f}")
-            data_residual = (self.data_for_finding_extrema[idx_lo:idx_hi]
-                             - f_fit(self.t[idx_lo:idx_hi], *p))
+            data_residual = (self.data_analyse[idx_lo:idx_hi]
+                             - f_fit(self.t_analyse[idx_lo:idx_hi], *p))
 
             # TODO -- pass user-specified arguments into find_peaks
             # POSSIBLE UPGRADE
@@ -634,12 +633,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             #    1/2 phi-orbit  (at highest data)
             #    translated into samples using the maximum time-spacing
             if prominence is None:
-                maxdt = np.max(np.diff(self.t[idx_lo:idx_hi]))
+                maxdt = np.max(np.diff(self.t_analyse[idx_lo:idx_hi]))
 
                 #  average orbital period during [idx_lo, idx_hi] idx_hi-1 also
                 # works in the case when idx_hi = one-past-last-element
-                T_orbit = (self.t[idx_hi-1] - self.t[idx_lo])/(
-                    self.phase22[idx_hi-1] - self.phase22[idx_lo]) * 4*np.pi
+                T_orbit = (self.t_analyse[idx_hi-1] - self.t_analyse[idx_lo])/(
+                    self.phase22_analyse[idx_hi-1] - self.phase22_analyse[idx_lo]) * 4*np.pi
 
                 # set distance = 75% of period.  This should exclude spurious
                 # extrema due to noise
@@ -662,9 +661,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
             # remember info about extrema to be used in rest of this function
             N_extrema = len(idx_extrema)
-            t_extrema = self.t[idx_extrema]
-            data_extrema = self.data_for_finding_extrema[idx_extrema]
-            phase22_extrema = self.phase22[idx_extrema]
+            t_extrema = self.t_analyse[idx_extrema]
+            data_extrema = self.data_analyse[idx_extrema]
+            phase22_extrema = self.phase22_analyse[idx_extrema]
             # data_residual is shorter array
             data_residual_extrema = data_residual[idx_extrema-idx_lo]
 
@@ -686,18 +685,18 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 for k in range(N_extrema):
                     # length of fitting interval = 0.05radians left/right
                     deltaT = 0.05 / data_extrema[k]
-                    idx_refine = np.abs(self.t - t_extrema[k]) < deltaT
+                    idx_refine = np.abs(self.t_analyse - t_extrema[k]) < deltaT
                     # number of points to be used in fit
                     N_refine = sum(idx_refine)
                     if verbose:
                         print(f"{N_refine}  ", end='')
                     if N_refine >= 7:  # enough data for fit
-                        t_parafit = self.t[idx_refine]
+                        t_parafit = self.t_analyse[idx_refine]
                         # re-compute fit-subtracted data_residual, to avoid
                         # indexing problems, should idx_lo/idx_high be so close
                         # that the parabolic fitting interval extends beyond it
                         data_resi_parafit = (
-                            self.data_for_finding_extrema[idx_refine]
+                            self.data_analyse[idx_refine]
                             - f_fit(t_parafit, *p))
 
                         parabola = np.polynomial.polynomial.Polynomial.fit(
@@ -716,7 +715,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         # the fitting-interval is short enough that this is
                         # accurate
                         phase_fit = np.polynomial.polynomial.Polynomial.fit(
-                            t_parafit, self.phase22[idx_refine], 3)
+                            t_parafit, self.phase22_analyse[idx_refine], 3)
                         phase22_extrema[k] = phase_fit(t_max)
                     else:
                         pass
@@ -727,7 +726,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     with np.printoptions(precision=4):  # , suppress=True, threshold=5):
                         print("")
                         print("       Delta t_extrema = "
-                              f"{t_extrema - self.t[idx_extrema]}")
+                              f"{t_extrema - self.t_analyse[idx_extrema]}")
 
             # update K based on identified peaks
             if N_extrema >= 2:
@@ -738,7 +737,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 if plot_offset is None:
                     plot_offset = 10**np.ceil(np.log10(data_residual_amp/2.))
 
-                line, = axs[0].plot(self.t[idx_lo:idx_hi],
+                line, = axs[0].plot(self.t_analyse[idx_lo:idx_hi],
                                     it*plot_offset
                                     + sign*data_residual, label=f"it={it}")
                 if N_extrema > 0:
@@ -747,8 +746,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                                 'o',
                                 color=line.get_color())
                 line, = axs[1].plot(
-                    self.t[idx_lo:idx_hi],
-                    self.data_for_finding_extrema[idx_lo:idx_hi]
+                    self.t_analyse[idx_lo:idx_hi],
+                    self.data_analyse[idx_lo:idx_hi]
                     + plot_offset*it)
                 axs[1].plot(t_extrema, data_extrema+plot_offset*it, 'o',
                             color=line.get_color(), label=f"it={it}")
@@ -827,8 +826,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         # radial period earlier.  We rather prefer to err on
                         # the low side, than overshooting and adding two
                         # extrema at once.
-                        phase_lo = self.phase22[idx_lo] - K*4*np.pi*0.6
-                        idx_lo = np.argmax(self.phase22 > phase_lo)
+                        phase_lo = self.phase22_analyse[idx_lo] - K*4*np.pi*0.6
+                        idx_lo = np.argmax(self.phase22_analyse > phase_lo)
                         if verbose:
                             print(f"       idx_lo reduced to {idx_lo}")
                 # too many peaks to the right right, discard by placing idx_hi
@@ -841,18 +840,18 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 elif Nright < Nafter:
                     # increase idx_hi to capture one more peak
                     # do we have extra data?
-                    if idx_hi < len(self.phase22):
+                    if idx_hi < len(self.phase22_analyse):
                         # target phase on right 0.6 radial periods beyond
                         # current end of interval rationale for 0.6: The next
                         # extremum should be 1 radial period away, we are
                         # worried that near the end of the run, this prediction
                         # may not be accurate.  Therefore, go more slowly.
-                        phase_hi = self.phase22[idx_hi] + K*4*np.pi*0.6
-                        idx_hi = np.argmax(self.phase22 > phase_hi)
+                        phase_hi = self.phase22_analyse[idx_hi] + K*4*np.pi*0.6
+                        idx_hi = np.argmax(self.phase22_analyse > phase_hi)
                         if idx_hi == 0:
                             # coulnd't get as much data as we wished, take all
                             # we have
-                            idx_hi = len(self.phase22)
+                            idx_hi = len(self.phase22_analyse)
                         if verbose and idx_hi != old_idx_hi:
                             print(f"       idx_hi increased to {idx_hi}")
                     else:
