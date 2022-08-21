@@ -35,6 +35,7 @@ colorsDict = {
     "vline": colors_gb_14[1],
     "pericentersvline": colors_aq_15[1],
     "FrequencyFits": colors_dj_25[1],
+    "AmplitudeFits": colors_gb_55[1],
     "ResidualFrequency": colors_gb_14[1],
     "ResidualAmplitude": colors_gb_45[1],
     "Frequency": colors_aq_15[1],
@@ -45,17 +46,20 @@ lstyles = {"Amplitude": "solid",
            "Frequency": "dashdot",
            "ResidualAmplitude": "dashed",
            "ResidualFrequency": "solid",
-           "FrequencyFits": "dotted"}
+           "FrequencyFits": "dotted",
+           "AmplitudeFits": "dashdot"}
 lwidths = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,
            "ResidualFrequency": 1,
-           "FrequencyFits": 3}
+           "FrequencyFits": 3,
+           "AmplitudeFits": 1}
 lalphas = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,
            "ResidualFrequency": 1,
-           "FrequencyFits": 1}
+           "FrequencyFits": 1,
+           "AmplitudeFits": 1}
 
 figWidthsOneColDict = {
     "APS": 3.4,
