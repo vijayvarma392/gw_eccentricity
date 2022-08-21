@@ -120,11 +120,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.label_for_data_for_finding_extrema = labelsDict["omega22"]
         self.data_for_finding_extrema = self.omega22
         self.data_str = "omega22"
+        self.method = "FrequencyFits"
 
         self.debug = self.extra_kwargs["debug"]
         # create the shortened data-set for analysis
         merger_idx = np.argmin(np.abs(self.t - self.t_merger))
-        idx_end = merger_idx
+        self.idx_end = merger_idx
         if False and (self.extra_kwargs["num_orbits_to_exclude_before_merger"]
                       is not None):
             phase22_at_merger = self.phase22[merger_idx]
@@ -134,14 +135,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 phase22_at_merger
                 - 4 * np.pi
                 * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            idx_end = np.argmin(
+            self.idx_end = np.argmin(
                 np.abs(self.phase22
                        - phase22_num_orbits_earlier_than_merger))
 
-        self.t_analyse = self.t[:idx_end] - self.t_merger
-        self.data_analyse = self.data_for_finding_extrema[:idx_end]
-        self.phase22_analyse = self.phase22[:idx_end]
-        self.method = "FrequencyFits"
+        self.t_analyse = self.t[:self.idx_end] - self.t_merger
+        self.data_analyse = self.data_for_finding_extrema[:self.idx_end]
+        self.phase22_analyse = self.phase22[:self.idx_end]
 
     def find_extrema(self, extrema_type="maxima"):
         """Find the extrema in the data.

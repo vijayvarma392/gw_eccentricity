@@ -1863,20 +1863,20 @@ class eccDefinition:
         # To make it work for FrequencyFits
         # FIXME: Harald, Arif: Think about how to make this better.
         if hasattr(self, "t_analyse"):
-            t_for_finding_extrema = self.t_analyse
+            ax.plot(self.t_analyse, self.data_analyse,
+                    c=colorsDict["default"])
             self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
         else:
-            t_for_finding_extrema = self.t
-        ax.plot(t_for_finding_extrema, self.data_for_finding_extrema,
-                c=colorsDict["default"])
+            ax.plot(self.t, self.data_for_finding_extrema,
+                    c=colorsDict["default"])
         ax.plot(
-            t_for_finding_extrema[self.pericenters_location],
+            self.t[self.pericenters_location],
             self.data_for_finding_extrema[self.pericenters_location],
             c=colorsDict["pericenter"],
             marker=".", ls="",
             label=labelsDict["pericenters"])
         apocenters, = ax.plot(
-            t_for_finding_extrema[self.apocenters_location],
+            self.t[self.apocenters_location],
             self.data_for_finding_extrema[self.apocenters_location],
             c=colorsDict["apocenter"],
             marker=".", ls="",
