@@ -169,8 +169,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # self.phase22_analyse
         # self.data_analyse
 
-        # DESIRED NUMBER OF EXTREMA left/right DURING FITTING Code will look
-        # for N extrema to the left of idx_ref, and N+1 extrema to the right
+        # DESIRED NUMBER OF EXTREMA left/right DURING FITTING
+        # Code will look for N extrema to the left of idx_ref, and N+1 extrema
+        # to the right
         # TODO - make user-specifiable via option
         N = 3
 
@@ -187,7 +188,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # grid-points
         refine_extrema = self.extra_kwargs["refine_extrema"]
 
-        #  diagnostic output?
+        # diagnostic output?
         # setting diag_file to a valid pdf-filename will trigger diagnostic
         # plots
         verbose = self.debug
