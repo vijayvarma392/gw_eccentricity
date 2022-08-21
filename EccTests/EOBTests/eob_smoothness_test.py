@@ -14,9 +14,10 @@ waveforms in the following two ways:
 
 - For each waveform, we measure the eccentricity at the very first extrema
 (pericenter or apocenter). That way, the measured eccentricity is also at
-(nearly) Momega0. Finally, we plot the measured eccentricity vs the internal
-EOB eccentricity.  You should check visually whether there are glitchy features
-in these plots.
+(nearly) Momega0 for waveforms starting with fixed Momega0 or at (neary)
+-20000M for waveforms with fixed length. Finally, we plot the measured
+eccentricity vs the internal EOB eccentricity.  You should check visually
+whether there are glitchy features in these plots.
 
 - For each waveform, We plot the measured eccentricity vs tref_out, and color
 the lines by the input EOB eccentricity at Momega0. You should check visually
@@ -68,10 +69,10 @@ parser.add_argument(
     nargs="+",
     help=("Run test for this set of parameters kept fixed.\n"
           "Possible choices are 'all' OR one or more of 1, 2, 3, 4.\n"
-          "1: q=1, chi1z=chi2z=0.\n"
-          "2: q=2, chi1z=chi2z=0.5\n"
-          "3: q=4, chi1z=chi2z=-0.6\n"
-          "4: q=6, chi1z=0.4, chi2z=-0.4.\n"
+          "1: q=1, chi1z=chi2z=0. With Momega0 = 0.01.\n"
+          "2: q=2, chi1z=chi2z=0.5. With Momega0 = 0.01.\n"
+          "3: q=4, chi1z=chi2z=-0.6.  With Momega0 = 0.01.\n"
+          "4: q=6, chi1z=0.4, chi2z=-0.4. With Momega0 = 0.01.\n"
           "5: q=1, chi1z=chi2z=0. With fixed length of 20000M.\n"
           "6: q=4, chi1z=chi2z=-0.6. With fixed length of 20000M.\n"))
 parser.add_argument(
@@ -243,6 +244,9 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         # For Fixed length cases, ecc works upto 0.89, therefore we change the
         # last two eccentricities to 0.85 and 0.89.
         EOBeccs[-2:] = [0.85, 0.89]
+        eob_ecc_label = labelsDict['t_start']
+    else:
+        eob_ecc_label = labelsDict['omega_start']
     colors = cmap(np.linspace(0, 1, len(EOBeccs)))
     for idx0, ecc in tqdm(enumerate(EOBeccs), disable=args.verbose):
 
@@ -339,7 +343,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         cbar.ax.tick_params(labelsize=8)
         cbar.set_label(
             rf"{labelsDict['eob_eccentricity']} at "
-            rf"{labelsDict['t_start']}",
+            rf"{eob_ecc_label}",
             size=10)
         if idx == 0:
             ax_ecc_vs_t[idx].set_title(
@@ -369,7 +373,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     # Set grid
     ax_ecc_at_start.grid(which="major")
     ax_ecc_at_start.set_xlabel(rf"{labelsDict['eob_eccentricity']} at "
-                               rf"{labelsDict['t_start']}")
+                               rf"{eob_ecc_label}")
     ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
     ax_ecc_at_start.set_ylim(top=1.0)
     ax_ecc_at_start.set_xlim(EOBeccs[0], EOBeccs[-1])
