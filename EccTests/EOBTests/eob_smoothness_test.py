@@ -376,7 +376,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                                rf"{eob_ecc_label}")
     ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
     ax_ecc_at_start.set_ylim(top=1.0)
-    ax_ecc_at_start.set_xlim(EOBeccs[0], EOBeccs[-1])
+    ax_ecc_at_start.set_xlim(EOBeccs[0], 1.0)
 
     # Save figures
     fig_ecc_at_start.savefig(
