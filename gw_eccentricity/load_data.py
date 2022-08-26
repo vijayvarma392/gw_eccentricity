@@ -11,8 +11,8 @@ import warnings
 from scipy.interpolate import InterpolatedUnivariateSpline
 
 
-def get_loading_functions():
-    """Get available functions to load waveforms."""
+def get_available_waveform_origins():
+    """Get available origins of waveforms that could be loaded."""
     return {
         "LAL": load_LAL_waveform,
         "LVCNR": load_lvcnr_waveform,
@@ -53,13 +53,12 @@ def load_waveform(origin="LAL", **kwargs):
         Dictionary of time, modes etc. For detailed structure of the returned
         dataDict see gw_eccentricity.measure_eccentricity.
     """
-    available_loading_functions = get_loading_functions()
-    allowed_origins = list(available_loading_functions.keys())
-    if origin in allowed_origins:
-        return available_loading_functions[origin](**kwargs)
+    available_origins = get_available_waveform_origins()
+    if origin in available_origins:
+        return available_origins[origin](**kwargs)
     else:
         raise Exception(f"Unknown origin {origin}. "
-                        f"Should be one of {allowed_origins}")
+                        f"Should be one of {list(available_origins.keys())}")
 
 
 def load_LAL_waveform(**kwargs):
@@ -809,7 +808,7 @@ def load_EMRI_waveform(**kwargs):
         kwargs,
         default_kwargs,
         "EMRI kwargs",
-        "gw_eccentricity.load_data.load_EMRI")
+        "gw_eccentricity.load_data.load_EMRI_waveform")
     if kwargs["filepath"] is None:
         raise KeyError("path to the eccentric EMRI waveform can not be None.")
     emri_data = h5py.File(kwargs["filepath"], "r")["Dataset1"]
