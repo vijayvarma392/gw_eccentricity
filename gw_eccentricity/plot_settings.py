@@ -141,6 +141,7 @@ labelsDict = {
     "omega22_average": r"$\omega^{\mathrm{avg}}_{22}$",
     "omega22_average_dimless": r"$\omega^{\mathrm{avg}}_{22}$ [rad/$M$]",
     "eob_eccentricity": r"$e_{\mathrm{EOB}}$",
+    "emri_eccentricity": r"$e_{\mathrm{EMRI}}$",
     "t": r"$t$",
     "t_dimless": r"$t$ [$M$]",
     "t_start": r"$t_{0}$",

@@ -1,32 +1,28 @@
-"""Test smoothness of eccentricity definition methods using EOB waveforms."""
+"""Test smoothness of eccentricity definition methods using EMRI waveforms."""
 
 __doc__ = """This test checks whether different eccentricity definitions vary
-smoothly as a function of the internal eccentricity definition used by Toni's
-EOB model. The EOB waveforms that are used for this test are generated from a
-fixed mass ratio, spins, and either a fixed Momega0 (the initial dimless
-orbital frequency) or fixed length (varying the initial frequency), with
-eccentricity varying from 1e-7 to 1 (for fixed Momega0) or to 0.89 (for fixed
-length since ecc > 0.89 generates inaccurate waveforms of length 20000M). We
-try to measure the eccentricity from these waveforms using different
-eccentricity definitions. We test the smoothness of the measured eccentricities
-compared to the eob eccentricities used by the waveform model to generate the
-waveforms in the following two ways:
+smoothly as a function of the internal eccentricity definition used by
+Maarten's EMRI model. The EMRI waveforms that are used for this test are
+generated from a fixed mass ratio, spins, and a fixed Momega0 (the initial
+dimless orbital frequency) with eccentricity varying from 0 to 0.5. We try to
+measure the eccentricity from these waveforms using different eccentricity
+definitions. We test the smoothness of the measured eccentricities compared to
+the EMRI eccentricities used by the waveform model to generate the waveforms in
+the following two ways:
 
 - For each waveform, we measure the eccentricity at the very first extrema
 (pericenter or apocenter). That way, the measured eccentricity is also at
-(nearly) Momega0 for waveforms starting with fixed Momega0 or at (neary)
--20000M for waveforms with fixed length. Finally, we plot the measured
-eccentricity vs the internal EOB eccentricity.  You should check visually
-whether there are glitchy features in these plots.
+(nearly) Momega0. Finally, we plot the measured eccentricity vs the internal
+EMRI eccentricity. You should check visually whether there are glitchy features
+in these plots.
 
 - For each waveform, We plot the measured eccentricity vs tref_out, and color
-the lines by the input EOB eccentricity at Momega0. You should check visually
+the lines by the input EMRI eccentricity at Momega0. You should check visually
 whether there are glitchy features in these plots.
 
-Usage:
-python eob_smoothness_test.py -d ecc_waveforms -m 'Amplitude' \
-'ResidualAmplitude' -p 'all'
-python eob_smoothness_test.py -d ecc_waveforms -m 'all' -p 'all'
+Usage: python emri_smoothness_test.py -d ecc_waveforms -m 'Amplitude' \
+'ResidualAmplitude' -p 'all' python emri_smoothness_test.py -d ecc_waveforms -m
+'all' -p 'all'
 """
 
 import sys
@@ -39,6 +35,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
 import pandas as pd
 import glob
+import re
 sys.path.append("../../")
 from gw_eccentricity import measure_eccentricity, get_available_methods
 from gw_eccentricity.load_data import load_waveform
@@ -68,13 +65,10 @@ parser.add_argument(
     default="all",
     nargs="+",
     help=("Run test for this set of parameters kept fixed.\n"
-          "Possible choices are 'all' OR one or more of 1, 2, 3, 4.\n"
-          "1: q=1, chi1z=chi2z=0. With Momega0 = 0.01.\n"
-          "2: q=2, chi1z=chi2z=0.5. With Momega0 = 0.01.\n"
-          "3: q=4, chi1z=chi2z=-0.6.  With Momega0 = 0.01.\n"
-          "4: q=6, chi1z=0.4, chi2z=-0.4. With Momega0 = 0.01.\n"
-          "5: q=1, chi1z=chi2z=0. With fixed length of 20000M.\n"
-          "6: q=4, chi1z=chi2z=-0.6. With fixed length of 20000M.\n"))
+          "Possible choices are 'all' OR one or more of 1, 2, 3.\n"
+          "1: q=10, chi1z=chi2z=0.\n"
+          "2: q=100, chi1z=chi2z=0.\n"
+          "3: q=1000, chi1z=chi2z=0.\n"))
 parser.add_argument(
     "--fig_dir",
     "-f",
@@ -94,18 +88,6 @@ parser.add_argument(
           "information about parameter set, method used and so on)"
           " and uses a figure name which is of the form test_name_example.png"
           "where test_name is the name of the test."))
-parser.add_argument(
-    "--slice",
-    type=int,
-    default=1,
-    help=("Slice the eccentricities to loop over (EOBecccs array containing"
-          " 150 eccs from 1e-7 to 1.0) by taking only every nth ecc value"
-          " given by slice. This is useful when we do not want to plot"
-          " for all the ecc but skip n number of ecc given by slice."
-          " NOTE: This is applied only for the measured ecc vs time plot to"
-          " make each line readable. Specially for presenting in the paper."
-          " For regular test using the default value, i.e.,"
-          " no slicing is recommended."))
 parser.add_argument(
     "--paper",
     action="store_true",
@@ -132,12 +114,9 @@ for method in args.method:
                        " or `all` for using all available methods.")
 # Format: [q, chi1z, chi2z]
 available_param_sets = {
-    "1": [1, 0, 0],        # With fixed Momega0 = 0.01
-    "2": [2, 0.5, 0.5],    # With fixed Momega0 = 0.01
-    "3": [4, -0.6, -0.6],  # With fixed Momega0 = 0.01
-    "4": [6, 0.4, -0.4],   # With fixed Momega0 = 0.01
-    "5": [1, 0, 0],        # With fixed length = 20000M
-    "6": [4, -0.6, -0.6]   # With fixed length = 20000M
+    "1": [10, 0, 0],
+    "2": [100, 0, 0],
+    "3": [1000, 0, 0]
 }
 # check that given param set is available
 for p in args.param_set_key:
@@ -146,16 +125,7 @@ for p in args.param_set_key:
                        f" Must be one of {list(available_param_sets.keys())}"
                        " or `all` for using all available param set keys.")
 
-EOBeccs = 10**np.linspace(-7, 0, 150)
-Momega0 = 0.01
-# We generate the waveforms with initial mean anomaly = pi/2 so that over the
-# entire range of initial eccentricities 1e-7 to 1, the length of generated
-# waveforms (inspiral time) does not change too much which is the case if we
-# start with mean anomaly = 0. This is because at mean_ano = pi/2 the
-# instantaneous frequency is close to the orbit averaged frequency.
-meanAno = np.pi/2
-Momega0_zeroecc = 0.002
-data_dir = args.data_dir + "/Non-Precessing/EOB/"
+data_dir = args.data_dir + "/Non-Precessing/EMRI/"
 
 # set debug to False
 extra_kwargs = {"debug": False}
@@ -166,24 +136,12 @@ if args.debug_index is not None:
 cmap = cm.get_cmap("plasma")
 
 
-def get_file_name(key, ecc):
-    """Get file name based on key and given ecc."""
+def get_file_names(key):
+    """Get the list of file paths based on key."""
     q, chi1z, chi2z = available_param_sets[key]
-    keys = list(available_param_sets.keys())
-    if key in keys[:4]:
-        fileName = (f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
-                    f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}_"
-                    f"Momega0{Momega0:.3f}_meanAno{meanAno:.3f}.h5")
-    if key in keys[4:]:
-        fileName = glob.glob(
-            f"{data_dir}/EccTest*_q{q:.2f}_chi1z{chi1z:.2f}_"
-            f"chi2z{chi2z:.2f}_EOBecc{ecc:.10f}*"
-            f"meanAno{meanAno:.3f}_20000.h5")[0]
-    fileName_zeroecc = (
-        f"{data_dir}/EccTest_q{q:.2f}_chi1z{chi1z:.2f}_"
-        f"chi2z{chi2z:.2f}_EOBecc{0.0:.10f}_"
-        f"Momega0{Momega0_zeroecc:.3f}_meanAno{meanAno:.3f}.h5")
-    return fileName, fileName_zeroecc
+    fileNames = sorted(
+        glob.glob(f"{data_dir}/q{q}/EMRI_0PA_q{q}_e*[!_ecc].h5"))
+    return fileNames
 
 
 def plot_waveform_ecc_vs_model_ecc(methods, key):
@@ -198,19 +156,19 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
 
     if args.example:
         fig_ecc_at_start_name = (
-            f"{args.fig_dir}/test_eob_vs_measured_ecc_example"
+            f"{args.fig_dir}/test_emri_vs_measured_ecc_example"
             f".{args.plot_format}")
         fig_ecc_vs_t_name = (
-            f"{args.fig_dir}/test_measured_ecc_vs_time_example."
+            f"{args.fig_dir}/test_emri_measured_ecc_vs_time_example."
             f"{args.plot_format}")
     else:
         fig_ecc_at_start_name = (
-            f"{args.fig_dir}/test_eob_vs_measured_ecc_set{key}_{method_str}"
+            f"{args.fig_dir}/test_emri_vs_measured_ecc_set{key}_{method_str}"
             f".{args.plot_format}")
         fig_ecc_vs_t_name = (
-            f"{args.fig_dir}/test_measured_ecc_vs_time_set{key}_{method_str}"
+            f"{args.fig_dir}/test_emri_measured_ecc_vs_time_set{key}_{method_str}"
             f".{args.plot_format}")
-    # For eob vs measured ecc at the first extrema
+    # For emri vs measured ecc at the first extrema
     fig_ecc_at_start, ax_ecc_at_start = plt.subplots(
         figsize=(figWidthsOneColDict[style], 2 if args.paper else 3))
     # For measured ecc vs time
@@ -240,30 +198,27 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         failed_eccs.update({method: []})
         failed_indices.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
-    if key in list(available_param_sets.keys())[4:]:
-        # For Fixed length cases, ecc works upto 0.89, therefore we change the
-        # last two eccentricities to 0.85 and 0.89.
-        EOBeccs[-2:] = [0.85, 0.89]
-        eob_ecc_label = labelsDict['t_start']
-    else:
-        eob_ecc_label = labelsDict['omega_start']
-    colors = cmap(np.linspace(0, 1, len(EOBeccs)))
-    for idx0, ecc in tqdm(enumerate(EOBeccs), disable=args.verbose):
-
+    emri_ecc_label = labelsDict['omega_start']
+    filePaths = get_file_names(key)[1:]
+    EMRIeccs = []
+    for f in filePaths:
+        ecc = float(re.findall("\d{1}.\d{3}", f)[0])
+        EMRIeccs.append(ecc)
+    EMRIeccs = np.array(EMRIeccs)
+    colors = cmap(np.linspace(EMRIeccs.min(), EMRIeccs.max(), len(filePaths)))
+    for idx0, f in tqdm(enumerate(filePaths), disable=args.verbose):
         # in debugging mode, skip all but debug_index:
         if args.debug_index is not None:
             if idx0 != args.debug_index:
                 continue
-        fileName, fileName_zero_ecc = get_file_name(key, ecc)
-        kwargs = {"filepath": fileName}
+        kwargs = {"filepath": f}
         if args.verbose:
-            print(f"idx={idx0}, {fileName}")
+            print(f"idx={idx0}, {f}")
         # check if any residual method is in methods. If yes then load
         # zeroecc waveforms also.
         if "ResidualAmplitude" in methods or "ResidualFrequency" in methods:
-            kwargs.update({"filepath_zero_ecc": fileName_zero_ecc,
-                           "include_zero_ecc": True})
-        dataDict = load_waveform(origin="EOB", **kwargs)
+            kwargs.update({"include_zero_ecc": True})
+        dataDict = load_waveform(origin="EMRI", **kwargs)
         tref_in = dataDict["t"]
         for idx, method in enumerate(methods):
             try:
@@ -272,7 +227,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                     dataDict=dataDict,
                     method=method,
                     extra_kwargs=extra_kwargs)
-                model_eccs[method] += [ecc]
+                model_eccs[method] += [EMRIeccs[idx0]]
                 # Get the measured eccentricity at the first available index.
                 # This corresponds to the first extrema that occurs after the
                 # initial time
@@ -280,19 +235,14 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 tmaxList[method] += [tref_out[-1]]
                 tminList[method] += [tref_out[0]]
                 # Add measured ecc vs time plot for each method to
-                # corresponding axis.  Add only for idx0 that are multiples of
-                # args.slice. This is to reduce the number of lines in the plot
-                # to make each line plot visible. This is true only for this
-                # plot.  For ecc at first extrema vs eob eccs, we plot for all
-                # eccs.
-                if idx0 % args.slice == 0:
-                    ax_ecc_vs_t[idx].plot(tref_out, measured_ecc,
-                                          c=colors[idx0], label=f"{ecc:.7f}")
+                # corresponding axis.
+                ax_ecc_vs_t[idx].plot(tref_out, measured_ecc,
+                                      c=colors[idx0])
                 if idx == len(methods) - 1:
                     ax_ecc_vs_t[idx].set_xlabel(labelsDict["t_dimless"])
             except Exception as e:
                 # collected failures
-                failed_eccs[method] += [ecc]
+                failed_eccs[method] += [EMRIeccs[idx0]]
                 failed_indices[method] += [idx0]
                 if args.debug_index is None:
                     # If verbose, print the exception message
@@ -301,18 +251,19 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 else:
                     # if debugging, print entire traceback
                     raise
-    # Iterate over methods to plots measured ecc at the first extrema vs eob
-    # eccs collected above looping over all EOB eccs for each methods
+    # Iterate over methods to plots measured ecc at the first extrema vs emri
+    # eccs collected above looping over all EMRI eccs for each methods
     for idx, method in enumerate(methods):
-        # Plot measured eccs at the first extrema vs eob eccs for different
+        # Plot measured eccs at the first extrema vs emri eccs for different
         # methods
-        ax_ecc_at_start.loglog(
+        ax_ecc_at_start.plot(
             model_eccs[method], measured_eccs_at_start[method], label=method,
             c=colorsDict.get(method, "C0"),
             ls=lstyles.get(method, "-"),
             lw=lwidths.get(method, 1),
             alpha=lalphas.get(method, 1),
-            marker=None if args.paper else "."  # No marker for paper
+            marker=".",
+            # marker=None if args.paper else "."  # No marker for paper
         )
         # Customize the measured ecc at the first extrema vs time plots
         ax_ecc_vs_t[idx].grid()
@@ -320,30 +271,28 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
             tmin = max(tminList[method])  # Choose the shortest
             tmax = max(tmaxList[method])
             ymax = max(measured_eccs_at_start[method])
-            ymin = min(EOBeccs)
-            if key in list(available_param_sets.keys())[4:]:
-                tmin = -20000
+            ymin = min(EMRIeccs)
             ax_ecc_vs_t[idx].set_xlim(tmin, tmax)
             ax_ecc_vs_t[idx].set_ylim(ymin, ymax)
         ax_ecc_vs_t[idx].set_ylabel(labelsDict["eccentricity"])
-        ax_ecc_vs_t[idx].set_yscale("log")
+        # ax_ecc_vs_t[idx].set_yscale("log")
         # Add yticks.
-        ax_ecc_vs_t[idx].set_yticks(10.0**np.arange(-6.0, 1.0, 2.0))
+        # ax_ecc_vs_t[idx].set_yticks(10.0**np.arange(-6.0, 1.0, 2.0))
         # Add text indicating the method used
         ax_ecc_vs_t[idx].text(0.95, 0.95, method, ha="right", va="top",
                               transform=ax_ecc_vs_t[idx].transAxes)
         # Add colorbar
-        norm = mpl.colors.LogNorm(vmin=EOBeccs.min(), vmax=EOBeccs.max())
+        norm = mpl.colors.Normalize(vmin=EMRIeccs.min(), vmax=EMRIeccs.max())
         divider = make_axes_locatable(ax_ecc_vs_t[idx])
         cax = divider.append_axes('right', size='3%', pad=0.1)
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         cbar = fig_ecc_vs_t.colorbar(sm, cax=cax, orientation='vertical')
         # Set yticks on colorbar
-        cbar.ax.set_yticks(10**np.arange(-7.0, 1.0))
+        # cbar.ax.set_yticks(10**np.arange(-7.0, 1.0))
         cbar.ax.tick_params(labelsize=8)
         cbar.set_label(
-            rf"{labelsDict['eob_eccentricity']} at "
-            rf"{eob_ecc_label}",
+            rf"{labelsDict['emri_eccentricity']} at "
+            rf"{emri_ecc_label}",
             size=10)
         if idx == 0:
             ax_ecc_vs_t[idx].set_title(
@@ -360,23 +309,23 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         ha="center")
     ax_ecc_at_start.legend(frameon=True)
     # Set major ticks
-    locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
-    ax_ecc_at_start.xaxis.set_major_locator(locmaj)
-    ax_ecc_at_start.yaxis.set_major_locator(locmaj)
+    # locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
+    # ax_ecc_at_start.xaxis.set_major_locator(locmaj)
+    # ax_ecc_at_start.yaxis.set_major_locator(locmaj)
     # Set minor ticks
-    locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
-                                   numticks=20)
-    ax_ecc_at_start.xaxis.set_minor_locator(locmin)
-    ax_ecc_at_start.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-    ax_ecc_at_start.yaxis.set_minor_locator(locmin)
-    ax_ecc_at_start.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    # locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
+    #                               numticks=20)
+    # ax_ecc_at_start.xaxis.set_minor_locator(locmin)
+    # ax_ecc_at_start.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
+    # ax_ecc_at_start.yaxis.set_minor_locator(locmin)
+    # ax_ecc_at_start.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
     # Set grid
-    ax_ecc_at_start.grid(which="major")
-    ax_ecc_at_start.set_xlabel(rf"{labelsDict['eob_eccentricity']} at "
-                               rf"{eob_ecc_label}")
+    # ax_ecc_at_start.grid(which="major")
+    ax_ecc_at_start.set_xlabel(rf"{labelsDict['emri_eccentricity']} at "
+                               rf"{emri_ecc_label}")
     ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
-    ax_ecc_at_start.set_ylim(top=1.0)
-    ax_ecc_at_start.set_xlim(EOBeccs[0], 1.0)
+    ax_ecc_at_start.set_ylim(top=EMRIeccs.max())
+    ax_ecc_at_start.set_xlim(EMRIeccs.min(), EMRIeccs.max())
 
     # Save figures
     fig_ecc_at_start.savefig(

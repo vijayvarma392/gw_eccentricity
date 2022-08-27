@@ -840,10 +840,9 @@ def load_EMRI_waveform(**kwargs):
 
     if kwargs["include_zero_ecc"]:
         if kwargs["filepath_zero_ecc"] is None:
-            idx = kwargs["filepath"].find("q")
-            kwargs["filepath_zero_ecc"] = (kwargs["filepath"][:idx]
-                                           + "circ_"
-                                           + kwargs["filepath"][idx:])
+            idx = kwargs["filepath"].find("e0")
+            kwargs["filepath_zero_ecc"] = (
+                kwargs["filepath"][:idx] + "e0.000.h5")
         kwargs_zero_ecc = {
             "filepath": kwargs["filepath_zero_ecc"],
             "include_zero_ecc": False,
