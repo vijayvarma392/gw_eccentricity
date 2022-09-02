@@ -134,14 +134,17 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
 
 # Dictionary of labels to use in plots.
 labelsDict = {
-    "eccentricity": r"Eccentricity $e_{\mathrm{gw}}$",
-    "mean_anomaly": r"Mean Anomaly $l_{\mathrm{gw}}$ [rad]",
+    "ecc": r"$e_{\mathrm{gw}}$",
+    "mean_ano": r"$l_{\mathrm{gw}}$ [rad]",
+    "eccentricity": r"$e_{\mathrm{gw}}$",
+    "mean_anomaly": r"$l_{\mathrm{gw}}$ [rad]",
     "omega22_pericenters": r"$\omega^{\mathrm{p}}_{22}$",
     "omega22_apocenters": r"$\omega^{\mathrm{a}}_{22}$",
     "omega22_average": r"$\omega^{\mathrm{avg}}_{22}$",
     "omega22_average_dimless": r"$\omega^{\mathrm{avg}}_{22}$ [rad/$M$]",
-    "eob_eccentricity": r"$e_{\mathrm{EOB}}$",
-    "emri_eccentricity": r"$e_{\mathrm{EMRI}}$",
+    "eob_eccentricity": r"$e_{\mathrm{eob}}$",
+    "geodesic_eccentricity": r"$e_{\mathrm{g}}$",
+    "e_omega22": r"$e_{\omega_{22}}$",
     "t": r"$t$",
     "t_dimless": r"$t$ [$M$]",
     "t_start": r"$t_{0}$",

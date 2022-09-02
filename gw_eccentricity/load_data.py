@@ -9,6 +9,7 @@ import lal
 import lalsimulation as lalsim
 import warnings
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import PchipInterpolator
 
 
 def get_available_waveform_origins():
@@ -797,13 +798,16 @@ def load_EMRI_waveform(**kwargs):
     deltaT: float
         If provided, it would be used to interpolate the waveform with this
         time step. Default is None which would not do any interpolation.
+    include_geodesic_ecc: bool
+        If True, loads geodesic eccentricity data. Default is False.
     """
     default_kwargs = {"filepath": None,
                       "include_zero_ecc": False,
                       "filepath_zero_ecc": None,
                       "start_time": None,
                       "end_time": None,
-                      "deltaT": None}
+                      "deltaT": None,
+                      "include_geodesic_ecc": False}
     kwargs = check_kwargs_and_set_defaults(
         kwargs,
         default_kwargs,
@@ -846,10 +850,20 @@ def load_EMRI_waveform(**kwargs):
         kwargs_zero_ecc = {
             "filepath": kwargs["filepath_zero_ecc"],
             "include_zero_ecc": False,
-            "start_time": kwargs["start_time"] - 100 * (t_new[1] - t_new[0]),
+            "start_time": kwargs["start_time"] - 500 * (t_new[1] - t_new[0]),
             "end_time": kwargs["end_time"]}
         dataDict_zero_ecc = load_EMRI_waveform(**kwargs_zero_ecc)
         dataDict.update({
             "t_zeroecc": dataDict_zero_ecc["t"],
-            "hlm_zeroecc": dataDict_zero_ecc["hlm"]})
+            "hlm_zeroecc": {(2, 2): dataDict_zero_ecc["hlm"][(2, 2)]
+                            / np.sqrt(2*np.pi)}})
+    if kwargs["include_geodesic_ecc"]:
+        e_geodesic_file = kwargs["filepath"][:-3] + "_ecc.h5"
+        e_geodesic_data = h5py.File(e_geodesic_file, "r")["Dataset1"]
+        e_geodesic = e_geodesic_data[:, 1][start: end]
+        dataDict.update({"e_geodesic": e_geodesic})
+        if kwargs["deltaT"] is not None:
+            e_geodesic_interp = PchipInterpolator(
+                t_new, np.abs(e_geodesic))(t_interp)
+            dataDict.update({"e_geodesic": e_geodesic_interp})
     return dataDict

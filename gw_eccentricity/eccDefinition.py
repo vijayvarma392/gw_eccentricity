@@ -453,10 +453,23 @@ class eccDefinition:
         # Sanity checks
         # check that fref_out and tref_out are of the same length
         if fref_in is not None:
+            # fref_out and tref_in are always of the same length since
+            # tref_in is obtained by evaluating an interpolator of frequency.
+            # However, since an interpolator is involved it might not
+            # always be guaranteed that the tref_out obtained also falls within
+            # the valid range of time, i.e., tmin and tmax. Therefore, when
+            # tref_out is obtained by constraining it to fall within tmin and
+            # tmax, the resulting tref_out sometimes vary by one in length.
+            # To fix this we constrain the fref_out also whenever this happens,
+            # so that the fref_out and tref_out are always of the same length.
             if len(self.fref_out) != len(self.tref_out):
-                raise Exception(f"Length of fref_out {len(self.fref_out)}"
-                                " is different from "
-                                f"Length of tref_out {len(self.tref_out)}")
+                warnings.warn(f"Length of fref_out {len(self.fref_out)}"
+                              " is different from "
+                              f"Length of tref_out {len(self.tref_out)}")
+                self.fref_out = self.fref_out[
+                    np.logical_and(self.tref_in < self.tmax,
+                                   self.tref_in >= self.tmin)]
+
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
             if self.tref_in[-1] > self.tmax:
@@ -561,12 +574,12 @@ class eccDefinition:
 
         omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
         omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
-        ew22 = ((np.sqrt(omega22_pericenter_at_t)
-                 - np.sqrt(omega22_apocenter_at_t))
-                / (np.sqrt(omega22_pericenter_at_t)
-                   + np.sqrt(omega22_apocenter_at_t)))
-        # get the  temporal eccentricity from ew22
-        return self.et_from_ew22_0pn(ew22)
+        self.e_omega22 = ((np.sqrt(omega22_pericenter_at_t)
+                           - np.sqrt(omega22_apocenter_at_t))
+                          / (np.sqrt(omega22_pericenter_at_t)
+                             + np.sqrt(omega22_apocenter_at_t)))
+        # get the  temporal eccentricity from e_omega22
+        return self.et_from_ew22_0pn(self.e_omega22)
 
     def derivative_of_eccentricity(self, t, n=1):
         """Get time derivative of eccentricity.
@@ -963,10 +976,10 @@ class eccDefinition:
                 warnings.warn(f"Omega22 average from method {method} is not "
                               "monotonically increasing.")
             # Create the t of fref interpolant
-            t_of_fref = InterpolatedUnivariateSpline(
+            t_of_fref = PchipInterpolator(
                 self.omega22_average / (2 * np.pi),
                 self.t_for_omega22_average,
-                ext=2)
+                extrapolate=False)
             tref_in = t_of_fref(fref_out)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):

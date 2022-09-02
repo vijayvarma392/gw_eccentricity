@@ -144,6 +144,11 @@ def get_file_names(key):
     return fileNames
 
 
+def get_color(ecc, eccs, colors):
+    """Get color for the ecc vs time lines."""
+    return colors[np.argmin(np.abs(eccs - ecc))]
+
+
 def plot_waveform_ecc_vs_model_ecc(methods, key):
     """Create plots for given methods and parameter set."""
     # Get the output figure name
@@ -202,10 +207,14 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     filePaths = get_file_names(key)[1:]
     EMRIeccs = []
     for f in filePaths:
-        ecc = float(re.findall("\d{1}.\d{3}", f)[0])
+        ecc = float(re.findall("\d{1}\.\d{3}", f)[0])
         EMRIeccs.append(ecc)
     EMRIeccs = np.array(EMRIeccs)
-    colors = cmap(np.linspace(EMRIeccs.min(), EMRIeccs.max(), len(filePaths)))
+    # Create an eccs array to map colors to eccentricities
+    # for the ecc vs time line plots
+    eccs_for_colors = np.linspace(
+        EMRIeccs.min(), EMRIeccs.max(), len(filePaths))
+    colors = cmap(np.linspace(0, 1, len(filePaths)))
     for idx0, f in tqdm(enumerate(filePaths), disable=args.verbose):
         # in debugging mode, skip all but debug_index:
         if args.debug_index is not None:
@@ -236,8 +245,10 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 tminList[method] += [tref_out[0]]
                 # Add measured ecc vs time plot for each method to
                 # corresponding axis.
-                ax_ecc_vs_t[idx].plot(tref_out, measured_ecc,
-                                      c=colors[idx0])
+                ax_ecc_vs_t[idx].plot(
+                    tref_out,
+                    measured_ecc,
+                    c=get_color(EMRIeccs[idx0], eccs_for_colors, colors))
                 if idx == len(methods) - 1:
                     ax_ecc_vs_t[idx].set_xlabel(labelsDict["t_dimless"])
             except Exception as e:
@@ -291,7 +302,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         # cbar.ax.set_yticks(10**np.arange(-7.0, 1.0))
         cbar.ax.tick_params(labelsize=8)
         cbar.set_label(
-            rf"{labelsDict['emri_eccentricity']} at "
+            rf"{labelsDict['geodesic_eccentricity']} at "
             rf"{emri_ecc_label}",
             size=10)
         if idx == 0:
@@ -321,7 +332,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     # ax_ecc_at_start.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
     # Set grid
     # ax_ecc_at_start.grid(which="major")
-    ax_ecc_at_start.set_xlabel(rf"{labelsDict['emri_eccentricity']} at "
+    ax_ecc_at_start.set_xlabel(rf"{labelsDict['geodesic_eccentricity']} at "
                                rf"{emri_ecc_label}")
     ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
     ax_ecc_at_start.set_ylim(top=EMRIeccs.max())
