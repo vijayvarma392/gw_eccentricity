@@ -208,9 +208,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     q, chi1z, chi2z = available_param_sets[key]
     emri_ecc_label = labelsDict['omega_start']
     # We exclude the first file since it is the quasicircular waveform
-    # We also exclude the last file since the waveform starts at lower
-    # omega than others.
-    filePaths = get_file_names(key)[1:-1]
+    filePaths = get_file_names(key)[1:]
     EMRIeccs = []
     for f in filePaths:
         ecc = float(re.findall("\d{1}\.\d{3}", f)[0])
@@ -231,7 +229,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         # Need to change the resolution of the data, otherwise the omega22
         # average are not monotonically increasing
         kwargs = {"filepath": f,
-                  "deltaT": 0.08 if idx0 <= 8 else 0.05}
+                  "deltaT": 0.05}
         if args.verbose:
             print(f"idx={idx0}, {f}")
         # check if any residual method is in methods. If yes then load

@@ -279,7 +279,7 @@ class eccDefinition:
         raise NotImplementedError("Please override me.")
 
     def interp_extrema(self, extrema_type="maxima"):
-        """Interpolatant through extrema.
+        """Build interpolants through extrema.
 
         parameters:
         -----------
@@ -319,7 +319,7 @@ class eccDefinition:
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
-                " Can not create an interpolatant.")
+                " Can not create an interpolant.")
 
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -807,6 +807,11 @@ class eccDefinition:
                             f"starts at {self.t[0]} whereas zeroecc waveform "
                             f"starts at {self.t_zeroecc_shifted[0]}. Try "
                             "starting the zeroecc waveform at lower Momega0.")
+        # In case the after merger part of the zeroecc waveform is shorter than
+        # that of the the ecc waveform, we allow extrapolation so that the
+        # residual quantities could be computed. Since eccentricity measurement
+        # uses extrema before the merger, it does not affect the measured
+        # eccentricity.
         self.amp22_zeroecc_interp = interpolate(
             self.t, self.t_zeroecc_shifted, np.abs(self.h22_zeroecc),
             allowExtrapolation=True)
@@ -1953,7 +1958,7 @@ class eccDefinition:
             return ax
 
     def get_apocenters_from_pericenters(self):
-        """Get Interpolant through apocenters and their locations.
+        """Build an interpolant through apocenters and their locations.
 
         This function treats the mid points between two successive pericenters
         as the location of the apocenter in between the same two pericenters.

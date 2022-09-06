@@ -221,9 +221,10 @@ def get_interpolant(oldX,
 
     # returns extrapolated values when extrapolating
     if interpolator == "spline":
-        interpolant = InterpolatedUnivariateSpline(oldX, oldY, ext=0)
+        ext = 0 if allowExtrapolation else 2
+        interpolant = InterpolatedUnivariateSpline(oldX, oldY, ext=ext)
     elif interpolator == "pchip":
-        interpolant = PchipInterpolator(oldX, oldY, extrapolate=True)
+        interpolant = PchipInterpolator(oldX, oldY, extrapolate=allowExtrapolation)
     else:
         raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
                          " of ['pchip', 'spline']")
