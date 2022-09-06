@@ -875,8 +875,8 @@ class eccDefinition:
             = (np.diff(self.phase22[self.apocenters_location])
                / np.diff(self.t[self.apocenters_location]))
         # check monotonicity of the omega22 average
-        self.check_monotonicity_of_omega22_average("pericenters")
-        self.check_monotonicity_of_omega22_average("apocenters")
+        self.check_monotonicity_of_omega22_average("maxima")
+        self.check_monotonicity_of_omega22_average("minima")
         # combine the average omega22 at pericenters and apocenters
         omega22_average = np.append(self.omega22_average_apocenters,
                                     self.omega22_average_pericenters)
@@ -888,10 +888,10 @@ class eccDefinition:
             t, self.t_average_mean_motion, omega22_average)
 
     def check_monotonicity_of_omega22_average(self,
-                                              extrema_type="pericenters"):
+                                              extrema_type="maxima"):
         """Check that omega average is monotonically increasing."""
         omega22_average \
-            = self.omega22_average_pericenters if extrema_type == "pericenters"\
+            = self.omega22_average_pericenters if extrema_type == "maxima"\
             else self.omega22_average_apocenters
         idx_non_monotonic = np.where(
             np.diff(omega22_average) <= 0)[0]
