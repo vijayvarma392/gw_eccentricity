@@ -1,6 +1,8 @@
 """Useful functions for the project."""
 import numpy as np
 import argparse
+from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import PchipInterpolator
 
 
 def amplitude_using_all_modes(mode_dict):
@@ -143,3 +145,86 @@ def time_deriv_4thOrder(y, dt):
     res[-1] = y[-5:].dot(np.array([3, -16, 36, -48, 25]) / 12.)
     dydt = res / dt
     return dydt
+
+
+def interpolate(newX,
+                oldX,
+                oldY,
+                allowExtrapolation=False,
+                interpolator="pchip"):
+    """Interpolate.
+
+    Parameters:
+    -----------
+    newX:
+        Points where interpolant is to be evaluated.
+    oldX:
+        1d array of monotonically increasing real values.
+    oldY:
+        1d array of monotonically increasing real values.
+    allowExtrapolation:
+        Bool. If True returns extrapolated values. Default is False.
+    interpolator:
+        String to choose an interpolator to interpolate oldX, oldY.
+        Could be one of the following:
+        "pchip":  Uses scipy.interpolate.PchipInterpolator.
+        "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
+        Default is "pchip".
+
+    Returns:
+    --------
+    newY:
+        Intepolated values at newX.
+    """
+    if len(oldY) != len(oldX):
+        raise Exception("Lengths dont match.")
+
+    if not allowExtrapolation:
+        if np.min(newX) < np.min(oldX) - 1e-2 \
+           or np.max(newX) > np.max(oldX) + 1e-2:
+            print(np.min(newX), np.min(oldX), np.max(newX), np.max(oldX))
+            print(np.min(newX) < np.min(oldX))
+            print(np.max(newX) > np.max(oldX))
+            raise Exception("Trying to extrapolate, "
+                            "but allowExtrapolation=False")
+    newY = get_interpolant(oldX, oldY, allowExtrapolation, interpolator)(newX)
+    return newY
+
+
+def get_interpolant(oldX,
+                    oldY,
+                    allowExtrapolation=False,
+                    interpolator="pchip"):
+    """Create Interpolant.
+
+    Parameters:
+    -----------
+    oldX:
+        1d array of monotonically increasing real values.
+    oldY:
+        1d array of monotonically increasing real values.
+    allowExtrapolation:
+        Bool. If True returns extrapolated values. Default is False.
+    interpolator:
+        String to choose an interpolator to interpolate oldX, oldY.
+        Could be one of the following:
+        "pchip":  Uses scipy.interpolate.PchipInterpolator.
+        "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
+        Default is "pchip".
+
+    Returns:
+    --------
+    Intepolatnt.
+    """
+    if not np.all(np.diff(oldX) > 0):
+        raise Exception("oldX must have increasing values")
+
+    # returns extrapolated values when extrapolating
+    if interpolator == "spline":
+        interpolant = InterpolatedUnivariateSpline(oldX, oldY, ext=0)
+    elif interpolator == "pchip":
+        interpolant = PchipInterpolator(oldX, oldY, extrapolate=True)
+    else:
+        raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
+                         " of ['pchip', 'spline']")
+    return interpolant

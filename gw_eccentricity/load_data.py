@@ -8,8 +8,7 @@ import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
-from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.interpolate import PchipInterpolator
+from .utils import interpolate
 
 
 def get_available_waveform_origins():
@@ -726,8 +725,8 @@ def load_lvcnr_hack(**kwargs):
     # (https://arxiv.org/abs/1611.07529), which uses higher order splines as
     # appropriate, but we are now upsampling with only cubic splines.
     # This can lead to inaccuracies.
-    amp22_interp = InterpolatedUnivariateSpline(t_for_amp22, amp22)(t_interp)
-    phase22_interp = InterpolatedUnivariateSpline(t_for_phase22, phase22)(t_interp)
+    amp22_interp = interpolate(t_interp, t_for_amp22, amp22)
+    phase22_interp = interpolate(t_interp, t_for_phase22, phase22)
     h22_interp = amp22_interp * np.exp(1j * phase22_interp)
 
     # remove junk data from the beginning
@@ -836,10 +835,9 @@ def load_EMRI_waveform(**kwargs):
                 "hlm": {(2, 2): h22_new}}
     if kwargs["deltaT"] is not None:
         t_interp = np.arange(t_new[0], t_new[-1], kwargs["deltaT"])
-        amp22_interp = InterpolatedUnivariateSpline(
-            t_new, np.abs(h22_new))(t_interp)
-        phase22_interp = InterpolatedUnivariateSpline(
-            t_new, np.unwrap(np.angle(h22_new)))(t_interp)
+        amp22_interp = interpolate(t_interp, t_new, np.abs(h22_new))
+        phase22_interp = interpolate(
+            t_interp, t_new, np.unwrap(np.angle(h22_new)))
         h22_interp = amp22_interp * np.exp(1j * phase22_interp)
         dataDict["t"] = t_interp
         dataDict["hlm"] = {(2, 2): h22_interp}
@@ -863,7 +861,7 @@ def load_EMRI_waveform(**kwargs):
         e_geodesic = e_geodesic_data[:, 1][start: end]
         dataDict.update({"e_geodesic": e_geodesic})
         if kwargs["deltaT"] is not None:
-            e_geodesic_interp = PchipInterpolator(
-                t_new, np.abs(e_geodesic))(t_interp)
+            e_geodesic_interp = interpolate(
+                t_interp, t_new, np.abs(e_geodesic))
             dataDict.update({"e_geodesic": e_geodesic_interp})
     return dataDict
