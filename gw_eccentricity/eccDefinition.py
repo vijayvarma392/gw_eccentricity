@@ -603,7 +603,7 @@ class eccDefinition:
             self.ecc_interp = get_interpolant(self.t_for_checks,
                                               self.ecc_for_checks)
         # Get derivative of ecc(t) using PchipInterpolator.
-        return self.ecc_interp.derivative(n=1)(t)
+        return self.ecc_interp.derivative(nu=1)(t)
 
     def compute_mean_ano(self, t):
         """
@@ -808,14 +808,16 @@ class eccDefinition:
                             f"starts at {self.t_zeroecc_shifted[0]}. Try "
                             "starting the zeroecc waveform at lower Momega0.")
         self.amp22_zeroecc_interp = interpolate(
-            self.t, self.t_zeroecc_shifted, np.abs(self.h22_zeroecc))
+            self.t, self.t_zeroecc_shifted, np.abs(self.h22_zeroecc),
+            allowExtrapolation=True)
         self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
 
         self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
         self.omega22_zeroecc = time_deriv_4thOrder(
             self.phase22_zeroecc, self.t_zeroecc[1] - self.t_zeroecc[0])
         self.omega22_zeroecc_interp = interpolate(
-            self.t, self.t_zeroecc_shifted, self.omega22_zeroecc)
+            self.t, self.t_zeroecc_shifted, self.omega22_zeroecc,
+            allowExtrapolation=True)
         self.res_omega22 = (self.omega22 - self.omega22_zeroecc_interp)
 
     def get_t_average_for_mean_motion(self):
