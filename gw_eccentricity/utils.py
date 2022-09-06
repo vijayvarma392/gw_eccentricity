@@ -164,7 +164,7 @@ def interpolate(newX,
         1d array of monotonically increasing real values.
     allowExtrapolation:
         Bool. If True returns extrapolated values. Default is False.
-        If False and tries to extrapolate, Exception is raised.
+        If False, an exception is raised if trying to extrapolate.
     interpolator:
         String to choose an interpolator to interpolate oldX, oldY.
         Could be one of the following:
@@ -206,7 +206,7 @@ def get_interpolant(oldX,
         1d array of monotonically increasing real values.
     allowExtrapolation:
         Bool. If True returns extrapolated values. Default is False.
-        If False and tries to extrapolate, Exception is raise.
+        If False, an exception is raised if trying to extrapolate.
     interpolator:
         String to choose an interpolator to interpolate oldX, oldY.
         Could be one of the following:

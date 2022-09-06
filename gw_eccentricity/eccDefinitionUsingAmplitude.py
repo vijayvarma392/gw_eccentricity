@@ -40,11 +40,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         -----------
         extrema_type:
             Either "pericenters" or "apocenters".
-        extrema_finding_kwargs:
-            Dictionary of arguments to be passed to the peak finding
-            function. Here we use scipy.signal.find_peaks for finding
-            extrema. Hence the arguments are those that are allowed in that
-            function
 
         returns:
         ------
