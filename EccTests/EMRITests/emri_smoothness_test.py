@@ -128,7 +128,8 @@ for p in args.param_set_key:
 data_dir = args.data_dir + "/Non-Precessing/EMRI/"
 
 # set debug to False
-extra_kwargs = {"debug": False}
+extra_kwargs = {"debug": False,
+                "extrema_finding_kwargs": {"width": 300}}
 
 if args.debug_index is not None:
     extra_kwargs['debug'] = True
@@ -204,7 +205,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         failed_indices.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
     emri_ecc_label = labelsDict['omega_start']
-    filePaths = get_file_names(key)[1:]
+    filePaths = get_file_names(key)[1:-1]
     EMRIeccs = []
     for f in filePaths:
         ecc = float(re.findall("\d{1}\.\d{3}", f)[0])
@@ -213,14 +214,17 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
     # Create an eccs array to map colors to eccentricities
     # for the ecc vs time line plots
     eccs_for_colors = np.linspace(
-        EMRIeccs.min(), EMRIeccs.max(), len(filePaths))
+        np.round(EMRIeccs.min(), 2),
+        np.round(EMRIeccs.max(), 2),
+        len(filePaths))
     colors = cmap(np.linspace(0, 1, len(filePaths)))
     for idx0, f in tqdm(enumerate(filePaths), disable=args.verbose):
         # in debugging mode, skip all but debug_index:
         if args.debug_index is not None:
             if idx0 != args.debug_index:
                 continue
-        kwargs = {"filepath": f}
+        kwargs = {"filepath": f,
+                  "deltaT": 0.08 if idx0 <= 8 else 0.05}
         if args.verbose:
             print(f"idx={idx0}, {f}")
         # check if any residual method is in methods. If yes then load
@@ -293,7 +297,8 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         ax_ecc_vs_t[idx].text(0.95, 0.95, method, ha="right", va="top",
                               transform=ax_ecc_vs_t[idx].transAxes)
         # Add colorbar
-        norm = mpl.colors.Normalize(vmin=EMRIeccs.min(), vmax=EMRIeccs.max())
+        norm = mpl.colors.Normalize(vmin=eccs_for_colors.min(),
+                                    vmax=eccs_for_colors.max())
         divider = make_axes_locatable(ax_ecc_vs_t[idx])
         cax = divider.append_axes('right', size='3%', pad=0.1)
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -319,24 +324,19 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         rf"{labelsDict['chi2z']}={chi2z:.1f}",
         ha="center")
     ax_ecc_at_start.legend(frameon=True)
-    # Set major ticks
-    # locmaj = mpl.ticker.LogLocator(base=10, numticks=20)
-    # ax_ecc_at_start.xaxis.set_major_locator(locmaj)
-    # ax_ecc_at_start.yaxis.set_major_locator(locmaj)
-    # Set minor ticks
-    # locmin = mpl.ticker.LogLocator(base=10.0, subs=np.arange(0.1, 1.0, 0.1),
-    #                               numticks=20)
-    # ax_ecc_at_start.xaxis.set_minor_locator(locmin)
-    # ax_ecc_at_start.xaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-    # ax_ecc_at_start.yaxis.set_minor_locator(locmin)
-    # ax_ecc_at_start.yaxis.set_minor_formatter(mpl.ticker.NullFormatter())
-    # Set grid
-    # ax_ecc_at_start.grid(which="major")
+    # set ticks
+    ticks = np.arange(0, EMRIeccs.max(), 0.1)
+    ticklabels = [f"{tick:.1f}" for tick in ticks]
+    ax_ecc_at_start.set_xticks(ticks)
+    ax_ecc_at_start.set_xticklabels(ticklabels)
+    ax_ecc_at_start.set_yticks(ticks)
+    ax_ecc_at_start.set_yticklabels(ticklabels)
     ax_ecc_at_start.set_xlabel(rf"{labelsDict['geodesic_eccentricity']} at "
                                rf"{emri_ecc_label}")
     ax_ecc_at_start.set_ylabel(labelsDict["eccentricity"])
-    ax_ecc_at_start.set_ylim(top=EMRIeccs.max())
-    ax_ecc_at_start.set_xlim(EMRIeccs.min(), EMRIeccs.max())
+    # ax_ecc_at_start.set_ylim(top=EMRIeccs.max())
+    # ax_ecc_at_start.set_xlim(EMRIeccs.min(), EMRIeccs.max())
+    ax_ecc_at_start.grid()
 
     # Save figures
     fig_ecc_at_start.savefig(
@@ -375,5 +375,5 @@ use_fancy_plotsettings(style=style)
 for key in args.param_set_key:
     failed_eccs, failed_indices = plot_waveform_ecc_vs_model_ecc(
         args.method, key)
-    print(f"================Failure reports for set {key}===================")
+    print(f"================Test report for set {key}===================")
     report_failures(failed_eccs, failed_indices, args.method)

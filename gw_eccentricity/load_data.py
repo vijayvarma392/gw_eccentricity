@@ -788,7 +788,7 @@ def load_EMRI_waveform(**kwargs):
         waveform only from start_time, where start_time is to provided
         following the convention of merger being at t=0. Since EMRI waveform
         does not include an actual merger, t=0 corresponds to the global
-        maximum.
+        maximum of the amplitude.
         Default is None.
         If None, start_time would be the time at the start of the waveform.
     end_time: float
@@ -814,7 +814,7 @@ def load_EMRI_waveform(**kwargs):
         "EMRI kwargs",
         "gw_eccentricity.load_data.load_EMRI_waveform")
     if kwargs["filepath"] is None:
-        raise KeyError("path to the eccentric EMRI waveform can not be None.")
+        raise KeyError("path to the eccentric EMRI waveform cannot be None.")
     emri_data = h5py.File(kwargs["filepath"], "r")["Dataset1"]
     t = emri_data[:, 0]
     h22 = emri_data[:, 1] + 1j * emri_data[:, 2]
@@ -822,12 +822,14 @@ def load_EMRI_waveform(**kwargs):
         t,
         amplitude_using_all_modes({(2, 2): h22}))[0]
     t -= tpeak
-    if kwargs["start_time"] is None:
-        kwargs["start_time"] = t[0]
-    start = np.argmin(np.abs(t - kwargs["start_time"]))
-    if kwargs["end_time"] is None:
-        kwargs["end_time"] = 0
-    end = np.argmin(np.abs(t - kwargs["end_time"]))
+    if kwargs["start_time"] is not None:
+        start = np.argmin(np.abs(t - kwargs["start_time"]))
+    else:
+        start = 0
+    if kwargs["end_time"] is not None:
+        end = np.argmin(np.abs(t - kwargs["end_time"]))
+    else:
+        end = -1
     t_new = t[start: end]
     h22_new = h22[start: end]
     dataDict = {"t": t_new,
@@ -849,9 +851,7 @@ def load_EMRI_waveform(**kwargs):
                 kwargs["filepath"][:idx] + "e0.000.h5")
         kwargs_zero_ecc = {
             "filepath": kwargs["filepath_zero_ecc"],
-            "include_zero_ecc": False,
-            "start_time": kwargs["start_time"] - 500 * (t_new[1] - t_new[0]),
-            "end_time": kwargs["end_time"]}
+            "include_zero_ecc": False}
         dataDict_zero_ecc = load_EMRI_waveform(**kwargs_zero_ecc)
         dataDict.update({
             "t_zeroecc": dataDict_zero_ecc["t"],

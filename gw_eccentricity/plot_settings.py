@@ -111,6 +111,8 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
         rc("text", usetex=usetex)
         rc("text.latex", preamble=r"\usepackage{amsmath}")
         rc("text.latex", preamble=r"\usepackage{txfonts}")
+        rc("text.latex",
+           preamble=r"\DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}")
     # Axes
     rc("axes", prop_cycle=cycler(color=colorsList))  # color cycler
     rc("axes", linewidth=0.6)
@@ -141,7 +143,7 @@ labelsDict = {
     "omega22_pericenters": r"$\omega^{\mathrm{p}}_{22}$",
     "omega22_apocenters": r"$\omega^{\mathrm{a}}_{22}$",
     "omega22_average": r"$\omega^{\mathrm{avg}}_{22}$",
-    "omega22_average_dimless": r"$\omega^{\mathrm{avg}}_{22}$ [rad/$M$]",
+    "omega22_average_dimless": r"$\langle\omega_{22}\rangle$ [rad/$M$]",
     "eob_eccentricity": r"$e_{\mathrm{eob}}$",
     "geodesic_eccentricity": r"$e_{\mathrm{g}}$",
     "e_omega22": r"$e_{\omega_{22}}$",
@@ -165,5 +167,5 @@ labelsDict = {
     "q": r"$q$",
     "chi1z": r"$\chi_{1z}$",
     "chi2z": r"$\chi_{2z}$",
-    "h22_real": r"Re[$h_{22}$]"
+    "h22_real": r"Re[$\mathpzc{h}_{22}$]"
 }

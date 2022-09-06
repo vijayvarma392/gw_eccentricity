@@ -454,18 +454,15 @@ class eccDefinition:
         # check that fref_out and tref_out are of the same length
         if fref_in is not None:
             # fref_out and tref_in are always of the same length since
-            # tref_in is obtained by evaluating an interpolator of frequency.
+            # tref_in is obtained by evaluating an interpolant of frequency.
             # However, since an interpolator is involved it might not
             # always be guaranteed that the tref_out obtained also falls within
             # the valid range of time, i.e., tmin and tmax. Therefore, when
             # tref_out is obtained by constraining it to fall within tmin and
-            # tmax, the resulting tref_out sometimes vary by one in length.
+            # tmax, the resulting tref_out sometimes varies by one in length.
             # To fix this we constrain the fref_out also whenever this happens,
             # so that the fref_out and tref_out are always of the same length.
             if len(self.fref_out) != len(self.tref_out):
-                warnings.warn(f"Length of fref_out {len(self.fref_out)}"
-                              " is different from "
-                              f"Length of tref_out {len(self.tref_out)}")
                 self.fref_out = self.fref_out[
                     np.logical_and(self.tref_in < self.tmax,
                                    self.tref_in >= self.tmin)]
@@ -873,12 +870,10 @@ class eccDefinition:
         self.omega22_average_apocenters \
             = (np.diff(self.phase22[self.apocenters_location])
                / np.diff(self.t[self.apocenters_location]))
-        if any(np.diff(self.omega22_average_pericenters) <= 0):
-            raise Exception("Omega22 average at pericenters are not strictly "
-                            "monotonically increaing")
-        if any(np.diff(self.omega22_average_apocenters) <= 0):
-            raise Exception("Omega22 average at apocenters are not strictly "
-                            "monotonically increasing")
+        # check monotonicity of the omega22 average
+        self.check_monotonicity_of_omega22_average("pericenters")
+        self.check_monotonicity_of_omega22_average("apocenters")
+        # combine the average omega22 at pericenters and apocenters
         omega22_average = np.append(self.omega22_average_apocenters,
                                     self.omega22_average_pericenters)
         # We now sort omega22_average using the same array of indices that was
@@ -887,6 +882,31 @@ class eccDefinition:
         omega22_average = omega22_average[self.sorted_idx_mean_motion]
         return PchipInterpolator(
             self.t_average_mean_motion, omega22_average, extrapolate=False)(t)
+
+    def check_monotonicity_of_omega22_average(self,
+                                              kind="pericenters"):
+        """Check that omega average is monotonically increasing."""
+        omega22_average \
+            = self.omega22_average_pericenters if kind == "pericenters"\
+            else self.omega22_average_apocenters
+        idx_non_monotonic = np.where(
+            np.diff(omega22_average) <= 0)[0]
+        if len(idx_non_monotonic) > 0:
+            first_idx = idx_non_monotonic[0]
+            change_at_first_idx = (
+                omega22_average[first_idx+1]
+                - omega22_average[first_idx])
+            raise Exception(
+                f"Omega22 average at {kind} are not strictly"
+                " monotonically increasing.\n"
+                f"First non-monotonicity occurs at peak number {first_idx},"
+                f" where omega22 drops from {omega22_average[first_idx]} to"
+                f" {omega22_average[first_idx+1]} and decreases by"
+                f" {change_at_first_idx}.\nTotal number of places of"
+                f" non-monotonicity is {len(idx_non_monotonic)}.\n"
+                f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
+                "Increasing the sampling rate by decreasing time steps in "
+                "data might help.")
 
     def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
