@@ -398,7 +398,7 @@ class eccDefinition:
             tref_out/fref_out.
         """
         self.omega22_pericenters_interp, self.pericenters_location \
-            = self.interp_extrema("maxima")
+            = self.interp_extrema("pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
@@ -409,7 +409,7 @@ class eccDefinition:
                 = self.get_apocenters_from_pericenters()
         else:
             self.omega22_apocenters_interp, self.apocenters_location \
-                = self.interp_extrema("minima")
+                = self.interp_extrema("apocenters")
 
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
