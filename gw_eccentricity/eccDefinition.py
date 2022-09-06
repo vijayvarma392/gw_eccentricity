@@ -264,13 +264,13 @@ class eccDefinition:
         }
         return default_extra_kwargs
 
-    def find_extrema(self, extrema_type="maxima"):
+    def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
 
         parameters:
         -----------
         extrema_type:
-            One of 'maxima', 'pericenters', 'minima' or 'apocenters'.
+            Either "pericenters" or "apocenters".
 
         returns:
         ------
@@ -278,17 +278,17 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def interp_extrema(self, extrema_type="maxima"):
-        """Build interpolants through extrema.
+    def interp_extrema(self, extrema_type="pericenters"):
+        """Build interpolant through extrema.
 
         parameters:
         -----------
         extrema_type:
-            One of 'maxima', 'pericenters', 'minima' or 'apocenters'.
+            Either "pericenters" or "apocenters".
 
         returns:
         ------
-        spline through extrema, positions of extrema
+        Interpolant through extrema, positions of extrema
         """
         extrema_idx = self.find_extrema(extrema_type)
         # experimenting with throwing away pericenters too close to merger
@@ -807,7 +807,7 @@ class eccDefinition:
                             f"starts at {self.t[0]} whereas zeroecc waveform "
                             f"starts at {self.t_zeroecc_shifted[0]}. Try "
                             "starting the zeroecc waveform at lower Momega0.")
-        # In case the after merger part of the zeroecc waveform is shorter than
+        # In case the post-merger part of the zeroecc waveform is shorter than
         # that of the the ecc waveform, we allow extrapolation so that the
         # residual quantities could be computed. Since eccentricity measurement
         # uses extrema before the merger, it does not affect the measured
@@ -875,8 +875,8 @@ class eccDefinition:
             = (np.diff(self.phase22[self.apocenters_location])
                / np.diff(self.t[self.apocenters_location]))
         # check monotonicity of the omega22 average
-        self.check_monotonicity_of_omega22_average("maxima")
-        self.check_monotonicity_of_omega22_average("minima")
+        self.check_monotonicity_of_omega22_average("pericenters")
+        self.check_monotonicity_of_omega22_average("apocenters")
         # combine the average omega22 at pericenters and apocenters
         omega22_average = np.append(self.omega22_average_apocenters,
                                     self.omega22_average_pericenters)
@@ -888,11 +888,18 @@ class eccDefinition:
             t, self.t_average_mean_motion, omega22_average)
 
     def check_monotonicity_of_omega22_average(self,
-                                              extrema_type="maxima"):
-        """Check that omega average is monotonically increasing."""
-        omega22_average \
-            = self.omega22_average_pericenters if extrema_type == "maxima"\
-            else self.omega22_average_apocenters
+                                              extrema_type="pericenters"):
+        """Check that omega average is monotonically increasing.
+
+        extrema_type should be either "pericenters" or "apocenters".
+        """
+        if extrema_type == "pericenters":
+            omega22_average = self.omega22_average_pericenters
+        elif extrema_type == "apocenters":
+            omega22_average = self.omega22_average_apocenters
+        else:
+            raise ValueError(f"Unknown extream_type {extrema_type}. Should be"
+                             " either 'pericenters' or 'apocenters'.")
         idx_non_monotonic = np.where(
             np.diff(omega22_average) <= 0)[0]
         if len(idx_non_monotonic) > 0:
@@ -924,7 +931,7 @@ class eccDefinition:
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
         return interpolate(
-            t, self.t_zeroecc_shifted, self.omega22_zeroecc, ext=2)
+            t, self.t_zeroecc_shifted, self.omega22_zeroecc)
 
     def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""

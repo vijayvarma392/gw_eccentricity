@@ -164,6 +164,7 @@ def interpolate(newX,
         1d array of monotonically increasing real values.
     allowExtrapolation:
         Bool. If True returns extrapolated values. Default is False.
+        If False and tries to extrapolate, Exception is raised.
     interpolator:
         String to choose an interpolator to interpolate oldX, oldY.
         Could be one of the following:
@@ -205,6 +206,7 @@ def get_interpolant(oldX,
         1d array of monotonically increasing real values.
     allowExtrapolation:
         Bool. If True returns extrapolated values. Default is False.
+        If False and tries to extrapolate, Exception is raise.
     interpolator:
         String to choose an interpolator to interpolate oldX, oldY.
         Could be one of the following:
@@ -222,9 +224,12 @@ def get_interpolant(oldX,
     # returns extrapolated values when extrapolating
     if interpolator == "spline":
         ext = 0 if allowExtrapolation else 2
+        # ext = 0, returns extraploted values
+        # ext = 2, raises exception if extrapolation is attempted.
         interpolant = InterpolatedUnivariateSpline(oldX, oldY, ext=ext)
     elif interpolator == "pchip":
-        interpolant = PchipInterpolator(oldX, oldY, extrapolate=allowExtrapolation)
+        interpolant = PchipInterpolator(oldX, oldY,
+                                        extrapolate=allowExtrapolation)
     else:
         raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
                          " of ['pchip', 'spline']")

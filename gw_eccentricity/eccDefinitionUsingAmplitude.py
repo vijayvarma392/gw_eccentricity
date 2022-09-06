@@ -33,27 +33,30 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         return self.amp22
 
-    def find_extrema(self, extrema_type="maxima"):
+    def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the amp22.
 
         parameters:
         -----------
-        extrema_type: either maxima, pericenters, minima or apocenters
-        extrema_finding_kwargs: Dictionary of arguments to be passed to the
-        peak finding function. Here we use scipy.signal.find_peaks for finding
-        extrema. Hence the arguments are those that are allowed in that function
+        extrema_type:
+            Either "pericenters" or "apocenters".
+        extrema_finding_kwargs:
+            Dictionary of arguments to be passed to the peak finding
+            function. Here we use scipy.signal.find_peaks for finding
+            extrema. Hence the arguments are those that are allowed in that
+            function
 
         returns:
         ------
         array of positions of extrema.
         """
-        if extrema_type in ["maxima", "pericenters"]:
+        if extrema_type == "pericenters":
             sign = 1
-        elif extrema_type in ["minima", "apocenters"]:
+        elif extrema_type == "apocenters":
             sign = - 1
         else:
-            raise Exception("`extrema_type` must be one of ['maxima', "
-                            "'minima', 'pericenters', 'apocenters']")
+            raise Exception("`extrema_type` must be either 'pericenters'"
+                            " or 'apocenters'")
 
         return find_peaks(
             sign * self.data_for_finding_extrema,
