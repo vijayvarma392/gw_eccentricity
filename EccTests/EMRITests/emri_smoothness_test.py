@@ -128,6 +128,8 @@ for p in args.param_set_key:
 data_dir = args.data_dir + "/Non-Precessing/EMRI/"
 
 # set debug to False
+# The default width is slightly larger than what we need.
+# Setting it to smaller value helps finding all the extrema
 extra_kwargs = {"debug": False,
                 "extrema_finding_kwargs": {"width": 300}}
 
@@ -205,6 +207,9 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         failed_indices.update({method: []})
     q, chi1z, chi2z = available_param_sets[key]
     emri_ecc_label = labelsDict['omega_start']
+    # We exclude the first file since it is the quasicircular waveform
+    # We also exclude the last file since the waveform starts at lower
+    # omega than others.
     filePaths = get_file_names(key)[1:-1]
     EMRIeccs = []
     for f in filePaths:
@@ -223,6 +228,8 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         if args.debug_index is not None:
             if idx0 != args.debug_index:
                 continue
+        # Need to change the resolution of the data, otherwise the omega22
+        # average are not monotonically increasing
         kwargs = {"filepath": f,
                   "deltaT": 0.08 if idx0 <= 8 else 0.05}
         if args.verbose:

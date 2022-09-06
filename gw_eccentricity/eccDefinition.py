@@ -883,10 +883,10 @@ class eccDefinition:
             t, self.t_average_mean_motion, omega22_average)
 
     def check_monotonicity_of_omega22_average(self,
-                                              kind="pericenters"):
+                                              extrema_type="pericenters"):
         """Check that omega average is monotonically increasing."""
         omega22_average \
-            = self.omega22_average_pericenters if kind == "pericenters"\
+            = self.omega22_average_pericenters if extrema_type == "pericenters"\
             else self.omega22_average_apocenters
         idx_non_monotonic = np.where(
             np.diff(omega22_average) <= 0)[0]
@@ -896,7 +896,7 @@ class eccDefinition:
                 omega22_average[first_idx+1]
                 - omega22_average[first_idx])
             raise Exception(
-                f"Omega22 average at {kind} are not strictly"
+                f"Omega22 average at {extrema_type} are not strictly"
                 " monotonically increasing.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
                 f" where omega22 drops from {omega22_average[first_idx]} to"
