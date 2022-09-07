@@ -454,19 +454,11 @@ class eccDefinition:
         # Sanity checks
         # check that fref_out and tref_out are of the same length
         if fref_in is not None:
-            # fref_out and tref_in are always of the same length since
-            # tref_in is obtained by evaluating an interpolant of frequency.
-            # However, since an interpolator is involved it might not
-            # always be guaranteed that the tref_out obtained also falls within
-            # the valid range of time, i.e., tmin and tmax. Therefore, when
-            # tref_out is obtained by constraining it to fall within tmin and
-            # tmax, the resulting tref_out sometimes varies by one in length.
-            # To fix this we constrain the fref_out also whenever this happens,
-            # so that the fref_out and tref_out are always of the same length.
             if len(self.fref_out) != len(self.tref_out):
-                self.fref_out = self.fref_out[
-                    np.logical_and(self.tref_in < self.tmax,
-                                   self.tref_in >= self.tmin)]
+                raise Exception(
+                    "length of fref_out and tref_out do not match."
+                    f"fref_out has length {len(self.fref_out)} and "
+                    f"tref_out has length {len(self.tref_out)}.")
 
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
@@ -603,10 +595,9 @@ class eccDefinition:
 
         if self.ecc_interp is None:
             self.ecc_interp = get_interpolant(self.t_for_checks,
-                                              self.ecc_for_checks,
-                                              interpolator="pchip")
-        # Get derivative of ecc(t) using PchipInterpolator.
-        return self.ecc_interp.derivative(nu=1)(t)
+                                              self.ecc_for_checks)
+        # Get derivative of ecc(t) using spline
+        return self.ecc_interp.derivative(n=n)(t)
 
     def compute_mean_ano(self, t):
         """
@@ -696,9 +687,19 @@ class eccDefinition:
                                 / current_period)
             mean_ano = np.append(mean_ano, mean_ano_current)
 
+        # Note that within each pair of consecutive pericenters we compute mean
+        # anomaly for times >= last pericenter and < next pericenter. This
+        # means that if t[-1] == time at pericenters_select[-1], then we are
+        # not evaluating mean anomaly there. Since it's a pericenter, the mean
+        # anomaly is zero. We need to just append that to the mean anomaly
+        # array in that case.
+        if t[-1] == self.t[pericenters_select[-1]]:
+            mean_ano = np.append(mean_ano, [0])
         # check that mean_ano has the same length as t
         if len(mean_ano) != len(t):
-            raise Exception("Mean anomaly and t lengths donot match.")
+            raise Exception("Mean anomaly and t lengths donot match.\n"
+                            f"t has length = {len(t)} and mean anomaly has "
+                            f"length {len(mean_ano)}")
         return mean_ano
 
     def check_time_limits(self, t):
