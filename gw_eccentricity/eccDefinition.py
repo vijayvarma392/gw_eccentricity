@@ -313,8 +313,10 @@ class eccDefinition:
             extrema_idx = extrema_idx[
                 extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
+            # we want monotonic interpolant
             interpolant = get_interpolant(self.t[extrema_idx],
-                                          self.omega22[extrema_idx])
+                                          self.omega22[extrema_idx],
+                                          interpolator="pchip")
             return interpolant, extrema_idx
         else:
             raise Exception(
@@ -505,7 +507,7 @@ class eccDefinition:
         # compute eccentricity at self.tref_out
         self.ecc_ref = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
-        self.mean_ano_ref = self.compute_mean_ano(self.tref_out)
+        self.mean_ano_ref = self.compute_mean_anomaly(self.tref_out)
 
         # check if eccentricity is positive
         if any(self.ecc_ref < 0):
@@ -601,7 +603,8 @@ class eccDefinition:
 
         if self.ecc_interp is None:
             self.ecc_interp = get_interpolant(self.t_for_checks,
-                                              self.ecc_for_checks)
+                                              self.ecc_for_checks,
+                                              interpolator="pchip")
         # Get derivative of ecc(t) using PchipInterpolator.
         return self.ecc_interp.derivative(nu=1)(t)
 
@@ -628,7 +631,7 @@ class eccDefinition:
         Mean anomaly at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        # self.check_time_limits(t)
 
         @np.vectorize
         def mean_ano(t):
@@ -642,6 +645,61 @@ class eccDefinition:
             return mean_ano_ref
 
         return mean_ano(t)
+
+    def compute_mean_anomaly(self, t):
+        """Compute mean anomlay for given t.
+
+        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.  Mean anomaly
+        grows linearly in time from 0 to 2 pi over the range
+        [time_at_last_pericenter, time_at_next_pericenter], where
+        time_at_last_pericenter is the time at the previous pericenter, and
+        time_at_next_pericenter is the time at the next pericenter.
+
+        #FIXME: ARIF Change the above reference when gw eccentricity paper is
+        #out
+
+        Parameters:
+        -----------
+        t:
+            Time to compute mean anomaly at. Could be scalar or an array.
+
+        Returns:
+        --------
+        Mean anomaly at t.
+        """
+        # Check that t is within tmin and tmax to avoid extrapolation
+        self.check_time_limits(t)
+
+        # We seek out the first and the last pericenter that bounds t.
+        first_pericenter = self.pericenters_location[
+            np.where(min(t) >= self.t_pericenters)[0][-1]]
+        last_pericenter = self.pericenters_location[
+            np.where(max(t) <= self.t_pericenters)[0][0]]
+        # select the pericenters to use for computing mean anomaly
+        pericenters_select = self.pericenters_location[
+            np.logical_and(self.pericenters_location >= first_pericenter,
+                           self.pericenters_location <= last_pericenter)]
+
+        # We devide the times t in sections that falls within successive
+        # pericenters and within that sections compute mean anomaly. Finally
+        # combine them to get the mean anomaly for the whole t
+        mean_ano = []
+        for idx in range(len(pericenters_select[:-1])):
+            # get times between successive pericenters
+            time_at_last_pericenter = self.t[pericenters_select[idx]]
+            time_at_next_pericenter = self.t[pericenters_select[idx+1]]
+            times = t[np.logical_and(t >= time_at_last_pericenter,
+                                     t < time_at_next_pericenter)]
+            current_period = (time_at_next_pericenter
+                              - time_at_last_pericenter)
+            mean_ano_current = (2*np.pi*(times - time_at_last_pericenter)
+                                / current_period)
+            mean_ano = np.append(mean_ano, mean_ano_current)
+
+        # check that mean_ano has the same length as t
+        if len(mean_ano) != len(t):
+            raise Exception("Mean anomaly and t lengths donot match.")
+        return mean_ano
 
     def check_time_limits(self, t):
         """Check that time t is within tmin and tmax.
@@ -884,8 +942,10 @@ class eccDefinition:
         # used to obtain the t_average in the function
         # eccDefinition.get_t_average_for_mean_motion.
         omega22_average = omega22_average[self.sorted_idx_mean_motion]
+        # since omega22_average should be monotonic, we use pchipinterpolator
         return interpolate(
-            t, self.t_average_mean_motion, omega22_average)
+            t, self.t_average_mean_motion, omega22_average,
+            interpolator="pchip")
 
     def check_monotonicity_of_omega22_average(self,
                                               extrema_type="pericenters"):
@@ -930,8 +990,11 @@ class eccDefinition:
 
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
+        # since omega22 of zeroecc should be monotonically increasing,
+        # we use PchipInterpolator.
         return interpolate(
-            t, self.t_zeroecc_shifted, self.omega22_zeroecc)
+            t, self.t_zeroecc_shifted, self.omega22_zeroecc,
+            interpolator="pchip")
 
     def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
@@ -1007,9 +1070,12 @@ class eccDefinition:
                 warnings.warn(f"Omega22 average from method {method} is not "
                               "monotonically increasing.")
             # Get tref_in using interpolation
+            # since tref_in should be monotonically increasing, we use
+            # PchipInterpolator.
             tref_in = interpolate(fref_out,
                                   self.omega22_average / (2 * np.pi),
-                                  self.t_for_omega22_average)
+                                  self.t_for_omega22_average,
+                                  interpolator="pchip")
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
                 warnings.warn(f"tref_in from fref_in using method {method} is"
@@ -1445,7 +1511,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.t_for_checks,
-                self.compute_mean_ano(self.t_for_checks),
+                self.compute_mean_anomaly(self.t_for_checks),
                 **kwargs)
         # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
@@ -1990,8 +2056,10 @@ class eccDefinition:
                           + self.pericenters_location[1:]) / 2
         apocenters_idx = apocenters_idx.astype(int)  # convert to ints
         if len(apocenters_idx) >= 2:
+            # We want monotonic interpolant
             interpolant = get_interpolant(self.t[apocenters_idx],
-                                          self.omega22[apocenters_idx])
+                                          self.omega22[apocenters_idx],
+                                          interpolator="pchip")
             return interpolant, apocenters_idx
         else:
             raise Exception(

@@ -835,6 +835,9 @@ def load_EMRI_waveform(**kwargs):
                 "hlm": {(2, 2): h22_new}}
     if kwargs["deltaT"] is not None:
         t_interp = np.arange(t_new[0], t_new[-1], kwargs["deltaT"])
+        # make t_interp within the bounds of t_new to avoild extrapolation
+        t_interp = t_interp[np.logical_and(t_interp >= t_new[0],
+                                           t_interp <= t_new[-1])]
         amp22_interp = interpolate(t_interp, t_new, np.abs(h22_new))
         phase22_interp = interpolate(
             t_interp, t_new, np.unwrap(np.angle(h22_new)))

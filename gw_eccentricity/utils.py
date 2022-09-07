@@ -151,7 +151,7 @@ def interpolate(newX,
                 oldX,
                 oldY,
                 allowExtrapolation=False,
-                interpolator="pchip"):
+                interpolator="spline"):
     """Interpolate.
 
     Parameters:
@@ -170,7 +170,7 @@ def interpolate(newX,
         Could be one of the following:
         "pchip":  Uses scipy.interpolate.PchipInterpolator.
         "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
-        Default is "pchip".
+        Default is "spline".
 
     Returns:
     --------
@@ -181,8 +181,8 @@ def interpolate(newX,
         raise Exception("Lengths dont match.")
 
     if not allowExtrapolation:
-        if np.min(newX) < np.min(oldX) - 1e-2 \
-           or np.max(newX) > np.max(oldX) + 1e-2:
+        if np.min(newX) < np.min(oldX) - 1e-10 \
+           or np.max(newX) > np.max(oldX) + 1e-10:
             print(np.min(newX), np.min(oldX), np.max(newX), np.max(oldX))
             print(np.min(newX) < np.min(oldX))
             print(np.max(newX) > np.max(oldX))
@@ -195,7 +195,7 @@ def interpolate(newX,
 def get_interpolant(oldX,
                     oldY,
                     allowExtrapolation=False,
-                    interpolator="pchip"):
+                    interpolator="spline"):
     """Create Interpolant.
 
     Parameters:
@@ -212,7 +212,7 @@ def get_interpolant(oldX,
         Could be one of the following:
         "pchip":  Uses scipy.interpolate.PchipInterpolator.
         "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
-        Default is "pchip".
+        Default is "spline".
 
     Returns:
     --------
