@@ -10,6 +10,7 @@ from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
 from .utils import interpolate
 from .utils import get_interpolant
+from .utils import get_default_spline_kwargs
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ import warnings
 class eccDefinition:
     """Measure eccentricity from given waveform data dictionary."""
 
-    def __init__(self, dataDict, spline_kwargs=None, extra_kwargs=None):
+    def __init__(self, dataDict, extra_kwargs=None):
         """Init eccDefinition class.
 
         parameters:
@@ -77,21 +78,23 @@ class eccDefinition:
                 - We require that "hlm_zeroecc" be at least as long as "hlm" so
                   that residual amplitude/frequency can be computed.
 
-        spline_kwargs:
-            Dictionary of arguments to be passed to the spline interpolation
-            routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-            compute omega22_pericenters(t) and omega22_apocenters(t).
-            Defaults are the same as those of InterpolatedUnivariateSpline.
-
         extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
             are:
+            spline_kwargs:
+                Dictionary of arguments to be passed to the spline
+                interpolation routine
+                (scipy.interpolate.InterpolatedUnivariateSpline) used to
+                compute omega22_pericenters(t) and omega22_apocenters(t).
+                Defaults are set using utils.get_default_spline_kwargs
+
             num_orbits_to_exclude_before_merger:
                 Can be None or a non negative number.
                 If None, the full waveform data (even post-merger) is used for
                 finding extrema, but this might cause interpolation issues.
                 For a non negative num_orbits_to_exclude_before_merger, that
                 many orbits prior to merger are excluded when finding extrema.
-                Default: 1.
+                Default: 2.
+
             extrema_finding_kwargs:
                 Dictionary of arguments to be passed to the extrema finder,
                 scipy.signal.find_peaks.
@@ -110,9 +113,11 @@ class eccDefinition:
                 find_peaks. See
                 eccDefinition.get_width_for_peak_finder_from_phase22 for more
                 details.
+
             debug:
                 Run additional sanity checks if debug is True.
                 Default: True.
+
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
                 omega22(t).
@@ -136,6 +141,7 @@ class eccDefinition:
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
                 Default is "mean_motion".
+
             treat_mid_points_between_pericenters_as_apocenters:
                 If True, instead of trying to find apocenter locations by
                 looking for local minima in the data, we simply find the
@@ -195,10 +201,6 @@ class eccDefinition:
             self.compute_res_amp_and_omega22()
 
         # Sanity check various kwargs and set default values
-        self.spline_kwargs = check_kwargs_and_set_defaults(
-            spline_kwargs, self.get_default_spline_kwargs(),
-            "spline_kwargs",
-            "eccDefinition.get_default_spline_kwargs()")
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
             "extra_kwargs",
@@ -217,6 +219,11 @@ class eccDefinition:
             "eccDefinition.get_default_extrema_finding_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega22_averaging_methods()
+        self.spline_kwargs = check_kwargs_and_set_defaults(
+            extra_kwargs["spline_kwargs"],
+            get_default_spline_kwargs(),
+            "spline_kwargs",
+            "utils.get_default_spline_kwargs()")
 
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
@@ -227,16 +234,6 @@ class eccDefinition:
             "hlm_zeroecc",      # Dict of quasicircular waveform modes
         ]
         return list_of_keys
-
-    def get_default_spline_kwargs(self):
-        """Defaults for spline settings."""
-        default_spline_kwargs = {
-            "w": None,
-            "bbox": [None, None],
-            "k": 3,
-            "ext": 2,
-            "check_finite": False}
-        return default_spline_kwargs
 
     def get_default_extrema_finding_kwargs(self):
         """Defaults for extrema_finding_kwargs."""
@@ -254,7 +251,8 @@ class eccDefinition:
     def get_default_extra_kwargs(self):
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
-            "num_orbits_to_exclude_before_merger": 1,
+            "spline_kwargs": {},
+            "num_orbits_to_exclude_before_merger": 2,
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
@@ -313,10 +311,9 @@ class eccDefinition:
             extrema_idx = extrema_idx[
                 extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
-            # we want monotonic interpolant
             interpolant = get_interpolant(self.t[extrema_idx],
                                           self.omega22[extrema_idx],
-                                          interpolator="pchip")
+                                          spline_kwargs=self.spline_kwargs)
             return interpolant, extrema_idx
         else:
             raise Exception(
@@ -499,7 +496,8 @@ class eccDefinition:
         # compute eccentricity at self.tref_out
         self.ecc_ref = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
-        self.mean_ano_ref = self.compute_mean_anomaly(self.tref_out)
+        self.mean_ano_ref = self.compute_mean_anomaly_using_interpolation(
+            self.tref_out)
 
         # check if eccentricity is positive
         if any(self.ecc_ref < 0):
@@ -702,6 +700,58 @@ class eccDefinition:
                             f"length {len(mean_ano)}")
         return mean_ano
 
+    def compute_mean_anomaly_using_interpolation(self, t):
+        """Compute mean anomlay for given t using interpolation.
+
+        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.  Mean anomaly
+        grows linearly in time from 0 to 2 pi over the range
+        [time_at_last_pericenter, time_at_next_pericenter], where
+        time_at_last_pericenter is the time at the previous pericenter, and
+        time_at_next_pericenter is the time at the next pericenter.
+
+        To make the computation of mean anomaly for very large t,
+        we can first make an interpolant of the mean anomaly and then evalute
+        it at the given t. This is helpful, for example, in case EMRI
+        waveforms which could be very long.
+
+        Since the mean anomaly changes from 0 to 2pi from one pericenter to
+        the next pericenter, we can first get unwrapped vaules of mean anomaly
+        at the pericenter by increasing the mean anomaly by 2pi for each
+        pericenter and finally make a linear interpolant since mean anomaly is
+        a linear function of time.
+
+        #FIXME: ARIF Change the above reference when gw eccentricity paper is
+        #out
+
+        Parameters:
+        -----------
+        t:
+            Time to compute mean anomaly at. Could be scalar or an array.
+
+        Returns:
+        --------
+        Mean anomaly at t.
+        """
+        # Check that t is within tmin and tmax to avoid extrapolation
+        self.check_time_limits(t)
+
+        # make an array of length same as the t_pericenters
+        mean_ano_pericenters = np.zeros(len(self.t_pericenters))
+        # fill the mean_ano_pericenters array
+        for idx, t_pericenter in enumerate(self.t_pericenters):
+            # mean anomaly increses by 2pi
+            mean_ano_pericenters[idx] = 2 * np.pi * idx
+        # Using linear interpolation since mean aomaly linear
+        # function of time.
+        mean_ano = np.interp(t, self.t_pericenters, mean_ano_pericenters)
+        # check that mean_ano has the same length as t
+        if len(mean_ano) != len(t):
+            raise Exception("Mean anomaly and t lengths donot match.\n"
+                            f"t has length = {len(t)} and mean anomaly has "
+                            f"length {len(mean_ano)}")
+        # Modulo 2pi to make the mean anomaly vary between 0 and 2pi
+        return mean_ano % (2 * np.pi)
+
     def check_time_limits(self, t):
         """Check that time t is within tmin and tmax.
 
@@ -860,12 +910,18 @@ class eccDefinition:
         # This is important to satisfy. Otherwise there will be extrapolation
         # when we interpolate zeroecc ecc waveform data on the eccentric
         # waveform time.
-        if (self.t_zeroecc_shifted[0] > self.t[0]):
+        if self.t_zeroecc_shifted[0] > self.t[0]:
             raise Exception("Length of zeroecc waveform must be >= the length "
                             "of the eccentric waveform. Eccentric waveform "
                             f"starts at {self.t[0]} whereas zeroecc waveform "
                             f"starts at {self.t_zeroecc_shifted[0]}. Try "
                             "starting the zeroecc waveform at lower Momega0.")
+        # check if extrapolation happens in the pre-merger region.
+        if self.t_zeroecc_shifted[-1] < self.t_merger:
+            raise Exception("Trying to extrapolate zeroecc waveform in "
+                            "pre-merger region.\n"
+                            f"Merger time={self.t_merger}, last available "
+                            f"zeroecc time={self.t_zeroecc_shifted[-1]}")
         # In case the post-merger part of the zeroecc waveform is shorter than
         # that of the the ecc waveform, we allow extrapolation so that the
         # residual quantities could be computed. Since eccentricity measurement
@@ -943,10 +999,15 @@ class eccDefinition:
         # used to obtain the t_average in the function
         # eccDefinition.get_t_average_for_mean_motion.
         omega22_average = omega22_average[self.sorted_idx_mean_motion]
-        # since omega22_average should be monotonic, we use pchipinterpolator
+        # check that omega22_average in strictly monotonic
+        if any(np.diff(omega22_average) <= 0):
+            raise Exception("omega22_average is not monotonically increasing.")
+        # To omega22_average interpolant should be monotonic. Therefore we use
+        # PchipInterpolator
         return interpolate(
             t, self.t_average_mean_motion, omega22_average,
-            interpolator="pchip")
+            interpolator="pchip"
+        )
 
     def check_monotonicity_of_omega22_average(self,
                                               extrema_type="pericenters"):
@@ -991,11 +1052,8 @@ class eccDefinition:
 
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
-        # since omega22 of zeroecc should be monotonically increasing,
-        # we use PchipInterpolator.
         return interpolate(
-            t, self.t_zeroecc_shifted, self.omega22_zeroecc,
-            interpolator="pchip")
+            t, self.t_zeroecc_shifted, self.omega22_zeroecc)
 
     def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
@@ -1044,7 +1102,7 @@ class eccDefinition:
         as a function of these reference frequencies. This should work if the
         reference frequency is monotonic which it should be.
 
-        Finally, we evaluate this spine on the fref_in to get the tref_in.
+        Finally, we evaluate this spline on the fref_in to get the tref_in.
         """
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
@@ -1066,17 +1124,11 @@ class eccDefinition:
                                self.t < self.tmax_for_fref)]
             self.omega22_average = self.available_averaging_methods[
                 method](self.t_for_omega22_average)
-            # check if average omega22 is monotonically increasing
-            if any(np.diff(self.omega22_average) <= 0):
-                warnings.warn(f"Omega22 average from method {method} is not "
-                              "monotonically increasing.")
+
             # Get tref_in using interpolation
-            # since tref_in should be monotonically increasing, we use
-            # PchipInterpolator.
             tref_in = interpolate(fref_out,
                                   self.omega22_average / (2 * np.pi),
-                                  self.t_for_omega22_average,
-                                  interpolator="pchip")
+                                  self.t_for_omega22_average)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
                 warnings.warn(f"tref_in from fref_in using method {method} is"
@@ -1512,7 +1564,8 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.t_for_checks,
-                self.compute_mean_anomaly(self.t_for_checks),
+                self.compute_mean_anomaly_using_interpolation(
+                    self.t_for_checks),
                 **kwargs)
         # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
@@ -2057,10 +2110,9 @@ class eccDefinition:
                           + self.pericenters_location[1:]) / 2
         apocenters_idx = apocenters_idx.astype(int)  # convert to ints
         if len(apocenters_idx) >= 2:
-            # We want monotonic interpolant
             interpolant = get_interpolant(self.t[apocenters_idx],
                                           self.omega22[apocenters_idx],
-                                          interpolator="pchip")
+                                          spline_kwargs=self.spline_kwargs)
             return interpolant, apocenters_idx
         else:
             raise Exception(

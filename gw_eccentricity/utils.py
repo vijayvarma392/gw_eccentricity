@@ -3,6 +3,7 @@ import numpy as np
 import argparse
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import PchipInterpolator
+import warnings
 
 
 def amplitude_using_all_modes(mode_dict):
@@ -147,11 +148,23 @@ def time_deriv_4thOrder(y, dt):
     return dydt
 
 
+def get_default_spline_kwargs():
+    """Defaults for spline settings."""
+    default_spline_kwargs = {
+        "w": None,
+        "bbox": [None, None],
+        "k": 3,
+        "ext": 2,
+        "check_finite": False}
+    return default_spline_kwargs
+
+
 def interpolate(newX,
                 oldX,
                 oldY,
                 allowExtrapolation=False,
-                interpolator="spline"):
+                interpolator="spline",
+                spline_kwargs=None):
     """Interpolate.
 
     Parameters:
@@ -171,6 +184,8 @@ def interpolate(newX,
         "pchip":  Uses scipy.interpolate.PchipInterpolator.
         "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
         Default is "spline".
+    spline_kwargs:
+        See under get_interpolant.
 
     Returns:
     --------
@@ -183,19 +198,26 @@ def interpolate(newX,
     if not allowExtrapolation:
         if np.min(newX) < np.min(oldX) - 1e-10 \
            or np.max(newX) > np.max(oldX) + 1e-10:
-            print(np.min(newX), np.min(oldX), np.max(newX), np.max(oldX))
-            print(np.min(newX) < np.min(oldX))
-            print(np.max(newX) > np.max(oldX))
+            print(f"Min of newX = {np.min(newX)}, "
+                  f"Min of oldX = {np.min(oldX)}")
+            print(f"Max of newX = {np.max(newX)}, "
+                  f"Max of oldX = {np.max(oldX)}")
+            print("newX has vlaues below oldX? "
+                  f"{np.min(newX) < np.min(oldX)}")
+            print("newX has values above oldX? "
+                  f"{np.max(newX) > np.max(oldX)}")
             raise Exception("Trying to extrapolate, "
                             "but allowExtrapolation=False")
-    newY = get_interpolant(oldX, oldY, allowExtrapolation, interpolator)(newX)
+    newY = get_interpolant(oldX, oldY, allowExtrapolation, interpolator,
+                           spline_kwargs)(newX)
     return newY
 
 
 def get_interpolant(oldX,
                     oldY,
                     allowExtrapolation=False,
-                    interpolator="spline"):
+                    interpolator="spline",
+                    spline_kwargs=None):
     """Create Interpolant.
 
     Parameters:
@@ -213,6 +235,13 @@ def get_interpolant(oldX,
         "pchip":  Uses scipy.interpolate.PchipInterpolator.
         "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
         Default is "spline".
+    spline_kwargs:
+        Dictionary of kwargs to be provided to the interpolator if
+        "interpolator"="spline". The allowed kwargs are the same as that of the
+        spline function scipy.interpolate.InterpolatedUnivariateSpline and the
+        defaults are set using gw_eccentricity.utils.get_default_spline_kwargs.
+        Since we use allowExtraplotion arg separately, value of "ext" in
+        extra_kwargs will be overridden by allowExtrapolation.
 
     Returns:
     --------
@@ -221,13 +250,27 @@ def get_interpolant(oldX,
     if not np.all(np.diff(oldX) > 0):
         raise Exception("oldX must have increasing values")
 
-    # returns extrapolated values when extrapolating
     if interpolator == "spline":
-        ext = 0 if allowExtrapolation else 2
-        # ext = 0, returns extraploted values
-        # ext = 2, raises exception if extrapolation is attempted.
-        interpolant = InterpolatedUnivariateSpline(oldX, oldY, ext=ext)
+        kwargs = check_kwargs_and_set_defaults(
+            spline_kwargs,
+            get_default_spline_kwargs(),
+            "spline kwargs",
+            "utils.get_default_spline_kwargs")
+        # If allowExtrapolation is True but ext=2 then raise a warning
+        # and override ext to 0
+        if allowExtrapolation and kwargs["ext"] == 2:
+            # ext = 0, returns extraploted values
+            kwargs["ext"] = 0
+        # If allowExtraplotion is False but ext != 2 then raise a warning
+        # and override ext to 2
+        if not allowExtrapolation and kwargs["ext"] != 2:
+            # ext = 2, raises exception if extrapolation is attempted.
+            kwargs["ext"] = 2
+        interpolant = InterpolatedUnivariateSpline(oldX, oldY, **kwargs)
     elif interpolator == "pchip":
+        if spline_kwargs is not None:
+            warnings.warn(f"Interpolator is {interpolator} but spline_kwargs "
+                          "are passed. spline_kwargs will be ignored.")
         interpolant = PchipInterpolator(oldX, oldY,
                                         extrapolate=allowExtrapolation)
     else:

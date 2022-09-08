@@ -165,18 +165,18 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
 
     if args.example:
         fig_ecc_at_start_name = (
-            f"{args.fig_dir}/test_emri_vs_measured_ecc_example"
+            f"{args.fig_dir}/test_emri_measured_ecc_vs_emri_ecc_example"
             f".{args.plot_format}")
         fig_ecc_vs_t_name = (
             f"{args.fig_dir}/test_emri_measured_ecc_vs_time_example."
             f"{args.plot_format}")
     else:
         fig_ecc_at_start_name = (
-            f"{args.fig_dir}/test_emri_vs_measured_ecc_set{key}_{method_str}"
-            f".{args.plot_format}")
+            f"{args.fig_dir}/test_emri_measured_ecc_vs_emri_ecc"
+            f"_set{key}_{method_str}.{args.plot_format}")
         fig_ecc_vs_t_name = (
-            f"{args.fig_dir}/test_emri_measured_ecc_vs_time_set{key}_{method_str}"
-            f".{args.plot_format}")
+            f"{args.fig_dir}/test_emri_measured_ecc_vs_time_set{key}_"
+            f"{method_str}.{args.plot_format}")
     # For emri vs measured ecc at the first extrema
     fig_ecc_at_start, ax_ecc_at_start = plt.subplots(
         figsize=(figWidthsOneColDict[style], 2 if args.paper else 3))
