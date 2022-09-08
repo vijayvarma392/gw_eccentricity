@@ -29,8 +29,6 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         # The envelope fitting does not work properly. Maybe there is a better
         # way to do this but scaling the amp22 data by its value at the global
         # peak (the merger time) solves this issue.
-        # However, we don't want to do this for dimless units.
         self.amp22_merger = self.data_for_finding_extrema[
             np.argmin(self.t - self.t_merger)]
-        if self.amp22_merger <= 1e-1:
-            self.data_analyse /= self.amp22_merger
+        self.data_analyse /= self.amp22_merger
