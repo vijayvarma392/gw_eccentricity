@@ -6,6 +6,7 @@ Part of Defining eccentricity project
 
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import PchipInterpolator
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -871,8 +872,8 @@ class eccDefinition:
         # used to obtain the t_average in the function
         # eccDefinition.get_t_average_for_mean_motion.
         omega22_average = omega22_average[self.sorted_idx_mean_motion]
-        return InterpolatedUnivariateSpline(
-            self.t_average_mean_motion, omega22_average, ext=2)(t)
+        return PchipInterpolator(
+            self.t_average_mean_motion, omega22_average, extrapolate=False)(t)
 
     def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
