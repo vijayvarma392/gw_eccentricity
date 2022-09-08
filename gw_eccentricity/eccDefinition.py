@@ -220,7 +220,7 @@ class eccDefinition:
         self.available_averaging_methods \
             = self.get_available_omega22_averaging_methods()
         self.spline_kwargs = check_kwargs_and_set_defaults(
-            extra_kwargs["spline_kwargs"],
+            self.extra_kwargs["spline_kwargs"],
             get_default_spline_kwargs(),
             "spline_kwargs",
             "utils.get_default_spline_kwargs()")
