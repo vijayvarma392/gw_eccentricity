@@ -64,7 +64,6 @@ def measure_eccentricity(tref_in=None,
                          method="Amplitude",
                          dataDict=None,
                          return_gwecc_object=False,
-                         spline_kwargs=None,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -206,20 +205,22 @@ def measure_eccentricity(tref_in=None,
         plots.
         Default is False.
 
-    spline_kwargs:
-        Dictionary of arguments to be passed to the spline interpolation
-        routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-        compute omega22_pericenters(t) and omega22_apocenters(t).
-        Defaults are the same as those of InterpolatedUnivariateSpline.
-
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
+        spline_kwargs:
+            Dictionary of arguments to be passed to the spline
+            interpolation routine
+            (scipy.interpolate.InterpolatedUnivariateSpline) used to
+            compute omega22_pericenters(t) and omega22_apocenters(t).
+            Defaults are set using utils.get_default_spline_kwargs
+
         num_orbits_to_exclude_before_merger:
             Can be None or a non negative number.
             If None, the full waveform data (even post-merger) is used for
             finding extrema, but this might cause interpolation issues.
             For a non negative num_orbits_to_exclude_before_merger, that
             many orbits prior to merger are excluded when finding extrema.
-            Default: 1.
+            Default: 2.
+
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,
             scipy.signal.find_peaks.
@@ -237,9 +238,11 @@ def measure_eccentricity(tref_in=None,
             parameter for find_peaks. See
             eccDefinition.get_width_for_peak_finder_from_phase22 for more
             details.
+
         debug:
             Run additional sanity checks if debug is True.
             Default: True.
+
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
@@ -260,6 +263,7 @@ def measure_eccentricity(tref_in=None,
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
             Default is "mean_motion".
+
         treat_mid_points_between_pericenters_as_apocenters:
             If True, instead of trying to find apocenter locations by looking
             for local minima in the data, we simply find the midpoints between
@@ -311,7 +315,6 @@ def measure_eccentricity(tref_in=None,
 
     if method in available_methods:
         gwecc_object = available_methods[method](dataDict,
-                                                 spline_kwargs=spline_kwargs,
                                                  extra_kwargs=extra_kwargs)
 
         tref_or_fref_out, ecc_ref, mean_ano_ref = gwecc_object.measure_ecc(

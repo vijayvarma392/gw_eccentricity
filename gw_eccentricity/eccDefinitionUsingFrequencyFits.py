@@ -143,13 +143,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.data_analyse = self.data_for_finding_extrema[:self.idx_end]
         self.phase22_analyse = self.phase22[:self.idx_end]
 
-    def find_extrema(self, extrema_type="maxima"):
+    def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
 
         parameters:
         -----------
         extrema_type:
-            One of 'maxima', 'peaks', 'minima' or 'troughs'.
+            Either "pericenters" or "apocenters".
 
         returns:
         ------
@@ -157,9 +157,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         """
         # STEP 0 - setup
 
-        if extrema_type in ['maxima', "pericenter", 'peaks']:
+        if extrema_type == "pericenters":
             sign = +1
-        elif extrema_type in ['minima', "apocenter", 'troughs']:
+        elif extrema_type == "apocenters":
             sign = -1
         else:
             raise Exception(f"extrema_type='{extrema_type}' unknown.")
@@ -193,9 +193,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # plots
         verbose = self.debug
         if verbose:
-            diag_file = (
-                f"Diagnostics-{self.method}-{ {-1:'minima', 1:'maxima'}[sign]}"
-                ".pdf")
+            diag_file=f"Diagnostics-FrequencyFits-{ {-1:'apocenters', 1:'pericenters'}[sign]}.pdf"
         else:
             diag_file = ""
 
