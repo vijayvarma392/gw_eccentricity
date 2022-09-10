@@ -496,8 +496,7 @@ class eccDefinition:
         # compute eccentricity at self.tref_out
         self.ecc_ref = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
-        self.mean_ano_ref = self.compute_mean_anomaly_using_interpolation(
-            self.tref_out)
+        self.mean_ano_ref = self.compute_mean_anomaly(self.tref_out)
 
         # check if eccentricity is positive
         if any(self.ecc_ref < 0):
@@ -597,44 +596,6 @@ class eccDefinition:
         # Get derivative of ecc(t) using spline
         return self.ecc_interp.derivative(n=n)(t)
 
-    def compute_mean_ano(self, t):
-        """
-        Compute mean anomaly at time t.
-
-        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.  Mean anomaly
-        grows linearly in time from 0 to 2 pi over the range
-        [t_at_last_pericenter, t_at_next_pericenter], where
-        t_at_last_pericenter is the time at the previous pericenter, and
-        t_at_next_pericenter is the time at the next pericenter.
-
-        #FIXME: ARIF Change the above reference when gw eccentricity paper is
-        #out
-
-        Parameters:
-        -----------
-        t:
-            Time to compute mean anomaly at. Could be scalar or an array.
-
-        Returns:
-        --------
-        Mean anomaly at t.
-        """
-        # Check that t is within tmin and tmax to avoid extrapolation
-        # self.check_time_limits(t)
-
-        @np.vectorize
-        def mean_ano(t):
-            idx_at_last_pericenter = np.where(self.t_pericenters <= t)[0][-1]
-            t_at_last_pericenter = self.t_pericenters[idx_at_last_pericenter]
-            t_at_next_pericenter = self.t_pericenters[idx_at_last_pericenter
-                                                      + 1]
-            t_since_last_pericenter = t - t_at_last_pericenter
-            current_period = t_at_next_pericenter - t_at_last_pericenter
-            mean_ano_ref = 2 * np.pi * t_since_last_pericenter / current_period
-            return mean_ano_ref
-
-        return mean_ano(t)
-
     def compute_mean_anomaly(self, t):
         """Compute mean anomlay for given t.
 
@@ -644,81 +605,13 @@ class eccDefinition:
         time_at_last_pericenter is the time at the previous pericenter, and
         time_at_next_pericenter is the time at the next pericenter.
 
-        #FIXME: ARIF Change the above reference when gw eccentricity paper is
-        #out
-
-        Parameters:
-        -----------
-        t:
-            Time to compute mean anomaly at. Could be scalar or an array.
-
-        Returns:
-        --------
-        Mean anomaly at t.
-        """
-        # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
-
-        # We seek out the first and the last pericenter that bounds t.
-        first_pericenter = self.pericenters_location[
-            np.where(min(t) >= self.t_pericenters)[0][-1]]
-        last_pericenter = self.pericenters_location[
-            np.where(max(t) <= self.t_pericenters)[0][0]]
-        # select the pericenters to use for computing mean anomaly
-        pericenters_select = self.pericenters_location[
-            np.logical_and(self.pericenters_location >= first_pericenter,
-                           self.pericenters_location <= last_pericenter)]
-
-        # We devide the times t in sections that falls within successive
-        # pericenters and within that sections compute mean anomaly. Finally
-        # combine them to get the mean anomaly for the whole t
-        mean_ano = []
-        for idx in range(len(pericenters_select[:-1])):
-            # get times between successive pericenters
-            time_at_last_pericenter = self.t[pericenters_select[idx]]
-            time_at_next_pericenter = self.t[pericenters_select[idx+1]]
-            times = t[np.logical_and(t >= time_at_last_pericenter,
-                                     t < time_at_next_pericenter)]
-            current_period = (time_at_next_pericenter
-                              - time_at_last_pericenter)
-            mean_ano_current = (2*np.pi*(times - time_at_last_pericenter)
-                                / current_period)
-            mean_ano = np.append(mean_ano, mean_ano_current)
-
-        # Note that within each pair of consecutive pericenters we compute mean
-        # anomaly for times >= last pericenter and < next pericenter. This
-        # means that if t[-1] == time at pericenters_select[-1], then we are
-        # not evaluating mean anomaly there. Since it's a pericenter, the mean
-        # anomaly is zero. We need to just append that to the mean anomaly
-        # array in that case.
-        if t[-1] == self.t[pericenters_select[-1]]:
-            mean_ano = np.append(mean_ano, [0])
-        # check that mean_ano has the same length as t
-        if len(mean_ano) != len(t):
-            raise Exception("Mean anomaly and t lengths donot match.\n"
-                            f"t has length = {len(t)} and mean anomaly has "
-                            f"length {len(mean_ano)}")
-        return mean_ano
-
-    def compute_mean_anomaly_using_interpolation(self, t):
-        """Compute mean anomlay for given t using interpolation.
-
-        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.  Mean anomaly
-        grows linearly in time from 0 to 2 pi over the range
-        [time_at_last_pericenter, time_at_next_pericenter], where
-        time_at_last_pericenter is the time at the previous pericenter, and
-        time_at_next_pericenter is the time at the next pericenter.
-
-        To make the computation of mean anomaly for very large t,
-        we can first make an interpolant of the mean anomaly and then evalute
-        it at the given t. This is helpful, for example, in case EMRI
-        waveforms which could be very long.
-
-        Since the mean anomaly changes from 0 to 2pi from one pericenter to
-        the next pericenter, we can first get unwrapped vaules of mean anomaly
-        at the pericenter by increasing the mean anomaly by 2pi for each
-        pericenter and finally make a linear interpolant since mean anomaly is
-        a linear function of time.
+        Mean anomaly goes linearly from [2*pi*n to 2*pi*(n+1)] from the nth to
+        (n+1)th pericenter. Therefore, if we have N+1 pericenters, we collect,
+        xVals = [tp_0, tp_1, tp_2, ..., tp_N]
+        yVals = [0, 2pi, 4pi, ..., 2*pi*N]
+        where tp_n is the time at the nth pericenter.
+        Finally, we build a linear interpolant for y using these xVals and
+        yVals.
 
         #FIXME: ARIF Change the above reference when gw eccentricity paper is
         #out
@@ -735,20 +628,10 @@ class eccDefinition:
         # Check that t is within tmin and tmax to avoid extrapolation
         self.check_time_limits(t)
 
-        # make an array of length same as the t_pericenters
-        mean_ano_pericenters = np.zeros(len(self.t_pericenters))
-        # fill the mean_ano_pericenters array
-        for idx, t_pericenter in enumerate(self.t_pericenters):
-            # mean anomaly increses by 2pi
-            mean_ano_pericenters[idx] = 2 * np.pi * idx
-        # Using linear interpolation since mean aomaly linear
-        # function of time.
+        # Get the mean anomaly at the pericenters
+        mean_ano_pericenters = np.arange(len(self.t_pericenters)) * 2 * np.pi
+        # Using linear interpolation since mean aomaly linear function of time.
         mean_ano = np.interp(t, self.t_pericenters, mean_ano_pericenters)
-        # check that mean_ano has the same length as t
-        if len(mean_ano) != len(t):
-            raise Exception("Mean anomaly and t lengths donot match.\n"
-                            f"t has length = {len(t)} and mean anomaly has "
-                            f"length {len(mean_ano)}")
         # Modulo 2pi to make the mean anomaly vary between 0 and 2pi
         return mean_ano % (2 * np.pi)
 
@@ -924,9 +807,9 @@ class eccDefinition:
                             f"zeroecc time={self.t_zeroecc_shifted[-1]}")
         # In case the post-merger part of the zeroecc waveform is shorter than
         # that of the the ecc waveform, we allow extrapolation so that the
-        # residual quantities could be computed. Since eccentricity measurement
-        # uses extrema before the merger, it does not affect the measured
-        # eccentricity.
+        # residual quantities can be computed. Above, we check that this
+        # extrapolation does not happen before t_merger, which is where
+        # eccentricity is normally measured.
         self.amp22_zeroecc_interp = interpolate(
             self.t, self.t_zeroecc_shifted, np.abs(self.h22_zeroecc),
             allowExtrapolation=True)
@@ -990,8 +873,10 @@ class eccDefinition:
             = (np.diff(self.phase22[self.apocenters_location])
                / np.diff(self.t[self.apocenters_location]))
         # check monotonicity of the omega22 average
-        self.check_monotonicity_of_omega22_average("pericenters")
-        self.check_monotonicity_of_omega22_average("apocenters")
+        self.check_monotonicity_of_omega22_average(
+            self.omega22_average_pericenters, "omega22 average at pericenters")
+        self.check_monotonicity_of_omega22_average(
+            self.omega22_average_apocenters, "omega22 average at apocenters")
         # combine the average omega22 at pericenters and apocenters
         omega22_average = np.append(self.omega22_average_apocenters,
                                     self.omega22_average_pericenters)
@@ -1000,8 +885,9 @@ class eccDefinition:
         # eccDefinition.get_t_average_for_mean_motion.
         omega22_average = omega22_average[self.sorted_idx_mean_motion]
         # check that omega22_average in strictly monotonic
-        if any(np.diff(omega22_average) <= 0):
-            raise Exception("omega22_average is not monotonically increasing.")
+        self.check_monotonicity_of_omega22_average(
+            omega22_average,
+            "combined omega22 average from pericenters and apocenters")
         # To omega22_average interpolant should be monotonic. Therefore we use
         # PchipInterpolator
         return interpolate(
@@ -1010,18 +896,16 @@ class eccDefinition:
         )
 
     def check_monotonicity_of_omega22_average(self,
-                                              extrema_type="pericenters"):
+                                              omega22_average,
+                                              description="omega22 average"):
         """Check that omega average is monotonically increasing.
 
-        extrema_type should be either "pericenters" or "apocenters".
+        omega22_average:
+            1d array of omega22 averages to check for monotonicity.
+        description:
+            String to describe what the the which omega22 average we are
+            looking at.
         """
-        if extrema_type == "pericenters":
-            omega22_average = self.omega22_average_pericenters
-        elif extrema_type == "apocenters":
-            omega22_average = self.omega22_average_apocenters
-        else:
-            raise ValueError(f"Unknown extream_type {extrema_type}. Should be"
-                             " either 'pericenters' or 'apocenters'.")
         idx_non_monotonic = np.where(
             np.diff(omega22_average) <= 0)[0]
         if len(idx_non_monotonic) > 0:
@@ -1030,8 +914,7 @@ class eccDefinition:
                 omega22_average[first_idx+1]
                 - omega22_average[first_idx])
             raise Exception(
-                f"Omega22 average at {extrema_type} are not strictly"
-                " monotonically increasing.\n"
+                f"{description} are not strictly monotonically increasing.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
                 f" where omega22 drops from {omega22_average[first_idx]} to"
                 f" {omega22_average[first_idx+1]} and decreases by"
@@ -1564,8 +1447,7 @@ class eccDefinition:
             if key not in kwargs:
                 kwargs.update({key: default_kwargs[key]})
         ax.plot(self.t_for_checks,
-                self.compute_mean_anomaly_using_interpolation(
-                    self.t_for_checks),
+                self.compute_mean_anomaly(self.t_for_checks),
                 **kwargs)
         # add a vertical line in case of scalar tref_out/fref_out indicating the
         # corresponding reference time
