@@ -642,7 +642,8 @@ class eccDefinition:
 
         # Get the mean anomaly at the pericenters
         mean_ano_pericenters = np.arange(len(self.t_pericenters)) * 2 * np.pi
-        # Using linear interpolation since mean aomaly linear function of time.
+        # Using linear interpolation since mean anomaly is a linear function of
+        # time.
         mean_ano = np.interp(t, self.t_pericenters, mean_ano_pericenters)
         # Modulo 2pi to make the mean anomaly vary between 0 and 2pi
         return mean_ano % (2 * np.pi)
