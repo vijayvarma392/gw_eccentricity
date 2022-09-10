@@ -181,8 +181,8 @@ def interpolate(newX,
     interpolator:
         String to choose an interpolator to interpolate oldX, oldY.
         Could be one of the following:
-        "pchip":  Uses scipy.interpolate.PchipInterpolator.
         "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
+        "monotonic_spline":  Uses scipy.interpolate.PchipInterpolator.
         Default is "spline".
     spline_kwargs:
         See under get_interpolant.
@@ -232,8 +232,8 @@ def get_interpolant(oldX,
     interpolator:
         String to choose an interpolator to interpolate oldX, oldY.
         Could be one of the following:
-        "pchip":  Uses scipy.interpolate.PchipInterpolator.
         "spline": Uses scipy.interpolate.InterpolatedUnivariateSpline.
+        "monotonic_spline":  Uses scipy.interpolate.PchipInterpolator.
         Default is "spline".
     spline_kwargs:
         Dictionary of kwargs to be provided to the interpolator if
@@ -267,7 +267,7 @@ def get_interpolant(oldX,
             # ext = 2, raises exception if extrapolation is attempted.
             kwargs["ext"] = 2
         interpolant = InterpolatedUnivariateSpline(oldX, oldY, **kwargs)
-    elif interpolator == "pchip":
+    elif interpolator == "monotonic_spline":
         if spline_kwargs is not None:
             warnings.warn(f"Interpolator is {interpolator} but spline_kwargs "
                           "are passed. spline_kwargs will be ignored.")
@@ -275,5 +275,5 @@ def get_interpolant(oldX,
                                         extrapolate=allowExtrapolation)
     else:
         raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
-                         " of ['pchip', 'spline']")
+                         " of ['spline', 'monotonic_spline']")
     return interpolant

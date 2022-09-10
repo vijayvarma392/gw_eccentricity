@@ -197,7 +197,7 @@ class eccDefinition:
         # in check_monotonicity_and_convexity or plot_decc_dt.
         self.decc_dt_for_checks = None
 
-        if "hlm_zeroecc" in dataDict:
+        if "hlm_zeroecc" in self.dataDict:
             self.compute_res_amp_and_omega22()
 
         # Sanity check various kwargs and set default values
@@ -449,6 +449,18 @@ class eccDefinition:
                            self.dataDict["t"] < self.tmax)]
 
         # Sanity checks
+        # check that tref_out is within t_zeroecc_shifted to make sure that
+        # the output is not in the extrapolated region.
+        if "hlm_zeroecc" in self.dataDict and (self.tref_out[-1]
+                                               > self.t_zeroecc_shifted[-1]):
+            raise Exception("tref_out is in extrapolated region.\n"
+                            f"Last element in tref_out = {self.tref_out[-1]}\n"
+                            "Last element in t_zeroecc = "
+                            f"{self.t_zeroecc_shifted[-1]}.\nThis might happen"
+                            " when 'num_orbits_to_exclude_before_merger' is "
+                            "set to None and part of zeroecc waveform is "
+                            "shorter than that of the ecc waveform requiring "
+                            "extrapolation to compute residual data.")
         # check that fref_out and tref_out are of the same length
         if fref_in is not None:
             if len(self.fref_out) != len(self.tref_out):
@@ -888,12 +900,8 @@ class eccDefinition:
         self.check_monotonicity_of_omega22_average(
             omega22_average,
             "combined omega22 average from pericenters and apocenters")
-        # To omega22_average interpolant should be monotonic. Therefore we use
-        # PchipInterpolator
         return interpolate(
-            t, self.t_average_mean_motion, omega22_average,
-            interpolator="pchip"
-        )
+            t, self.t_average_mean_motion, omega22_average)
 
     def check_monotonicity_of_omega22_average(self,
                                               omega22_average,
