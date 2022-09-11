@@ -922,16 +922,38 @@ class eccDefinition:
             change_at_first_idx = (
                 omega22_average[first_idx+1]
                 - omega22_average[first_idx])
+            if self.extra_kwargs["debug"]:
+                style = "APS"
+                use_fancy_plotsettings(style=style)
+                fig, axes = plt.subplots(
+                    nrows=2,
+                    figsize=(figWidthsTwoColDict[style], 6))
+                axes[0].plot(omega22_average, marker=".",
+                             c=colorsDict["default"])
+                axes[1].plot(np.diff(omega22_average), marker=".",
+                             c=colorsDict["default"])
+                axes[1].axhline(0, c=colorsDict["vline"])
+                axes[0].set_ylabel(labelsDict["omega22_average"])
+                axes[1].set_ylabel(
+                    fr"$\Delta$ {labelsDict['omega22_average']}")
+                axes[0].set_title(
+                    self.extra_kwargs["omega22_averaging_method"])
+                fig.tight_layout()
+                figName = f"./debug_{description.replace(' ', '_')}.pdf"
+                fig.savefig(figName)
+                plot_info = f"See the plot saved as {figName}."
+            else:
+                plot_info = ""
             raise Exception(
                 f"{description} are not strictly monotonically increasing.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
                 f" where omega22 drops from {omega22_average[first_idx]} to"
-                f" {omega22_average[first_idx+1]} and decreases by"
+                f" {omega22_average[first_idx+1]} and changes by"
                 f" {change_at_first_idx}.\nTotal number of places of"
                 f" non-monotonicity is {len(idx_non_monotonic)}.\n"
                 f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
                 "Increasing the sampling rate by decreasing time steps in "
-                "data might help.")
+                f"data might help.\n{plot_info}")
 
     def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
@@ -990,11 +1012,8 @@ class eccDefinition:
         key "omega22_averaging_method". Default is
         "mean_motion"
 
-        Once we get the reference frequencies, we create a spline to get time
-        as a function of these reference frequencies. This should work if the
-        reference frequency is monotonic which it should be.
-
-        Finally, we evaluate this spline on the fref_in to get the tref_in.
+        Once we get the reference frequencies, we get the closest time where
+        the reference frequency is equal to the fref_out.
         """
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
@@ -1005,21 +1024,24 @@ class eccDefinition:
             # average. Then proceed to evaluate the tref_in based on these
             # fref_out
             fref_out = self.get_fref_out(fref_in, method)
+
             # Now that we have fref_out, we want to know the corresponding
             # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
-            # This is done by first creating an interpolant of time as function
-            # of omega22_average.
-            # We get omega22_average by evaluating the omega22_average(t)
-            # on t, from tmin_for_fref to tmax_for_fref
+            # We build an array of omega22_average from times from
+            # tmin_for_fref to tmax_for_fref
             self.t_for_omega22_average = self.t[
                 np.logical_and(self.t >= self.tmin_for_fref,
                                self.t < self.tmax_for_fref)]
             self.omega22_average = self.available_averaging_methods[
                 method](self.t_for_omega22_average)
 
-            # Get tref_in using interpolation
+            # check that omega22_average is monotonically increasing
+            self.check_monotonicity_of_omega22_average(
+                self.omega22_average, "Interpolated omega22_average")
+
+            # Get tref_in
             tref_in = interpolate(fref_out,
-                                  self.omega22_average / (2 * np.pi),
+                                  self.omega22_average/(2 * np.pi),
                                   self.t_for_omega22_average)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):

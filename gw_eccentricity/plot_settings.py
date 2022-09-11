@@ -146,7 +146,7 @@ labelsDict = {
     "mean_anomaly": r"$l_{\mathrm{gw}}$ [rad]",
     "omega22_pericenters": r"$\omega^{\mathrm{p}}_{22}$",
     "omega22_apocenters": r"$\omega^{\mathrm{a}}_{22}$",
-    "omega22_average": r"$\omega^{\mathrm{avg}}_{22}$",
+    "omega22_average": r"$\langle\omega_{22}\rangle$",
     "omega22_average_dimless": r"$\langle\omega_{22}\rangle$ [rad/$M$]",
     "eob_eccentricity": r"$e_{\mathrm{eob}}$",
     "geodesic_eccentricity": r"$e_{\mathrm{g}}$",
