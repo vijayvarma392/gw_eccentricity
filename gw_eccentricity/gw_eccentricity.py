@@ -219,7 +219,7 @@ def measure_eccentricity(tref_in=None,
             finding extrema, but this might cause interpolation issues.
             For a non negative num_orbits_to_exclude_before_merger, that
             many orbits prior to merger are excluded when finding extrema.
-            Default: 2.
+            Default: 1.
 
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,

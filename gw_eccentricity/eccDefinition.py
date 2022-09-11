@@ -93,7 +93,7 @@ class eccDefinition:
                 finding extrema, but this might cause interpolation issues.
                 For a non negative num_orbits_to_exclude_before_merger, that
                 many orbits prior to merger are excluded when finding extrema.
-                Default: 2.
+                Default: 1.
 
             extrema_finding_kwargs:
                 Dictionary of arguments to be passed to the extrema finder,
@@ -252,7 +252,7 @@ class eccDefinition:
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
             "spline_kwargs": {},
-            "num_orbits_to_exclude_before_merger": 2,
+            "num_orbits_to_exclude_before_merger": 1,
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
