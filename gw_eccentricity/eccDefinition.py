@@ -372,7 +372,7 @@ class eccDefinition:
             returned.  Units of tref_out/fref_out are the same as those of
             tref_in/fref_in.
 
-            tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in <
+            tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in <=
             tmax], where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
             tmin = max(t_pericenters[0], t_apocenters[0]), As eccentricity
             measurement relies on the interpolants omega22_pericenters(t) and
@@ -381,7 +381,7 @@ class eccDefinition:
             omega22_apocenters(t) are within their bounds.
 
             fref_out is set as
-            fref_out = fref_in[fref_in >= fref_min && frf_in< fref_max],
+            fref_out = fref_in[fref_in >= fref_min && frf_in <= fref_max],
             where fref_min/fref_max are minimum/maximum allowed reference
             frequency, with fref_min = omega22_average(tmin_for_fref)/2/pi
             and fref_max = omega22_average(tmax_for_fref)/2/pi.
@@ -434,19 +434,14 @@ class eccDefinition:
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
                 = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
-        # We measure eccentricity and mean anomaly from tmin to tmax.  Note
-        # that here we do not include the tmax. This is because the mean
-        # anomaly computation requires to looking for a pericenter before and
-        # after the ref time to calculate the current period.  If ref time is
-        # tmax, which could be equal to the last pericenter, then there is no
-        # next pericenter and that would cause a problem.
+        # We measure eccentricity and mean anomaly from tmin to tmax.
         self.tref_out = self.tref_in[
-            np.logical_and(self.tref_in < self.tmax,
+            np.logical_and(self.tref_in <= self.tmax,
                            self.tref_in >= self.tmin)]
         # set time for checks and diagnostics
         self.t_for_checks = self.dataDict["t"][
             np.logical_and(self.dataDict["t"] >= self.tmin,
-                           self.dataDict["t"] < self.tmax)]
+                           self.dataDict["t"] <= self.tmax)]
 
         # Sanity checks
         # check that tref_out is within t_zeroecc_shifted to make sure that
@@ -500,9 +495,8 @@ class eccDefinition:
 
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
-        # See explanation on why we do not include the last pericenter above.
         if self.tref_out[0] < self.t_pericenters[0] \
-           or self.tref_out[-1] >= self.t_pericenters[-1]:
+           or self.tref_out[-1] > self.t_pericenters[-1]:
             raise Exception("Reference time must be within two pericenters.")
 
         # compute eccentricity at self.tref_out
@@ -655,14 +649,12 @@ class eccDefinition:
         always greater than or equal to tmin and always less than tmax.
         """
         t = np.atleast_1d(t)
-        if any(t >= self.tmax):
-            raise Exception(f"Found times later than or equal "
-                            f"to tmax={self.tmax}, "
+        if any(t > self.tmax):
+            raise Exception(f"Found times later than tmax={self.tmax}, "
                             "which corresponds to min(last pericenter "
                             "time, last apocenter time).")
         if any(t < self.tmin):
-            raise Exception(f"Found times earlier than tmin="
-                            f"{self.tmin}, "
+            raise Exception(f"Found times earlier than tmin= {self.tmin}, "
                             "which corresponds to max(first pericenter "
                             "time, first apocenter time).")
 
@@ -1013,7 +1005,7 @@ class eccDefinition:
             # on t, from tmin_for_fref to tmax_for_fref
             self.t_for_omega22_average = self.t[
                 np.logical_and(self.t >= self.tmin_for_fref,
-                               self.t < self.tmax_for_fref)]
+                               self.t <= self.tmax_for_fref)]
             self.omega22_average = self.available_averaging_methods[
                 method](self.t_for_omega22_average)
 
