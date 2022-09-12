@@ -1,59 +1,43 @@
 """Fancy settings for plots."""
 from matplotlib import rc
 from cycler import cycler
-from palettable.wesanderson import Aquatic1_5
-from palettable.wesanderson import Darjeeling2_5
-from palettable.wesanderson import Darjeeling3_5
-from palettable.wesanderson import FantasticFox2_5
-from palettable.wesanderson import GrandBudapest5_5
-from palettable.wesanderson import GrandBudapest1_4
-from palettable.wesanderson import GrandBudapest4_5
-from palettable.wesanderson import GrandBudapest3_6
-from palettable.wesanderson import Zissou_5
-from palettable.wesanderson import Royal1_4
-colors_aq_15 = Aquatic1_5.mpl_colors
-colors_dj_25 = Darjeeling2_5.mpl_colors
-colors_dj_35 = Darjeeling3_5.mpl_colors
-colors_ff_25 = FantasticFox2_5.mpl_colors
-colors_gb_55 = GrandBudapest5_5.mpl_colors
-colors_gb_14 = GrandBudapest1_4.mpl_colors
-colors_gb_45 = GrandBudapest4_5.mpl_colors
-colors_gb_36 = GrandBudapest3_6.mpl_colors
-colors_zs_5 = Zissou_5.mpl_colors
-colors_ry_14 = Royal1_4.mpl_colors
 
-colorsList = [colors_gb_14[1],
-              colors_gb_36[1],
-              colors_gb_45[0],
-              colors_gb_55[1],
-              colors_dj_25[1]]
+dark2 = {
+    "turquoise": "#1b9e77",
+    "brown": "#d95f02",
+    "purple": "#7570b3",
+    "pink": "#e7298a",
+    "olive": "#66a61e",
+    "orange": "#e6ab02"}
 
 colorsDict = {
-    "default": colors_dj_25[3],  # colors_gb_36[5],
-    "apocenter": colors_dj_25[1],
-    "pericenter": colors_gb_45[1],
-    "vline": colors_gb_14[1],
-    "pericentersvline": colors_aq_15[1],
-    "FrequencyFits": colors_dj_25[1],
-    "AmplitudeFits": colors_gb_55[1],
-    "ResidualFrequency": colors_gb_14[1],
-    "ResidualAmplitude": colors_gb_45[1],
-    "Frequency": colors_aq_15[1],
-    "Amplitude": colors_dj_25[3]  # colors_gb_36[5],
+    "default": dark2["brown"],
+    "apocenter": dark2["olive"],
+    "pericenter": dark2["purple"],
+    "vline": dark2["pink"],
+    "hline": dark2["orange"],
+    "edge": dark2["turquoise"],
+    "pericentersvline": dark2["turquoise"],
+    "FrequencyFits": dark2["pink"],
+    "AmplitudeFits": dark2["olive"],
+    "ResidualFrequency": dark2["orange"],
+    "ResidualAmplitude": dark2["purple"],
+    "Frequency": dark2["turquoise"],
+    "Amplitude": dark2["brown"],
 }
 
 lstyles = {"Amplitude": "solid",
            "Frequency": "dashdot",
            "ResidualAmplitude": "dashed",
            "ResidualFrequency": "solid",
-           "FrequencyFits": "dotted",
-           "AmplitudeFits": "dashdot"}
+           "FrequencyFits": "dashdot",
+           "AmplitudeFits": "dotted"}
 lwidths = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,
            "ResidualFrequency": 1,
-           "FrequencyFits": 3,
-           "AmplitudeFits": 1}
+           "FrequencyFits": 1,
+           "AmplitudeFits": 3}
 lalphas = {"Amplitude": 1,
            "Frequency": 1,
            "ResidualAmplitude": 1,
@@ -118,7 +102,7 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
         rc("text.latex",
            preamble=r"\DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}")
     # Axes
-    rc("axes", prop_cycle=cycler(color=colorsList))  # color cycler
+    rc("axes", prop_cycle=cycler(color=list(dark2.values())))  # color cycler
     rc("axes", linewidth=0.6)
     rc("axes", labelsize=labelSizeDict[style])
     rc("axes", titlesize=fontSizeDict[style])
