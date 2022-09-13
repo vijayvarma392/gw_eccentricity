@@ -219,7 +219,7 @@ def measure_eccentricity(tref_in=None,
             finding extrema, but this might cause interpolation issues.
             For a non negative num_orbits_to_exclude_before_merger, that
             many orbits prior to merger are excluded when finding extrema.
-            Default: 2.
+            Default: 1.
 
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,
@@ -281,18 +281,17 @@ def measure_eccentricity(tref_in=None,
         Units of tref_out/fref_out are the same as those of tref_in/fref_in.
 
         tref_out is set as
-        tref_out = tref_in[tref_in >= tmin & tref_in < tmax],
+        tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
         where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
               tmin = max(t_pericenters[0], t_apocenters[0]),
         As eccentricity measurement relies on the interpolants
         omega22_pericenters(t) and omega22_apocenters(t), the above cutoffs
         ensure that we only compute the eccentricity where both
         omega22_pericenters(t) and omega22_apocenters(t) are within their
-        bounds. See eccDefinition.measure_ecc() for why the upper limit does
-        not use <=.
+        bounds.
 
         fref_out is set as
-        fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
+        fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
         where fref_min/fref_max are minimum/maximum allowed reference
         frequency, with fref_min = omega22_average(tmin_for_fref)/2/pi
         and fref_max = omega22_average(tmax_for_fref)/2/pi.
