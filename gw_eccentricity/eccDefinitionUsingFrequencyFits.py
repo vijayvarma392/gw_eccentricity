@@ -639,7 +639,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                   f", refine_extrema={refine_extrema}")
 
         # look for somewhat more data than we (probably) need
-        DeltaPhase = 4*np.pi*K
+        DeltaPhase = 4.2*np.pi*K
         idx_lo = np.argmax(
             self.phase22_analyse > self.phase22_analyse[idx_ref]
             - DeltaPhase*Nbefore)
@@ -741,6 +741,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 sign*data_residual,
                 distance=distance,
                 prominence=prominence)
+
             # add offset due to to calling find_peaks with sliced data
             idx_extrema = idx_extrema+idx_lo
             Nleft = sum(idx_extrema < idx_ref)
@@ -823,6 +824,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # offset data vertically by 10^k*it
                 if plot_offset is None:
                     plot_offset = 10**np.ceil(np.log10(data_residual_amp/2.))
+                    axs[0].axvline(self.t_analyse[idx_ref], linestyle='--', color='grey',linewidth=1)
 
                 line, = axs[0].plot(self.t_analyse[idx_lo:idx_hi],
                                     it*plot_offset
