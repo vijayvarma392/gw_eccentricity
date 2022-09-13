@@ -15,8 +15,8 @@ from .utils import check_kwargs_and_set_defaults
 class envelope_fitting_function:
     """Fit envelope.
 
-    Re-parameterize A*(t-T)^n in terms of function value, first derivative at
-    the time t0, and T.
+    Re-parameterize A*(T-t)^n in terms of function value and 
+    first derivative at the time t0, and T.
     """
 
     def __init__(self, t0, verbose=False):
@@ -33,7 +33,7 @@ class envelope_fitting_function:
     def __call__(self, t, f0, f1, T):
         """Call."""
         # f0, f1 are function values and first time-derivatives
-        # at t0.  Re-expfress as T, n, A, then evalate A*(t-T)^n
+        # at t0.  Re-expfress as T, n, A, then evalate A*(T-t)^n
         n = -(T-self.t0)*f1/f0
         A = f0*(T-self.t0)**(-n)
         if self.verbose:
@@ -44,66 +44,6 @@ class envelope_fitting_function:
                 "envelope_fitting_function reached parameters where merger "
                 "time T is within time-series to be fitted\n"
                 f"f0={f0}, f1={f1}, T={T}; n={n}, A={A}, max(t)={max(t)}")
-        return A*(T-t)**n
-
-
-class envelope_fitting_function2:
-    """Fit envelope.
-
-    Re-parameterize A*(t-T)^n in terms of function value, first derivative at
-    the time t0, and second time-derivative at time t0.  The second
-    time-derivative is re-parameterized into alpha in [-1,1], such that the
-    value alpha=-1 corresponds to Tmin<0, the value alpha=0 corresponds to T=0,
-    and alpha=1 to T->infty.  This reparameterization is hoped to improve
-    convergence of the fitting procedure while simultaneously allowing for
-    square bounds -1<alpha<1.
-    """
-
-    def __init__(self, t0, Tmin, verbose=False):
-        """Init."""
-        self.t0 = t0
-        self.Tmin = Tmin
-        self.alpha1 = (Tmin - t0) / (-Tmin)
-        self.alpha1 = -2*(Tmin - t0) / (2*Tmin-t0)
-        self.Gamma = -(-t0 + 2*Tmin)/(2*(Tmin-t0)*(-t0))
-        self.verbose = verbose
-        if verbose:
-            print(f"fitting_function2:  to={t0}, Tmin={Tmin},"
-                  f" alpha1={self.alpha1}, Gamma={self.Gamma}")
-        if -t0 <= -2*Tmin:
-            raise Exception(
-                "t0 must be at least twice as large as Tmin, "
-                "otherwise the alpha-reparameterization is multi-valued")
-
-    def format(self, f0, f1, alpha):
-        """Return a string representation for use in legends and output."""
-        T_m_t0 = (self.Tmin-self.t0)/(1.-alpha)
-        n = -f1/f0*T_m_t0
-        A = f0*(T_m_t0)**(-n)
-        T = T_m_t0 + self.t0
-        return f"{A:.4g}({T:+.3f}-t)^{n:.4f}"
-
-    def __call__(self, t, f0, f1, alpha):
-        """Call."""
-        # f0, f1 are function values and first time-derivatives
-        # at t0.  Re-expfress as T, n, A, then evalate A*(t-T)^n
-
-        # T-t0
-        T_m_t0 = (self.Tmin-self.t0)/(1.-alpha)
-        n = -f1/f0*T_m_t0
-        A = f0*(T_m_t0)**(-n)
-        T = T_m_t0 + self.t0
-        if self.verbose:
-            print(f"f0={f0}, f1={f1}, alpha={alpha}; T={T}, n={n}, A={A},"
-                  f" max(t)={t.max()}")
-        if t.max() > T:
-            print(end="", flush=True)
-            raise Exception(
-                "envelope_fitting_function reached parameters where merger "
-                "time T is within time-series to be fitted\n"
-                f"f0={f0}, f1={f1}, alpha={alpha}; T={T}, n={n}, A={A}, "
-                f"max(t)={max(t)}\n"
-                f"self.to={self.t0}, self.Tmin={self.Tmin}")
         return A*(T-t)**n
 
 
@@ -281,43 +221,22 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             print(f"t_analyse[0]={self.t_analyse[0]}, t_analyse[-1]="
                   f"{self.t_analyse[-1]}, "
                   f"global fit to t<={self.t_analyse[idx_end]}")
-        # alpha-fit was an alternative parameterization of the fitting-function
-        # didn't really help in initial experiments, thus disabled.
-        UseAlphaFit = False
+   
+        # create fitting function object, set initial guess and bounds
         fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
-        if UseAlphaFit:
-            Tmin = 0.8*self.t_analyse[-1]
-            f_fit = envelope_fitting_function2(t0=fit_center_time,
-                                               Tmin=Tmin,
-                                               verbose=False
-                                               # verbose=verbose
-                                               )
-            # some reasonable initial guess for curve_fit
-            f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[-1])
-            p0 = [f0,  # function value ~ data
-                  -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-                  0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
-                  ]
-            # some hopefully reasonable bounds for global curve_fit
-            bounds0 = [[0., 0., 0.],
-                       [10.*f0, 10.*f0/(-fit_center_time), 1.]]
-        else:
-            # standard fit in terms of f0, f1 and T
-            f_fit = envelope_fitting_function(t0=fit_center_time,
-                                              verbose=False
-                                              # verbose=verbose
-                                              )
-            # some reasonable initial guess for curve_fit
-            f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[idx_end])
-            p0 = [f0,  # function value ~ data
-                  -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-                  0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
-                  ]
-            # some hopefully reasonable bounds for global curve_fit
-            bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
-                       [self.fit_bounds_max_amp_factor*f0,
-                        self.fit_bounds_max_nPN_factor*f0/(-fit_center_time),
-                        -fit_center_time]]
+        f_fit = envelope_fitting_function(t0=fit_center_time,
+                                            verbose=False
+                                            # verbose=verbose
+                                            )
+        f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[idx_end])  # typial scale of data
+        p0 = [f0,  # function value
+                -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
+                0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
+                ]
+        bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
+                    [self.fit_bounds_max_amp_factor*f0,
+                    self.fit_bounds_max_nPN_factor*f0/(-fit_center_time),
+                    -fit_center_time]]
         if verbose:
             print(f"global fit: guess p0={p0},  t_center={fit_center_time}")
             print(f"            bounds={bounds0}")
