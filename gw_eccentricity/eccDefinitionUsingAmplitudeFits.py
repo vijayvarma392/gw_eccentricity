@@ -28,7 +28,7 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         self.fits_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['fits_kwargs'],
             self.get_default_fits_kwargs(),
-            "fit_kwargs",
+            "fits_kwargs",
             "eccDefinitionUsingAmplitudeFits.get_default_fits_kwargs()")
         self.set_fit_variables()
         self.data_for_finding_extrema = self.amp22

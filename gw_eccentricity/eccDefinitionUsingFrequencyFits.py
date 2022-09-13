@@ -68,7 +68,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.fits_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['fits_kwargs'],
             self.get_default_fits_kwargs(),
-            "fit_kwargs",
+            "fits_kwargs",
             "eccDefinitionUsingFrequencyFits.get_default_fits_kwargs()")
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
