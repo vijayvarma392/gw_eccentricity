@@ -258,7 +258,8 @@ class eccDefinition:
             "debug": True,
             "omega22_averaging_method": "mean_motion",
             "treat_mid_points_between_pericenters_as_apocenters": False,
-            "refine_extrema": False
+            "refine_extrema": False,
+            "fits_kwargs": {},  # Gets overriden in methods using envelope fits
         }
         return default_extra_kwargs
 
