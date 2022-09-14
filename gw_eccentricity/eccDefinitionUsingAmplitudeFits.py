@@ -39,7 +39,7 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         # way to do this but scaling the amp22 data by its value at the global
         # peak (the merger time) solves this issue.
         self.amp22_merger = self.data_for_finding_extrema[
-            np.argmin(self.t - self.t_merger)]
+            np.argmin(np.abs(self.t - self.t_merger))]
         self.data_analyse /= self.amp22_merger
 
     def get_default_fits_kwargs(self):
@@ -56,6 +56,6 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "fit_bounds_max_nPN_factor": 10,
             "prominence_factor": 0.025,
             "distance_factor": 0.5,
-            "use_extra_checks": True,
-            "max_fit_ratio": 10
+            "N": 3,
+            "N_orbits_for_global_fit": 10
         }

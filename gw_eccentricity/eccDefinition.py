@@ -918,13 +918,41 @@ class eccDefinition:
             if self.extra_kwargs["debug"]:
                 style = "APS"
                 use_fancy_plotsettings(style=style)
+                nrows = 4
                 fig, axes = plt.subplots(
-                    nrows=2,
-                    figsize=(figWidthsTwoColDict[style], 6))
+                    nrows=nrows,
+                    figsize=(figWidthsTwoColDict[style],
+                             nrows * figHeightsDict[style]))
                 axes[0].plot(omega22_average, marker=".",
                              c=colorsDict["default"])
                 axes[1].plot(np.diff(omega22_average), marker=".",
                              c=colorsDict["default"])
+                axes[2].plot(self.t_average_pericenters,
+                             self.omega22_average_pericenters,
+                             label=labelsDict["pericenters"],
+                             c=colorsDict["pericenter"],
+                             marker=".")
+                axes[2].plot(self.t_average_apocenters,
+                             self.omega22_average_apocenters,
+                             label=labelsDict["apocenters"],
+                             c=colorsDict["apocenter"],
+                             marker=".")
+                axes[3].plot(self.t, self.omega22, c=colorsDict["default"])
+                axes[3].plot(self.t_pericenters,
+                             self.omega22[self.pericenters_location],
+                             c=colorsDict["pericenter"],
+                             label=labelsDict["pericenters"],
+                             marker=".")
+                axes[3].plot(self.t_apocenters,
+                             self.omega22[self.apocenters_location],
+                             c=colorsDict["apocenter"],
+                             label=labelsDict["apocenters"],
+                             marker=".")
+                axes[2].legend()
+                axes[2].set_ylabel(labelsDict["omega22_average"])
+                axes[3].legend()
+                axes[3].set_ylim(0,)
+                axes[3].set_ylabel(labelsDict["omega22"])
                 axes[1].axhline(0, c=colorsDict["vline"])
                 axes[0].set_ylabel(labelsDict["omega22_average"])
                 axes[1].set_ylabel(
