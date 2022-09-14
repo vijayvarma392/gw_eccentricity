@@ -1033,8 +1033,10 @@ class eccDefinition:
         key "omega22_averaging_method". Default is
         "mean_motion"
 
-        Once we get the reference frequencies, we get the closest time where
-        the reference frequency is equal to the fref_out.
+        Once we get the reference frequencies, we create a spline to get time
+        as a function of these reference frequencies. This should work if the
+        reference frequency is monotonic which it should be.
+        Finally, we evaluate this spline on the fref_in to get the tref_in.
         """
         method = self.extra_kwargs["omega22_averaging_method"]
         if method in self.available_averaging_methods:
@@ -1048,8 +1050,10 @@ class eccDefinition:
 
             # Now that we have fref_out, we want to know the corresponding
             # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
-            # We build an array of omega22_average from times from
-            # tmin_for_fref to tmax_for_fref
+            # This is done by first creating an interpolant of time as function
+            # of omega22_average.
+            # We get omega22_average by evaluating the omega22_average(t)
+            # on t, from tmin_for_fref to tmax_for_fref
             self.t_for_omega22_average = self.t[
                 np.logical_and(self.t >= self.tmin_for_fref,
                                self.t <= self.tmax_for_fref)]
@@ -1060,7 +1064,7 @@ class eccDefinition:
             self.check_monotonicity_of_omega22_average(
                 self.omega22_average, "Interpolated omega22_average")
 
-            # Get tref_in
+            # Get tref_in using interpolation
             tref_in = interpolate(fref_out,
                                   self.omega22_average/(2 * np.pi),
                                   self.t_for_omega22_average)
