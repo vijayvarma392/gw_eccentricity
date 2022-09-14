@@ -216,7 +216,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[idx_end])
         p0 = [f0,  # function value
               -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-              0,  # singularity in fit is near t=0, since waveform aligned at max(amp22)
+              0  # singularity in fit is near t=0, since waveform aligned at max(amp22)
               ]
         bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
                    [self.fit_bounds_max_amp_factor*f0,
@@ -509,7 +509,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
           - plot_info -- string placed into the title of the diagnostic plot
 
         RETURNS:
-              idx_extrema, p, K, idx_ref, extrema_refined, updated_prominence
+              idx_extrema, p, K, idx_ref, extrema_refined
         where
           - idx_extrema -- the indices of the identified extrema
                            USUALLY len(idx_extrema) == Nbefore+Nafter HOWEVER,
@@ -700,7 +700,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # extrema.  so return with empty idx_extrema and let upstream
                 # code handle this
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema], prominence
+                                                    phase22_extrema]
 
             if Nleft != Nbefore or Nright != Nafter:
                 # number of extrema not as we wished, so update [idx_lo, idx_hi]
