@@ -120,7 +120,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             # Number of extrema to look for during fitting. It looks for
             # N on the left and N+1 on the right
             "N": 3,
-            # Number of orbits to use to for global fit
+            # Number of orbits to use for global fit
             "N_orbits_for_global_fit": 10
         }
 
@@ -137,7 +137,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.nPN = self.fits_kwargs["nPN"]
         self.prominence_factor = self.fits_kwargs["prominence_factor"]
         self.distance_factor = self.fits_kwargs["distance_factor"]
-        self.N = self.fits_kwargs["N"],
+        self.N = self.fits_kwargs["N"]
         self.N_orbits_for_global_fit = self.fits_kwargs["N_orbits_for_global_fit"]
 
     def find_extrema(self, extrema_type="pericenters"):
