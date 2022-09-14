@@ -138,7 +138,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.prominence_factor = self.fits_kwargs["prominence_factor"]
         self.distance_factor = self.fits_kwargs["distance_factor"]
         self.N = self.fits_kwargs["N"],
-        self.N_orbits_for_global_fit = self.fits_kwargs["Num_orbits_for_global_fit"]
+        self.N_orbits_for_global_fit = self.fits_kwargs["N_orbits_for_global_fit"]
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
