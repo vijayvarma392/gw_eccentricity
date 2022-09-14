@@ -215,11 +215,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # typial scale of data
         f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[idx_end])
         p0 = [f0,  # function value
-              # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-              -self.nPN*f0/(-fit_center_time),
-              # singularity in fit is near t=0, since waveform aligned at
-              # max(amp22)
-              0
+              -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
+              0,  # singularity in fit is near t=0, since waveform aligned at max(amp22)
               ]
         bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
                    [self.fit_bounds_max_amp_factor*f0,
@@ -311,22 +308,21 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         extra_extrema_t = []
         extra_extrema_data = []
         extra_extrema_phase22 = []
-        prominence = None
         while True:
             count = count+1
             if verbose:
                 print(f"=== count={count} "+"="*60)
-            idx_extrema, p, K, idx_ref, extrema_refined, prominence = self.FindExtremaNearIdxRef(
-                idx_ref,
-                sign, N, N+1, K,
-                f_fit, p, bounds0,
-                1e-8,
-                increase_idx_ref_if_needed=True,
-                refine_extrema=refine_extrema,
-                verbose=verbose,
-                pp=pp,
-                plot_info=f"count={count}",
-                prominence=prominence)
+            idx_extrema, p, K, idx_ref, extrema_refined \
+                = self.FindExtremaNearIdxRef(
+                    idx_ref,
+                    sign, N, N+1, K,
+                    f_fit, p, bounds0,
+                    1e-8,
+                    increase_idx_ref_if_needed=True,
+                    refine_extrema=refine_extrema,
+                    verbose=verbose,
+                    pp=pp,
+                    plot_info=f"count={count}")
             if verbose:
                 print(f"IDX_EXTREMA={idx_extrema}, "
                       f"{self.data_str}_fit"
@@ -471,8 +467,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                               refine_extrema=False,
                               verbose=False,
                               pp=None,
-                              plot_info="",
-                              prominence=None):
+                              plot_info=""):
         """given a 22-GW mode (t, phase22, data), identify a stretch of data
         [idx_lo, idx_hi] centered roughly around the index idx_ref which
         satisfies the following properties:
@@ -512,7 +507,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
           - pp a PdfPages object for a diagnostic output plot
           - plot_info -- string placed into the title of the diagnostic plot
-          - prominence for find_peaks function
 
         RETURNS:
               idx_extrema, p, K, idx_ref, extrema_refined, updated_prominence
@@ -533,7 +527,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                  phase22_extrema_refined) information about the
                  parabolic-fit-refined extrema.  If RefineExtrema==True, these
                  arrays have same length as idx_extrema.  Otherwise, empty.
-          - updated_prominence based on current data
 
 
         ASSUMPTIONS & POSSIBLE FAILURE MODES
@@ -591,16 +584,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             plot_offset = None
 
         # compute prominence
-        distance, current_prominence = self.compute_distance_and_prominence(
+        distance, prominence = self.compute_distance_and_prominence(
             idx_lo, idx_hi, f_fit, p)
-        if prominence is None:
-            prominence = current_prominence
-        else:
-            prominence = min(prominence, current_prominence)
         if verbose:
             print(f"       find_peaks: distance={distance}, "
                   f"prominence={prominence}")
-
         interval_changed_on_it = -1
         while True:
             it = it+1
@@ -645,7 +633,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 K = ((phase22_extrema[-1] - phase22_extrema[0])
                      / (4*np.pi * (N_extrema - 1)))
             if verbose:
-                with np.printoptions(precision=2):  # , suppress=True, threshold=5):
+                with np.printoptions(precision=2):
                     print(f"       idx_extrema=   {idx_extrema}, "
                           f"Nleft={Nleft},"
                           f" Nright={Nright}")
@@ -658,7 +646,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                                                phase22_extrema,
                                                verbose, f_fit, p)
                 if verbose:
-                    with np.printoptions(precision=4):  # , suppress=True, threshold=5):
+                    with np.printoptions(precision=4):
                         print("")
                         print("       Delta t_extrema = "
                               f"{t_extrema - self.t_analyse[idx_extrema]}")
@@ -862,7 +850,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     fig.savefig(pp, format='pdf')
                     plt.close(fig)
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema], prominence
+                                                    phase22_extrema]
 
             if max_delta_data < TOL:
                 # (this cannot trigger on first iteration, due to
@@ -876,44 +864,21 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     fig.savefig(pp, format='pdf')
                     plt.close(fig)
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema], prominence
-
-            # termination conditions not met, update fit and continue iterating
-            #if verbose and False:
-            #    # Perform some polynomial fits (possibly useful for debugging)
-            #    for deg in [1,2,3]:
-            #        lin=np.polynomial.polynomial.Polynomial.fit(t_extrema, data_extrema, deg)
-            #        print(f"    fit with deg={deg}: residual={np.linalg.norm(lin(t_extrema)-data_extrema)}")
-                #axs[2].plot(t_extrema, quad(t_extrema)-data_extrema], "o--")
-
-            # tmp=bounds[0][2]
+                                                    phase22_extrema]
             p, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
                                                 data_extrema, p0=p,
                                                 bounds=bounds, maxfev=10000)
-            # prominence = None  # flag renewed calculation of the find_signal paramters
             if verbose and False:
                 print("    PRODUCTION FIT: residual="
                       f"{np.linalg.norm(f_fit(t_extrema,*p)-data_extrema)},"
                       f" f={f_fit.format(*p)}")
-            # bounds[0][2]=t_extrema[-1]*0.8
-            # p_unbounded, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
-            #                                    data_extrema, p0=p,
-            #                                    bounds=bounds,maxfev=10000)
-
-            # bounds[0][2]=tmp
-            #if verbose:
-            #        print(f"    unbounded     : residual={np.linalg.norm(f_fit(t_extrema,*p_unbounded)-data_extrema)}, f={f_fit.format(*p_unbounded)}")
-
             if pp:
                 axs[2].plot(t_extrema, f_fit(t_extrema, *p)-data_extrema, "o",
                             color=line.get_color())
-                # axs[2].plot(t_extrema, f_fit(t_extrema, *p_unbounded)-data_extrema, "x")
-
             old_extrema = data_extrema
             if verbose:
-                print(f"       max_delta_{self.data_str}={max_delta_data:5.4g} => "
-                      "fit updated to"
-                      f" f_fit={f_fit.format(*p)}")
+                print(f"       max_delta_{self.data_str}={max_delta_data:5.4g}"
+                      f" => fit updated to f_fit={f_fit.format(*p)}")
         raise Exception("Should never get here")
 
     def compute_distance_and_prominence(self, idx_lo, idx_hi, f_fit, p):
