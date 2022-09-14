@@ -681,6 +681,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     self.t_analyse[idx_lo:idx_hi],
                     self.data_analyse[idx_lo:idx_hi]
                     + plot_offset*it)
+                # note: 'line.get_color()` is also used below in axs[2].plot
                 axs[1].plot(t_extrema, data_extrema+plot_offset*it, 'o',
                             color=line.get_color(), label=f"it={it}")
 
@@ -904,7 +905,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             #        print(f"    unbounded     : residual={np.linalg.norm(f_fit(t_extrema,*p_unbounded)-data_extrema)}, f={f_fit.format(*p_unbounded)}")
 
             if pp:
-                axs[2].plot(t_extrema, f_fit(t_extrema, *p)-data_extrema, "o")
+                axs[2].plot(t_extrema, f_fit(t_extrema, *p)-data_extrema, "o",
+                            color=line.get_color())
                 # axs[2].plot(t_extrema, f_fit(t_extrema, *p_unbounded)-data_extrema, "x")
 
             old_extrema = data_extrema

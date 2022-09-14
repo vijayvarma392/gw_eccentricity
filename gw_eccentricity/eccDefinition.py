@@ -880,9 +880,9 @@ class eccDefinition:
                / np.diff(self.t[self.apocenters_location]))
         # check monotonicity of the omega22 average
         self.check_monotonicity_of_omega22_average(
-            self.omega22_average_pericenters, "omega22 average at pericenters")
+            self.omega22_average_pericenters, "omega22 averaged [pericenter to pericenter]")
         self.check_monotonicity_of_omega22_average(
-            self.omega22_average_apocenters, "omega22 average at apocenters")
+            self.omega22_average_apocenters, "omega22 averaged [apocenter to apocenter]")
         # combine the average omega22 at pericenters and apocenters
         omega22_average = np.append(self.omega22_average_apocenters,
                                     self.omega22_average_pericenters)
@@ -893,7 +893,7 @@ class eccDefinition:
         # check that omega22_average in strictly monotonic
         self.check_monotonicity_of_omega22_average(
             omega22_average,
-            "combined omega22 average from pericenters and apocenters")
+            "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
         return interpolate(
             t, self.t_average_mean_motion, omega22_average)
 
@@ -966,11 +966,11 @@ class eccDefinition:
             else:
                 plot_info = ""
             raise Exception(
-                f"{description} are not strictly monotonically increasing.\n"
+                f"{description} are non-monotonic.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
                 f" where omega22 drops from {omega22_average[first_idx]} to"
-                f" {omega22_average[first_idx+1]} and changes by"
-                f" {change_at_first_idx}.\nTotal number of places of"
+                f" {omega22_average[first_idx+1]}, a decrease by"
+                f" {abs(change_at_first_idx)}.\nTotal number of places of"
                 f" non-monotonicity is {len(idx_non_monotonic)}.\n"
                 f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
                 "Increasing the sampling rate by decreasing time steps in "
