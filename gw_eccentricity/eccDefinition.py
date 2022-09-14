@@ -923,8 +923,9 @@ class eccDefinition:
                 f" {change_at_first_idx}.\nTotal number of places of"
                 f" non-monotonicity is {len(idx_non_monotonic)}.\n"
                 f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
-                "Increasing the sampling rate by decreasing time steps in "
-                "data might help.")
+                "Possible fixes: \n"
+                "   - Increase sampling rate of data\n"
+                "   - Add to extra_kwargs the option 'treat_mid_points_between_pericenters_as_apocenters': True")
 
     def compute_omega22_average_between_extrema(self, t):
         """Find omega22 average between extrema".
