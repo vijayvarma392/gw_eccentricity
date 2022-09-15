@@ -162,13 +162,16 @@ class eccDefinition:
         # requires uniform time steps
         self.t_diff = np.diff(self.t)
         if not np.allclose(self.t_diff, self.t_diff[0], atol=1e-10):
-            idx_non_uniform = np.where(self.t_diff != self.t_diff[0])[0]
+            idx_non_uniform = np.where(np.abs(self.t_diff - self.t_diff[0]) > 1e-10)[0]
             deviations = self.t_diff[idx_non_uniform] - self.t_diff[0]
+            idx_max_diff = np.argmax(np.abs(deviations))
             raise Exception(
                 "Input time array must have uniform time steps.\n"
                 f"Non uniform time steps are {self.t_diff[idx_non_uniform]}\n"
                 f"Differs from the first time step by {deviations}\n"
-                f"Maximum deviation from first time step {max(deviations)}")
+                f"Maximum deviation from first time step {deviations[idx_max_diff]}\n"
+                f"Time before and after max deviation {self.t[idx_max_diff-1]}, "
+                f"{self.t[idx_max_diff]}")
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
@@ -1271,7 +1274,7 @@ class eccDefinition:
             if "Delta A" not in self.label_for_data_for_finding_extrema:
                 list_of_plots.append(self.plot_residual_amp22)
             # add residual omega22 plot
-            if "Delta\omega" not in self.label_for_data_for_finding_extrema:
+            if r"Delta\omega" not in self.label_for_data_for_finding_extrema:
                 list_of_plots.append(self.plot_residual_omega22)
 
         # Set style if None

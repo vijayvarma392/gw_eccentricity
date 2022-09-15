@@ -30,16 +30,19 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "fits_kwargs",
             "eccDefinitionUsingAmplitudeFits.get_default_fits_kwargs()")
         self.set_fit_variables()
-        self.data_for_finding_extrema = self.amp22
+        self.data_for_finding_extrema = self.get_data_for_finding_extrema()
         # create the truncated data-set for analysis
         self.create_truncated_data()
+
+    def get_data_for_finding_extrema(self):
+        """Get data to be used for finding extrema location."""
         # FIXME: Find a better solution
         # It turns out that since in MKS units amplitude is very small
         # The envelope fitting does not work properly. Maybe there is a better
         # way to do this but scaling the amp22 data by its value at the global
         # peak (the merger time) solves this issue.
-        self.amp22_merger = self.data_for_finding_extrema[self.merger_idx]
-        self.data_analyse /= self.amp22_merger
+        self.amp22_merger = self.amp22[self.merger_idx]
+        return self.amp22/self.amp22_merger
 
     def get_default_fits_kwargs(self):
         """Get default fits kwargs.
