@@ -161,9 +161,14 @@ class eccDefinition:
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
         self.t_diff = np.diff(self.t)
-        if not np.allclose(self.t_diff, self.t_diff[0]):
-            raise Exception("Input time array must have uniform time steps.\n"
-                            f"Time steps are {self.t_diff}")
+        if not np.allclose(self.t_diff, self.t_diff[0], atol=1e-10):
+            idx_non_uniform = np.where(self.t_diff != self.t_diff[0])[0]
+            deviations = self.t_diff[idx_non_uniform] - self.t_diff[0]
+            raise Exception(
+                "Input time array must have uniform time steps.\n"
+                f"Non uniform time steps are {self.t_diff[idx_non_uniform]}\n"
+                f"Differs from the first time step by {deviations}\n"
+                f"Maximum deviation from first time step {max(deviations)}")
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
