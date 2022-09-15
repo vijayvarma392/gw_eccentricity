@@ -15,6 +15,7 @@ from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
 import warnings
+import copy
 
 
 class eccDefinition:
@@ -93,6 +94,8 @@ class eccDefinition:
                 finding extrema, but this might cause interpolation issues.
                 For a non negative num_orbits_to_exclude_before_merger, that
                 many orbits prior to merger are excluded when finding extrema.
+                If your waveform does not have a merger (e.g. PN/EMRI), use
+                num_orbits_to_exclude_before_merger = None.
                 Default: 1.
 
             extrema_finding_kwargs:
@@ -150,13 +153,35 @@ class eccDefinition:
                 pericenters are easy to find but apocenters are not.
                 Default: False.
         """
-        self.dataDict = dataDict
         # check if there are any keys that are not recognized
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
-        for kw in self.dataDict.keys():
+        for kw in dataDict.keys():
             if kw not in self.recognized_dataDict_keys:
                 warnings.warn(
                     f"kw {kw} is not a recognized key word in dataDict.")
+        t = dataDict["t"]
+        phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
+        # We need to know the merger time of eccentric waveform.
+        # This is useful, for example, to subtract the quasi circular
+        # amplitude from eccentric amplitude in residual amplitude method
+        self.t_merger = peak_time_via_quadratic_fit(
+            t,
+            amplitude_using_all_modes(dataDict["hlm"]))[0]
+        self.merger_idx = np.argmin(np.abs(t - self.t_merger))
+        self.amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[self.merger_idx]
+        self.phase22_merger = phase22[self.merger_idx]
+        # Sanity check various kwargs and set default values
+        self.check_and_set_default_kwargs(t, phase22, extra_kwargs)
+        # Truncate data if "num_orbits_to_exclude_before_merger" is not None
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
+           is not None:
+            index_num_orbits_earlier_than_merger \
+                = self.get_index_at_num_orbits_earlier_than_merger(
+                    t, phase22,
+                    self.extra_kwargs["num_orbits_to_exclude_before_merger"])
+            dataDict = copy.deepcopy(dataDict)
+            self.dataDict = self.get_truncated_data(
+                dataDict, index_num_orbits_earlier_than_merger)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -167,12 +192,6 @@ class eccDefinition:
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
-        # We need to know the merger time of eccentric waveform.
-        # This is useful, for example, to subtract the quasi circular
-        # amplitude from eccentric amplitude in residual amplitude method
-        self.t_merger = peak_time_via_quadratic_fit(
-            self.t,
-            amplitude_using_all_modes(self.dataDict["hlm"]))[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
@@ -200,7 +219,36 @@ class eccDefinition:
         if "hlm_zeroecc" in self.dataDict:
             self.compute_res_amp_and_omega22()
 
-        # Sanity check various kwargs and set default values
+    def get_recognized_dataDict_keys(self):
+        """Get the list of recognized keys in dataDict."""
+        list_of_keys = [
+            "t",                # time array of waveform modes
+            "hlm",              # Dict of eccentric waveform modes
+            "t_zeroecc",        # time array of quasicircular waveform
+            "hlm_zeroecc",      # Dict of quasicircular waveform modes
+        ]
+        return list_of_keys
+
+    def get_truncated_data(self, dataDict, index_for_truncating):
+        """Truncate data keeping data upto index_for_truncating."""
+        for mode in dataDict["hlm"]:
+            dataDict["hlm"][mode] \
+                = dataDict["hlm"][mode][:index_for_truncating]
+        dataDict["t"] = dataDict["t"][:index_for_truncating]
+        return dataDict
+
+    def check_and_set_default_kwargs(self, t, phase22, extra_kwargs):
+        """Check and set defaults for varius kwargs.
+
+        parameters:
+        -----------
+        t:
+            1d time array of the full waveform.
+        phase22:
+            1d phase array of (2, 2) mode of the full waveform.
+        extra_kwargs:
+            Dictionary of kwargs to be checked and set defaults.
+        """
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
             "extra_kwargs",
@@ -214,7 +262,7 @@ class eccDefinition:
                 f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
-            self.get_default_extrema_finding_kwargs(),
+            self.get_default_extrema_finding_kwargs(t, phase22),
             "extrema_finding_kwargs",
             "eccDefinition.get_default_extrema_finding_kwargs()")
         self.available_averaging_methods \
@@ -225,24 +273,14 @@ class eccDefinition:
             "spline_kwargs",
             "utils.get_default_spline_kwargs()")
 
-    def get_recognized_dataDict_keys(self):
-        """Get the list of recognized keys in dataDict."""
-        list_of_keys = [
-            "t",                # time array of waveform modes
-            "hlm",              # Dict of eccentric waveform modes
-            "t_zeroecc",        # time array of quasicircular waveform
-            "hlm_zeroecc",      # Dict of quasicircular waveform modes
-        ]
-        return list_of_keys
-
-    def get_default_extrema_finding_kwargs(self):
+    def get_default_extrema_finding_kwargs(self, t, phase22):
         """Defaults for extrema_finding_kwargs."""
         default_extrema_finding_kwargs = {
             "height": None,
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_width_for_peak_finder_from_phase22(),
+            "width": self.get_width_for_peak_finder_from_phase22(t, phase22),
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
@@ -262,6 +300,18 @@ class eccDefinition:
             "fits_kwargs": {},  # Gets overriden in methods using envelope fits
         }
         return default_extra_kwargs
+
+    def get_index_at_num_orbits_earlier_than_merger(self, t, phase22,
+                                                    num_orbits):
+        """Get the index of time num orbits earlier than merger."""
+        # one orbit changes the 22 mode phase by 4 pi since
+        # omega22 = 2 omega_orb
+        phase22_num_orbits_earlier_than_merger = (
+            self.phase22_merger
+            - 4 * np.pi
+            * num_orbits)
+        return np.argmin(np.abs(
+            phase22 - phase22_num_orbits_earlier_than_merger))
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
@@ -290,27 +340,6 @@ class eccDefinition:
         Interpolant through extrema, positions of extrema
         """
         extrema_idx = self.find_extrema(extrema_type)
-        # experimenting with throwing away pericenters too close to merger
-        # This helps in avoiding unwanted feature in the spline
-        # through the extrema
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            merger_idx = np.argmin(np.abs(self.t - self.t_merger))
-            phase22_at_merger = self.phase22[merger_idx]
-            # one orbit changes the 22 mode phase by 4 pi since
-            # omega22 = 2 omega_orb
-            phase22_num_orbits_earlier_than_merger = (
-                phase22_at_merger
-                - 4 * np.pi
-                * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            self.idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
-                self.phase22 - phase22_num_orbits_earlier_than_merger))
-            # use only the extrema those are at least num_orbits away from the
-            # merger to avoid nonphysical features like non-monotonic
-            # eccentricity near the merger
-            self.latest_time_used_for_extrema_finding \
-                = self.t[self.idx_num_orbit_earlier_than_merger]
-            extrema_idx = extrema_idx[
-                extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
             interpolant = get_interpolant(self.t[extrema_idx],
                                           self.omega22[extrema_idx],
@@ -1590,7 +1619,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        data_for_ylim = self.omega22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.omega22
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         pad = 0.05 * ymax  # 5 % buffer for better visibility
@@ -1674,7 +1703,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.amp22
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         ax.set_ylim(ymin, ymax)
@@ -1822,8 +1851,7 @@ class eccDefinition:
                 marker=".", ls="", label=labelsDict["apocenters"],
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        data_for_ylim = self.res_omega22[
-            :self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.res_omega22
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
@@ -1894,7 +1922,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.res_amp22
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
@@ -1961,15 +1989,8 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        # To make it work for FrequencyFits
-        # FIXME: Harald, Arif: Think about how to make this better.
-        if hasattr(self, "t_analyse"):
-            ax.plot(self.t_analyse, self.data_analyse,
-                    c=colorsDict["default"])
-            self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
-        else:
-            ax.plot(self.t, self.data_for_finding_extrema,
-                    c=colorsDict["default"])
+        ax.plot(self.t, self.data_for_finding_extrema,
+                c=colorsDict["default"])
         ax.plot(
             self.t[self.pericenters_location],
             self.data_for_finding_extrema[self.pericenters_location],
@@ -1983,8 +2004,7 @@ class eccDefinition:
             marker=".", ls="",
             label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.data_for_finding_extrema[
-            :self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.data_for_finding_extrema
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0 when Residual data is
@@ -2001,7 +2021,7 @@ class eccDefinition:
         # Add vertical line to indicate the latest time used for extrema
         # finding
         ax.axvline(
-            self.latest_time_used_for_extrema_finding,
+            self.t[-1],
             c=colorsDict["vline"], ls="--",
             label="Latest time used for finding extrema.")
         # if tref_out/fref_out is scalar then add vertical line to indicate
@@ -2087,6 +2107,8 @@ class eccDefinition:
         return int(width_for_unit_timestep / (self.t[1] - self.t[0]))
 
     def get_width_for_peak_finder_from_phase22(self,
+                                               t,
+                                               phase22,
                                                num_orbits_before_merger=2):
         """Get the minimal value of `width` parameter for extrema finding.
 
@@ -2116,7 +2138,11 @@ class eccDefinition:
         few extrema very close to the merger.
 
         Parameters:
-        ----------
+        -----------
+        t:
+            Time array.
+        phase22:
+            Phase of the 22 mode.
         num_orbits_before_merger:
             Number of orbits before merger to get the time at which the `width`
             parameter is determined. We want to do this near the merger as this
@@ -2129,29 +2155,20 @@ class eccDefinition:
         width:
             Minimal `width` to filter out noisy extrema.
         """
-        # get the phase22 at merger.
-        phase22_merger = self.phase22[
-            np.argmin(np.abs(self.t - self.t_merger))]
         # get the time for getting width at num orbits before merger.
         # for 22 mode phase changes about 2 * 2pi for each orbit.
-        t_at_num_orbits_before_merger = self.t[
-            np.argmin(
-                np.abs(
-                    self.phase22
-                    - (phase22_merger
-                       - (num_orbits_before_merger * 4 * np.pi))))]
-        t_at_num_minus_one_orbits_before_merger = self.t[
-            np.argmin(
-                np.abs(
-                    self.phase22
-                    - (phase22_merger
-                       - ((num_orbits_before_merger - 1) * 4 * np.pi))))]
+        t_at_num_orbits_before_merger = t[
+            self.get_index_at_num_orbits_earlier_than_merger(
+                t, phase22, num_orbits_before_merger)]
+        t_at_num_minus_one_orbits_before_merger = t[
+            self.get_index_at_num_orbits_earlier_than_merger(
+                t, phase22, num_orbits_before_merger-1)]
         # change in time over which phase22 change by 4 pi
         # between num_orbits_before_merger and num_orbits_before_merger - 1
         dt = (t_at_num_minus_one_orbits_before_merger
               - t_at_num_orbits_before_merger)
         # get the width using dt and the time step
-        width = dt / (self.t[1] - self.t[0])
+        width = dt / (t[1] - t[0])
         # we want to use a width to select a peak/trough such that it is always
         # smaller than the separation between the troughs/peaks surrounding the
         # given peak/trough, otherwise we might miss a few extrema near merger

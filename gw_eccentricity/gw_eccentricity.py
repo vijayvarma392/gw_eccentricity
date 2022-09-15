@@ -219,6 +219,8 @@ def measure_eccentricity(tref_in=None,
             finding extrema, but this might cause interpolation issues.
             For a non negative num_orbits_to_exclude_before_merger, that
             many orbits prior to merger are excluded when finding extrema.
+            If your waveform does not have a merger (e.g. PN/EMRI), use
+            num_orbits_to_exclude_before_merger = None.
             Default: 1.
 
         extrema_finding_kwargs:
