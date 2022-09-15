@@ -176,6 +176,7 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
+        self.merger_idx = np.argmin(np.abs(self.t - self.t_merger))
         # Measured values of eccentricities to perform diagnostic checks.  For
         # example to plot ecc vs time plot, or checking monotonicity of
         # eccentricity as a function of time. These are values of
@@ -263,6 +264,32 @@ class eccDefinition:
         }
         return default_extra_kwargs
 
+    def create_truncated_data(self):
+        """Create truncated data for analysis.
+
+        If `num_orbits_to_exclude_before_merger` is not None then
+        data only up to this number of orbits before the merger is used
+        for finding the location of pericenters and apocenters.
+        """
+        self.idx_end_data_analyse = -1
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
+            phase22_at_merger = self.phase22[self.merger_idx]
+            # one orbit changes the 22 mode phase by 4 pi since
+            # omega22 = 2 omega_orb
+            phase22_num_orbits_earlier_than_merger = (
+                phase22_at_merger
+                - 4 * np.pi
+                * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
+            self.idx_end_data_analyse = np.argmin(
+                np.abs(self.phase22
+                       - phase22_num_orbits_earlier_than_merger))
+
+        self.t_analyse = self.t[:self.idx_end_data_analyse]
+        self.data_analyse = self.data_for_finding_extrema[
+            :self.idx_end_data_analyse]
+        self.phase22_analyse = self.phase22[:self.idx_end_data_analyse]
+        self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
+
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
 
@@ -290,27 +317,6 @@ class eccDefinition:
         Interpolant through extrema, positions of extrema
         """
         extrema_idx = self.find_extrema(extrema_type)
-        # experimenting with throwing away pericenters too close to merger
-        # This helps in avoiding unwanted feature in the spline
-        # through the extrema
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            merger_idx = np.argmin(np.abs(self.t - self.t_merger))
-            phase22_at_merger = self.phase22[merger_idx]
-            # one orbit changes the 22 mode phase by 4 pi since
-            # omega22 = 2 omega_orb
-            phase22_num_orbits_earlier_than_merger = (
-                phase22_at_merger
-                - 4 * np.pi
-                * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            self.idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
-                self.phase22 - phase22_num_orbits_earlier_than_merger))
-            # use only the extrema those are at least num_orbits away from the
-            # merger to avoid nonphysical features like non-monotonic
-            # eccentricity near the merger
-            self.latest_time_used_for_extrema_finding \
-                = self.t[self.idx_num_orbit_earlier_than_merger]
-            extrema_idx = extrema_idx[
-                extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
             interpolant = get_interpolant(self.t[extrema_idx],
                                           self.omega22[extrema_idx],
@@ -1590,7 +1596,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        data_for_ylim = self.omega22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.omega22[:self.idx_end_data_analyse]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         pad = 0.05 * ymax  # 5 % buffer for better visibility
@@ -1674,7 +1680,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.amp22[:self.idx_end_data_analyse]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         ax.set_ylim(ymin, ymax)
@@ -1823,7 +1829,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"])
         # set reasonable ylims
         data_for_ylim = self.res_omega22[
-            :self.idx_num_orbit_earlier_than_merger]
+            :self.idx_end_data_analyse]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
@@ -1894,7 +1900,7 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
+        data_for_ylim = self.res_amp22[:self.idx_end_data_analyse]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0
@@ -1961,15 +1967,8 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        # To make it work for FrequencyFits
-        # FIXME: Harald, Arif: Think about how to make this better.
-        if hasattr(self, "t_analyse"):
-            ax.plot(self.t_analyse, self.data_analyse,
-                    c=colorsDict["default"])
-            self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
-        else:
-            ax.plot(self.t, self.data_for_finding_extrema,
-                    c=colorsDict["default"])
+        ax.plot(self.t_analyse, self.data_analyse,
+                c=colorsDict["default"])
         ax.plot(
             self.t[self.pericenters_location],
             self.data_for_finding_extrema[self.pericenters_location],
@@ -1984,7 +1983,7 @@ class eccDefinition:
             label=labelsDict["apocenters"])
         # set reasonable ylims
         data_for_ylim = self.data_for_finding_extrema[
-            :self.idx_num_orbit_earlier_than_merger]
+            :self.idx_end_data_analyse]
         ymin = min(data_for_ylim)
         ymax = max(data_for_ylim)
         # we want to make the ylims symmetric about y=0 when Residual data is

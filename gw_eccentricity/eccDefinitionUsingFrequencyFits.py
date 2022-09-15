@@ -73,25 +73,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
         self.debug = self.extra_kwargs["debug"]
-        # create the shortened data-set for analysis
-        merger_idx = np.argmin(np.abs(self.t - self.t_merger))
-        self.idx_end = merger_idx
-        if False and (self.extra_kwargs["num_orbits_to_exclude_before_merger"]
-                      is not None):
-            phase22_at_merger = self.phase22[merger_idx]
-            # one orbit changes the 22 mode phase by 4 pi since
-            # omega22 = 2 omega_orb
-            phase22_num_orbits_earlier_than_merger = (
-                phase22_at_merger
-                - 4 * np.pi
-                * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            self.idx_end = np.argmin(
-                np.abs(self.phase22
-                       - phase22_num_orbits_earlier_than_merger))
-
-        self.t_analyse = self.t[:self.idx_end] - self.t_merger
-        self.data_analyse = self.data_for_finding_extrema[:self.idx_end]
-        self.phase22_analyse = self.phase22[:self.idx_end]
+        # create the truncated data-set for analysis
+        self.create_truncated_data()
+        # TODO: Harald aligns the waveform at the merger. Might be needed for fitting
+        # to work. Therefore I am doing this here but Harald should confirm if it's
+        # true.
+        self.t_analyse -= self.t_merger
+        self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
 
     def get_default_fits_kwargs(self):
         """Get default kwargs to be used for Fits methods."""
@@ -119,9 +107,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             "distance_factor": 0.75,  # 75% of the average orbital period,
             # Number of extrema to look for during fitting. It looks for
             # N on the left and N+1 on the right
-            "N": 3,
+            "num_extrema": 3,
             # Number of orbits to use for global fit
-            "N_orbits_for_global_fit": 10
+            "num_orbits_for_global_fit": 10
         }
 
     def set_fit_variables(self):
@@ -137,8 +125,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.nPN = self.fits_kwargs["nPN"]
         self.prominence_factor = self.fits_kwargs["prominence_factor"]
         self.distance_factor = self.fits_kwargs["distance_factor"]
-        self.N = self.fits_kwargs["N"]
-        self.N_orbits_for_global_fit = self.fits_kwargs["N_orbits_for_global_fit"]
+        self.num_extrema = self.fits_kwargs["num_extrema"]
+        self.num_orbits_for_global_fit = self.fits_kwargs["num_orbits_for_global_fit"]
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
@@ -169,7 +157,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # DESIRED NUMBER OF EXTREMA left/right DURING FITTING
         # Code will look for N extrema to the left of idx_ref, and N+1 extrema
         # to the right
-        N = self.N
+        N = self.num_extrema
 
         # if True, perform an additional fitting step to find the position of
         # extrema to sub-gridspacing accuracy.
@@ -196,7 +184,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # use this many orbits from the start of the waveform for the initial
         # global fit.  Keeping this initial fit-interval away from merger helps
         # to obtain a good fit that also allows to discern small eccentricities
-        N_orbits_for_global_fit = self.N_orbits_for_global_fit
+        N_orbits_for_global_fit = self.num_orbits_for_global_fit
         idx_end = np.argmax(self.phase22_analyse > self.phase22_analyse[0]
                             + N_orbits_for_global_fit*4*np.pi)
 

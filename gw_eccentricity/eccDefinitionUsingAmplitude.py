@@ -21,6 +21,9 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         super().__init__(*args, **kwargs)
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
         self.label_for_data_for_finding_extrema = r"$A_{22}$"
+        self.method = "Amplitude"
+        # create the truncated data-set for analysis
+        self.create_truncated_data()
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
@@ -54,5 +57,5 @@ class eccDefinitionUsingAmplitude(eccDefinition):
                             " or 'apocenters'")
 
         return find_peaks(
-            sign * self.data_for_finding_extrema,
+            sign * self.data_analyse,
             **self.extrema_finding_kwargs)[0]

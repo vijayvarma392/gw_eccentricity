@@ -5,7 +5,6 @@ Part of Eccentricity Definition project.
 """
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .plot_settings import labelsDict
-import numpy as np
 from .utils import check_kwargs_and_set_defaults
 
 
@@ -32,14 +31,14 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "eccDefinitionUsingAmplitudeFits.get_default_fits_kwargs()")
         self.set_fit_variables()
         self.data_for_finding_extrema = self.amp22
-        self.data_analyse = self.data_for_finding_extrema[:self.idx_end]
+        # create the truncated data-set for analysis
+        self.create_truncated_data()
         # FIXME: Find a better solution
         # It turns out that since in MKS units amplitude is very small
         # The envelope fitting does not work properly. Maybe there is a better
         # way to do this but scaling the amp22 data by its value at the global
         # peak (the merger time) solves this issue.
-        self.amp22_merger = self.data_for_finding_extrema[
-            np.argmin(np.abs(self.t - self.t_merger))]
+        self.amp22_merger = self.data_for_finding_extrema[self.merger_idx]
         self.data_analyse /= self.amp22_merger
 
     def get_default_fits_kwargs(self):
@@ -56,6 +55,6 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "fit_bounds_max_nPN_factor": 10,
             "prominence_factor": 0.025,
             "distance_factor": 0.5,
-            "N": 3,
-            "N_orbits_for_global_fit": 10
+            "num_extrema": 3,
+            "num_orbits_for_global_fit": 10
         }
