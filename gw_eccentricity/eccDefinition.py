@@ -276,11 +276,13 @@ class eccDefinition:
         """Create truncated data for analysis.
 
         If `num_orbits_to_exclude_before_merger` is not None then
-        data only up to this number of orbits before the merger is used
-        for finding the location of pericenters and apocenters.
+        only the part of the data that is atleast
+        `num_orbits_to_exclude_before_merger` orbits earlier than the merger
+        is used for finding the location of pericenters and apocenters.
         """
         self.idx_end_data_analyse = -1
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
+           is not None:
             phase22_at_merger = self.phase22[self.merger_idx]
             # one orbit changes the 22 mode phase by 4 pi since
             # omega22 = 2 omega_orb
