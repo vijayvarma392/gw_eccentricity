@@ -152,6 +152,43 @@ class eccDefinition:
                 apocenters. This is helpful for eccentricities ~1 where
                 pericenters are easy to find but apocenters are not.
                 Default: False.
+
+            fits_kwargs:
+                Kwargs dict to be passed to find_extrema function for
+                finding extrema in methods using envelope fits to detect
+                the extrema. For example it is used in the methods
+                "FrequencyFits" and "AmplitudeFits" method.
+                The defaults are set in the init of the inidividual methods
+                using get_default_fits_kwargs inside those module.
+                Allowed kwargs are:
+                - "nPN": The PN exponent to use in the fit function. It is
+                  inspired by the functional form of frequency/amplitude in
+                  the leading Post-Newtonian order ~(t - t_merger)^nPN
+                - "fit_bounds_max_amp_factor": To set the upper bound on the
+                  Amplitude A of the fitting function of the form A(t-T)^n.
+                  The upper bound of A is set as f0*fit_bounds_max_amp_factor,
+                  where f0 is the mean of the first and the last values of data
+                  to be fitted.  f0 = 0.5*(data[0]+data[-1])
+                - "fit_bounds_max_nPN_factor": To set the upper bound on the
+                  exponent n of the fitting function. The upper bound on n is
+                  set as f0*fit_bounds_max_nPN_factor/(-fit_center_time),
+                  where fit_center_time is the time at the midpoint of the
+                  data.
+                  fit_center_time = 0.5*(t[0]+t[-1]).
+                  The merger is assumed to be at t=0 here.
+                - "prominence_factor": To set the prominence for find_peaks
+                  function. The prominence is set as
+                  prominence = prominence_factor * residual_data_amp,
+                  where,
+                  residual_data_amp = max(residual_data) - min(residual_data)
+                - "distance_factor": To set the distance for find_peaks
+                  function.
+                  distance = distance_factor * average_orbital_period
+                - "num_orbits": Number of extrema to look for during
+                  fitting. It looks for num_orbits on the left and num_orbits+1
+                  on the right.
+                - "num_orbits_for_global_fit": Number of orbits to use for
+                  global fit in the Fits methods.
         """
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()

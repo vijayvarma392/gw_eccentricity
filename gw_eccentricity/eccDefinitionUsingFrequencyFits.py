@@ -99,7 +99,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             # distance_factor * average_orbital_period
             "distance_factor": 0.75,  # 75% of the average orbital period,
             # Number of extrema to look for during fitting. It looks for
-            # N on the left and N+1 on the right
+            # num_orbits on the left and num_orbits+1 on the right
             "num_orbits": 3,
             # Number of orbits to use for global fit
             "num_orbits_for_global_fit": 10
