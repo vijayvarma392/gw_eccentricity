@@ -146,6 +146,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             raise Exception(f"extrema_type='{extrema_type}' unknown.")
         # The fit function assume the merger to be at t=0. So we align the time
         # axis such that merger occurs at t=0.
+        # After the peaks are found, the time is reshifted to to its original
+        # values at the end of this function so the merger is again at t_merger.
         self.t -= self.t_merger
 
         # DESIRED NUMBER OF EXTREMA left/right DURING FITTING
@@ -193,7 +195,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         # create fitting function object, set initial guess and bounds
         fit_center_time = 0.5*(self.t[0] + self.t[-1])
-        print(fit_center_time)
         f_fit = envelope_fitting_function(t0=fit_center_time,
                                           verbose=False)
         # typial scale of data
