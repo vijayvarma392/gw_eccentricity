@@ -25,11 +25,11 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         self.label_for_fit_to_data_for_finding_extrema \
             = labelsDict[f"{self.data_str}_fit"]
         self.method = "AmplitudeFits"
-        self.fits_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs['fits_kwargs'],
-            self.get_default_fits_kwargs(),
-            "fits_kwargs",
-            "eccDefinitionUsingAmplitudeFits.get_default_fits_kwargs()")
+        self.kwargs_for_fits_methods = check_kwargs_and_set_defaults(
+            self.extra_kwargs['kwargs_for_fits_methods'],
+            self.get_default_kwargs_for_fits_methods(),
+            "kwargs_for_fits_methods",
+            "eccDefinitionUsingAmplitudeFits.get_default_kwargs_for_fits_methods()")
         self.set_fit_variables()
         # Make a copy of amp22 and use it to set data_for_finding_extrema.
         # This would ensure that any modification of data_for_finding_extrema
@@ -42,10 +42,10 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         # peak (the merger time) solves this issue.
         self.data_for_finding_extrema /= self.amp22_merger
 
-    def get_default_fits_kwargs(self):
+    def get_default_kwargs_for_fits_methods(self):
         """Get default fits kwargs.
 
-        See eccDefinitionUsingFrequencyFits.get_default_fits_kwargs
+        See eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
         for documentation.
         """
         return {

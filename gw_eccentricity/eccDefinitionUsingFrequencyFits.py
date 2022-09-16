@@ -68,61 +68,75 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.data_for_finding_extrema = self.omega22.copy()
         self.method = "FrequencyFits"
         # Get dictionary of kwargs to be used for Fits methods.
-        self.fits_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs['fits_kwargs'],
-            self.get_default_fits_kwargs(),
-            "fits_kwargs",
-            "eccDefinitionUsingFrequencyFits.get_default_fits_kwargs()")
+        self.kwargs_for_fits_methods = check_kwargs_and_set_defaults(
+            self.extra_kwargs['kwargs_for_fits_methods'],
+            self.get_default_kwargs_for_fits_methods(),
+            "kwargs_for_fits_methods",
+            "eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods()")
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
         self.debug = self.extra_kwargs["debug"]
 
-    def get_default_fits_kwargs(self):
-        """Get default kwargs to be used for Fits methods."""
+    def get_default_kwargs_for_fits_methods(self):
+        """Get default kwargs to be used for Fits methods.
+
+        The kwargs are:
+        - "nPN": The PN exponent to use in the fit function. It is
+          inspired by the functional form of frequency/amplitude in
+          the leading Post-Newtonian order ~(t - t_merger)^nPN
+        - "fit_bounds_max_amp_factor": To set the upper bound on the
+          Amplitude A of the fitting function of the form A(t-T)^n.
+          The upper bound of A is set as f0*fit_bounds_max_amp_factor,
+          where f0 is the mean of the first and the last values of data
+          to be fitted.  f0 = 0.5*(data[0]+data[-1])
+        - "fit_bounds_max_nPN_factor": To set the upper bound on the
+          exponent n of the fitting function. The upper bound on n is
+          set as f0*fit_bounds_max_nPN_factor/(-fit_center_time),
+          where fit_center_time is the time at the midpoint of the
+          data.
+          fit_center_time = 0.5*(t[0]+t[-1]).
+          The merger is assumed to be at t=0 here.
+        - "prominence_factor": To set the prominence for find_peaks
+          function. The prominence is set as
+          prominence = prominence_factor * residual_data_amp,
+          where,
+          residual_data_amp = max(residual_data) - min(residual_data)
+        - "distance_factor": To set the distance for find_peaks
+          function.
+          distance = distance_factor * average_orbital_period
+        - "num_orbits": Number of extrema to look for during
+          fitting. It looks for num_orbits on the left and num_orbits+1
+          on the right.
+        - "num_orbits_for_global_fit": Number of orbits to use for
+          global fit in the Fits methods.
+        """
         return {
-            # The PN exponent as approximation Jolien and Creighton Chapter 3,
-            # Equation 3.178d
             "nPN": -3./8,
-            # For setting maximum bound on the Amplitude in fit function. The
-            # maximum bound is set as f0 * fit_bounds_max_amp_factor, where
-            # f0 = 0.5 * (data[0] + data[-1])
             "fit_bounds_max_amp_factor": 10,
-            # For setting maximum bound on the PN exponent in the fit function.
-            # The maximum bound is set as
-            # f0 * fit_bounds_max_nPN_factor / (-fit_center_time)
-            # where fit_center_time is the time at midpoint
-            # between start and end of data, i. e.,
-            # fit_center_time = 0.5 * (t[0] + t[-1])
             "fit_bounds_max_nPN_factor": 10,
-            # The prominence for find_peaks function is set as
-            # prominence_factor * residual_amp_max, where
-            # residual_amp_max = (max(residual data) - min(residual data))
             "prominence_factor": 0.03,  # prominence = 3% of residual_amp_max
-            # distance for find_peaks is set as
-            # distance_factor * average_orbital_period
             "distance_factor": 0.75,  # 75% of the average orbital period,
-            # Number of extrema to look for during fitting. It looks for
-            # num_orbits on the left and num_orbits+1 on the right
             "num_orbits": 3,
-            # Number of orbits to use for global fit
             "num_orbits_for_global_fit": 10
         }
 
     def set_fit_variables(self):
         """Set variables to be used for Fits Methods.
 
-        See under get_default_fits_kwargs for documentation
+        See under get_default_kwargs_for_fits_methods for documentation
         on these variables.
         """
-        self.fit_bounds_max_amp_factor = self.fits_kwargs[
+        self.fit_bounds_max_amp_factor = self.kwargs_for_fits_methods[
             "fit_bounds_max_amp_factor"]
-        self.fit_bounds_max_nPN_factor = self.fits_kwargs[
+        self.fit_bounds_max_nPN_factor = self.kwargs_for_fits_methods[
             "fit_bounds_max_nPN_factor"]
-        self.nPN = self.fits_kwargs["nPN"]
-        self.prominence_factor = self.fits_kwargs["prominence_factor"]
-        self.distance_factor = self.fits_kwargs["distance_factor"]
-        self.num_orbits = self.fits_kwargs["num_orbits"]
-        self.num_orbits_for_global_fit = self.fits_kwargs["num_orbits_for_global_fit"]
+        self.nPN = self.kwargs_for_fits_methods["nPN"]
+        self.prominence_factor = self.kwargs_for_fits_methods[
+            "prominence_factor"]
+        self.distance_factor = self.kwargs_for_fits_methods["distance_factor"]
+        self.num_orbits = self.kwargs_for_fits_methods["num_orbits"]
+        self.num_orbits_for_global_fit = self.kwargs_for_fits_methods[
+            "num_orbits_for_global_fit"]
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.

@@ -153,42 +153,16 @@ class eccDefinition:
                 pericenters are easy to find but apocenters are not.
                 Default: False.
 
-            fits_kwargs:
+            kwargs_for_fits_methods:
                 Kwargs dict to be passed to find_extrema function for
                 finding extrema in methods using envelope fits to detect
                 the extrema. For example it is used in the methods
                 "FrequencyFits" and "AmplitudeFits" method.
                 The defaults are set in the init of the inidividual methods
-                using get_default_fits_kwargs inside those module.
-                Allowed kwargs are:
-                - "nPN": The PN exponent to use in the fit function. It is
-                  inspired by the functional form of frequency/amplitude in
-                  the leading Post-Newtonian order ~(t - t_merger)^nPN
-                - "fit_bounds_max_amp_factor": To set the upper bound on the
-                  Amplitude A of the fitting function of the form A(t-T)^n.
-                  The upper bound of A is set as f0*fit_bounds_max_amp_factor,
-                  where f0 is the mean of the first and the last values of data
-                  to be fitted.  f0 = 0.5*(data[0]+data[-1])
-                - "fit_bounds_max_nPN_factor": To set the upper bound on the
-                  exponent n of the fitting function. The upper bound on n is
-                  set as f0*fit_bounds_max_nPN_factor/(-fit_center_time),
-                  where fit_center_time is the time at the midpoint of the
-                  data.
-                  fit_center_time = 0.5*(t[0]+t[-1]).
-                  The merger is assumed to be at t=0 here.
-                - "prominence_factor": To set the prominence for find_peaks
-                  function. The prominence is set as
-                  prominence = prominence_factor * residual_data_amp,
-                  where,
-                  residual_data_amp = max(residual_data) - min(residual_data)
-                - "distance_factor": To set the distance for find_peaks
-                  function.
-                  distance = distance_factor * average_orbital_period
-                - "num_orbits": Number of extrema to look for during
-                  fitting. It looks for num_orbits on the left and num_orbits+1
-                  on the right.
-                - "num_orbits_for_global_fit": Number of orbits to use for
-                  global fit in the Fits methods.
+                using get_default_kwargs_for_fits_methods inside those module.
+                See
+                eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
+                for documentation on the allowed kwargs.
         """
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
@@ -196,34 +170,9 @@ class eccDefinition:
             if kw not in self.recognized_dataDict_keys:
                 warnings.warn(
                     f"kw {kw} is not a recognized key word in dataDict.")
-        t = dataDict["t"]
-        phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
-        # We need to know the merger time of eccentric waveform.
-        # This is useful, for example, to subtract the quasi circular
-        # amplitude from eccentric amplitude in residual amplitude method
-        # We also compute amp22 and phase22 at the merger which are needed
-        # to compute location at certain number orbits earlier than merger
-        # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
-        # respectively.
-        self.t_merger = peak_time_via_quadratic_fit(
-            t,
-            amplitude_using_all_modes(dataDict["hlm"]))[0]
-        self.merger_idx = np.argmin(np.abs(t - self.t_merger))
-        self.amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[self.merger_idx]
-        self.phase22_merger = phase22[self.merger_idx]
-        # Sanity check various kwargs and set default values
-        self.check_and_set_default_kwargs(t, phase22, extra_kwargs)
-        # Truncate data if "num_orbits_to_exclude_before_merger" is not None
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
-           is not None:
-            index_num_orbits_earlier_than_merger \
-                = self.get_index_at_num_orbits_earlier_than_merger(
-                    phase22,
-                    self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            self.dataDict = self.get_truncated_data(
-                dataDict, index_num_orbits_earlier_than_merger)
-        else:
-            self.dataDict = dataDict
+        self.dataDict, self.t_merger, self.amp22_merger \
+            = self.truncate_dataDict_if_necessary_and_set_kwargs(
+                dataDict, extra_kwargs)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -271,30 +220,64 @@ class eccDefinition:
         ]
         return list_of_keys
 
-    def get_truncated_data(self, dataDict, index_for_truncating):
-        """Truncate data keeping data upto index_for_truncating.
+    def truncate_dataDict_if_necessary_and_set_kwargs(self,
+                                                      dataDict,
+                                                      extra_kwargs):
+        """Truncate dataDict if "num_orbits_to_exclude_before_merger" is not None.
 
         parameters:
         ----------
         dataDict:
-            Dictionary containing mode dictionary "hlm" and time array "t".
-        index_for_truncating:
-            Index to use for truncating the modes in "hlm" dict and time in
-            array "t". modes and times upto index_for_truncating is retained
-            in the truncated dictionary.
+            Dictionary containing modes and times.
+        extra_kwargs:
+            Extra kwargs passed to the measure eccentricity.
 
         returns:
         --------
-        Truncated dataDict.
+        dataDict:
+            Truncated if num_orbits_to_exclude_before_merger is not None
+            else the unchanged dataDict.
+        t_merger:
+            Merger time evaluated as the time of the global maximum of
+            amplitude_using_all_modes
+        amp22_merger:
+            Amplitude of the (2, 2) mode at t_merger.
         """
-        dataDict = copy.deepcopy(dataDict)
-        for mode in dataDict["hlm"]:
-            dataDict["hlm"][mode] \
-                = dataDict["hlm"][mode][:index_for_truncating]
-        dataDict["t"] = dataDict["t"][:index_for_truncating]
-        return dataDict
+        t = dataDict["t"]
+        phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
+        # We need to know the merger time of eccentric waveform.
+        # This is useful, for example, to subtract the quasi circular
+        # amplitude from eccentric amplitude in residual amplitude method
+        # We also compute amp22 and phase22 at the merger which are needed
+        # to compute location at certain number orbits earlier than merger
+        # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
+        # respectively.
+        t_merger = peak_time_via_quadratic_fit(
+            t,
+            amplitude_using_all_modes(dataDict["hlm"]))[0]
+        merger_idx = np.argmin(np.abs(t - t_merger))
+        amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[merger_idx]
+        phase22_merger = phase22[merger_idx]
+        # Sanity check various kwargs and set default values
+        self.check_and_set_default_kwargs(t, phase22, phase22_merger,
+                                          extra_kwargs)
+        # Truncate data if "num_orbits_to_exclude_before_merger" is not None
+        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
+           is not None:
+            index_num_orbits_earlier_than_merger \
+                = self.get_index_at_num_orbits_earlier_than_merger(
+                    phase22, phase22_merger,
+                    self.extra_kwargs["num_orbits_to_exclude_before_merger"])
+            dataDict = copy.deepcopy(dataDict)
+            for mode in dataDict["hlm"]:
+                dataDict["hlm"][mode] \
+                    = dataDict["hlm"][mode][
+                        :index_num_orbits_earlier_than_merger]
+            dataDict["t"] = dataDict["t"][:index_num_orbits_earlier_than_merger]
+        return dataDict, t_merger, amp22_merger
 
-    def check_and_set_default_kwargs(self, t, phase22, extra_kwargs):
+    def check_and_set_default_kwargs(self, t, phase22, phase22_merger,
+                                     extra_kwargs):
         """Check and set defaults for varius kwargs.
 
         parameters:
@@ -303,6 +286,8 @@ class eccDefinition:
             1d time array of the full waveform.
         phase22:
             1d phase array of (2, 2) mode of the full waveform.
+        phase22_merger:
+            Phase of the (2, 2) mode at the merger.
         extra_kwargs:
             Dictionary of kwargs to be checked and set defaults.
 
@@ -321,7 +306,7 @@ class eccDefinition:
                 f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
-            self.get_default_extrema_finding_kwargs(t, phase22),
+            self.get_default_extrema_finding_kwargs(t, phase22, phase22_merger),
             "extrema_finding_kwargs",
             "eccDefinition.get_default_extrema_finding_kwargs()")
         self.available_averaging_methods \
@@ -332,14 +317,15 @@ class eccDefinition:
             "spline_kwargs",
             "utils.get_default_spline_kwargs()")
 
-    def get_default_extrema_finding_kwargs(self, t, phase22):
+    def get_default_extrema_finding_kwargs(self, t, phase22, phase22_merger):
         """Defaults for extrema_finding_kwargs."""
         default_extrema_finding_kwargs = {
             "height": None,
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_width_for_peak_finder_from_phase22(t, phase22),
+            "width": self.get_width_for_peak_finder_from_phase22(
+                t, phase22, phase22_merger),
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
@@ -356,12 +342,13 @@ class eccDefinition:
             "omega22_averaging_method": "mean_motion",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
-            "fits_kwargs": {},  # Gets overriden in methods using envelope fits
+            "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
         }
         return default_extra_kwargs
 
     def get_index_at_num_orbits_earlier_than_merger(self,
                                                     phase22,
+                                                    phase22_merger,
                                                     num_orbits):
         """Get the index of time num orbits earlier than merger.
 
@@ -369,6 +356,8 @@ class eccDefinition:
         -----------
         phase22:
             1d array of phase of (2, 2) mode of the full waveform.
+        phase22_merger:
+            Phase of (2, 2) mode at the merger.
         num_orbits:
             Number of orbits earlier than merger to use for computing
             the index of time.
@@ -376,7 +365,7 @@ class eccDefinition:
         # one orbit changes the 22 mode phase by 4 pi since
         # omega22 = 2 omega_orb
         phase22_num_orbits_earlier_than_merger = (
-            self.phase22_merger
+            phase22_merger
             - 4 * np.pi
             * num_orbits)
         return np.argmin(np.abs(
@@ -2173,6 +2162,7 @@ class eccDefinition:
     def get_width_for_peak_finder_from_phase22(self,
                                                t,
                                                phase22,
+                                               phase22_merger,
                                                num_orbits_before_merger=2):
         """Get the minimal value of `width` parameter for extrema finding.
 
@@ -2206,7 +2196,9 @@ class eccDefinition:
         t:
             Time array.
         phase22:
-            Phase of the 22 mode.
+            Phase of the (2, 2) mode.
+        phase22_merger:
+            Phase of the (2, 2) mode at the merger.
         num_orbits_before_merger:
             Number of orbits before merger to get the time at which the `width`
             parameter is determined. We want to do this near the merger as this
@@ -2223,10 +2215,10 @@ class eccDefinition:
         # for 22 mode phase changes about 2 * 2pi for each orbit.
         t_at_num_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
-                phase22, num_orbits_before_merger)]
+                phase22, phase22_merger, num_orbits_before_merger)]
         t_at_num_minus_one_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
-                phase22, num_orbits_before_merger-1)]
+                phase22, phase22_merger, num_orbits_before_merger-1)]
         # change in time over which phase22 change by 4 pi
         # between num_orbits_before_merger and num_orbits_before_merger - 1
         dt = (t_at_num_minus_one_orbits_before_merger
