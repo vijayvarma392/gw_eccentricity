@@ -154,15 +154,10 @@ class eccDefinition:
                 Default: False.
 
             kwargs_for_fits_methods:
-                Kwargs dict to be passed to find_extrema function for
-                finding extrema in methods using envelope fits to detect
-                the extrema. For example it is used in the methods
-                "FrequencyFits" and "AmplitudeFits" method.
-                The defaults are set in the init of the inidividual methods
-                using get_default_kwargs_for_fits_methods inside those module.
-                See
+                Extra kwargs to be passed to FrequencyFits and AmplitudeFits
+                methods. See
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
-                for documentation on the allowed kwargs.
+                for allowed keys.
         """
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
@@ -282,17 +277,23 @@ class eccDefinition:
         width = self.get_width_for_peak_finder_from_phase22(
             t, phase22, phase22_merger)
         # Truncate data if "num_orbits_to_exclude_before_merger" is not None
-        if "num_orbits_to_exclude_before_merger" in extra_kwargs \
-           and extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            if extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
+        if extra_kwargs is not None \
+           and ("num_orbits_to_exclude_before_merger" in extra_kwargs
+                and extra_kwargs["num_orbits_to_exclude_before_merger"]
+                is not None):
+            num_orbits = extra_kwargs["num_orbits_to_exclude_before_merger"]
+            if num_orbits < 0:
                 raise ValueError(
                     "num_orbits_to_exclude_before_merger must be non-negative."
-                    " Given value was "
-                    f"{extra_kwargs['num_orbits_to_exclude_before_merger']}")
+                    " Given value was {num_orbits}")
+        else:
+            num_orbits = self.get_default_extra_kwargs()[
+                "num_orbits_to_exclude_before_merger"]
+        if num_orbits is not None:
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
                     phase22, phase22_merger,
-                    extra_kwargs["num_orbits_to_exclude_before_merger"])
+                    num_orbits)
             dataDict = copy.deepcopy(dataDict)
             for mode in dataDict["hlm"]:
                 dataDict["hlm"][mode] \

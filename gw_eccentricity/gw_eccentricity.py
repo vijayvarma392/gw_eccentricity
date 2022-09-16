@@ -275,14 +275,10 @@ def measure_eccentricity(tref_in=None,
             Default: False.
 
         kwargs_for_fits_methods:
-            Kwargs dict to be passed to find_extrema function for finding
-            extrema in methods using envelope fits to detect the extrema. For
-            example it is used in the methods "FrequencyFits" and
-            "AmplitudeFits" method.
-            The defaults are set in the init of the inidividual methods using
-            get_default_fits_kwargs inside those module. See
-            eccDefinitionUsingFrequencyFits.get_default_fits_kwargs for
-            documentation on the allowed kwargs.
+            Extra kwargs to be passed to FrequencyFits and AmplitudeFits
+            methods. See
+            eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
+            for allowed keys.
 
     Returns:
     --------
