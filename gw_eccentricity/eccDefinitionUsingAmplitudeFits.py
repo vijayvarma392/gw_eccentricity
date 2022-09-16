@@ -31,6 +31,9 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "fits_kwargs",
             "eccDefinitionUsingAmplitudeFits.get_default_fits_kwargs()")
         self.set_fit_variables()
+        # Make a copy of amp22 and use it to set data_for_finding_extrema.
+        # This would ensure that any modification of data_for_finding_extrema
+        # does not modify amp22.
         self.data_for_finding_extrema = self.amp22.copy()
         # FIXME: Find a better solution
         # It turns out that since in MKS units amplitude is very small

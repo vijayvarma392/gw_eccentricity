@@ -62,6 +62,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.label_for_data_for_finding_extrema = labelsDict[self.data_str]
         self.label_for_fit_to_data_for_finding_extrema \
             = labelsDict[f"{self.data_str}_fit"]
+        # Make a copy of omega22 and use it to set data_for_finding_extrema.
+        # This would ensure that any modification of data_for_finding_extrema
+        # does not modify omega22.
         self.data_for_finding_extrema = self.omega22.copy()
         self.method = "FrequencyFits"
         # Get dictionary of kwargs to be used for Fits methods.
