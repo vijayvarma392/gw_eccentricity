@@ -170,8 +170,9 @@ class eccDefinition:
             if kw not in self.recognized_dataDict_keys:
                 warnings.warn(
                     f"kw {kw} is not a recognized key word in dataDict.")
-        self.dataDict, self.t_merger, self.amp22_merger \
-            = self.truncate_dataDict_if_necessary_and_set_kwargs(
+        # Truncate dataDict if num_orbits_to_exclude_before_merger is not None
+        self.dataDict, self.t_merger, self.amp22_merger, width \
+            = self.truncate_dataDict_if_necessary(
                 dataDict, extra_kwargs)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
@@ -186,6 +187,23 @@ class eccDefinition:
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
+        # Sanity check various kwargs and set default values
+        self.extra_kwargs = check_kwargs_and_set_defaults(
+            extra_kwargs, self.get_default_extra_kwargs(),
+            "extra_kwargs",
+            "eccDefinition.get_default_extra_kwargs()")
+        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs['extrema_finding_kwargs'],
+            self.get_default_extrema_finding_kwargs(width),
+            "extrema_finding_kwargs",
+            "eccDefinition.get_default_extrema_finding_kwargs()")
+        self.spline_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs["spline_kwargs"],
+            get_default_spline_kwargs(),
+            "spline_kwargs",
+            "utils.get_default_spline_kwargs()")
+        self.available_averaging_methods \
+            = self.get_available_omega22_averaging_methods()
         # Measured values of eccentricities to perform diagnostic checks.  For
         # example to plot ecc vs time plot, or checking monotonicity of
         # eccentricity as a function of time. These are values of
@@ -220,9 +238,9 @@ class eccDefinition:
         ]
         return list_of_keys
 
-    def truncate_dataDict_if_necessary_and_set_kwargs(self,
-                                                      dataDict,
-                                                      extra_kwargs):
+    def truncate_dataDict_if_necessary(self,
+                                       dataDict,
+                                       extra_kwargs):
         """Truncate dataDict if "num_orbits_to_exclude_before_merger" is not None.
 
         parameters:
@@ -242,6 +260,8 @@ class eccDefinition:
             amplitude_using_all_modes
         amp22_merger:
             Amplitude of the (2, 2) mode at t_merger.
+        width:
+            Width for find_peaks function.
         """
         t = dataDict["t"]
         phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
@@ -258,74 +278,38 @@ class eccDefinition:
         merger_idx = np.argmin(np.abs(t - t_merger))
         amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[merger_idx]
         phase22_merger = phase22[merger_idx]
-        # Sanity check various kwargs and set default values
-        self.check_and_set_default_kwargs(t, phase22, phase22_merger,
-                                          extra_kwargs)
+        # width for peak finding function
+        width = self.get_width_for_peak_finder_from_phase22(
+            t, phase22, phase22_merger)
         # Truncate data if "num_orbits_to_exclude_before_merger" is not None
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
-           is not None:
+        if "num_orbits_to_exclude_before_merger" in extra_kwargs \
+           and extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
+            if extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
+                raise ValueError(
+                    "num_orbits_to_exclude_before_merger must be non-negative."
+                    " Given value was "
+                    f"{extra_kwargs['num_orbits_to_exclude_before_merger']}")
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
                     phase22, phase22_merger,
-                    self.extra_kwargs["num_orbits_to_exclude_before_merger"])
+                    extra_kwargs["num_orbits_to_exclude_before_merger"])
             dataDict = copy.deepcopy(dataDict)
             for mode in dataDict["hlm"]:
                 dataDict["hlm"][mode] \
                     = dataDict["hlm"][mode][
                         :index_num_orbits_earlier_than_merger]
-            dataDict["t"] = dataDict["t"][:index_num_orbits_earlier_than_merger]
-        return dataDict, t_merger, amp22_merger
+            dataDict["t"] \
+                = dataDict["t"][:index_num_orbits_earlier_than_merger]
+        return dataDict, t_merger, amp22_merger, width
 
-    def check_and_set_default_kwargs(self, t, phase22, phase22_merger,
-                                     extra_kwargs):
-        """Check and set defaults for varius kwargs.
-
-        parameters:
-        -----------
-        t:
-            1d time array of the full waveform.
-        phase22:
-            1d phase array of (2, 2) mode of the full waveform.
-        phase22_merger:
-            Phase of the (2, 2) mode at the merger.
-        extra_kwargs:
-            Dictionary of kwargs to be checked and set defaults.
-
-        t and phase22 are used to set default width for peak finding function.
-        """
-        self.extra_kwargs = check_kwargs_and_set_defaults(
-            extra_kwargs, self.get_default_extra_kwargs(),
-            "extra_kwargs",
-            "eccDefinition.get_default_extra_kwargs()")
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
-           is not None and \
-           self.extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
-            raise ValueError(
-                "num_orbits_to_exclude_before_merger must be non-negative. "
-                "Given value was "
-                f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
-        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs['extrema_finding_kwargs'],
-            self.get_default_extrema_finding_kwargs(t, phase22, phase22_merger),
-            "extrema_finding_kwargs",
-            "eccDefinition.get_default_extrema_finding_kwargs()")
-        self.available_averaging_methods \
-            = self.get_available_omega22_averaging_methods()
-        self.spline_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs["spline_kwargs"],
-            get_default_spline_kwargs(),
-            "spline_kwargs",
-            "utils.get_default_spline_kwargs()")
-
-    def get_default_extrema_finding_kwargs(self, t, phase22, phase22_merger):
+    def get_default_extrema_finding_kwargs(self, width):
         """Defaults for extrema_finding_kwargs."""
         default_extrema_finding_kwargs = {
             "height": None,
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_width_for_peak_finder_from_phase22(
-                t, phase22, phase22_merger),
+            "width": width,
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
