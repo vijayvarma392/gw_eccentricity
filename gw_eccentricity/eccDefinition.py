@@ -153,7 +153,7 @@ class eccDefinition:
                 pericenters are easy to find but apocenters are not.
                 Default: False.
         """
-        # check if there are any keys that are not recognized
+        # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
             if kw not in self.recognized_dataDict_keys:
@@ -164,6 +164,10 @@ class eccDefinition:
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
+        # We also compute amp22 and phase22 at the merger which are needed
+        # to compute location at certain number orbits earlier than merger
+        # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
+        # respectively.
         self.t_merger = peak_time_via_quadratic_fit(
             t,
             amplitude_using_all_modes(dataDict["hlm"]))[0]
@@ -177,11 +181,12 @@ class eccDefinition:
            is not None:
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
-                    t, phase22,
+                    phase22,
                     self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            dataDict = copy.deepcopy(dataDict)
             self.dataDict = self.get_truncated_data(
                 dataDict, index_num_orbits_earlier_than_merger)
+        else:
+            self.dataDict = dataDict
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -230,7 +235,22 @@ class eccDefinition:
         return list_of_keys
 
     def get_truncated_data(self, dataDict, index_for_truncating):
-        """Truncate data keeping data upto index_for_truncating."""
+        """Truncate data keeping data upto index_for_truncating.
+
+        parameters:
+        ----------
+        dataDict:
+            Dictionary containing mode dictionary "hlm" and time array "t".
+        index_for_truncating:
+            Index to use for truncating the modes in "hlm" dict and time in
+            array "t". modes and times upto index_for_truncating is retained
+            in the truncated dictionary.
+
+        returns:
+        --------
+        Truncated dataDict.
+        """
+        dataDict = copy.deepcopy(dataDict)
         for mode in dataDict["hlm"]:
             dataDict["hlm"][mode] \
                 = dataDict["hlm"][mode][:index_for_truncating]
@@ -248,6 +268,8 @@ class eccDefinition:
             1d phase array of (2, 2) mode of the full waveform.
         extra_kwargs:
             Dictionary of kwargs to be checked and set defaults.
+
+        t and phase22 are used to set default width for peak finding function.
         """
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
@@ -301,9 +323,19 @@ class eccDefinition:
         }
         return default_extra_kwargs
 
-    def get_index_at_num_orbits_earlier_than_merger(self, t, phase22,
+    def get_index_at_num_orbits_earlier_than_merger(self,
+                                                    phase22,
                                                     num_orbits):
-        """Get the index of time num orbits earlier than merger."""
+        """Get the index of time num orbits earlier than merger.
+
+        parameters:
+        -----------
+        phase22:
+            1d array of phase of (2, 2) mode of the full waveform.
+        num_orbits:
+            Number of orbits earlier than merger to use for computing
+            the index of time.
+        """
         # one orbit changes the 22 mode phase by 4 pi since
         # omega22 = 2 omega_orb
         phase22_num_orbits_earlier_than_merger = (
@@ -1286,10 +1318,10 @@ class eccDefinition:
                          self.plot_phase_diff_ratio_between_pericenters]
         if "hlm_zeroecc" in self.dataDict:
             # add residual amp22 plot
-            if "Delta A" not in self.label_for_data_for_finding_extrema:
+            if self.method != "ResidualAmplitude":
                 list_of_plots.append(self.plot_residual_amp22)
             # add residual omega22 plot
-            if "Delta\omega" not in self.label_for_data_for_finding_extrema:
+            if self.method != "ResidualFrequency":
                 list_of_plots.append(self.plot_residual_omega22)
 
         # Set style if None
@@ -1619,9 +1651,8 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        data_for_ylim = self.omega22
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.omega22)
+        ymax = max(self.omega22)
         pad = 0.05 * ymax  # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
@@ -1703,9 +1734,8 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.amp22
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.amp22)
+        ymax = max(self.amp22)
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(labelsDict["t"])
         ax.set_ylabel(labelsDict["amp22"])
@@ -1851,9 +1881,8 @@ class eccDefinition:
                 marker=".", ls="", label=labelsDict["apocenters"],
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        data_for_ylim = self.res_omega22
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.res_omega22)
+        ymax = max(self.res_omega22)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
@@ -1922,9 +1951,8 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.res_amp22
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.res_amp22)
+        ymax = max(self.res_amp22)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
@@ -2004,12 +2032,11 @@ class eccDefinition:
             marker=".", ls="",
             label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.data_for_finding_extrema
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.data_for_finding_extrema)
+        ymax = max(self.data_for_finding_extrema)
         # we want to make the ylims symmetric about y=0 when Residual data is
         # used
-        if "Delta" in self.label_for_data_for_finding_extrema:
+        if "Residual" in self.method:
             ylim = max(ymax, -ymin)
             pad = 0.05 * ylim  # 5 % buffer for better visibility
             ax.set_ylim(-ylim - pad, ylim + pad)
@@ -2159,10 +2186,10 @@ class eccDefinition:
         # for 22 mode phase changes about 2 * 2pi for each orbit.
         t_at_num_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
-                t, phase22, num_orbits_before_merger)]
+                phase22, num_orbits_before_merger)]
         t_at_num_minus_one_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
-                t, phase22, num_orbits_before_merger-1)]
+                phase22, num_orbits_before_merger-1)]
         # change in time over which phase22 change by 4 pi
         # between num_orbits_before_merger and num_orbits_before_merger - 1
         dt = (t_at_num_minus_one_orbits_before_merger

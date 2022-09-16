@@ -19,6 +19,7 @@ class eccDefinitionUsingFrequency(eccDefinitionUsingAmplitude):
         """
         super().__init__(*args, **kwargs)
         self.label_for_data_for_finding_extrema = r"$\omega_{22}$"
+        self.method = "Frequency"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""

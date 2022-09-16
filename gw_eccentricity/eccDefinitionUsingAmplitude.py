@@ -21,6 +21,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         super().__init__(*args, **kwargs)
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
         self.label_for_data_for_finding_extrema = r"$A_{22}$"
+        self.method = "Amplitude"
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
