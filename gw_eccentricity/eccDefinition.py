@@ -277,6 +277,172 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
+    def drop_extra_extrema(self, pericenters, apocenters,
+                           max_phase22_diff_ratio=1.5):
+        """Drop extra extrema.
+
+        Drop extrema at the end: If there are more than one extrema of one
+        extrema_type (apocenters) after the last extrema
+        of the other extrema_type (pericenters) then drop the
+        extra extrema (apocenters)
+
+        Drop extrema at the start of the data. If there are more than one
+        extrema of one extrema_type (apocenters) before the first extrema
+        of the other extrema_type (pericenters) then drop the
+        extra extrema (apocenters)
+        """
+        # At the end
+        pericenters_at_end = pericenters[pericenters > apocenters[-1]]
+        if len(pericenters_at_end) > 1:
+            warnings.warn(
+                f"Found {len(pericenters_at_end) - 1} extra pericenters at the"
+                " end. Extra pericenters are not chosen for building spline.")
+            pericenters = pericenters[pericenters <= pericenters_at_end[0]]
+        apocenters_at_end = apocenters[apocenters > pericenters[-1]]
+        if len(apocenters_at_end) > 1:
+            warnings.warn(
+                f"Found {len(apocenters_at_end) - 1} extra apocenters at the "
+                "end. Extra apocenters are not chosen for building spline.")
+            apocenters = apocenters[apocenters <= apocenters_at_end[0]]
+
+        pericenters_at_start = pericenters[pericenters < apocenters[0]]
+        if len(pericenters_at_start) > 1:
+            warnings.warn(
+                f"Found {len(pericenters_at_start) - 1} extra pericenters at "
+                "the start. Extra pericenters are not chosen for building "
+                "spline.")
+            pericenters = pericenters[pericenters >= pericenters_at_start[-1]]
+        apocenters_at_start = apocenters[apocenters < pericenters[0]]
+        if len(apocenters_at_start) > 1:
+            warnings.warn(
+                f"Found {len(apocenters_at_start) - 1} extra apocenters at the"
+                " start. Extra apocenters are not chosen for building spline.")
+            apocenters = apocenters[apocenters >= apocenters_at_start[-1]]
+
+        return pericenters, apocenters
+
+    def drop_extrema_if_extrema_missing(self, extrema_location,
+                                        max_r_delta_phase22_extrema=1.5,
+                                        extrema_type="pericenters"):
+        """Drop the extrema if missing extrema is detected.
+
+        It might happen that an extremum between two successive extrema is
+        missed by the extrema finder, This would result in the two extrema
+        being too far from each other.
+
+        To detect if an extremum has been missed we do the following:
+        - Compute the phase22 difference between i-th and (i+1)-th extrema:
+          delta_phase22_extrema[i] = phase22_extrema[i+1] - phase22_extrema[i]
+        - Compute the ratio of delta_phase22: r_delta_phase22_extrema[i] =
+          delta_phase22_extrema[i+1]/delta_phase22_extrema[i]
+        For correctly separated extrema, the ratio r_delta_phase22_extrema
+        should be close to 1.
+
+        Therefore if anywhere r_delta_phase22_extrema[i] >
+        max_r_delta_phase22_extrema, where max_r_delta_phase22_extrema = 1.5 by
+        default, then delta_phase22_extrema[i+1] is too large and implies that
+        phase22 difference between (i+2)-th and (i+1)-th extrema is too large
+        and therefore an extrema is missing between (i+1)-th and (i+2)-th
+        extrema. We therefore keep extrema only upto (i+1)-th extremum.
+
+        It might also be that an extremum is missed at the start of the
+        data. In such case, the phase22 difference would drop from large value
+        due to missing extremum to normal value. Therefore, in this case, if
+        anywhere r_delta_phase22_extrema[i] < 1 / max_r_delta_phase22_extrema
+        then delta_phase22_extrema[i] is too large compared to
+        delta_phase22_extrema[i+1] and therefore an extremum is missed between
+        i-th and (i+1)-th extrema. Therefore, we keep only extrema starting
+        from (i+1)-th extremum.
+        """
+        phase22_extrema = self.phase22[extrema_location]
+        delta_phase22_extrema = np.diff(phase22_extrema)
+        r_delta_phase22_extrema = (delta_phase22_extrema[1:] /
+                                   delta_phase22_extrema[:-1])
+        idx_too_large_ratio = np.where(r_delta_phase22_extrema >
+                                       max_r_delta_phase22_extrema)[0]
+        if len(idx_too_large_ratio) > 0:
+            first_idx = idx_too_large_ratio[0]
+            first_pair_indices = [extrema_location[first_idx+1],
+                                  extrema_location[first_idx+2]]
+            first_pair_times = [self.t[first_pair_indices[0]],
+                                self.t[first_pair_indices[1]]]
+            phase_diff_current = delta_phase22_extrema[first_idx+1]
+            phase_diff_previous = delta_phase22_extrema[first_idx]
+            warnings.warn(
+                f"At least a pair of {extrema_type} are too separated"
+                "from each other near the end of the data.\n"
+                f"This implies that a {extrema_type[:-1]} might be missing.\n"
+                f"First pair of such {extrema_type} are {first_pair_indices}"
+                f" at t={first_pair_times}.\n"
+                f"phase22 difference between this pair of {extrema_type}="
+                f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
+                "phase22 difference between the previous pair of "
+                f"{extrema_type}={phase_diff_previous/(4*np.pi):.2f}*4pi\n"
+                f"{extrema_type} after {first_pair_indices[0]}, i.e.,"
+                f"t > t={first_pair_times[0]} are therefore dropped.")
+            extrema_location = extrema_location[extrema_location <=
+                                                extrema_location[first_idx+1]]
+        # Now do the same at the beginning of the data
+        idx_too_small_ratio = np.where(r_delta_phase22_extrema <
+                                       (1 / max_r_delta_phase22_extrema))[0]
+        if len(idx_too_small_ratio) > 0:
+            last_idx = idx_too_small_ratio[-1]
+            last_pair_indices = [extrema_location[last_idx+1],
+                                 extrema_location[last_idx+2]]
+            last_pair_times = [self.t[last_pair_indices[0]],
+                               self.t[last_pair_indices[1]]]
+            phase_diff_current = delta_phase22_extrema[last_idx+1]
+            phase_diff_previous = delta_phase22_extrema[last_idx]
+            warnings.warn(
+                f"At least a pair of {extrema_type} are too separated from "
+                "each other near the start of the data.\n"
+                f"This implies that a {extrema_type[:-1]} might be missing.\n"
+                f"Last pair of such {extrema_type} are {last_pair_indices} at "
+                f"t={last_pair_times}.\n"
+                f"phase22 difference between this pair of {extrema_type}="
+                f"{phase_diff_previous/(4*np.pi):.2f}*4pi\n"
+                f"phase22 difference between the next pair of {extrema_type}="
+                f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
+                f"{extrema_type} before {last_pair_indices[1]}, i.e., t < t="
+                f"{last_pair_times[-1]} are therefore dropped.")
+            extrema_location = extrema_location[extrema_location >=
+                                                extrema_location[last_idx]]
+        return extrema_location
+
+    def get_good_extrema(self, pericenters, apocenters,
+                         max_r_delta_phase22_extrema=1.5):
+        """Select good extrema if there are extra extrema or missing extrema.
+
+        parameters:
+        -----------
+        pericenters:
+            1d array of locations of pericenters.
+        apocenters:
+            1d array of locations of apocenters.
+        max_r_delta_phase22_extrema:
+            Maximum value for ratio of successive phase22 difference between
+            consecutive extrema. If the ratio is greater than
+            max_r_delta_phase22 or less than 1/max_r_delta_phase22 then
+            an extremum is considered to be missing.
+        returns:
+        --------
+        good_pericenters:
+            1d array of pericenters after dropping pericenters as necessary.
+        good_apocenters:
+            1d array of apocenters after dropping apocenters as necessary.
+        """
+        pericenters, apocenters = self.drop_extra_extrema(pericenters,
+                                                          apocenters)
+        good_pericenters = self.drop_extrema_if_extrema_missing(
+            pericenters,
+            max_r_delta_phase22_extrema,
+            "pericenters")
+        good_apocenters = self.drop_extrema_if_extrema_missing(
+            apocenters,
+            max_r_delta_phase22_extrema,
+            "apocenters")
+        return good_pericenters, good_apocenters
+
     def interp_extrema(self, extrema_type="pericenters"):
         """Build interpolant through extrema.
 
