@@ -401,7 +401,7 @@ class eccDefinition:
         if phase22_num_orbits_earlier_than_merger < phase22[0]:
             raise Exception(f"Trying to find index at {num_orbits}"
                             " orbits earlier than the merger but the waveform"
-                            f" is has less than {num_orbits} orbits of data.")
+                            f" has less than {num_orbits} orbits of data.")
         return np.argmin(np.abs(
             phase22 - phase22_num_orbits_earlier_than_merger))
 
