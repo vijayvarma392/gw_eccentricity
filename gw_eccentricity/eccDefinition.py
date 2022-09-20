@@ -21,7 +21,8 @@ import copy
 class eccDefinition:
     """Measure eccentricity from given waveform data dictionary."""
 
-    def __init__(self, dataDict, extra_kwargs=None):
+    def __init__(self, dataDict, num_orbits_to_exclude_before_merger=1,
+                 extra_kwargs=None):
         """Init eccDefinition class.
 
         parameters:
@@ -79,16 +80,7 @@ class eccDefinition:
                 - We require that "hlm_zeroecc" be at least as long as "hlm" so
                   that residual amplitude/frequency can be computed.
 
-        extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
-            are:
-            spline_kwargs:
-                Dictionary of arguments to be passed to the spline
-                interpolation routine
-                (scipy.interpolate.InterpolatedUnivariateSpline) used to
-                compute omega22_pericenters(t) and omega22_apocenters(t).
-                Defaults are set using utils.get_default_spline_kwargs
-
-            num_orbits_to_exclude_before_merger:
+        num_orbits_to_exclude_before_merger:
                 Can be None or a non negative number.
                 If None, the full waveform data (even post-merger) is used for
                 finding extrema, but this might cause interpolation issues.
@@ -97,6 +89,15 @@ class eccDefinition:
                 If your waveform does not have a merger (e.g. PN/EMRI), use
                 num_orbits_to_exclude_before_merger = None.
                 Default: 1.
+
+        extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
+            are:
+            spline_kwargs:
+                Dictionary of arguments to be passed to the spline
+                interpolation routine
+                (scipy.interpolate.InterpolatedUnivariateSpline) used to
+                compute omega22_pericenters(t) and omega22_apocenters(t).
+                Defaults are set using utils.get_default_spline_kwargs
 
             extrema_finding_kwargs:
                 Dictionary of arguments to be passed to the extrema finder,
@@ -166,9 +167,9 @@ class eccDefinition:
                 warnings.warn(
                     f"kw {kw} is not a recognized key word in dataDict.")
         # Truncate dataDict if num_orbits_to_exclude_before_merger is not None
-        self.dataDict, self.t_merger, self.amp22_merger, width \
+        self.dataDict, self.t_merger, self.amp22_merger, min_width_for_extrema \
             = self.truncate_dataDict_if_necessary(
-                dataDict, extra_kwargs)
+                dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -189,7 +190,7 @@ class eccDefinition:
             "eccDefinition.get_default_extra_kwargs()")
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
-            self.get_default_extrema_finding_kwargs(width),
+            self.get_default_extrema_finding_kwargs(min_width_for_extrema),
             "extrema_finding_kwargs",
             "eccDefinition.get_default_extrema_finding_kwargs()")
         self.spline_kwargs = check_kwargs_and_set_defaults(
@@ -235,6 +236,7 @@ class eccDefinition:
 
     def truncate_dataDict_if_necessary(self,
                                        dataDict,
+                                       num_orbits_to_exclude_before_merger,
                                        extra_kwargs):
         """Truncate dataDict if "num_orbits_to_exclude_before_merger" is not None.
 
@@ -242,6 +244,8 @@ class eccDefinition:
         ----------
         dataDict:
             Dictionary containing modes and times.
+        num_orbits_to_exclude_before_merger:
+            Number of orbits to exclude before merger to get the truncated dataDict.
         extra_kwargs:
             Extra kwargs passed to the measure eccentricity.
 
@@ -252,11 +256,13 @@ class eccDefinition:
             else the unchanged dataDict.
         t_merger:
             Merger time evaluated as the time of the global maximum of
-            amplitude_using_all_modes
+            amplitude_using_all_modes. This is computed before the truncation.
         amp22_merger:
-            Amplitude of the (2, 2) mode at t_merger.
-        width:
-            Width for find_peaks function.
+            Amplitude of the (2, 2) mode at t_merger. This is computed before
+            the truncation.
+        min_width_for_extrema:
+            Minimum width for find_peaks function. This is computed before the
+            truncation.
         """
         t = dataDict["t"]
         phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
@@ -273,27 +279,23 @@ class eccDefinition:
         merger_idx = np.argmin(np.abs(t - t_merger))
         amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[merger_idx]
         phase22_merger = phase22[merger_idx]
-        # width for peak finding function
-        width = self.get_width_for_peak_finder_from_phase22(
+        # Minimum width for peak finding function
+        min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
             t, phase22, phase22_merger)
-        # Truncate data if "num_orbits_to_exclude_before_merger" is not None
-        if extra_kwargs is not None \
-           and ("num_orbits_to_exclude_before_merger" in extra_kwargs
-                and extra_kwargs["num_orbits_to_exclude_before_merger"]
-                is not None):
-            num_orbits = extra_kwargs["num_orbits_to_exclude_before_merger"]
-            if num_orbits < 0:
+        if num_orbits_to_exclude_before_merger is not None:
+            # Truncate the data by keeping on data at least
+            # num_orbits_to_exclude_before_merger earlier than the merger.
+            # This helps in avoiding non-physical features in the omega22
+            # interpolants through the pericenters and the apocenters due
+            # to the data being too close to the merger.
+            if num_orbits_to_exclude_before_merger < 0:
                 raise ValueError(
                     "num_orbits_to_exclude_before_merger must be non-negative."
                     " Given value was {num_orbits}")
-        else:
-            num_orbits = self.get_default_extra_kwargs()[
-                "num_orbits_to_exclude_before_merger"]
-        if num_orbits is not None:
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
                     phase22, phase22_merger,
-                    num_orbits)
+                    num_orbits_to_exclude_before_merger)
             dataDict = copy.deepcopy(dataDict)
             for mode in dataDict["hlm"]:
                 dataDict["hlm"][mode] \
@@ -301,7 +303,78 @@ class eccDefinition:
                         :index_num_orbits_earlier_than_merger]
             dataDict["t"] \
                 = dataDict["t"][:index_num_orbits_earlier_than_merger]
-        return dataDict, t_merger, amp22_merger, width
+        return dataDict, t_merger, amp22_merger, min_width_for_extrema
+
+    def get_width_for_peak_finder_from_phase22(self,
+                                               t,
+                                               phase22,
+                                               phase22_merger,
+                                               num_orbits_before_merger=2):
+        """Get the minimal value of `width` parameter for extrema finding.
+
+        The extrema finding method, i.e., find_peaks from scipy.signal uses the
+        `width` parameter to filter the array of peak locations using the
+        condition that each peak in the filtered array has a width >= the value
+        of `width`. Finally, the filtered array of peak locations is returned.
+
+        The widths of the peaks in the initial array of peak locations are
+        computed internally using scipy.signal.peak_widths. By default, the
+        width is calculated at `rel_height=0.5` which gives the so-called Full
+        Width at Half Maximum (FWHM). `rel_height` is provided as a percentage
+        of the `prominence`. For details see the documentation of
+        scipy.signal.peak_widths.
+
+        If the `width` is too small then some noisy features in
+        the signal might be mistaken for extrema and on the other hand if the
+        `width` is too large then we might miss an extremum.
+
+        This function uses phase22 (phase of the (2, 2) mode) to get a
+        reasonable value of `width` by looking at the time scale over which the
+        phase22 changes by about 4pi because the change in phase22 over one
+        orbit would be approximately twice the change in the orbital phase
+        which is about 2pi.  Finally, we divide this by 4 so that the `width`
+        is always smaller than the separation between the two troughs
+        surrounding the current peak. Otherwise, we risk missing a
+        few extrema very close to the merger.
+
+        Parameters:
+        -----------
+        t:
+            Time array.
+        phase22:
+            Phase of the (2, 2) mode.
+        phase22_merger:
+            Phase of the (2, 2) mode at the merger.
+        num_orbits_before_merger:
+            Number of orbits before merger to get the time at which the `width`
+            parameter is determined. We want to do this near the merger as this
+            is where the time between extrema is the smallest, and the `width`
+            parameter sets the minimal width of a peak in the signal.
+            Default is 2.
+
+        Returns:
+        -------
+        width:
+            Minimal `width` to filter out noisy extrema.
+        """
+        # get the time for getting width at num orbits before merger.
+        # for 22 mode phase changes about 2 * 2pi for each orbit.
+        t_at_num_orbits_before_merger = t[
+            self.get_index_at_num_orbits_earlier_than_merger(
+                phase22, phase22_merger, num_orbits_before_merger)]
+        t_at_num_minus_one_orbits_before_merger = t[
+            self.get_index_at_num_orbits_earlier_than_merger(
+                phase22, phase22_merger, num_orbits_before_merger-1)]
+        # change in time over which phase22 change by 4 pi
+        # between num_orbits_before_merger and num_orbits_before_merger - 1
+        dt = (t_at_num_minus_one_orbits_before_merger
+              - t_at_num_orbits_before_merger)
+        # get the width using dt and the time step
+        width = dt / (t[1] - t[0])
+        # we want to use a width to select a peak/trough such that it is always
+        # smaller than the separation between the troughs/peaks surrounding the
+        # given peak/trough, otherwise we might miss a few extrema near merger
+        return int(width / 4)
 
     def get_default_extrema_finding_kwargs(self, width):
         """Defaults for extrema_finding_kwargs."""
@@ -2143,74 +2216,3 @@ class eccDefinition:
             Minimal width to separate consecutive peaks.
         """
         return int(width_for_unit_timestep / (self.t[1] - self.t[0]))
-
-    def get_width_for_peak_finder_from_phase22(self,
-                                               t,
-                                               phase22,
-                                               phase22_merger,
-                                               num_orbits_before_merger=2):
-        """Get the minimal value of `width` parameter for extrema finding.
-
-        The extrema finding method, i.e., find_peaks from scipy.signal uses the
-        `width` parameter to filter the array of peak locations using the
-        condition that each peak in the filtered array has a width >= the value
-        of `width`. Finally, the filtered array of peak locations is returned.
-
-        The widths of the peaks in the initial array of peak locations are
-        computed internally using scipy.signal.peak_widths. By default, the
-        width is calculated at `rel_height=0.5` which gives the so-called Full
-        Width at Half Maximum (FWHM). `rel_height` is provided as a percentage
-        of the `prominence`. For details see the documentation of
-        scipy.signal.peak_widths.
-
-        If the `width` is too small then some noisy features in
-        the signal might be mistaken for extrema and on the other hand if the
-        `width` is too large then we might miss an extremum.
-
-        This function uses phase22 (phase of the (2, 2) mode) to get a
-        reasonable value of `width` by looking at the time scale over which the
-        phase22 changes by about 4pi because the change in phase22 over one
-        orbit would be approximately twice the change in the orbital phase
-        which is about 2pi.  Finally, we divide this by 4 so that the `width`
-        is always smaller than the separation between the two troughs
-        surrounding the current peak. Otherwise, we risk missing a
-        few extrema very close to the merger.
-
-        Parameters:
-        -----------
-        t:
-            Time array.
-        phase22:
-            Phase of the (2, 2) mode.
-        phase22_merger:
-            Phase of the (2, 2) mode at the merger.
-        num_orbits_before_merger:
-            Number of orbits before merger to get the time at which the `width`
-            parameter is determined. We want to do this near the merger as this
-            is where the time between extrema is the smallest, and the `width`
-            parameter sets the minimal width of a peak in the signal.
-            Default is 2.
-
-        Returns:
-        -------
-        width:
-            Minimal `width` to filter out noisy extrema.
-        """
-        # get the time for getting width at num orbits before merger.
-        # for 22 mode phase changes about 2 * 2pi for each orbit.
-        t_at_num_orbits_before_merger = t[
-            self.get_index_at_num_orbits_earlier_than_merger(
-                phase22, phase22_merger, num_orbits_before_merger)]
-        t_at_num_minus_one_orbits_before_merger = t[
-            self.get_index_at_num_orbits_earlier_than_merger(
-                phase22, phase22_merger, num_orbits_before_merger-1)]
-        # change in time over which phase22 change by 4 pi
-        # between num_orbits_before_merger and num_orbits_before_merger - 1
-        dt = (t_at_num_minus_one_orbits_before_merger
-              - t_at_num_orbits_before_merger)
-        # get the width using dt and the time step
-        width = dt / (t[1] - t[0])
-        # we want to use a width to select a peak/trough such that it is always
-        # smaller than the separation between the troughs/peaks surrounding the
-        # given peak/trough, otherwise we might miss a few extrema near merger
-        return int(width / 4)
