@@ -25,6 +25,7 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         """
         super().__init__(*args, **kwargs)
         self.label_for_data_for_finding_extrema = r"$\Delta A_{22}$"
+        self.method = "ResidualAmplitude"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
