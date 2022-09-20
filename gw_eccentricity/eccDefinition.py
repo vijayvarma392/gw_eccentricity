@@ -15,12 +15,14 @@ from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
 import warnings
+import copy
 
 
 class eccDefinition:
     """Measure eccentricity from given waveform data dictionary."""
 
-    def __init__(self, dataDict, extra_kwargs=None):
+    def __init__(self, dataDict, num_orbits_to_exclude_before_merger=1,
+                 extra_kwargs=None):
         """Init eccDefinition class.
 
         parameters:
@@ -78,6 +80,16 @@ class eccDefinition:
                 - We require that "hlm_zeroecc" be at least as long as "hlm" so
                   that residual amplitude/frequency can be computed.
 
+        num_orbits_to_exclude_before_merger:
+                Can be None or a non negative number.
+                If None, the full waveform data (even post-merger) is used for
+                finding extrema, but this might cause interpolation issues.
+                For a non negative num_orbits_to_exclude_before_merger, that
+                many orbits prior to merger are excluded when finding extrema.
+                If your waveform does not have a merger (e.g. PN/EMRI), use
+                num_orbits_to_exclude_before_merger = None.
+                Default: 1.
+
         extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
             are:
             spline_kwargs:
@@ -86,14 +98,6 @@ class eccDefinition:
                 (scipy.interpolate.InterpolatedUnivariateSpline) used to
                 compute omega22_pericenters(t) and omega22_apocenters(t).
                 Defaults are set using utils.get_default_spline_kwargs
-
-            num_orbits_to_exclude_before_merger:
-                Can be None or a non negative number.
-                If None, the full waveform data (even post-merger) is used for
-                finding extrema, but this might cause interpolation issues.
-                For a non negative num_orbits_to_exclude_before_merger, that
-                many orbits prior to merger are excluded when finding extrema.
-                Default: 1.
 
             extrema_finding_kwargs:
                 Dictionary of arguments to be passed to the extrema finder,
@@ -149,14 +153,23 @@ class eccDefinition:
                 apocenters. This is helpful for eccentricities ~1 where
                 pericenters are easy to find but apocenters are not.
                 Default: False.
+
+            kwargs_for_fits_methods:
+                Extra kwargs to be passed to FrequencyFits and AmplitudeFits
+                methods. See
+                eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
+                for allowed keys.
         """
-        self.dataDict = dataDict
-        # check if there are any keys that are not recognized
+        # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
-        for kw in self.dataDict.keys():
+        for kw in dataDict.keys():
             if kw not in self.recognized_dataDict_keys:
                 warnings.warn(
                     f"kw {kw} is not a recognized key word in dataDict.")
+        # Truncate dataDict if num_orbits_to_exclude_before_merger is not None
+        self.dataDict, self.t_merger, self.amp22_merger, min_width_for_extrema \
+            = self.truncate_dataDict_if_necessary(
+                dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
         # requires uniform time steps
@@ -167,15 +180,26 @@ class eccDefinition:
         self.hlm = self.dataDict["hlm"]
         self.h22 = self.hlm[(2, 2)]
         self.amp22 = np.abs(self.h22)
-        # We need to know the merger time of eccentric waveform.
-        # This is useful, for example, to subtract the quasi circular
-        # amplitude from eccentric amplitude in residual amplitude method
-        self.t_merger = peak_time_via_quadratic_fit(
-            self.t,
-            amplitude_using_all_modes(self.dataDict["hlm"]))[0]
         self.phase22 = - np.unwrap(np.angle(self.h22))
         self.omega22 = time_deriv_4thOrder(self.phase22,
                                            self.t[1] - self.t[0])
+        # Sanity check various kwargs and set default values
+        self.extra_kwargs = check_kwargs_and_set_defaults(
+            extra_kwargs, self.get_default_extra_kwargs(),
+            "extra_kwargs",
+            "eccDefinition.get_default_extra_kwargs()")
+        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs['extrema_finding_kwargs'],
+            self.get_default_extrema_finding_kwargs(min_width_for_extrema),
+            "extrema_finding_kwargs",
+            "eccDefinition.get_default_extrema_finding_kwargs()")
+        self.spline_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs["spline_kwargs"],
+            get_default_spline_kwargs(),
+            "spline_kwargs",
+            "utils.get_default_spline_kwargs()")
+        self.available_averaging_methods \
+            = self.get_available_omega22_averaging_methods()
         # Measured values of eccentricities to perform diagnostic checks.  For
         # example to plot ecc vs time plot, or checking monotonicity of
         # eccentricity as a function of time. These are values of
@@ -200,31 +224,6 @@ class eccDefinition:
         if "hlm_zeroecc" in self.dataDict:
             self.compute_res_amp_and_omega22()
 
-        # Sanity check various kwargs and set default values
-        self.extra_kwargs = check_kwargs_and_set_defaults(
-            extra_kwargs, self.get_default_extra_kwargs(),
-            "extra_kwargs",
-            "eccDefinition.get_default_extra_kwargs()")
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] \
-           is not None and \
-           self.extra_kwargs["num_orbits_to_exclude_before_merger"] < 0:
-            raise ValueError(
-                "num_orbits_to_exclude_before_merger must be non-negative. "
-                "Given value was "
-                f"{self.extra_kwargs['num_orbits_to_exclude_before_merger']}")
-        self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs['extrema_finding_kwargs'],
-            self.get_default_extrema_finding_kwargs(),
-            "extrema_finding_kwargs",
-            "eccDefinition.get_default_extrema_finding_kwargs()")
-        self.available_averaging_methods \
-            = self.get_available_omega22_averaging_methods()
-        self.spline_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs["spline_kwargs"],
-            get_default_spline_kwargs(),
-            "spline_kwargs",
-            "utils.get_default_spline_kwargs()")
-
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
         list_of_keys = [
@@ -235,14 +234,185 @@ class eccDefinition:
         ]
         return list_of_keys
 
-    def get_default_extrema_finding_kwargs(self):
+    def truncate_dataDict_if_necessary(self,
+                                       dataDict,
+                                       num_orbits_to_exclude_before_merger,
+                                       extra_kwargs):
+        """Truncate dataDict if "num_orbits_to_exclude_before_merger" is not None.
+
+        parameters:
+        ----------
+        dataDict:
+            Dictionary containing modes and times.
+        num_orbits_to_exclude_before_merger:
+            Number of orbits to exclude before merger to get the truncated dataDict.
+        extra_kwargs:
+            Extra kwargs passed to the measure eccentricity.
+
+        returns:
+        --------
+        dataDict:
+            Truncated if num_orbits_to_exclude_before_merger is not None
+            else the unchanged dataDict.
+        t_merger:
+            Merger time evaluated as the time of the global maximum of
+            amplitude_using_all_modes. This is computed before the truncation.
+        amp22_merger:
+            Amplitude of the (2, 2) mode at t_merger. This is computed before
+            the truncation.
+        min_width_for_extrema:
+            Minimum width for find_peaks function. This is computed before the
+            truncation.
+        """
+        t = dataDict["t"]
+        phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
+        # We need to know the merger time of eccentric waveform.
+        # This is useful, for example, to subtract the quasi circular
+        # amplitude from eccentric amplitude in residual amplitude method
+        # We also compute amp22 and phase22 at the merger which are needed
+        # to compute location at certain number orbits earlier than merger
+        # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
+        # respectively.
+        t_merger = peak_time_via_quadratic_fit(
+            t,
+            amplitude_using_all_modes(dataDict["hlm"]))[0]
+        merger_idx = np.argmin(np.abs(t - t_merger))
+        amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[merger_idx]
+        phase22_merger = phase22[merger_idx]
+        # Minimum width for peak finding function
+        min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
+            t, phase22, phase22_merger)
+        if num_orbits_to_exclude_before_merger is not None:
+            # Truncate the last num_orbits_to_exclude_before_merger number of
+            # orbits before merger.
+            # This helps in avoiding non-physical features in the omega22
+            # interpolants through the pericenters and the apocenters due
+            # to the data being too close to the merger.
+            if num_orbits_to_exclude_before_merger < 0:
+                raise ValueError(
+                    "num_orbits_to_exclude_before_merger must be non-negative."
+                    " Given value was {num_orbits}")
+            index_num_orbits_earlier_than_merger \
+                = self.get_index_at_num_orbits_earlier_than_merger(
+                    phase22, phase22_merger,
+                    num_orbits_to_exclude_before_merger)
+            dataDict = copy.deepcopy(dataDict)
+            for mode in dataDict["hlm"]:
+                dataDict["hlm"][mode] \
+                    = dataDict["hlm"][mode][
+                        :index_num_orbits_earlier_than_merger]
+            dataDict["t"] \
+                = dataDict["t"][:index_num_orbits_earlier_than_merger]
+        return dataDict, t_merger, amp22_merger, min_width_for_extrema
+
+    def get_width_for_peak_finder_from_phase22(self,
+                                               t,
+                                               phase22,
+                                               phase22_merger,
+                                               num_orbits_before_merger=2):
+        """Get the minimal value of `width` parameter for extrema finding.
+
+        The extrema finding method, i.e., find_peaks from scipy.signal uses the
+        `width` parameter to filter the array of peak locations using the
+        condition that each peak in the filtered array has a width >= the value
+        of `width`. Finally, the filtered array of peak locations is returned.
+
+        The widths of the peaks in the initial array of peak locations are
+        computed internally using scipy.signal.peak_widths. By default, the
+        width is calculated at `rel_height=0.5` which gives the so-called Full
+        Width at Half Maximum (FWHM). `rel_height` is provided as a percentage
+        of the `prominence`. For details see the documentation of
+        scipy.signal.peak_widths.
+
+        If the `width` is too small then some noisy features in
+        the signal might be mistaken for extrema and on the other hand if the
+        `width` is too large then we might miss an extremum.
+
+        This function uses phase22 (phase of the (2, 2) mode) to get a
+        reasonable value of `width` by looking at the time scale over which the
+        phase22 changes by about 4pi because the change in phase22 over one
+        orbit would be approximately twice the change in the orbital phase
+        which is about 2pi.  Finally, we divide this by 4 so that the `width`
+        is always smaller than the separation between the two troughs
+        surrounding the current peak. Otherwise, we risk missing a
+        few extrema very close to the merger.
+
+        Parameters:
+        -----------
+        t:
+            Time array.
+        phase22:
+            Phase of the (2, 2) mode.
+        phase22_merger:
+            Phase of the (2, 2) mode at the merger.
+        num_orbits_before_merger:
+            Number of orbits before merger to get the time at which the `width`
+            parameter is determined. We want to do this near the merger as this
+            is where the time between extrema is the smallest, and the `width`
+            parameter sets the minimal width of a peak in the signal.
+            Default is 2.
+
+        Returns:
+        -------
+        width:
+            Minimal `width` to filter out noisy extrema.
+        """
+        # get the time for getting width at num orbits before merger.
+        # for 22 mode phase changes about 2 * 2pi for each orbit.
+        t_at_num_orbits_before_merger = t[
+            self.get_index_at_num_orbits_earlier_than_merger(
+                phase22, phase22_merger, num_orbits_before_merger)]
+        t_at_num_minus_one_orbits_before_merger = t[
+            self.get_index_at_num_orbits_earlier_than_merger(
+                phase22, phase22_merger, num_orbits_before_merger-1)]
+        # change in time over which phase22 change by 4 pi
+        # between num_orbits_before_merger and num_orbits_before_merger - 1
+        dt = (t_at_num_minus_one_orbits_before_merger
+              - t_at_num_orbits_before_merger)
+        # get the width using dt and the time step
+        width = dt / (t[1] - t[0])
+        # we want to use a width to select a peak/trough such that it is always
+        # smaller than the separation between the troughs/peaks surrounding the
+        # given peak/trough, otherwise we might miss a few extrema near merger
+        return int(width / 4)
+
+    def get_index_at_num_orbits_earlier_than_merger(self,
+                                                    phase22,
+                                                    phase22_merger,
+                                                    num_orbits):
+        """Get the index of time num orbits earlier than merger.
+
+        parameters:
+        -----------
+        phase22:
+            1d array of phase of (2, 2) mode of the full waveform.
+        phase22_merger:
+            Phase of (2, 2) mode at the merger.
+        num_orbits:
+            Number of orbits earlier than merger to use for computing
+            the index of time.
+        """
+        # one orbit changes the 22 mode phase by 4 pi since
+        # omega22 = 2 omega_orb
+        phase22_num_orbits_earlier_than_merger = (phase22_merger
+                                                  - 4 * np.pi
+                                                  * num_orbits)
+        # check if the waveform is longer than num_orbits
+        if phase22_num_orbits_earlier_than_merger < phase22[0]:
+            raise Exception(f"Trying to find index at {num_orbits}"
+                            " orbits earlier than the merger but the waveform"
+                            f" has less than {num_orbits} orbits of data.")
+        return np.argmin(np.abs(
+            phase22 - phase22_num_orbits_earlier_than_merger))
+
+    def get_default_extrema_finding_kwargs(self, width):
         """Defaults for extrema_finding_kwargs."""
         default_extrema_finding_kwargs = {
             "height": None,
             "threshold": None,
             "distance": None,
             "prominence": None,
-            "width": self.get_width_for_peak_finder_from_phase22(),
+            "width": width,
             "wlen": None,
             "rel_height": 0.5,
             "plateau_size": None}
@@ -259,9 +429,10 @@ class eccDefinition:
             "omega22_averaging_method": "mean_motion",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
-            "fits_kwargs": {},  # Gets overriden in methods using envelope fits
+            "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
         }
         return default_extra_kwargs
+
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
@@ -290,27 +461,6 @@ class eccDefinition:
         Interpolant through extrema, positions of extrema
         """
         extrema_idx = self.find_extrema(extrema_type)
-        # experimenting with throwing away pericenters too close to merger
-        # This helps in avoiding unwanted feature in the spline
-        # through the extrema
-        if self.extra_kwargs["num_orbits_to_exclude_before_merger"] is not None:
-            merger_idx = np.argmin(np.abs(self.t - self.t_merger))
-            phase22_at_merger = self.phase22[merger_idx]
-            # one orbit changes the 22 mode phase by 4 pi since
-            # omega22 = 2 omega_orb
-            phase22_num_orbits_earlier_than_merger = (
-                phase22_at_merger
-                - 4 * np.pi
-                * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            self.idx_num_orbit_earlier_than_merger = np.argmin(np.abs(
-                self.phase22 - phase22_num_orbits_earlier_than_merger))
-            # use only the extrema those are at least num_orbits away from the
-            # merger to avoid nonphysical features like non-monotonic
-            # eccentricity near the merger
-            self.latest_time_used_for_extrema_finding \
-                = self.t[self.idx_num_orbit_earlier_than_merger]
-            extrema_idx = extrema_idx[
-                extrema_idx <= self.idx_num_orbit_earlier_than_merger]
         if len(extrema_idx) >= 2:
             interpolant = get_interpolant(self.t[extrema_idx],
                                           self.omega22[extrema_idx],
@@ -915,12 +1065,62 @@ class eccDefinition:
             change_at_first_idx = (
                 omega22_average[first_idx+1]
                 - omega22_average[first_idx])
+            if self.extra_kwargs["debug"]:
+                style = "APS"
+                use_fancy_plotsettings(style=style)
+                nrows = 4
+                fig, axes = plt.subplots(
+                    nrows=nrows,
+                    figsize=(figWidthsTwoColDict[style],
+                             nrows * figHeightsDict[style]))
+                axes[0].plot(omega22_average, marker=".",
+                             c=colorsDict["default"])
+                axes[1].plot(np.diff(omega22_average), marker=".",
+                             c=colorsDict["default"])
+                axes[2].plot(self.t_average_pericenters,
+                             self.omega22_average_pericenters,
+                             label=labelsDict["pericenters"],
+                             c=colorsDict["pericenter"],
+                             marker=".")
+                axes[2].plot(self.t_average_apocenters,
+                             self.omega22_average_apocenters,
+                             label=labelsDict["apocenters"],
+                             c=colorsDict["apocenter"],
+                             marker=".")
+                axes[3].plot(self.t, self.omega22, c=colorsDict["default"])
+                axes[3].plot(self.t_pericenters,
+                             self.omega22[self.pericenters_location],
+                             c=colorsDict["pericenter"],
+                             label=labelsDict["pericenters"],
+                             marker=".")
+                axes[3].plot(self.t_apocenters,
+                             self.omega22[self.apocenters_location],
+                             c=colorsDict["apocenter"],
+                             label=labelsDict["apocenters"],
+                             marker=".")
+                axes[2].legend()
+                axes[2].set_ylabel(labelsDict["omega22_average"])
+                axes[3].legend()
+                axes[3].set_ylim(0,)
+                axes[3].set_ylabel(labelsDict["omega22"])
+                axes[1].axhline(0, c=colorsDict["vline"])
+                axes[0].set_ylabel(labelsDict["omega22_average"])
+                axes[1].set_ylabel(
+                    fr"$\Delta$ {labelsDict['omega22_average']}")
+                axes[0].set_title(
+                    self.extra_kwargs["omega22_averaging_method"])
+                fig.tight_layout()
+                figName = f"./debug_{description.replace(' ', '_')}.pdf"
+                fig.savefig(figName)
+                plot_info = f"See the plot saved as {figName}."
+            else:
+                plot_info = ""
             raise Exception(
                 f"{description} are non-monotonic.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
                 f" where omega22 drops from {omega22_average[first_idx]} to"
                 f" {omega22_average[first_idx+1]}, a decrease by"
-                f" {change_at_first_idx}.\nTotal number of places of"
+                f" {abs(change_at_first_idx)}.\nTotal number of places of"
                 f" non-monotonicity is {len(idx_non_monotonic)}.\n"
                 f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
                 "Possible fixes: \n"
@@ -987,7 +1187,6 @@ class eccDefinition:
         Once we get the reference frequencies, we create a spline to get time
         as a function of these reference frequencies. This should work if the
         reference frequency is monotonic which it should be.
-
         Finally, we evaluate this spline on the fref_in to get the tref_in.
         """
         method = self.extra_kwargs["omega22_averaging_method"]
@@ -999,6 +1198,7 @@ class eccDefinition:
             # average. Then proceed to evaluate the tref_in based on these
             # fref_out
             fref_out = self.get_fref_out(fref_in, method)
+
             # Now that we have fref_out, we want to know the corresponding
             # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
             # This is done by first creating an interpolant of time as function
@@ -1011,9 +1211,13 @@ class eccDefinition:
             self.omega22_average = self.available_averaging_methods[
                 method](self.t_for_omega22_average)
 
+            # check that omega22_average is monotonically increasing
+            self.check_monotonicity_of_omega22_average(
+                self.omega22_average, "Interpolated omega22_average")
+
             # Get tref_in using interpolation
             tref_in = interpolate(fref_out,
-                                  self.omega22_average / (2 * np.pi),
+                                  self.omega22_average/(2 * np.pi),
                                   self.t_for_omega22_average)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
@@ -1204,10 +1408,10 @@ class eccDefinition:
                          self.plot_phase_diff_ratio_between_pericenters]
         if "hlm_zeroecc" in self.dataDict:
             # add residual amp22 plot
-            if "Delta A" not in self.label_for_data_for_finding_extrema:
+            if self.method != "ResidualAmplitude":
                 list_of_plots.append(self.plot_residual_amp22)
             # add residual omega22 plot
-            if "Delta\omega" not in self.label_for_data_for_finding_extrema:
+            if self.method != "ResidualFrequency":
                 list_of_plots.append(self.plot_residual_omega22)
 
         # Set style if None
@@ -1537,9 +1741,8 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        data_for_ylim = self.omega22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.omega22)
+        ymax = max(self.omega22)
         pad = 0.05 * ymax  # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
@@ -1621,9 +1824,8 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.amp22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.amp22)
+        ymax = max(self.amp22)
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(labelsDict["t"])
         ax.set_ylabel(labelsDict["amp22"])
@@ -1769,10 +1971,8 @@ class eccDefinition:
                 marker=".", ls="", label=labelsDict["apocenters"],
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        data_for_ylim = self.res_omega22[
-            :self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.res_omega22)
+        ymax = max(self.res_omega22)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
@@ -1841,9 +2041,8 @@ class eccDefinition:
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.res_amp22[:self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.res_amp22)
+        ymax = max(self.res_amp22)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
@@ -1908,15 +2107,8 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        # To make it work for FrequencyFits
-        # FIXME: Harald, Arif: Think about how to make this better.
-        if hasattr(self, "t_analyse"):
-            ax.plot(self.t_analyse, self.data_analyse,
-                    c=colorsDict["default"])
-            self.latest_time_used_for_extrema_finding = self.t_analyse[-1]
-        else:
-            ax.plot(self.t, self.data_for_finding_extrema,
-                    c=colorsDict["default"])
+        ax.plot(self.t, self.data_for_finding_extrema,
+                c=colorsDict["default"])
         ax.plot(
             self.t[self.pericenters_location],
             self.data_for_finding_extrema[self.pericenters_location],
@@ -1930,13 +2122,11 @@ class eccDefinition:
             marker=".", ls="",
             label=labelsDict["apocenters"])
         # set reasonable ylims
-        data_for_ylim = self.data_for_finding_extrema[
-            :self.idx_num_orbit_earlier_than_merger]
-        ymin = min(data_for_ylim)
-        ymax = max(data_for_ylim)
+        ymin = min(self.data_for_finding_extrema)
+        ymax = max(self.data_for_finding_extrema)
         # we want to make the ylims symmetric about y=0 when Residual data is
         # used
-        if "Delta" in self.label_for_data_for_finding_extrema:
+        if "Residual" in self.method:
             ylim = max(ymax, -ymin)
             pad = 0.05 * ylim  # 5 % buffer for better visibility
             ax.set_ylim(-ylim - pad, ylim + pad)
@@ -1948,7 +2138,7 @@ class eccDefinition:
         # Add vertical line to indicate the latest time used for extrema
         # finding
         ax.axvline(
-            self.latest_time_used_for_extrema_finding,
+            self.t[-1],
             c=colorsDict["vline"], ls="--",
             label="Latest time used for finding extrema.")
         # if tref_out/fref_out is scalar then add vertical line to indicate
@@ -2032,74 +2222,3 @@ class eccDefinition:
             Minimal width to separate consecutive peaks.
         """
         return int(width_for_unit_timestep / (self.t[1] - self.t[0]))
-
-    def get_width_for_peak_finder_from_phase22(self,
-                                               num_orbits_before_merger=2):
-        """Get the minimal value of `width` parameter for extrema finding.
-
-        The extrema finding method, i.e., find_peaks from scipy.signal uses the
-        `width` parameter to filter the array of peak locations using the
-        condition that each peak in the filtered array has a width >= the value
-        of `width`. Finally, the filtered array of peak locations is returned.
-
-        The widths of the peaks in the initial array of peak locations are
-        computed internally using scipy.signal.peak_widths. By default, the
-        width is calculated at `rel_height=0.5` which gives the so-called Full
-        Width at Half Maximum (FWHM). `rel_height` is provided as a percentage
-        of the `prominence`. For details see the documentation of
-        scipy.signal.peak_widths.
-
-        If the `width` is too small then some noisy features in
-        the signal might be mistaken for extrema and on the other hand if the
-        `width` is too large then we might miss an extremum.
-
-        This function uses phase22 (phase of the (2, 2) mode) to get a
-        reasonable value of `width` by looking at the time scale over which the
-        phase22 changes by about 4pi because the change in phase22 over one
-        orbit would be approximately twice the change in the orbital phase
-        which is about 2pi.  Finally, we divide this by 4 so that the `width`
-        is always smaller than the separation between the two troughs
-        surrounding the current peak. Otherwise, we risk missing a
-        few extrema very close to the merger.
-
-        Parameters:
-        ----------
-        num_orbits_before_merger:
-            Number of orbits before merger to get the time at which the `width`
-            parameter is determined. We want to do this near the merger as this
-            is where the time between extrema is the smallest, and the `width`
-            parameter sets the minimal width of a peak in the signal.
-            Default is 2.
-
-        Returns:
-        -------
-        width:
-            Minimal `width` to filter out noisy extrema.
-        """
-        # get the phase22 at merger.
-        phase22_merger = self.phase22[
-            np.argmin(np.abs(self.t - self.t_merger))]
-        # get the time for getting width at num orbits before merger.
-        # for 22 mode phase changes about 2 * 2pi for each orbit.
-        t_at_num_orbits_before_merger = self.t[
-            np.argmin(
-                np.abs(
-                    self.phase22
-                    - (phase22_merger
-                       - (num_orbits_before_merger * 4 * np.pi))))]
-        t_at_num_minus_one_orbits_before_merger = self.t[
-            np.argmin(
-                np.abs(
-                    self.phase22
-                    - (phase22_merger
-                       - ((num_orbits_before_merger - 1) * 4 * np.pi))))]
-        # change in time over which phase22 change by 4 pi
-        # between num_orbits_before_merger and num_orbits_before_merger - 1
-        dt = (t_at_num_minus_one_orbits_before_merger
-              - t_at_num_orbits_before_merger)
-        # get the width using dt and the time step
-        width = dt / (self.t[1] - self.t[0])
-        # we want to use a width to select a peak/trough such that it is always
-        # smaller than the separation between the troughs/peaks surrounding the
-        # given peak/trough, otherwise we might miss a few extrema near merger
-        return int(width / 4)
