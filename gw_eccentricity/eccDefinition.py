@@ -283,8 +283,8 @@ class eccDefinition:
         min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
             t, phase22, phase22_merger)
         if num_orbits_to_exclude_before_merger is not None:
-            # Truncate the data by keeping on data at least
-            # num_orbits_to_exclude_before_merger earlier than the merger.
+            # Truncate the last num_orbits_to_exclude_before_merger number of
+            # orbits before merger.
             # This helps in avoiding non-physical features in the omega22
             # interpolants through the pericenters and the apocenters due
             # to the data being too close to the merger.
@@ -376,6 +376,35 @@ class eccDefinition:
         # given peak/trough, otherwise we might miss a few extrema near merger
         return int(width / 4)
 
+    def get_index_at_num_orbits_earlier_than_merger(self,
+                                                    phase22,
+                                                    phase22_merger,
+                                                    num_orbits):
+        """Get the index of time num orbits earlier than merger.
+
+        parameters:
+        -----------
+        phase22:
+            1d array of phase of (2, 2) mode of the full waveform.
+        phase22_merger:
+            Phase of (2, 2) mode at the merger.
+        num_orbits:
+            Number of orbits earlier than merger to use for computing
+            the index of time.
+        """
+        # one orbit changes the 22 mode phase by 4 pi since
+        # omega22 = 2 omega_orb
+        phase22_num_orbits_earlier_than_merger = (phase22_merger
+                                                  - 4 * np.pi
+                                                  * num_orbits)
+        # check if the waveform is longer than num_orbits
+        if phase22_num_orbits_earlier_than_merger < phase22[0]:
+            raise Exception(f"Trying to find index at {num_orbits}"
+                            " orbits earlier than the merger but the waveform"
+                            f" is has less than {num_orbits} orbits of data.")
+        return np.argmin(np.abs(
+            phase22 - phase22_num_orbits_earlier_than_merger))
+
     def get_default_extrema_finding_kwargs(self, width):
         """Defaults for extrema_finding_kwargs."""
         default_extrema_finding_kwargs = {
@@ -404,30 +433,6 @@ class eccDefinition:
         }
         return default_extra_kwargs
 
-    def get_index_at_num_orbits_earlier_than_merger(self,
-                                                    phase22,
-                                                    phase22_merger,
-                                                    num_orbits):
-        """Get the index of time num orbits earlier than merger.
-
-        parameters:
-        -----------
-        phase22:
-            1d array of phase of (2, 2) mode of the full waveform.
-        phase22_merger:
-            Phase of (2, 2) mode at the merger.
-        num_orbits:
-            Number of orbits earlier than merger to use for computing
-            the index of time.
-        """
-        # one orbit changes the 22 mode phase by 4 pi since
-        # omega22 = 2 omega_orb
-        phase22_num_orbits_earlier_than_merger = (
-            phase22_merger
-            - 4 * np.pi
-            * num_orbits)
-        return np.argmin(np.abs(
-            phase22 - phase22_num_orbits_earlier_than_merger))
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
