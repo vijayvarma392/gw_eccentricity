@@ -452,17 +452,15 @@ class eccDefinition:
                            max_phase22_diff_ratio=1.5):
         """Drop extra extrema.
 
-        Drop extrema at the end: If there are more than one extrema of one
-        extrema_type (apocenters) after the last extrema
-        of the other extrema_type (pericenters) then drop the
-        extra extrema (apocenters)
+        Drop extrema at the end: If there are more than one
+        apocenters/pericenters after the last pericenters/pericenters then drop
+        the extra apocenters/pericenters.
 
         Drop extrema at the start of the data. If there are more than one
-        extrema of one extrema_type (apocenters) before the first extrema
-        of the other extrema_type (pericenters) then drop the
-        extra extrema (apocenters)
+        apocenters/pericenters before the first pericenters/apocenters then
+        drop the extra apocenters/pericenters.
         """
-        # At the end
+        # At the end of the data
         pericenters_at_end = pericenters[pericenters > apocenters[-1]]
         if len(pericenters_at_end) > 1:
             warnings.warn(
@@ -476,6 +474,7 @@ class eccDefinition:
                 "end. Extra apocenters are not chosen for building spline.")
             apocenters = apocenters[apocenters <= apocenters_at_end[0]]
 
+        # At the start of the data
         pericenters_at_start = pericenters[pericenters < apocenters[0]]
         if len(pericenters_at_start) > 1:
             warnings.warn(
@@ -624,14 +623,18 @@ class eccDefinition:
 
         returns:
         ------
-        Interpolant through extrema, positions of extrema
+        Interpolant through extrema
         """
-        extrema_idx = self.find_extrema(extrema_type)
-        if len(extrema_idx) >= 2:
-            interpolant = get_interpolant(self.t[extrema_idx],
-                                          self.omega22[extrema_idx],
-                                          spline_kwargs=self.spline_kwargs)
-            return interpolant, extrema_idx
+        extrema_dict = {"pericenters": self.pericenters_location,
+                        "apocenters": self.apocenters_location}
+        if extrema_type not in extrema_dict:
+            raise Exception("extrema_type must be one of "
+                            f"{list(extrema_dict.keys())}")
+        extrema = extrema_dict[extrema_type]
+        if len(extrema) >= 2:
+            return get_interpolant(self.t[extrema],
+                                   self.omega22[extrema],
+                                   spline_kwargs=self.spline_kwargs)
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
@@ -713,22 +716,37 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out. Same type as
             tref_out/fref_out.
         """
-        self.omega22_pericenters_interp, self.pericenters_location \
-            = self.interp_extrema("pericenters")
+        # Get the pericenters and apocenters
+        pericenters = self.find_extrema("pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
         # the apocenters.
         if self.extra_kwargs[
                 "treat_mid_points_between_pericenters_as_apocenters"]:
-            self.omega22_apocenters_interp, self.apocenters_location \
-                = self.get_apocenters_from_pericenters()
+            apocenters = self.get_apocenters_from_pericenters(pericenters)
         else:
-            self.omega22_apocenters_interp, self.apocenters_location \
-                = self.interp_extrema("apocenters")
+            apocenters = self.find_extrema("apocenters")
+
+        # Choose good extrema
+        self.pericenters_location, self.apocenters_location \
+            = self.get_good_extrema(pericenters, apocenters)
 
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
+        # check extrema separation
+        self.orb_phase_diff_at_pericenters, \
+            self.orb_phase_diff_ratio_at_pericenters \
+            = self.check_extrema_separation(self.pericenters_location,
+                                            "pericenters")
+        self.orb_phase_diff_at_apocenters, \
+            self.orb_phase_diff_ratio_at_apocenters \
+            = self.check_extrema_separation(self.apocenters_location,
+                                            "apocenters")
+
+        # Build the interpolants of omega22 at the extrema
+        self.omega22_pericenters_interp = self.interp_extrema("pericenters")
+        self.omega22_apocenters_interp = self.interp_extrema("apocenters")
 
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
@@ -799,16 +817,6 @@ class eccDefinition:
                 "tref_out is empty. This can happen if the "
                 "waveform has insufficient identifiable "
                 "pericenters/apocenters.")
-
-        # check separation between extrema
-        self.orb_phase_diff_at_pericenters, \
-            self.orb_phase_diff_ratio_at_pericenters \
-            = self.check_extrema_separation(self.pericenters_location,
-                                            "pericenters")
-        self.orb_phase_diff_at_apocenters, \
-            self.orb_phase_diff_ratio_at_apocenters \
-            = self.check_extrema_separation(self.apocenters_location,
-                                            "apocenters")
 
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
@@ -2324,8 +2332,8 @@ class eccDefinition:
         else:
             return ax
 
-    def get_apocenters_from_pericenters(self):
-        """Build an interpolant through apocenters and their locations.
+    def get_apocenters_from_pericenters(self, pericenters):
+        """Get apocenters locations from pericenetrs locations.
 
         This function treats the mid points between two successive pericenters
         as the location of the apocenter in between the same two pericenters.
@@ -2338,26 +2346,19 @@ class eccDefinition:
 
         returns:
         ------
-        Interpolant through apocenters, positions of apocenters
+        locations of apocenters
         """
-        # NOTE: Assuming uniform time steps.  TODO: Make it work for non
+        # NOTE: Assuming uniform time steps.
+        # TODO: Make it work for non
         # uniform time steps In the following we get the location of mid point
         # between ith pericenter and (i+1)th pericenter as (loc[i] +
         # loc[i+1])/2 where loc is the array that contains the pericenter
         # locations. This works because time steps are assumed to be uniform
         # and hence proportional to the time itself.
-        apocenters_idx = (self.pericenters_location[:-1]
-                          + self.pericenters_location[1:]) / 2
-        apocenters_idx = apocenters_idx.astype(int)  # convert to ints
-        if len(apocenters_idx) >= 2:
-            interpolant = get_interpolant(self.t[apocenters_idx],
-                                          self.omega22[apocenters_idx],
-                                          spline_kwargs=self.spline_kwargs)
-            return interpolant, apocenters_idx
-        else:
-            raise Exception(
-                "Sufficient number of apocenters are not found."
-                " Can not create an interpolant.")
+        apocenters = (pericenters[:-1]
+                      + pericenters[1:]) / 2
+        apocenters = apocenters.astype(int)  # convert to ints
+        return apocenters
 
     def get_width_for_peak_finder_for_dimless_units(
             self,
