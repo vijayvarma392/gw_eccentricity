@@ -433,7 +433,6 @@ class eccDefinition:
         }
         return default_extra_kwargs
 
-
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
 
@@ -449,7 +448,7 @@ class eccDefinition:
         raise NotImplementedError("Please override me.")
 
     def drop_extra_extrema(self, pericenters, apocenters):
-        """Drop extra extrema.
+        """Drop extra extrema at the start and the end of the data.
 
         Drop extrema at the end: If there are more than one
         apocenters/pericenters after the last pericenters/pericenters then drop
@@ -524,6 +523,7 @@ class eccDefinition:
         i-th and (i+1)-th extrema. Therefore, we keep only extrema starting
         from (i+1)-th extremum.
         """
+        # Look for extrema jumps at the end of the data.
         phase22_extrema = self.phase22[extrema_location]
         delta_phase22_extrema = np.diff(phase22_extrema)
         r_delta_phase22_extrema = (delta_phase22_extrema[1:] /
@@ -590,6 +590,25 @@ class eccDefinition:
 
         We also discard extrema before and after a jump (due to an extremum
         being missed) in the detected extrema.
+
+        To retain only the good extrema, we use the following order of removing
+        the extrema after or before jumps first and then remove the extra
+        extrema. This order is important because if we remove the extrema
+        extrema first and then remove the extrema after/before jumps, then we
+        may end up with with extrema where we again have extra extrema.
+        Example of doing it in the wrong order:
+        Let pericenters p = [1, 3, 5, 7, 11]
+        and apoceneters a = [2, 4, 6, 8, 10, 12, 14]
+        Here, we have an extra apoceneter and a jump in pericenter between 7
+        and 11. Removing extra apoceneter gives
+        p = [1, 3, 5, 7, 11]
+        a = [2, 4, 6, 8, 10, 12]
+        Now removing pericenter after jump gives
+        p = [1, 3, 5, 7]. So we end up with extra apoceneters.
+        However, if we do it in the correct order,
+        Removing the pericenter after jump gives p = [1, 3, 5, 7]
+        Then removing extra apoceneters gives a = [2, 4, 6, 8]
+        Now we end up with extrema without jumps and without extra ones.
 
         parameters:
         -----------
@@ -783,18 +802,6 @@ class eccDefinition:
                            self.dataDict["t"] <= self.tmax)]
 
         # Sanity checks
-        # check that tref_out is within t_zeroecc_shifted to make sure that
-        # the output is not in the extrapolated region.
-        if "hlm_zeroecc" in self.dataDict and (self.tref_out[-1]
-                                               > self.t_zeroecc_shifted[-1]):
-            raise Exception("tref_out is in extrapolated region.\n"
-                            f"Last element in tref_out = {self.tref_out[-1]}\n"
-                            "Last element in t_zeroecc = "
-                            f"{self.t_zeroecc_shifted[-1]}.\nThis might happen"
-                            " when 'num_orbits_to_exclude_before_merger' is "
-                            "set to None and part of zeroecc waveform is "
-                            "shorter than that of the ecc waveform requiring "
-                            "extrapolation to compute residual data.")
         # check that fref_out and tref_out are of the same length
         if fref_in is not None:
             if len(self.fref_out) != len(self.tref_out):
@@ -821,6 +828,18 @@ class eccDefinition:
                 "tref_out is empty. This can happen if the "
                 "waveform has insufficient identifiable "
                 "pericenters/apocenters.")
+        # check that tref_out is within t_zeroecc_shifted to make sure that
+        # the output is not in the extrapolated region.
+        if "hlm_zeroecc" in self.dataDict and (self.tref_out[-1]
+                                               > self.t_zeroecc_shifted[-1]):
+            raise Exception("tref_out is in extrapolated region.\n"
+                            f"Last element in tref_out = {self.tref_out[-1]}\n"
+                            "Last element in t_zeroecc = "
+                            f"{self.t_zeroecc_shifted[-1]}.\nThis might happen"
+                            " when 'num_orbits_to_exclude_before_merger' is "
+                            "set to None and part of zeroecc waveform is "
+                            "shorter than that of the ecc waveform requiring "
+                            "extrapolation to compute residual data.")
 
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
