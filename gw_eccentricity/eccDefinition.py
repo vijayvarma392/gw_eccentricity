@@ -448,8 +448,7 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def drop_extra_extrema(self, pericenters, apocenters,
-                           max_phase22_diff_ratio=1.5):
+    def drop_extra_extrema(self, pericenters, apocenters):
         """Drop extra extrema.
 
         Drop extrema at the end: If there are more than one
@@ -491,14 +490,15 @@ class eccDefinition:
 
         return pericenters, apocenters
 
-    def drop_extrema_if_extrema_missing(self, extrema_location,
-                                        max_r_delta_phase22_extrema=1.5,
-                                        extrema_type="pericenters"):
-        """Drop the extrema if missing extrema is detected.
+    def drop_extrema_if_extrema_jumps(self, extrema_location,
+                                      max_r_delta_phase22_extrema=1.5,
+                                      extrema_type="pericenters"):
+        """Drop the extrema if jump in extrema is detected.
 
         It might happen that an extremum between two successive extrema is
         missed by the extrema finder, This would result in the two extrema
-        being too far from each other.
+        being too far from each other and therefore a jump in extrema will be
+        introduced.
 
         To detect if an extremum has been missed we do the following:
         - Compute the phase22 difference between i-th and (i+1)-th extrema:
@@ -539,7 +539,7 @@ class eccDefinition:
             phase_diff_current = delta_phase22_extrema[first_idx+1]
             phase_diff_previous = delta_phase22_extrema[first_idx]
             warnings.warn(
-                f"At least a pair of {extrema_type} are too separated"
+                f"At least a pair of {extrema_type} are too widely separated"
                 "from each other near the end of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
                 f"First pair of such {extrema_type} are {first_pair_indices}"
@@ -564,8 +564,8 @@ class eccDefinition:
             phase_diff_current = delta_phase22_extrema[last_idx+1]
             phase_diff_previous = delta_phase22_extrema[last_idx]
             warnings.warn(
-                f"At least a pair of {extrema_type} are too separated from "
-                "each other near the start of the data.\n"
+                f"At least a pair of {extrema_type} are too widely separated"
+                " from each other near the start of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
                 f"Last pair of such {extrema_type} are {last_pair_indices} at "
                 f"t={last_pair_times}.\n"
@@ -581,7 +581,15 @@ class eccDefinition:
 
     def get_good_extrema(self, pericenters, apocenters,
                          max_r_delta_phase22_extrema=1.5):
-        """Select good extrema if there are extra extrema or missing extrema.
+        """Retain only the good extrema if there are extra extrema or missing extrema.
+
+        If the number of pericenters/apocenters, n, after the last
+        apoceneters/pericenters is more than one, then the extra (n-1)
+        pericenters/apocenters are discarded. Similarly, we discard the extra
+        pericenters/apocenters before the first apocenters/pericenters.
+
+        We also discard extrema before and after a jump (due to an extremum
+        being missed) in the detected extrema.
 
         parameters:
         -----------
@@ -601,16 +609,12 @@ class eccDefinition:
         good_apocenters:
             1d array of apocenters after dropping apocenters as necessary.
         """
-        pericenters, apocenters = self.drop_extra_extrema(pericenters,
-                                                          apocenters)
-        good_pericenters = self.drop_extrema_if_extrema_missing(
-            pericenters,
-            max_r_delta_phase22_extrema,
-            "pericenters")
-        good_apocenters = self.drop_extrema_if_extrema_missing(
-            apocenters,
-            max_r_delta_phase22_extrema,
-            "apocenters")
+        pericenters = self.drop_extrema_if_extrema_jumps(
+            pericenters, max_r_delta_phase22_extrema, "pericenters")
+        apocenters = self.drop_extrema_if_extrema_jumps(
+            apocenters, max_r_delta_phase22_extrema, "apocenters")
+        good_pericenters, good_apocenters = self.drop_extra_extrema(
+            pericenters, apocenters)
         return good_pericenters, good_apocenters
 
     def interp_extrema(self, extrema_type="pericenters"):
