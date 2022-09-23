@@ -447,7 +447,7 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
-    def drop_extra_extrema(self, pericenters, apocenters):
+    def drop_extra_extrema_at_ends(self, pericenters, apocenters):
         """Drop extra extrema at the start and the end of the data.
 
         Drop extrema at the end: If there are more than one
@@ -591,11 +591,11 @@ class eccDefinition:
         We also discard extrema before and after a jump (due to an extremum
         being missed) in the detected extrema.
 
-        To retain only the good extrema, we use the following order of removing
-        the extrema after or before jumps first and then remove the extra
-        extrema. This order is important because if we remove the extrema
-        extrema first and then remove the extrema after/before jumps, then we
-        may end up with with extrema where we again have extra extrema.
+        To retain only the good extrema, we first remove the extrema
+        before/after jumps and then remove any extra extrema at the ends. This
+        order is important because if we remove the extrema at the ends first
+        and then remove the extrema after/before jumps, then we may still end
+        up with extra extrema at the ends, and have to do the first step again.
         Example of doing it in the wrong order:
         Let pericenters p = [1, 3, 5, 7, 11]
         and apoceneters a = [2, 4, 6, 8, 10, 12, 14]
@@ -604,7 +604,7 @@ class eccDefinition:
         p = [1, 3, 5, 7, 11]
         a = [2, 4, 6, 8, 10, 12]
         Now removing pericenter after jump gives
-        p = [1, 3, 5, 7]. So we end up with extra apoceneters.
+        p = [1, 3, 5, 7]. We still end up with extra apocenters on the right.
         However, if we do it in the correct order,
         Removing the pericenter after jump gives p = [1, 3, 5, 7]
         Then removing extra apoceneters gives a = [2, 4, 6, 8]
@@ -623,18 +623,18 @@ class eccDefinition:
             an extremum is considered to be missing.
         returns:
         --------
-        good_pericenters:
+        pericenters:
             1d array of pericenters after dropping pericenters as necessary.
-        good_apocenters:
+        apocenters:
             1d array of apocenters after dropping apocenters as necessary.
         """
         pericenters = self.drop_extrema_if_extrema_jumps(
             pericenters, max_r_delta_phase22_extrema, "pericenters")
         apocenters = self.drop_extrema_if_extrema_jumps(
             apocenters, max_r_delta_phase22_extrema, "apocenters")
-        good_pericenters, good_apocenters = self.drop_extra_extrema(
+        pericenters, apocenters = self.drop_extra_extrema_at_ends(
             pericenters, apocenters)
-        return good_pericenters, good_apocenters
+        return pericenters, apocenters
 
     def interp_extrema(self, extrema_type="pericenters"):
         """Build interpolant through extrema.
