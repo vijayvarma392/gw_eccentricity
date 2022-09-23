@@ -433,7 +433,6 @@ class eccDefinition:
         }
         return default_extra_kwargs
 
-
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
 
@@ -448,6 +447,195 @@ class eccDefinition:
         """
         raise NotImplementedError("Please override me.")
 
+    def drop_extra_extrema_at_ends(self, pericenters, apocenters):
+        """Drop extra extrema at the start and the end of the data.
+
+        Drop extrema at the end: If there are more than one
+        apocenters/pericenters after the last pericenters/pericenters then drop
+        the extra apocenters/pericenters.
+
+        Drop extrema at the start of the data. If there are more than one
+        apocenters/pericenters before the first pericenters/apocenters then
+        drop the extra apocenters/pericenters.
+        """
+        # At the end of the data
+        pericenters_at_end = pericenters[pericenters > apocenters[-1]]
+        if len(pericenters_at_end) > 1:
+            warnings.warn(
+                f"Found {len(pericenters_at_end) - 1} extra pericenters at the"
+                " end. Extra pericenters are not chosen for building spline.")
+            pericenters = pericenters[pericenters <= pericenters_at_end[0]]
+        apocenters_at_end = apocenters[apocenters > pericenters[-1]]
+        if len(apocenters_at_end) > 1:
+            warnings.warn(
+                f"Found {len(apocenters_at_end) - 1} extra apocenters at the "
+                "end. Extra apocenters are not chosen for building spline.")
+            apocenters = apocenters[apocenters <= apocenters_at_end[0]]
+
+        # At the start of the data
+        pericenters_at_start = pericenters[pericenters < apocenters[0]]
+        if len(pericenters_at_start) > 1:
+            warnings.warn(
+                f"Found {len(pericenters_at_start) - 1} extra pericenters at "
+                "the start. Extra pericenters are not chosen for building "
+                "spline.")
+            pericenters = pericenters[pericenters >= pericenters_at_start[-1]]
+        apocenters_at_start = apocenters[apocenters < pericenters[0]]
+        if len(apocenters_at_start) > 1:
+            warnings.warn(
+                f"Found {len(apocenters_at_start) - 1} extra apocenters at the"
+                " start. Extra apocenters are not chosen for building spline.")
+            apocenters = apocenters[apocenters >= apocenters_at_start[-1]]
+
+        return pericenters, apocenters
+
+    def drop_extrema_if_extrema_jumps(self, extrema_location,
+                                      max_r_delta_phase22_extrema=1.5,
+                                      extrema_type="pericenters"):
+        """Drop the extrema if jump in extrema is detected.
+
+        It might happen that an extremum between two successive extrema is
+        missed by the extrema finder, This would result in the two extrema
+        being too far from each other and therefore a jump in extrema will be
+        introduced.
+
+        To detect if an extremum has been missed we do the following:
+        - Compute the phase22 difference between i-th and (i+1)-th extrema:
+          delta_phase22_extrema[i] = phase22_extrema[i+1] - phase22_extrema[i]
+        - Compute the ratio of delta_phase22: r_delta_phase22_extrema[i] =
+          delta_phase22_extrema[i+1]/delta_phase22_extrema[i]
+        For correctly separated extrema, the ratio r_delta_phase22_extrema
+        should be close to 1.
+
+        Therefore if anywhere r_delta_phase22_extrema[i] >
+        max_r_delta_phase22_extrema, where max_r_delta_phase22_extrema = 1.5 by
+        default, then delta_phase22_extrema[i+1] is too large and implies that
+        phase22 difference between (i+2)-th and (i+1)-th extrema is too large
+        and therefore an extrema is missing between (i+1)-th and (i+2)-th
+        extrema. We therefore keep extrema only upto (i+1)-th extremum.
+
+        It might also be that an extremum is missed at the start of the
+        data. In such case, the phase22 difference would drop from large value
+        due to missing extremum to normal value. Therefore, in this case, if
+        anywhere r_delta_phase22_extrema[i] < 1 / max_r_delta_phase22_extrema
+        then delta_phase22_extrema[i] is too large compared to
+        delta_phase22_extrema[i+1] and therefore an extremum is missed between
+        i-th and (i+1)-th extrema. Therefore, we keep only extrema starting
+        from (i+1)-th extremum.
+        """
+        # Look for extrema jumps at the end of the data.
+        phase22_extrema = self.phase22[extrema_location]
+        delta_phase22_extrema = np.diff(phase22_extrema)
+        r_delta_phase22_extrema = (delta_phase22_extrema[1:] /
+                                   delta_phase22_extrema[:-1])
+        idx_too_large_ratio = np.where(r_delta_phase22_extrema >
+                                       max_r_delta_phase22_extrema)[0]
+        if len(idx_too_large_ratio) > 0:
+            first_idx = idx_too_large_ratio[0]
+            first_pair_indices = [extrema_location[first_idx+1],
+                                  extrema_location[first_idx+2]]
+            first_pair_times = [self.t[first_pair_indices[0]],
+                                self.t[first_pair_indices[1]]]
+            phase_diff_current = delta_phase22_extrema[first_idx+1]
+            phase_diff_previous = delta_phase22_extrema[first_idx]
+            warnings.warn(
+                f"At least a pair of {extrema_type} are too widely separated"
+                "from each other near the end of the data.\n"
+                f"This implies that a {extrema_type[:-1]} might be missing.\n"
+                f"First pair of such {extrema_type} are {first_pair_indices}"
+                f" at t={first_pair_times}.\n"
+                f"phase22 difference between this pair of {extrema_type}="
+                f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
+                "phase22 difference between the previous pair of "
+                f"{extrema_type}={phase_diff_previous/(4*np.pi):.2f}*4pi\n"
+                f"{extrema_type} after {first_pair_indices[0]}, i.e.,"
+                f"t > t={first_pair_times[0]} are therefore dropped.")
+            extrema_location = extrema_location[extrema_location <=
+                                                extrema_location[first_idx+1]]
+        # Now do the same at the beginning of the data
+        idx_too_small_ratio = np.where(r_delta_phase22_extrema <
+                                       (1 / max_r_delta_phase22_extrema))[0]
+        if len(idx_too_small_ratio) > 0:
+            last_idx = idx_too_small_ratio[-1]
+            last_pair_indices = [extrema_location[last_idx+1],
+                                 extrema_location[last_idx+2]]
+            last_pair_times = [self.t[last_pair_indices[0]],
+                               self.t[last_pair_indices[1]]]
+            phase_diff_current = delta_phase22_extrema[last_idx+1]
+            phase_diff_previous = delta_phase22_extrema[last_idx]
+            warnings.warn(
+                f"At least a pair of {extrema_type} are too widely separated"
+                " from each other near the start of the data.\n"
+                f"This implies that a {extrema_type[:-1]} might be missing.\n"
+                f"Last pair of such {extrema_type} are {last_pair_indices} at "
+                f"t={last_pair_times}.\n"
+                f"phase22 difference between this pair of {extrema_type}="
+                f"{phase_diff_previous/(4*np.pi):.2f}*4pi\n"
+                f"phase22 difference between the next pair of {extrema_type}="
+                f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
+                f"{extrema_type} before {last_pair_indices[1]}, i.e., t < t="
+                f"{last_pair_times[-1]} are therefore dropped.")
+            extrema_location = extrema_location[extrema_location >=
+                                                extrema_location[last_idx]]
+        return extrema_location
+
+    def get_good_extrema(self, pericenters, apocenters,
+                         max_r_delta_phase22_extrema=1.5):
+        """Retain only the good extrema if there are extra extrema or missing extrema.
+
+        If the number of pericenters/apocenters, n, after the last
+        apoceneters/pericenters is more than one, then the extra (n-1)
+        pericenters/apocenters are discarded. Similarly, we discard the extra
+        pericenters/apocenters before the first apocenters/pericenters.
+
+        We also discard extrema before and after a jump (due to an extremum
+        being missed) in the detected extrema.
+
+        To retain only the good extrema, we first remove the extrema
+        before/after jumps and then remove any extra extrema at the ends. This
+        order is important because if we remove the extrema at the ends first
+        and then remove the extrema after/before jumps, then we may still end
+        up with extra extrema at the ends, and have to do the first step again.
+        Example of doing it in the wrong order:
+        Let pericenters p = [1, 3, 5, 7, 11]
+        and apoceneters a = [2, 4, 6, 8, 10, 12, 14]
+        Here, we have an extra apoceneter and a jump in pericenter between 7
+        and 11. Removing extra apoceneter gives
+        p = [1, 3, 5, 7, 11]
+        a = [2, 4, 6, 8, 10, 12]
+        Now removing pericenter after jump gives
+        p = [1, 3, 5, 7]. We still end up with extra apocenters on the right.
+        However, if we do it in the correct order,
+        Removing the pericenter after jump gives p = [1, 3, 5, 7]
+        Then removing extra apoceneters gives a = [2, 4, 6, 8]
+        Now we end up with extrema without jumps and without extra ones.
+
+        parameters:
+        -----------
+        pericenters:
+            1d array of locations of pericenters.
+        apocenters:
+            1d array of locations of apocenters.
+        max_r_delta_phase22_extrema:
+            Maximum value for ratio of successive phase22 difference between
+            consecutive extrema. If the ratio is greater than
+            max_r_delta_phase22 or less than 1/max_r_delta_phase22 then
+            an extremum is considered to be missing.
+        returns:
+        --------
+        pericenters:
+            1d array of pericenters after dropping pericenters as necessary.
+        apocenters:
+            1d array of apocenters after dropping apocenters as necessary.
+        """
+        pericenters = self.drop_extrema_if_extrema_jumps(
+            pericenters, max_r_delta_phase22_extrema, "pericenters")
+        apocenters = self.drop_extrema_if_extrema_jumps(
+            apocenters, max_r_delta_phase22_extrema, "apocenters")
+        pericenters, apocenters = self.drop_extra_extrema_at_ends(
+            pericenters, apocenters)
+        return pericenters, apocenters
+
     def interp_extrema(self, extrema_type="pericenters"):
         """Build interpolant through extrema.
 
@@ -458,14 +646,18 @@ class eccDefinition:
 
         returns:
         ------
-        Interpolant through extrema, positions of extrema
+        Interpolant through extrema
         """
-        extrema_idx = self.find_extrema(extrema_type)
-        if len(extrema_idx) >= 2:
-            interpolant = get_interpolant(self.t[extrema_idx],
-                                          self.omega22[extrema_idx],
-                                          spline_kwargs=self.spline_kwargs)
-            return interpolant, extrema_idx
+        extrema_dict = {"pericenters": self.pericenters_location,
+                        "apocenters": self.apocenters_location}
+        if extrema_type not in extrema_dict:
+            raise Exception("extrema_type must be one of "
+                            f"{list(extrema_dict.keys())}")
+        extrema = extrema_dict[extrema_type]
+        if len(extrema) >= 2:
+            return get_interpolant(self.t[extrema],
+                                   self.omega22[extrema],
+                                   spline_kwargs=self.spline_kwargs)
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
@@ -547,22 +739,37 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out. Same type as
             tref_out/fref_out.
         """
-        self.omega22_pericenters_interp, self.pericenters_location \
-            = self.interp_extrema("pericenters")
+        # Get the pericenters and apocenters
+        pericenters = self.find_extrema("pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
         # the apocenters.
         if self.extra_kwargs[
                 "treat_mid_points_between_pericenters_as_apocenters"]:
-            self.omega22_apocenters_interp, self.apocenters_location \
-                = self.get_apocenters_from_pericenters()
+            apocenters = self.get_apocenters_from_pericenters(pericenters)
         else:
-            self.omega22_apocenters_interp, self.apocenters_location \
-                = self.interp_extrema("apocenters")
+            apocenters = self.find_extrema("apocenters")
+
+        # Choose good extrema
+        self.pericenters_location, self.apocenters_location \
+            = self.get_good_extrema(pericenters, apocenters)
 
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
+        # check extrema separation
+        self.orb_phase_diff_at_pericenters, \
+            self.orb_phase_diff_ratio_at_pericenters \
+            = self.check_extrema_separation(self.pericenters_location,
+                                            "pericenters")
+        self.orb_phase_diff_at_apocenters, \
+            self.orb_phase_diff_ratio_at_apocenters \
+            = self.check_extrema_separation(self.apocenters_location,
+                                            "apocenters")
+
+        # Build the interpolants of omega22 at the extrema
+        self.omega22_pericenters_interp = self.interp_extrema("pericenters")
+        self.omega22_apocenters_interp = self.interp_extrema("apocenters")
 
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
@@ -595,18 +802,6 @@ class eccDefinition:
                            self.dataDict["t"] <= self.tmax)]
 
         # Sanity checks
-        # check that tref_out is within t_zeroecc_shifted to make sure that
-        # the output is not in the extrapolated region.
-        if "hlm_zeroecc" in self.dataDict and (self.tref_out[-1]
-                                               > self.t_zeroecc_shifted[-1]):
-            raise Exception("tref_out is in extrapolated region.\n"
-                            f"Last element in tref_out = {self.tref_out[-1]}\n"
-                            "Last element in t_zeroecc = "
-                            f"{self.t_zeroecc_shifted[-1]}.\nThis might happen"
-                            " when 'num_orbits_to_exclude_before_merger' is "
-                            "set to None and part of zeroecc waveform is "
-                            "shorter than that of the ecc waveform requiring "
-                            "extrapolation to compute residual data.")
         # check that fref_out and tref_out are of the same length
         if fref_in is not None:
             if len(self.fref_out) != len(self.tref_out):
@@ -633,16 +828,18 @@ class eccDefinition:
                 "tref_out is empty. This can happen if the "
                 "waveform has insufficient identifiable "
                 "pericenters/apocenters.")
-
-        # check separation between extrema
-        self.orb_phase_diff_at_pericenters, \
-            self.orb_phase_diff_ratio_at_pericenters \
-            = self.check_extrema_separation(self.pericenters_location,
-                                            "pericenters")
-        self.orb_phase_diff_at_apocenters, \
-            self.orb_phase_diff_ratio_at_apocenters \
-            = self.check_extrema_separation(self.apocenters_location,
-                                            "apocenters")
+        # check that tref_out is within t_zeroecc_shifted to make sure that
+        # the output is not in the extrapolated region.
+        if "hlm_zeroecc" in self.dataDict and (self.tref_out[-1]
+                                               > self.t_zeroecc_shifted[-1]):
+            raise Exception("tref_out is in extrapolated region.\n"
+                            f"Last element in tref_out = {self.tref_out[-1]}\n"
+                            "Last element in t_zeroecc = "
+                            f"{self.t_zeroecc_shifted[-1]}.\nThis might happen"
+                            " when 'num_orbits_to_exclude_before_merger' is "
+                            "set to None and part of zeroecc waveform is "
+                            "shorter than that of the ecc waveform requiring "
+                            "extrapolation to compute residual data.")
 
         # Check if tref_out has a pericenter before and after.
         # This is required to define mean anomaly.
@@ -2159,8 +2356,8 @@ class eccDefinition:
         else:
             return ax
 
-    def get_apocenters_from_pericenters(self):
-        """Build an interpolant through apocenters and their locations.
+    def get_apocenters_from_pericenters(self, pericenters):
+        """Get apocenters locations from pericenetrs locations.
 
         This function treats the mid points between two successive pericenters
         as the location of the apocenter in between the same two pericenters.
@@ -2173,26 +2370,19 @@ class eccDefinition:
 
         returns:
         ------
-        Interpolant through apocenters, positions of apocenters
+        locations of apocenters
         """
-        # NOTE: Assuming uniform time steps.  TODO: Make it work for non
+        # NOTE: Assuming uniform time steps.
+        # TODO: Make it work for non
         # uniform time steps In the following we get the location of mid point
         # between ith pericenter and (i+1)th pericenter as (loc[i] +
         # loc[i+1])/2 where loc is the array that contains the pericenter
         # locations. This works because time steps are assumed to be uniform
         # and hence proportional to the time itself.
-        apocenters_idx = (self.pericenters_location[:-1]
-                          + self.pericenters_location[1:]) / 2
-        apocenters_idx = apocenters_idx.astype(int)  # convert to ints
-        if len(apocenters_idx) >= 2:
-            interpolant = get_interpolant(self.t[apocenters_idx],
-                                          self.omega22[apocenters_idx],
-                                          spline_kwargs=self.spline_kwargs)
-            return interpolant, apocenters_idx
-        else:
-            raise Exception(
-                "Sufficient number of apocenters are not found."
-                " Can not create an interpolant.")
+        apocenters = (pericenters[:-1]
+                      + pericenters[1:]) / 2
+        apocenters = apocenters.astype(int)  # convert to ints
+        return apocenters
 
     def get_width_for_peak_finder_for_dimless_units(
             self,
