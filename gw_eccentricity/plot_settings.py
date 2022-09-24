@@ -1,29 +1,24 @@
 """Fancy settings for plots."""
 from matplotlib import rc
 from cycler import cycler
+import matplotlib.cm as mcm
 
-dark2 = {
-    "turquoise": "#1b9e77",
-    "brown": "#d95f02",
-    "purple": "#7570b3",
-    "pink": "#e7298a",
-    "olive": "#66a61e",
-    "orange": "#e6ab02"}
+dark2 = mcm.get_cmap("Dark2").colors
 
 colorsDict = {
-    "default": dark2["brown"],
-    "apocenter": dark2["olive"],
-    "pericenter": dark2["purple"],
-    "vline": dark2["pink"],
-    "hline": dark2["orange"],
-    "edge": dark2["turquoise"],
-    "pericentersvline": dark2["turquoise"],
-    "FrequencyFits": dark2["pink"],
-    "AmplitudeFits": dark2["olive"],
-    "ResidualFrequency": dark2["orange"],
-    "ResidualAmplitude": dark2["purple"],
-    "Frequency": dark2["turquoise"],
-    "Amplitude": dark2["brown"],
+    "default": dark2[1],  # brown
+    "apocenter": dark2[4],  # olive
+    "pericenter": dark2[2],  # purple
+    "vline": dark2[3],  # pink
+    "hline": dark2[5],  # orange
+    "edge": dark2[0],  # turquoise
+    "pericentersvline": dark2[0],
+    "FrequencyFits": dark2[3],
+    "AmplitudeFits": dark2[4],
+    "ResidualFrequency": dark2[5],
+    "ResidualAmplitude": dark2[2],
+    "Frequency": dark2[0],
+    "Amplitude": dark2[1],
 }
 
 lstyles = {"Amplitude": "solid",
@@ -102,7 +97,7 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
         rc("text.latex",
            preamble=r"\DeclareMathAlphabet{\mathpzc}{OT1}{pzc}{m}{it}")
     # Axes
-    rc("axes", prop_cycle=cycler(color=list(dark2.values())))  # color cycler
+    rc("axes", prop_cycle=cycler(color=dark2))  # color cycler
     rc("axes", linewidth=0.6)
     rc("axes", labelsize=labelSizeDict[style])
     rc("axes", titlesize=fontSizeDict[style])
