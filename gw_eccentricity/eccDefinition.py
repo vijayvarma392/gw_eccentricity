@@ -530,7 +530,11 @@ class eccDefinition:
                                    delta_phase22_extrema[:-1])
         idx_too_large_ratio = np.where(r_delta_phase22_extrema >
                                        max_r_delta_phase22_extrema)[0]
-        if len(idx_too_large_ratio) > 0:
+        mid_index = int(len(r_delta_phase22_extrema)/2)
+        # Check if ratio is too large near the end of the data. Check also
+        # that this occurs within the second half of the extrema locations
+        if len(idx_too_large_ratio) > 0 and (idx_too_large_ratio[0]
+                                             > mid_index):
             first_idx = idx_too_large_ratio[0]
             first_pair_indices = [extrema_location[first_idx+1],
                                   extrema_location[first_idx+2]]
@@ -540,7 +544,7 @@ class eccDefinition:
             phase_diff_previous = delta_phase22_extrema[first_idx]
             warnings.warn(
                 f"At least a pair of {extrema_type} are too widely separated"
-                "from each other near the end of the data.\n"
+                " from each other near the end of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
                 f"First pair of such {extrema_type} are {first_pair_indices}"
                 f" at t={first_pair_times}.\n"
@@ -552,10 +556,14 @@ class eccDefinition:
                 f"t > t={first_pair_times[0]} are therefore dropped.")
             extrema_location = extrema_location[extrema_location <=
                                                 extrema_location[first_idx+1]]
-        # Now do the same at the beginning of the data
+        # Check if ratio is too small
         idx_too_small_ratio = np.where(r_delta_phase22_extrema <
                                        (1 / max_r_delta_phase22_extrema))[0]
-        if len(idx_too_small_ratio) > 0:
+        # We want to detect extrema jump near the start of the data.
+        # Check that the location where such jump is found falls within the
+        # first half of the extrema locations.
+        if len(idx_too_small_ratio) > 0 and (idx_too_small_ratio[-1]
+                                             < mid_index):
             last_idx = idx_too_small_ratio[-1]
             last_pair_indices = [extrema_location[last_idx+1],
                                  extrema_location[last_idx+2]]
@@ -577,6 +585,47 @@ class eccDefinition:
                 f"{last_pair_times[-1]} are therefore dropped.")
             extrema_location = extrema_location[extrema_location >=
                                                 extrema_location[last_idx]]
+        return extrema_location
+
+    def drop_extrema_if_too_close(self, extrema_location,
+                                  min_phase22_difference=0.9*4*np.pi,
+                                  extrema_type="pericenters"):
+        """Check if a pair of extrema is too close to each other.
+
+        If a pair of extrema is found to be too close to each other, then
+        drop the extrema before/after such pair.
+
+        If it happens at the start/end of the data, then drop the extra
+        before/after such pair.
+        """
+        phase22_extrema = self.phase22[extrema_location]
+        phase22_diff_extrema = np.diff(phase22_extrema)
+        idx_too_close = np.where(phase22_diff_extrema
+                                 < min_phase22_difference)[0]
+        mid_index = len(phase22_diff_extrema)/2
+        if len(idx_too_close) > 0:
+            # Look for too close pairs in the second half
+            if idx_too_close[0] > mid_index:
+                first_index = idx_too_close[0]
+                print(f"At least a pair of {extrema_type} are too close to "
+                      "each other with phase22 difference = "
+                      f"{phase22_diff_extrema[first_index]/(4*np.pi)}*4pi."
+                      f" Extrema after {extrema_location[first_index]}"
+                      f" i. e., t > {self.t[extrema_location[first_index]]} "
+                      "are dropped.")
+                extrema_location = extrema_location[
+                    extrema_location <= extrema_location[first_index]]
+            # Look for too close pairs in the first half
+            if idx_too_close[-1] < mid_index:
+                last_index = idx_too_close[-1]
+                print(f"At least a pair of {extrema_type} are too close to "
+                      "each other with phase22 difference = "
+                      f"{phase22_diff_extrema[last_index]/(4*np.pi)}*4pi."
+                      f" Extrema before {extrema_location[last_index]}"
+                      f" i. e., t < {self.t[extrema_location[last_index]]} "
+                      "are dropped.")
+                extrema_location = extrema_location[
+                    extrema_location >= extrema_location[last_index]]
         return extrema_location
 
     def get_good_extrema(self, pericenters, apocenters,
@@ -632,6 +681,10 @@ class eccDefinition:
             pericenters, max_r_delta_phase22_extrema, "pericenters")
         apocenters = self.drop_extrema_if_extrema_jumps(
             apocenters, max_r_delta_phase22_extrema, "apocenters")
+        pericenters = self.drop_extrema_if_too_close(
+            pericenters, extrema_type="pericenters")
+        apocenters = self.drop_extrema_if_too_close(
+            apocenters, extrema_type="apocenters")
         pericenters, apocenters = self.drop_extra_extrema_at_ends(
             pericenters, apocenters)
         return pericenters, apocenters
