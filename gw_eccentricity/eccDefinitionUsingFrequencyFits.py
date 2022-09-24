@@ -9,13 +9,14 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from .utils import check_kwargs_and_set_defaults
 
 
 class envelope_fitting_function:
     """Fit envelope.
 
-    Re-parameterize A*(t-T)^n in terms of function value, first derivative at
-    the time t0, and T.
+    Re-parameterize A*(T-t)^n in terms of function value and 
+    first derivative at the time t0, and T.
     """
 
     def __init__(self, t0, verbose=False):
@@ -32,7 +33,7 @@ class envelope_fitting_function:
     def __call__(self, t, f0, f1, T):
         """Call."""
         # f0, f1 are function values and first time-derivatives
-        # at t0.  Re-expfress as T, n, A, then evalate A*(t-T)^n
+        # at t0.  Re-expfress as T, n, A, then evalate A*(T-t)^n
         n = -(T-self.t0)*f1/f0
         A = f0*(T-self.t0)**(-n)
         if self.verbose:
@@ -43,66 +44,6 @@ class envelope_fitting_function:
                 "envelope_fitting_function reached parameters where merger "
                 "time T is within time-series to be fitted\n"
                 f"f0={f0}, f1={f1}, T={T}; n={n}, A={A}, max(t)={max(t)}")
-        return A*(T-t)**n
-
-
-class envelope_fitting_function2:
-    """Fit envelope.
-
-    Re-parameterize A*(t-T)^n in terms of function value, first derivative at
-    the time t0, and second time-derivative at time t0.  The second
-    time-derivative is re-parameterized into alpha in [-1,1], such that the
-    value alpha=-1 corresponds to Tmin<0, the value alpha=0 corresponds to T=0,
-    and alpha=1 to T->infty.  This reparameterization is hoped to improve
-    convergence of the fitting procedure while simultaneously allowing for
-    square bounds -1<alpha<1.
-    """
-
-    def __init__(self, t0, Tmin, verbose=False):
-        """Init."""
-        self.t0 = t0
-        self.Tmin = Tmin
-        self.alpha1 = (Tmin - t0) / (-Tmin)
-        self.alpha1 = -2*(Tmin - t0) / (2*Tmin-t0)
-        self.Gamma = -(-t0 + 2*Tmin)/(2*(Tmin-t0)*(-t0))
-        self.verbose = verbose
-        if verbose:
-            print(f"fitting_function2:  to={t0}, Tmin={Tmin},"
-                  f" alpha1={self.alpha1}, Gamma={self.Gamma}")
-        if -t0 <= -2*Tmin:
-            raise Exception(
-                "t0 must be at least twice as large as Tmin, "
-                "otherwise the alpha-reparameterization is multi-valued")
-
-    def format(self, f0, f1, alpha):
-        """Return a string representation for use in legends and output."""
-        T_m_t0 = (self.Tmin-self.t0)/(1.-alpha)
-        n = -f1/f0*T_m_t0
-        A = f0*(T_m_t0)**(-n)
-        T = T_m_t0 + self.t0
-        return f"{A:.4g}({T:+.3f}-t)^{n:.4f}"
-
-    def __call__(self, t, f0, f1, alpha):
-        """Call."""
-        # f0, f1 are function values and first time-derivatives
-        # at t0.  Re-expfress as T, n, A, then evalate A*(t-T)^n
-
-        # T-t0
-        T_m_t0 = (self.Tmin-self.t0)/(1.-alpha)
-        n = -f1/f0*T_m_t0
-        A = f0*(T_m_t0)**(-n)
-        T = T_m_t0 + self.t0
-        if self.verbose:
-            print(f"f0={f0}, f1={f1}, alpha={alpha}; T={T}, n={n}, A={A},"
-                  f" max(t)={t.max()}")
-        if t.max() > T:
-            print(end="", flush=True)
-            raise Exception(
-                "envelope_fitting_function reached parameters where merger "
-                "time T is within time-series to be fitted\n"
-                f"f0={f0}, f1={f1}, alpha={alpha}; T={T}, n={n}, A={A}, "
-                f"max(t)={max(t)}\n"
-                f"self.to={self.t0}, self.Tmin={self.Tmin}")
         return A*(T-t)**n
 
 
@@ -117,31 +58,85 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
-        self.label_for_data_for_finding_extrema = labelsDict["omega22"]
-        self.data_for_finding_extrema = self.omega22
         self.data_str = "omega22"
+        self.label_for_data_for_finding_extrema = labelsDict[self.data_str]
+        self.label_for_fit_to_data_for_finding_extrema \
+            = labelsDict[f"{self.data_str}_fit"]
+        # Make a copy of omega22 and use it to set data_for_finding_extrema.
+        # This would ensure that any modification of data_for_finding_extrema
+        # does not modify omega22.
+        self.data_for_finding_extrema = self.omega22.copy()
         self.method = "FrequencyFits"
-
+        # Get dictionary of kwargs to be used for Fits methods.
+        self.kwargs_for_fits_methods = check_kwargs_and_set_defaults(
+            self.extra_kwargs['kwargs_for_fits_methods'],
+            self.get_default_kwargs_for_fits_methods(),
+            "kwargs_for_fits_methods",
+            "eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods()")
+        # Set variables needed for envelope fits and find_peaks
+        self.set_fit_variables()
         self.debug = self.extra_kwargs["debug"]
-        # create the shortened data-set for analysis
-        merger_idx = np.argmin(np.abs(self.t - self.t_merger))
-        self.idx_end = merger_idx
-        if False and (self.extra_kwargs["num_orbits_to_exclude_before_merger"]
-                      is not None):
-            phase22_at_merger = self.phase22[merger_idx]
-            # one orbit changes the 22 mode phase by 4 pi since
-            # omega22 = 2 omega_orb
-            phase22_num_orbits_earlier_than_merger = (
-                phase22_at_merger
-                - 4 * np.pi
-                * self.extra_kwargs["num_orbits_to_exclude_before_merger"])
-            self.idx_end = np.argmin(
-                np.abs(self.phase22
-                       - phase22_num_orbits_earlier_than_merger))
 
-        self.t_analyse = self.t[:self.idx_end] - self.t_merger
-        self.data_analyse = self.data_for_finding_extrema[:self.idx_end]
-        self.phase22_analyse = self.phase22[:self.idx_end]
+    def get_default_kwargs_for_fits_methods(self):
+        """Get default kwargs to be used for Fits methods.
+
+        The kwargs are:
+        - "nPN": The PN exponent to use in the fit function. It is
+          inspired by the functional form of frequency/amplitude in
+          the leading Post-Newtonian order ~(t - t_merger)^nPN
+        - "fit_bounds_max_amp_factor": To set the upper bound on the
+          Amplitude A of the fitting function of the form A(t-T)^n.
+          The upper bound of A is set as f0*fit_bounds_max_amp_factor,
+          where f0 is the mean of the first and the last values of data
+          to be fitted.  f0 = 0.5*(data[0]+data[-1])
+        - "fit_bounds_max_nPN_factor": To set the upper bound on the
+          exponent n of the fitting function. The upper bound on n is
+          set as f0*fit_bounds_max_nPN_factor/(-fit_center_time),
+          where fit_center_time is the time at the midpoint of the
+          data.
+          fit_center_time = 0.5*(t[0]+t[-1]).
+          The merger is assumed to be at t=0 here.
+        - "prominence_factor": To set the prominence for find_peaks
+          function. The prominence is set as
+          prominence = prominence_factor * residual_data_amp,
+          where,
+          residual_data_amp = max(residual_data) - min(residual_data)
+        - "distance_factor": To set the distance for find_peaks
+          function.
+          distance = distance_factor * average_orbital_period
+        - "num_orbits": Number of extrema to look for during
+          fitting. It looks for num_orbits on the left and num_orbits+1
+          on the right.
+        - "num_orbits_for_global_fit": Number of orbits to use for
+          global fit in the Fits methods.
+        """
+        return {
+            "nPN": -3./8,
+            "fit_bounds_max_amp_factor": 10,
+            "fit_bounds_max_nPN_factor": 10,
+            "prominence_factor": 0.03,  # prominence = 3% of residual_amp_max
+            "distance_factor": 0.75,  # 75% of the average orbital period,
+            "num_orbits": 3,
+            "num_orbits_for_global_fit": 10
+        }
+
+    def set_fit_variables(self):
+        """Set variables to be used for Fits Methods.
+
+        See under get_default_kwargs_for_fits_methods for documentation
+        on these variables.
+        """
+        self.fit_bounds_max_amp_factor = self.kwargs_for_fits_methods[
+            "fit_bounds_max_amp_factor"]
+        self.fit_bounds_max_nPN_factor = self.kwargs_for_fits_methods[
+            "fit_bounds_max_nPN_factor"]
+        self.nPN = self.kwargs_for_fits_methods["nPN"]
+        self.prominence_factor = self.kwargs_for_fits_methods[
+            "prominence_factor"]
+        self.distance_factor = self.kwargs_for_fits_methods["distance_factor"]
+        self.num_orbits = self.kwargs_for_fits_methods["num_orbits"]
+        self.num_orbits_for_global_fit = self.kwargs_for_fits_methods[
+            "num_orbits_for_global_fit"]
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
@@ -163,17 +158,16 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             sign = -1
         else:
             raise Exception(f"extrema_type='{extrema_type}' unknown.")
-
-        # data-sets to operate on (stored as member data)
-        # self.t_analyse
-        # self.phase22_analyse
-        # self.data_analyse
+        # The fit function assume the merger to be at t=0. So we align the time
+        # axis such that merger occurs at t=0.
+        # After the peaks are found, the time is reshifted to to its original
+        # values at the end of this function so the merger is again at t_merger.
+        self.t -= self.t_merger
 
         # DESIRED NUMBER OF EXTREMA left/right DURING FITTING
         # Code will look for N extrema to the left of idx_ref, and N+1 extrema
         # to the right
-        # TODO - make user-specifiable via option
-        N = 3
+        N = self.num_orbits
 
         # if True, perform an additional fitting step to find the position of
         # extrema to sub-gridspacing accuracy.
@@ -192,70 +186,41 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # setting diag_file to a valid pdf-filename will trigger diagnostic
         # plots
         verbose = self.debug
-        if verbose:
-            diag_file=f"Diagnostics-FrequencyFits-{ {-1:'apocenters', 1:'pericenters'}[sign]}.pdf"
-        else:
-            diag_file = ""
-
-        if diag_file != "":
-            pp = PdfPages(diag_file)
-        else:
-            pp = False
-
+        diag_file = (f"Diagnostics-{self.method}-{extrema_type}.pdf") if verbose else ""
+        pp = PdfPages(diag_file) if diag_file != "" else False
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema
 
         # use this many orbits from the start of the waveform for the initial
-        # global fit.  Keeping this initial fit-interval away from merger helps
+        # global fit.
+        # Keeping this initial fit-interval away from merger helps
         # to obtain a good fit that also allows to discern small eccentricities
-        N_orbits_for_global_fit = 10.
-        idx_end = np.argmax(self.phase22_analyse > self.phase22_analyse[0]
+        N_orbits_for_global_fit = self.num_orbits_for_global_fit
+        idx_end = np.argmax(self.phase22 > self.phase22[0]
                             + N_orbits_for_global_fit*4*np.pi)
 
         if idx_end == 0:  # don't have that much data, so use all
             idx_end = -1
 
         if verbose:
-            print(f"t_analyse[0]={self.t_analyse[0]}, t_analyse[-1]="
-                  f"{self.t_analyse[-1]}, "
-                  f"global fit to t<={self.t_analyse[idx_end]}")
-        # alpha-fit was an alternative parameterization of the fitting-function
-        # didn't really help in initial experiments, thus disabled.
-        UseAlphaFit = False
-        fit_center_time = 0.5*(self.t_analyse[0] + self.t_analyse[-1])
-        if UseAlphaFit:
-            Tmin = 0.8*self.t_analyse[-1]
-            f_fit = envelope_fitting_function2(t0=fit_center_time,
-                                               Tmin=Tmin,
-                                               verbose=False
-                                               # verbose=verbose
-                                               )
-            # some reasonable initial guess for curve_fit
-            nPN = -3./8  # the PN exponent as approximation
-            f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[-1])
-            p0 = [f0,  # function value ~ data
-                  -nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-                  0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
-                  ]
-            # some hopefully reasonable bounds for global curve_fit
-            bounds0 = [[0., 0., 0.],
-                       [10.*f0, 10.*f0/(-fit_center_time), 1.]]
-        else:
-            # standard fit in terms of f0, f1 and T
-            f_fit = envelope_fitting_function(t0=fit_center_time,
-                                              verbose=False
-                                              # verbose=verbose
-                                              )
-            # some reasonable initial guess for curve_fit
-            nPN = -3./8  # the PN exponent as approximation
-            f0 = 0.5 * (self.data_analyse[0]+self.data_analyse[idx_end])
-            p0 = [f0,  # function value ~ data
-                  -nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-                  0.  # singularity in fit is near t=0, since waveform aligned at max(amp22)
-                  ]
-            # some hopefully reasonable bounds for global curve_fit
-            bounds0 = [[0., 0., 0.8*self.t_analyse[-1]],
-                       [10*f0, 10.*f0/(-fit_center_time), -fit_center_time]]
+            print(f"t[0]={self.t[0]}, t[-1]="
+                  f"{self.t[-1]}, "
+                  f"global fit to t<={self.t[idx_end]}")
+
+        # create fitting function object, set initial guess and bounds
+        fit_center_time = 0.5*(self.t[0] + self.t[-1])
+        f_fit = envelope_fitting_function(t0=fit_center_time,
+                                          verbose=False)
+        # typial scale of data
+        f0 = 0.5 * (self.data_for_finding_extrema[0]+self.data_for_finding_extrema[idx_end])
+        p0 = [f0,  # function value
+              -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
+              0  # singularity in fit is near t=0, since waveform aligned at max(amp22)
+              ]
+        bounds0 = [[0., 0., 0.8*self.t[-1]],
+                   [self.fit_bounds_max_amp_factor*f0,
+                    self.fit_bounds_max_nPN_factor*f0/(-fit_center_time),
+                    -fit_center_time]]
         if verbose:
             print(f"global fit: guess p0={p0},  t_center={fit_center_time}")
             print(f"            bounds={bounds0}")
@@ -267,40 +232,45 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             axs[0].set_title(self.label_for_data_for_finding_extrema)
             axs[1].set_title(
                 f"residual:  {self.label_for_data_for_finding_extrema}"
-                "-f_fit (fitted region only)")
+                f"-{self.label_for_fit_to_data_for_finding_extrema} "
+                "(fitted region only)")
             axs[2].set_title(
-                f"residual:  {self.label_for_data_for_finding_extrema}-f_fit")
-            axs[0].plot(self.t_analyse, self.data_analyse,
+                f"residual:  {self.label_for_data_for_finding_extrema}-"
+                f"{self.label_for_fit_to_data_for_finding_extrema}")
+            axs[0].plot(self.t, self.data_for_finding_extrema,
                         label=self.label_for_data_for_finding_extrema)
-            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p0),
-                        linewidth=0.5, color='grey', label='f_fit(*p_guess)')
+            axs[0].plot(
+                self.t, f_fit(self.t, *p0),
+                linewidth=0.5, color='grey',
+                label=(f"{self.label_for_fit_to_data_for_finding_extrema}"
+                       "(*p_guess)"))
 
         p_global, pconv = scipy.optimize.curve_fit(
-            f_fit, self.t_analyse[:idx_end],
-            self.data_analyse[:idx_end], p0=p0,
+            f_fit, self.t[:idx_end],
+            self.data_for_finding_extrema[:idx_end], p0=p0,
             bounds=bounds0)
         if verbose:
             print(f"            result p_global={p_global}")
 
         if pp:
-            line, = axs[0].plot(self.t_analyse[:idx_end],
-                                f_fit(self.t_analyse[:idx_end], *p_global),
+            line, = axs[0].plot(self.t[:idx_end],
+                                f_fit(self.t[:idx_end], *p_global),
                                 label='fit [first 10 orbits]')
-            axs[0].plot(self.t_analyse, f_fit(self.t_analyse, *p_global),
+            axs[0].plot(self.t, f_fit(self.t, *p_global),
                         color=line.get_color(), linewidth=0.5)
 
             line, = axs[1].plot(
-                self.t_analyse[:idx_end],
-                self.data_analyse[:idx_end]
-                - f_fit(self.t_analyse[:idx_end], *p_global),
+                self.t[:idx_end],
+                self.data_for_finding_extrema[:idx_end]
+                - f_fit(self.t[:idx_end], *p_global),
                 label='residual (fitted region only)')
             line, = axs[2].plot(
-                self.t_analyse[:idx_end],
-                self.data_analyse[:idx_end]
-                - f_fit(self.t_analyse[:idx_end], *p_global),
+                self.t[:idx_end],
+                self.data_for_finding_extrema[:idx_end]
+                - f_fit(self.t[:idx_end], *p_global),
                 label='residual (fitted region)')
-            axs[2].plot(self.t_analyse,
-                        self.data_analyse-f_fit(self.t_analyse, *p_global),
+            axs[2].plot(self.t,
+                        self.data_for_finding_extrema-f_fit(self.t, *p_global),
                         linewidth=0.5, color=line.get_color(),
                         label='residual (all data)')
             axs[0].legend()
@@ -327,8 +297,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # is only allowed to increase, be rather conservative with
         # its initial guess
         K = 1.1   # periastron-advance rate
-        idx_ref = np.argmax(self.phase22_analyse
-                            > self.phase22_analyse[0] + K*(N-1)*4*np.pi)
+        idx_ref = np.argmax(self.phase22
+                            > self.phase22[0] + K*(N-1)*4*np.pi)
         if idx_ref == 0:
             raise Exception("data set too short.")
         p = p_global
@@ -341,18 +311,21 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             count = count+1
             if verbose:
                 print(f"=== count={count} "+"="*60)
-            idx_extrema, p, K, idx_ref, extrema_refined = self.FindExtremaNearIdxRef(
-                idx_ref,
-                sign, N, N+1, K,
-                f_fit, p, bounds0,
-                1e-8,
-                increase_idx_ref_if_needed=True,
-                refine_extrema=refine_extrema,
-                verbose=verbose,
-                pp=pp,
-                plot_info=f"count={count}")
+            idx_extrema, p, K, idx_ref, extrema_refined \
+                = self.FindExtremaNearIdxRef(
+                    idx_ref,
+                    sign, N, N+1, K,
+                    f_fit, p, bounds0,
+                    1e-8,
+                    increase_idx_ref_if_needed=True,
+                    refine_extrema=refine_extrema,
+                    verbose=verbose,
+                    pp=pp,
+                    plot_info=f"count={count}")
             if verbose:
-                print(f"IDX_EXTREMA={idx_extrema}, f_fit={f_fit.format(*p)}, "
+                print(f"IDX_EXTREMA={idx_extrema}, "
+                      f"{self.data_str}_fit"
+                      f"={f_fit.format(*p)}, "
                       f"K={K:5.3f}, idx_ref={idx_ref}")
 
             # decide whether we are going to stop iterating:
@@ -453,6 +426,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                                   np.array(data_extrema_refined),
                                   np.array(phase22_extrema_refined)]
 
+        # Now that we are done with finding peaks, we shift the time axis to
+        # it's original values
+        self.t += self.t_merger
         return np.array(extrema)
 
         # Procedure:
@@ -570,13 +546,15 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                   f", refine_extrema={refine_extrema}")
 
         # look for somewhat more data than we (probably) need
-        DeltaPhase = 4*np.pi*K
+        DeltaPhase = 4.2*np.pi*K
         idx_lo = np.argmax(
-            self.phase22_analyse > self.phase22_analyse[idx_ref] - DeltaPhase*Nbefore)
+            self.phase22 > self.phase22[idx_ref]
+            - DeltaPhase*Nbefore)
         idx_hi = np.argmax(
-            self.phase22_analyse > self.phase22_analyse[idx_ref] + DeltaPhase*Nafter)
+            self.phase22 > self.phase22[idx_ref]
+            + DeltaPhase*Nafter)
         if idx_hi == 0:
-            idx_hi = len(self.phase22_analyse)
+            idx_hi = len(self.phase22)
             if verbose:
                 print("WARNING: reaching end of data, so close to merger")
         p = p_initial
@@ -599,26 +577,29 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             fig.suptitle(plot_info, x=0.02, ha='left')
             axs[0].set_title(
                 'trend-subtracted:  '
-                f'sign*({self.label_for_data_for_finding_extrema}-f_fit)',
+                f"{'-' if sign == -1 else ''}"
+                f"({self.label_for_data_for_finding_extrema}-"
+                f'{self.label_for_fit_to_data_for_finding_extrema})',
                 fontsize='small')
             axs[1].set_title(f'{self.label_for_data_for_finding_extrema}(t)')
             axs[2].set_title('residual of fit')
             plot_offset = None
 
-        # 'None' here signals that this value should be initialized
-        # it will only be initialized once during index-range adjustments
-        # to avoid gaining/loosing extrema simply because the options to
-        # find_peaks change.
-        prominence = None
+        # compute prominence
+        distance, prominence = self.compute_distance_and_prominence(
+            idx_lo, idx_hi, f_fit, p)
+        if verbose:
+            print(f"       find_peaks: distance={distance}, "
+                  f"prominence={prominence}")
         interval_changed_on_it = -1
         while True:
             it = it+1
             if verbose:
                 print(f"it={it}:  [{idx_lo} / {idx_ref} / {idx_hi}],  "
                       f"K={K:5.3f}")
-            data_residual = (self.data_analyse[idx_lo:idx_hi]
-                             - f_fit(self.t_analyse[idx_lo:idx_hi], *p))
-
+            data_residual = (self.data_for_finding_extrema[idx_lo:idx_hi]
+                             - f_fit(self.t[idx_lo:idx_hi], *p))
+            data_residual_amp = max(data_residual)-min(data_residual)
             # TODO -- pass user-specified arguments into find_peaks
             # POSSIBLE UPGRADE
             # find_peaks on discrete data will not identify a peak to a
@@ -631,28 +612,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             # width used as exclusion in find_peaks
             #    1/2 phi-orbit  (at highest data)
             #    translated into samples using the maximum time-spacing
-            if prominence is None:
-                maxdt = np.max(np.diff(self.t_analyse[idx_lo:idx_hi]))
-
-                #  average orbital period during [idx_lo, idx_hi] idx_hi-1 also
-                # works in the case when idx_hi = one-past-last-element
-                T_orbit = (self.t_analyse[idx_hi-1] - self.t_analyse[idx_lo])/(
-                    self.phase22_analyse[idx_hi-1] - self.phase22_analyse[idx_lo]) * 4*np.pi
-
-                # set distance = 75% of period.  This should exclude spurious
-                # extrema due to noise
-                distance = int(0.75*T_orbit/maxdt)
-
-                data_residual_amp = max(data_residual)-min(data_residual)
-                prominence = data_residual_amp*0.03
-                if verbose:
-                    print(f"       find_peaks: distance={distance}, "
-                          f"prominence={prominence}")
 
             idx_extrema, properties = scipy.signal.find_peaks(
                 sign*data_residual,
                 distance=distance,
                 prominence=prominence)
+
             # add offset due to to calling find_peaks with sliced data
             idx_extrema = idx_extrema+idx_lo
             Nleft = sum(idx_extrema < idx_ref)
@@ -660,83 +625,41 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
             # remember info about extrema to be used in rest of this function
             N_extrema = len(idx_extrema)
-            t_extrema = self.t_analyse[idx_extrema]
-            data_extrema = self.data_analyse[idx_extrema]
-            phase22_extrema = self.phase22_analyse[idx_extrema]
+            t_extrema = self.t[idx_extrema]
+            data_extrema = self.data_for_finding_extrema[idx_extrema]
+            phase22_extrema = self.phase22[idx_extrema]
             # data_residual is shorter array
             data_residual_extrema = data_residual[idx_extrema-idx_lo]
-
+            # update K based on identified peaks
+            if N_extrema >= 2:
+                K = ((phase22_extrema[-1] - phase22_extrema[0])
+                     / (4*np.pi * (N_extrema - 1)))
             if verbose:
-                with np.printoptions(precision=2):  # , suppress=True, threshold=5):
+                with np.printoptions(precision=2):
                     print(f"       idx_extrema=   {idx_extrema}, "
                           f"Nleft={Nleft},"
                           f" Nright={Nright}")
                     print(f"       t[idx_extrema]={t_extrema}")
 
             if refine_extrema:
-                # perform parabolic fits to data_residual around each extremum
-                # in order to find the time of extrema to sub-index
-                # accuracy
+                t_extrema, data_extrema, phase22_extrema \
+                    = self.get_refined_extrema(t_extrema,
+                                               data_extrema,
+                                               phase22_extrema,
+                                               verbose, f_fit, p)
                 if verbose:
-                    print(f"       Refineme {N_extrema} extremas, "
-                          f"local fit with "
-                          "Npoints=", end='')
-                for k in range(N_extrema):
-                    # length of fitting interval = 0.05radians left/right
-                    deltaT = 0.05 / data_extrema[k]
-                    idx_refine = np.abs(self.t_analyse - t_extrema[k]) < deltaT
-                    # number of points to be used in fit
-                    N_refine = sum(idx_refine)
-                    if verbose:
-                        print(f"{N_refine}  ", end='')
-                    if N_refine >= 7:  # enough data for fit
-                        t_parafit = self.t_analyse[idx_refine]
-                        # re-compute fit-subtracted data_residual, to avoid
-                        # indexing problems, should idx_lo/idx_high be so close
-                        # that the parabolic fitting interval extends beyond it
-                        data_resi_parafit = (
-                            self.data_analyse[idx_refine]
-                            - f_fit(t_parafit, *p))
-
-                        parabola = np.polynomial.polynomial.Polynomial.fit(
-                            t_parafit, data_resi_parafit, 2)
-                        t_max = parabola.deriv().roots()[0]
-
-                        # update extrema information
-                        t_extrema[k] = t_max
-
-                        # interpolate data from fits *assumption* the
-                        # fitting-interval is short enough that this is
-                        # accurate
-                        data_extrema[k] = parabola(t_max) + f_fit(t_max, *p)
-
-                        # 3rd order fit to phase to interpolate *assumption*
-                        # the fitting-interval is short enough that this is
-                        # accurate
-                        phase_fit = np.polynomial.polynomial.Polynomial.fit(
-                            t_parafit, self.phase22_analyse[idx_refine], 3)
-                        phase22_extrema[k] = phase_fit(t_max)
-                    else:
-                        pass
-                        # if verbose:
-                        #    print(f"refinement of k={k} has too few points - skip")
-
-                if verbose:
-                    with np.printoptions(precision=4):  # , suppress=True, threshold=5):
+                    with np.printoptions(precision=4):
                         print("")
                         print("       Delta t_extrema = "
-                              f"{t_extrema - self.t_analyse[idx_extrema]}")
-
-            # update K based on identified peaks
-            if N_extrema >= 2:
-                K = ((phase22_extrema[-1] - phase22_extrema[0])
-                     / (4*np.pi * (N_extrema - 1)))
+                              f"{t_extrema - self.t[idx_extrema]}")
             if pp:
                 # offset data vertically by 10^k*it
                 if plot_offset is None:
                     plot_offset = 10**np.ceil(np.log10(data_residual_amp/2.))
+                    axs[0].axvline(self.t[idx_ref], linestyle='--',
+                                   color='grey', linewidth=1)
 
-                line, = axs[0].plot(self.t_analyse[idx_lo:idx_hi],
+                line, = axs[0].plot(self.t[idx_lo:idx_hi],
                                     it*plot_offset
                                     + sign*data_residual, label=f"it={it}")
                 if N_extrema > 0:
@@ -745,9 +668,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                                 'o',
                                 color=line.get_color())
                 line, = axs[1].plot(
-                    self.t_analyse[idx_lo:idx_hi],
-                    self.data_analyse[idx_lo:idx_hi]
+                    self.t[idx_lo:idx_hi],
+                    self.data_for_finding_extrema[idx_lo:idx_hi]
                     + plot_offset*it)
+                # note: 'line.get_color()` is also used below in axs[2].plot
                 axs[1].plot(t_extrema, data_extrema+plot_offset*it, 'o',
                             color=line.get_color(), label=f"it={it}")
 
@@ -825,8 +749,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         # radial period earlier.  We rather prefer to err on
                         # the low side, than overshooting and adding two
                         # extrema at once.
-                        phase_lo = self.phase22_analyse[idx_lo] - K*4*np.pi*0.6
-                        idx_lo = np.argmax(self.phase22_analyse > phase_lo)
+                        phase_lo = self.phase22[idx_lo] - K*4*np.pi*0.6
+                        idx_lo = np.argmax(self.phase22 > phase_lo)
                         if verbose:
                             print(f"       idx_lo reduced to {idx_lo}")
                 # too many peaks to the right right, discard by placing idx_hi
@@ -839,18 +763,18 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 elif Nright < Nafter:
                     # increase idx_hi to capture one more peak
                     # do we have extra data?
-                    if idx_hi < len(self.phase22_analyse):
+                    if idx_hi < len(self.phase22):
                         # target phase on right 0.6 radial periods beyond
                         # current end of interval rationale for 0.6: The next
                         # extremum should be 1 radial period away, we are
                         # worried that near the end of the run, this prediction
                         # may not be accurate.  Therefore, go more slowly.
-                        phase_hi = self.phase22_analyse[idx_hi] + K*4*np.pi*0.6
-                        idx_hi = np.argmax(self.phase22_analyse > phase_hi)
+                        phase_hi = self.phase22[idx_hi] + K*4*np.pi*0.6
+                        idx_hi = np.argmax(self.phase22 > phase_hi)
                         if idx_hi == 0:
                             # coulnd't get as much data as we wished, take all
                             # we have
-                            idx_hi = len(self.phase22_analyse)
+                            idx_hi = len(self.phase22)
                         if verbose and idx_hi != old_idx_hi:
                             print(f"       idx_hi increased to {idx_hi}")
                     else:
@@ -943,40 +867,92 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     plt.close(fig)
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
                                                     phase22_extrema]
-
-            # termination conditions not met, update fit and continue iterating
-            #if verbose and False:
-            #    # Perform some polynomial fits (possibly useful for debugging)
-            #    for deg in [1,2,3]:
-            #        lin=np.polynomial.polynomial.Polynomial.fit(t_extrema, data_extrema, deg)
-            #        print(f"    fit with deg={deg}: residual={np.linalg.norm(lin(t_extrema)-data_extrema)}")
-                #axs[2].plot(t_extrema, quad(t_extrema)-data_extrema], "o--")
-
-            # tmp=bounds[0][2]
             p, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
                                                 data_extrema, p0=p,
                                                 bounds=bounds, maxfev=10000)
-            prominence = None  # flag renewed calculation of the find_signal paramters
             if verbose and False:
                 print("    PRODUCTION FIT: residual="
                       f"{np.linalg.norm(f_fit(t_extrema,*p)-data_extrema)},"
                       f" f={f_fit.format(*p)}")
-            # bounds[0][2]=t_extrema[-1]*0.8
-            # p_unbounded, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
-            #                                    data_extrema, p0=p,
-            #                                    bounds=bounds,maxfev=10000)
-
-            # bounds[0][2]=tmp
-            #if verbose:
-            #        print(f"    unbounded     : residual={np.linalg.norm(f_fit(t_extrema,*p_unbounded)-data_extrema)}, f={f_fit.format(*p_unbounded)}")
-
             if pp:
-                axs[2].plot(t_extrema, f_fit(t_extrema, *p)-data_extrema, "o")
-                # axs[2].plot(t_extrema, f_fit(t_extrema, *p_unbounded)-data_extrema, "x")
-
+                axs[2].plot(t_extrema, f_fit(t_extrema, *p)-data_extrema, "o",
+                            color=line.get_color())
             old_extrema = data_extrema
             if verbose:
-                print(f"       max_delta_{self.data_str}={max_delta_data:5.4g} => "
-                      "fit updated to"
-                      f" f_fit={f_fit.format(*p)}")
+                print(f"       max_delta_{self.data_str}={max_delta_data:5.4g}"
+                      f" => fit updated to f_fit={f_fit.format(*p)}")
         raise Exception("Should never get here")
+
+    def compute_distance_and_prominence(self, idx_lo, idx_hi, f_fit, p):
+        """Compute distance and prominence for current data section."""
+        maxdt = np.max(np.diff(self.t[idx_lo:idx_hi]))
+
+        # average orbital period during [idx_lo, idx_hi] idx_hi-1 also
+        # works in the case when idx_hi = one-past-last-element
+        T_orbit = ((self.t[idx_hi-1] - self.t[idx_lo])
+                   / (self.phase22[idx_hi-1]
+                      - self.phase22[idx_lo])
+                   * 4*np.pi)
+
+        # set distance = distance_factor * period.  This should exclude
+        # spurious extrema due to noise
+        distance = int(self.distance_factor*T_orbit/maxdt)
+        data_residual = (self.data_for_finding_extrema[idx_lo:idx_hi]
+                         - f_fit(self.t[idx_lo:idx_hi], *p))
+        data_residual_amp = max(data_residual)-min(data_residual)
+        prominence = data_residual_amp*self.prominence_factor
+
+        return distance, prominence
+
+    def get_refined_extrema(self, t_extrema, data_extrema, phase22_extrema,
+                            verbose, f_fit, p):
+        """Get refined extrema.
+
+        Perform parabolic fits to data_residual around each extremum
+        in order to find the time of extrema to sub-index
+        accuracy.
+        """
+        if verbose:
+            print(f"       Refine {len(t_extrema)} extremas, "
+                  f"local fit with "
+                  "Npoints=", end='')
+        for k in range(len(t_extrema)):
+            # length of fitting interval = 0.05radians left/right
+            deltaT = 0.05 / data_extrema[k]
+            idx_refine = np.abs(self.t - t_extrema[k]) < deltaT
+            # number of points to be used in fit
+            N_refine = sum(idx_refine)
+            if verbose:
+                print(f"{N_refine}  ", end='')
+            if N_refine >= 7:  # enough data for fit
+                t_parafit = self.t[idx_refine]
+                # re-compute fit-subtracted data_residual, to avoid
+                # indexing problems, should idx_lo/idx_high be so close
+                # that the parabolic fitting interval extends beyond it
+                data_resi_parafit = (
+                    self.data_for_finding_extrema[idx_refine]
+                    - f_fit(t_parafit, *p))
+
+                parabola = np.polynomial.polynomial.Polynomial.fit(
+                    t_parafit, data_resi_parafit, 2)
+                t_max = parabola.deriv().roots()[0]
+
+                # update extrema information
+                t_extrema[k] = t_max
+
+                # interpolate data from fits *assumption* the
+                # fitting-interval is short enough that this is
+                # accurate
+                data_extrema[k] = parabola(t_max) + f_fit(t_max, *p)
+
+                # 3rd order fit to phase to interpolate *assumption*
+                # the fitting-interval is short enough that this is
+                # accurate
+                phase_fit = np.polynomial.polynomial.Polynomial.fit(
+                    t_parafit, self.phase22[idx_refine], 3)
+                phase22_extrema[k] = phase_fit(t_max)
+            else:
+                pass
+                # if verbose:
+                #    print(f"refinement of k={k} has too few points - skip")
+        return t_extrema, data_extrema, phase22_extrema
