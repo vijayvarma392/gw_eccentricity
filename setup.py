@@ -1,14 +1,18 @@
+"""setup for gw_eccentricity."""
 import setuptools
 
 with open("README.md", "rb") as fh:
     long_description = fh.read().decode("UTF-8")
 
+
 # Extract code version from gw_eccentricity.py
 def get_version():
+    """Get package version."""
     with open('gw_eccentricity/gw_eccentricity.py') as f:
         for line in f.readlines():
             if "__version__" in line:
                 return line.split('"')[1]
+
 
 setuptools.setup(
     name="gw_eccentricity",
@@ -27,7 +31,6 @@ setuptools.setup(
         'h5py',
         'lalsuite',
         'gwtools',
-        'palettable',
     ],
     classifiers=[
         "Intended Audience :: Science/Research",
