@@ -1,6 +1,5 @@
 """Utility to load waveform data from lvcnr files or LAL."""
 import numpy as np
-import gwtools
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
 from .utils import check_kwargs_and_set_defaults
@@ -160,7 +159,7 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
                                  phi_ref=phi_ref, inclination=inclination,
                                  physicalUnits=physicalUnits)
 
-    Ylm = gwtools.harmonics.sYlm(-2, 2, 2, inclination, phi_ref)
+    Ylm = lal.SpinWeightedSphericalHarmonic(inclination, phi_ref, -2, 2, 2)
     mode_dict = {(2, 2): h/Ylm}
     # Make t = 0 at the merger. This would help when getting
     # residual amplitude by subtracting quasi-circular counterpart

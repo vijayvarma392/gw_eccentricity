@@ -47,8 +47,6 @@ All of these can be installed through pip or conda.
 * [scipy](https://www.scipy.org/install.html)
 * [h5py](http://docs.h5py.org/en/latest/build.html)
 * [lalsuite](https://pypi.org/project/lalsuite)
-* [gwtools](https://pypi.org/project/gwtools/)
-* [palettable](https://pypi.org/project/palettable/)
 
 
 ## Usage

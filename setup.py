@@ -30,7 +30,6 @@ setuptools.setup(
         'scipy',
         'h5py',
         'lalsuite',
-        'gwtools',
     ],
     classifiers=[
         "Intended Audience :: Science/Research",
