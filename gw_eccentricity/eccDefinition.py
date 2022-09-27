@@ -597,11 +597,14 @@ class eccDefinition:
         drop the extrema before such a pair and if it happens at the end of the
         data then drop extrema after such a pair.
 
-        Example:
+        Example: Assuming the real extrema have a separation of 2 indices
         extrema = [1, 3, 5, 7, 9, 11, 12, 14]
         Here the pair {11, 12} is too close. So we drop {12, 14}
         extrema = [1, 3, 4, 6, 8, 10, 12]
         Here the pair {3, 4} is too close. So we drop {1, 3}.
+
+        For an example with EOB waveform, see here
+        https://github.com/vijayvarma392/gw_eccentricity/wiki/debug-examples#drop-too-close-extrema
         """
         phase22_extrema = self.phase22[extrema_location]
         phase22_diff_extrema = np.diff(phase22_extrema)
@@ -650,7 +653,8 @@ class eccDefinition:
         order is important because if we remove the extrema at the ends first
         and then remove the extrema after/before jumps, then we may still end
         up with extra extrema at the ends, and have to do the first step again.
-        Example of doing it in the wrong order:
+        Example of doing it in the wrong order, assuming the real extrema have
+        a separation of 2 indices:
         Let pericenters p = [1, 3, 5, 7, 11]
         and apoceneters a = [2, 4, 6, 8, 10, 12, 14]
         Here, we have an extra apoceneter and a jump in pericenter between 7
@@ -799,6 +803,8 @@ class eccDefinition:
         """
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
+        if len(pericenters) <= 2:
+            warnings.warn(f"Number of pericenters found is {len(pericenters)}")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
@@ -808,6 +814,8 @@ class eccDefinition:
             apocenters = self.get_apocenters_from_pericenters(pericenters)
         else:
             apocenters = self.find_extrema("apocenters")
+        if len(apocenters) <= 2:
+            warnings.warn(f"Number of apocenters found is {len(apocenters)}")
 
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
