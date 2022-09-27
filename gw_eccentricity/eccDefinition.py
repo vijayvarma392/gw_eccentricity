@@ -592,11 +592,16 @@ class eccDefinition:
                                   extrema_type="pericenters"):
         """Check if a pair of extrema is too close to each other.
 
-        If a pair of extrema is found to be too close to each other, then
-        drop the extrema before/after such pair.
+        If a pair of extrema is found to be too close to each other, then drop
+        the extrema as necessary. If it happens at the start of the data, then
+        drop the extrema before such a pair and if it happens at the end of the
+        data then drop extrema after such a pair.
 
-        If it happens at the start/end of the data, then drop the extra
-        before/after such pair.
+        Example:
+        extrema = [1, 3, 5, 7, 9, 11, 12, 14]
+        Here the pair {11, 12} is too close. So we drop {12, 14}
+        extrema = [1, 3, 4, 6, 8, 10, 12]
+        Here the pair {3, 4} is too close. So we drop {1, 3}.
         """
         phase22_extrema = self.phase22[extrema_location]
         phase22_diff_extrema = np.diff(phase22_extrema)
