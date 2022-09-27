@@ -93,6 +93,18 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.data_analyse = self.data_for_finding_extrema[:self.idx_end]
         self.phase22_analyse = self.phase22[:self.idx_end]
 
+        # stores info needed for plot for paper
+        self.diagnostic_data_dict = { 
+            'it': {-1:[], +1:[]},
+            'params': {-1: [], +1: []},
+            't_extrema': {-1:[], +1:[]},
+            'omega22_extrema': {-1:[],+1:[]},
+            't_ref': {-1:[], +1:[]},
+            'f_fit':{-1:[], +1:[]},
+            'omega22': None,
+            't': None
+            }
+        
     def get_default_fits_kwargs(self):
         """Get default kwargs to be used for Fits methods."""
         return {
@@ -290,6 +302,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         linewidth=0.5, color=line.get_color(),
                         label='residual (all data)')
             axs[0].legend()
+            axs[0].set_ylim(top=max(self.data_analyse)*1.2, bottom=-0.1*max(self.data_analyse))
             axs[2].legend()
             fig.tight_layout()
             fig.savefig(pp, format='pdf')
@@ -357,6 +370,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 if count == 1:
                     # at first call (at start of waveform, report the extrema
                     # identified in the left part of the fitting interval
+                    # (disard very first extremum to avoid startup effects,
+                    #  e.g. '../data/ecc_waveforms/Non-Precessing/SXS/BBH_SHK_q6_e095_D65_Res3.h5'
+                    #  leads to 
+                    #       Exception: combined omega22 average from pericenters and apocenters 
+                    #       are not strictly monotonically increasing.
                     for k in range(0, N):
                         extrema.append(idx_extrema[k])
                         t_extrema_refined.append(extrema_refined[0][k])
@@ -760,6 +778,17 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # note: 'line.get_color()` is also used below in axs[2].plot
                 axs[1].plot(t_extrema, data_extrema+plot_offset*it, 'o',
                             color=line.get_color(), label=f"it={it}")
+
+                if plot_info=='count=4':
+                    self.diagnostic_data_dict['it'][sign].append(it)
+                    self.diagnostic_data_dict['params'][sign].append(p)
+                    self.diagnostic_data_dict['t_extrema'][sign].append(t_extrema)
+                    self.diagnostic_data_dict['omega22_extrema'][sign].append(data_extrema)
+                    self.diagnostic_data_dict['t_ref'][ sign].append(self.t_analyse[idx_ref])
+                    self.diagnostic_data_dict['f_fit'][ sign].append(f_fit)
+                    self.diagnostic_data_dict['omega22']=self.data_analyse
+                    self.diagnostic_data_dict['t']=self.t_analyse
+
 
             if Nright < Nafter:  # and Nleft==Nbefore:
                 Count_Nright_short = Count_Nright_short+1
