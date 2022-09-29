@@ -491,7 +491,7 @@ class eccDefinition:
 
     def drop_extrema_if_extrema_jumps(self, extrema_location,
                                       max_r_delta_phase22_extrema=1.5,
-                                      extrema_type="pericenters"):
+                                      extrema_type="extrema"):
         """Drop the extrema if jump in extrema is detected.
 
         It might happen that an extremum between two successive extrema is
@@ -530,7 +530,11 @@ class eccDefinition:
                                    delta_phase22_extrema[:-1])
         idx_too_large_ratio = np.where(r_delta_phase22_extrema >
                                        max_r_delta_phase22_extrema)[0]
-        if len(idx_too_large_ratio) > 0:
+        mid_index = int(len(r_delta_phase22_extrema)/2)
+        # Check if ratio is too large near the end of the data. Check also
+        # that this occurs within the second half of the extrema locations
+        if len(idx_too_large_ratio) > 0 and (idx_too_large_ratio[0]
+                                             > mid_index):
             first_idx = idx_too_large_ratio[0]
             first_pair_indices = [extrema_location[first_idx+1],
                                   extrema_location[first_idx+2]]
@@ -540,7 +544,7 @@ class eccDefinition:
             phase_diff_previous = delta_phase22_extrema[first_idx]
             warnings.warn(
                 f"At least a pair of {extrema_type} are too widely separated"
-                "from each other near the end of the data.\n"
+                " from each other near the end of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
                 f"First pair of such {extrema_type} are {first_pair_indices}"
                 f" at t={first_pair_times}.\n"
@@ -552,10 +556,14 @@ class eccDefinition:
                 f"t > t={first_pair_times[0]} are therefore dropped.")
             extrema_location = extrema_location[extrema_location <=
                                                 extrema_location[first_idx+1]]
-        # Now do the same at the beginning of the data
+        # Check if ratio is too small
         idx_too_small_ratio = np.where(r_delta_phase22_extrema <
                                        (1 / max_r_delta_phase22_extrema))[0]
-        if len(idx_too_small_ratio) > 0:
+        # We want to detect extrema jump near the start of the data.
+        # Check that the location where such jump is found falls within the
+        # first half of the extrema locations.
+        if len(idx_too_small_ratio) > 0 and (idx_too_small_ratio[-1]
+                                             < mid_index):
             last_idx = idx_too_small_ratio[-1]
             last_pair_indices = [extrema_location[last_idx+1],
                                  extrema_location[last_idx+2]]
@@ -579,6 +587,69 @@ class eccDefinition:
                                                 extrema_location[last_idx]]
         return extrema_location
 
+    def drop_extrema_if_too_close(self, extrema_location,
+                                  min_phase22_difference=4*np.pi,
+                                  extrema_type="extrema"):
+        """Check if a pair of extrema is too close to each other.
+
+        If a pair of extrema is found to be too close to each other, then drop
+        the extrema as necessary. If it happens at the start of the data, then
+        drop the extrema before such a pair and if it happens at the end of the
+        data then drop extrema after such a pair.
+
+        Example: Assuming the real extrema have a separation of 2 indices
+        extrema = [1, 3, 5, 7, 9, 11, 12, 14]
+        Here the pair {11, 12} is too close. So we drop {12, 14}
+        extrema = [1, 3, 4, 6, 8, 10, 12]
+        Here the pair {3, 4} is too close. So we drop {1, 3}.
+
+        For an example with EOB waveform, see here
+        https://github.com/vijayvarma392/gw_eccentricity/wiki/debug-examples#drop-too-close-extrema
+        """
+        phase22_extrema = self.phase22[extrema_location]
+        phase22_diff_extrema = np.diff(phase22_extrema)
+        idx_too_close = np.where(phase22_diff_extrema
+                                 < min_phase22_difference)[0]
+        mid_index = int(len(phase22_diff_extrema)/2)
+        if len(idx_too_close) > 0:
+            # Look for too close pairs in the second half
+            if idx_too_close[0] > mid_index:
+                first_index = idx_too_close[0]
+                first_pair = [extrema_location[first_index],
+                              extrema_location[first_index+1]]
+                first_pair_times = self.t[first_pair]
+                warnings.warn(
+                    f"At least a pair of {extrema_type} are too close to "
+                    "each other with phase22 difference = "
+                    f"{phase22_diff_extrema[first_index]/(4*np.pi):.2f}*4pi.\n"
+                    " First pair of such extrema is located in the second half"
+                    f" of the {extrema_type} locations between {first_pair},"
+                    f"i.e., t={first_pair_times}.\n"
+                    f"{extrema_type} after {extrema_location[first_index]}"
+                    f" i.e., t > {self.t[extrema_location[first_index]]} "
+                    "are dropped.")
+                extrema_location = extrema_location[
+                    extrema_location <= extrema_location[first_index]]
+            # Look for too close pairs in the first half
+            if idx_too_close[-1] < mid_index:
+                last_index = idx_too_close[-1]
+                last_pair = [extrema_location[last_index],
+                             extrema_location[last_index-1]]
+                last_pair_times = self.t[last_pair]
+                warnings.warn(
+                    f"At least a pair of {extrema_type} are too close to "
+                    "each other with phase22 difference = "
+                    f"{phase22_diff_extrema[last_index]/(4*np.pi):.2f}*4pi.\n"
+                    " Last pair of such extrema is located in the first half"
+                    f" of the {extrema_type} locations between {last_pair},"
+                    f"i.e., t={last_pair_times}.\n"
+                    f" {extrema_type} before {extrema_location[last_index]}"
+                    f" i.e., t < {self.t[extrema_location[last_index]]} "
+                    "are dropped.")
+                extrema_location = extrema_location[
+                    extrema_location >= extrema_location[last_index]]
+        return extrema_location
+
     def get_good_extrema(self, pericenters, apocenters,
                          max_r_delta_phase22_extrema=1.5):
         """Retain only the good extrema if there are extra extrema or missing extrema.
@@ -596,7 +667,8 @@ class eccDefinition:
         order is important because if we remove the extrema at the ends first
         and then remove the extrema after/before jumps, then we may still end
         up with extra extrema at the ends, and have to do the first step again.
-        Example of doing it in the wrong order:
+        Example of doing it in the wrong order, assuming the real extrema have
+        a separation of 2 indices:
         Let pericenters p = [1, 3, 5, 7, 11]
         and apoceneters a = [2, 4, 6, 8, 10, 12, 14]
         Here, we have an extra apoceneter and a jump in pericenter between 7
@@ -632,6 +704,10 @@ class eccDefinition:
             pericenters, max_r_delta_phase22_extrema, "pericenters")
         apocenters = self.drop_extrema_if_extrema_jumps(
             apocenters, max_r_delta_phase22_extrema, "apocenters")
+        pericenters = self.drop_extrema_if_too_close(
+            pericenters, extrema_type="pericenters")
+        apocenters = self.drop_extrema_if_too_close(
+            apocenters, extrema_type="apocenters")
         pericenters, apocenters = self.drop_extra_extrema_at_ends(
             pericenters, apocenters)
         return pericenters, apocenters
@@ -662,6 +738,47 @@ class eccDefinition:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolant.")
+
+    def check_num_extrema(self, extrema, extrema_type="extrema"):
+        """Check number of extrema."""
+        num_extrema = len(extrema)
+        if num_extrema <= 2:
+            message = f"Only {num_extrema}" \
+                if num_extrema > 0 else "No"
+            recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
+            if self.method not in recommended_methods:
+                method_message = (f" Possibly `{self.method}` method is not "
+                                  f"efficient to detect the {extrema_type}."
+                                  f" Try one of {recommended_methods}.")
+            else:
+                method_message = ""
+            warnings.warn(f"{message} {extrema_type} found. There can be "
+                          "problem when building interpolant through the "
+                          f"{extrema_type}.{method_message}")
+
+    def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
+                                          extrema_type="extrema",
+                                          threshold_fraction=0.5):
+        """Check if too many extrema was dropped.
+
+        Parameters:
+        -----------
+        original_extrema:
+            1d array of original extrema locations.
+        new_extrema:
+            1d array of new extrema location after dropping extrema.
+        extrema_type:
+            String to describe the extrema. For example,
+            "pericenrers"/"apocenters".
+        threshold_fraction:
+            Fraction of the original extrema.
+            When num_dropped_extrema > threshold_fraction * len(original_extrema),
+            an warning is raised.
+        """
+        num_dropped_extrema = len(original_extrema) - len(new_extrema)
+        if num_dropped_extrema > (threshold_fraction * len(original_extrema)):
+            warnings.warn(f"More than {threshold_fraction * 100}% of the "
+                          f"original {extrema_type} was dropped.")
 
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -741,6 +858,8 @@ class eccDefinition:
         """
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
+        original_pericenters = pericenters.copy()
+        self.check_num_extrema(pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
@@ -750,11 +869,19 @@ class eccDefinition:
             apocenters = self.get_apocenters_from_pericenters(pericenters)
         else:
             apocenters = self.find_extrema("apocenters")
-
+        original_apocenters = apocenters.copy()
+        self.check_num_extrema(apocenters, "apocenters")
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
             = self.get_good_extrema(pericenters, apocenters)
 
+        # Check if we dropped too many extrema.
+        self.check_if_dropped_too_many_extrema(original_pericenters,
+                                               self.pericenters_location,
+                                               "pericenters", 0.5)
+        self.check_if_dropped_too_many_extrema(original_apocenters,
+                                               self.apocenters_location,
+                                               "apocenters", 0.5)
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
         # check extrema separation
