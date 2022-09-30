@@ -21,7 +21,7 @@ import copy
 class eccDefinition:
     """Measure eccentricity from given waveform data dictionary."""
 
-    def __init__(self, dataDict, num_orbits_to_exclude_before_merger=1,
+    def __init__(self, dataDict, num_orbits_to_exclude_before_merger=2,
                  extra_kwargs=None):
         """Init eccDefinition class.
 
@@ -88,7 +88,11 @@ class eccDefinition:
                 many orbits prior to merger are excluded when finding extrema.
                 If your waveform does not have a merger (e.g. PN/EMRI), use
                 num_orbits_to_exclude_before_merger = None.
-                Default: 1.
+
+                The default value is chosen via an investigation on a set of NR
+                waveforms. See the following wiki page for more details,
+                https://github.com/vijayvarma392/gw_eccentricity/wiki/NR-investigation-to-set-default-number-of-orbits-to-exclude-before-merger
+                Default: 2.
 
         extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
             are:
