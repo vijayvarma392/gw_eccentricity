@@ -64,7 +64,7 @@ def measure_eccentricity(tref_in=None,
                          method="Amplitude",
                          dataDict=None,
                          return_gwecc_object=False,
-                         num_orbits_to_exclude_before_merger=1,
+                         num_orbits_to_exclude_before_merger=2,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -126,6 +126,9 @@ def measure_eccentricity(tref_in=None,
           frequency, obtained by subtracting the omega22(t) of the
           quasicircular counterpart from the omega22(t) of the eccentric
           waveform.
+        - "AmplitudeFits": Uses Amp22(t) and iteratively subtracts a
+          PN-inspired fitting function from it, and finds extrema of the
+          residual.
         - "FrequencyFits": Uses omega22(t) and iteratively subtracts a
           PN-inspired fitting function from it, and finds extrema of the
           residual.
@@ -207,14 +210,18 @@ def measure_eccentricity(tref_in=None,
         Default is False.
 
     num_orbits_to_exclude_before_merger:
-            Can be None or a non negative number.
-            If None, the full waveform data (even post-merger) is used for
-            finding extrema, but this might cause interpolation issues.
-            For a non negative num_orbits_to_exclude_before_merger, that
-            many orbits prior to merger are excluded when finding extrema.
-            If your waveform does not have a merger (e.g. PN/EMRI), use
-            num_orbits_to_exclude_before_merger = None.
-            Default: 1.
+        Can be None or a non negative number.
+        If None, the full waveform data (even post-merger) is used for
+        finding extrema, but this might cause interpolation issues.
+        For a non negative num_orbits_to_exclude_before_merger, that
+        many orbits prior to merger are excluded when finding extrema.
+        If your waveform does not have a merger (e.g. PN/EMRI), use
+        num_orbits_to_exclude_before_merger = None.
+
+        The default value is chosen via an investigation on a set of NR
+        waveforms. See the following wiki page for more details,
+        https://github.com/vijayvarma392/gw_eccentricity/wiki/NR-investigation-to-set-default-number-of-orbits-to-exclude-before-merger
+        Default: 2.
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         spline_kwargs:
