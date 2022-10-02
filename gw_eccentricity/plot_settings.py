@@ -11,8 +11,8 @@ colorsDict = {
     "pericenter": dark2[2],  # purple
     "vline": dark2[3],  # pink
     "hline": dark2[5],  # orange
-    "edge": dark2[0],  # turquoise
-    "pericentersvline": dark2[0],
+    "edge": dark2[-1],  # grey
+    "pericentersvline": dark2[0],  # turquoise
     "FrequencyFits": dark2[3],
     "AmplitudeFits": dark2[4],
     "ResidualFrequency": dark2[5],
