@@ -7,18 +7,25 @@ dark2 = mcm.get_cmap("Dark2").colors
 
 colorsDict = {
     "default": dark2[1],  # brown
-    "apocenter": dark2[4],  # olive
-    "pericenter": dark2[2],  # purple
+    "apocenter": dark2[2],  # purple
+    "pericenter": dark2[0],  # turquoise
     "vline": dark2[3],  # pink
     "hline": dark2[5],  # orange
-    "edge": dark2[-1],  # grey
-    "pericentersvline": dark2[0],  # turquoise
+    "edge": dark2[-1],  # gray
+    "pericentersvline": dark2[4],  # olive
     "FrequencyFits": dark2[3],
-    "AmplitudeFits": dark2[4],
+    "AmplitudeFits": dark2[2],
     "ResidualFrequency": dark2[5],
-    "ResidualAmplitude": dark2[2],
+    "ResidualAmplitude": dark2[0],
     "Frequency": dark2[0],
     "Amplitude": dark2[1],
+    "turquoise": dark2[0],
+    "brown": dark2[1],
+    "purple": dark2[2],
+    "pink": dark2[3],
+    "olive": dark2[4],
+    "orange": dark2[5],
+    "gray": dark2[7]
 }
 
 lstyles = {"Amplitude": "solid",
