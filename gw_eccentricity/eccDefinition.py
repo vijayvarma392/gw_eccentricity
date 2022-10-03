@@ -728,12 +728,13 @@ class eccDefinition:
         ------
         Interpolant through extrema
         """
-        extrema_dict = {"pericenters": self.pericenters_location,
-                        "apocenters": self.apocenters_location}
-        if extrema_type not in extrema_dict:
-            raise Exception("extrema_type must be one of "
-                            f"{list(extrema_dict.keys())}")
-        extrema = extrema_dict[extrema_type]
+        if extrema_type == "pericenters":
+            extrema = self.pericenters_location
+        elif extrema_type == "apocenters":
+            extrema = self.apocenters_location
+        else:
+            raise Exception("extrema_type must be either "
+                            "'pericenrers' or 'apocenters'.")
         if len(extrema) >= 2:
             return get_interpolant(self.t[extrema],
                                    self.omega22[extrema],

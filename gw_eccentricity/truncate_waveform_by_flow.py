@@ -8,7 +8,6 @@ def truncate_waveform_by_flow(dataDict=None,
                               flow=None,
                               m_max=None,
                               method="Amplitude",
-                              spline_kwargs=None,
                               extra_kwargs=None):
     """Truncate waveform by flow.
 
@@ -56,11 +55,6 @@ def truncate_waveform_by_flow(dataDict=None,
     method: str
         Method to find the locations of the apocenters. Default is "Amplitude".
         See gw_eccentricity.get_available_modes for available modes.
-    spline_kwargs: dict
-        Dictionary of arguments to be provided to the
-        scipy.interpolate.InterpolatedUnivariatespline interpolant
-        to create an interpolant of omega22 at the apocenters.
-        Default values are set using eccDefinition.get_default_spline_kwargs.
     extra_kwargs: dict
         Dictionary of arguments that might be used for extrema finding routine.
         Default values are set using eccDefinition.get_default_extra_kwargs.
@@ -79,22 +73,30 @@ def truncate_waveform_by_flow(dataDict=None,
 
     if method in available_methods:
         gwecc_object = available_methods[method](dataDict,
-                                                 spline_kwargs=spline_kwargs,
                                                  extra_kwargs=extra_kwargs)
-        omega22_pericenters_interp, pericenters_locations\
-            = gwecc_object.interp_extrema("pericenters")
+        # Get the pericenters
+        pericenters = gwecc_object.find_extrema("pericenters")
+        original_pericenters = pericenters.copy()
+        gwecc_object.check_num_extrema(pericenters, "pericenters")
+        # Get the good pericenters
+        pericenters = gwecc_object.drop_extrema_if_extrema_jumps(
+            pericenters, 1.5, "pericenters")
+        gwecc_object.pericenters_location = gwecc_object.drop_extrema_if_too_close(
+            pericenters, extrema_type="pericenters")
+        # Build the interpolants of omega22 at the extrema
+        gwecc_object.omega22_pericenters_interp = gwecc_object.interp_extrema("pericenters")
     # If m_max is not provided, get the highest available m from the dataDict
     if m_max is None:
         modes = gwecc_object.dataDict["hlm"].keys()
         m_max = max([m for (l, m) in modes])
     # Find time where omega22_apocenter_interp(tlow) = 2 * pi * flow
-    tmin = gwecc_object.t[pericenters_locations[0]]
-    tmax = gwecc_object.t[pericenters_locations[-1]]
+    tmin = gwecc_object.t[gwecc_object.pericenters_location[0]]
+    tmax = gwecc_object.t[gwecc_object.pericenters_location[-1]]
     gwecc_object.t_pericenters_interp = gwecc_object.t[
         np.logical_and(gwecc_object.t >= tmin,
                        gwecc_object.t <= tmax)]
     gwecc_object.f22_pericenters_interp \
-        = omega22_pericenters_interp(gwecc_object.t_pericenters_interp)/2/np.pi
+        = gwecc_object.omega22_pericenters_interp(gwecc_object.t_pericenters_interp)/2/np.pi
 
     idx_low = np.where(
         gwecc_object.f22_pericenters_interp * (m_max/2) >= flow)[0][0]
