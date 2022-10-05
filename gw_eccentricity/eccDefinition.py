@@ -735,7 +735,14 @@ class eccDefinition:
         else:
             raise Exception("extrema_type must be either "
                             "'pericenrers' or 'apocenters'.")
-        if len(extrema) >= 2:
+        num_extrema = len(extrema)
+        if num_extrema >= 2:
+            k = self.spline_kwargs["k"]
+            if num_extrema <= k:
+                warnings.warn(f"No of {extrema_type} is {num_extrema} but "
+                              f"spline order k = {k}. Decreasing k to "
+                              f"{num_extrema - 1}.")
+                self.spline_kwargs["k"] = num_extrema - 1
             return get_interpolant(self.t[extrema],
                                    self.omega22[extrema],
                                    spline_kwargs=self.spline_kwargs)
