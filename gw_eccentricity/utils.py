@@ -256,6 +256,16 @@ def get_interpolant(oldX,
             get_default_spline_kwargs(),
             "spline kwargs",
             "utils.get_default_spline_kwargs")
+        # check that num of data points > order of spline
+        if len(oldX) >= 2:
+            if len(oldX) <= kwargs["k"]:
+                warnings.warn(f"No of data points is {len(oldX)} but "
+                              f"spline order k = {kwargs['k']}. "
+                              f"Decreasing k to {len(oldX) - 1}.")
+                kwargs["k"] = len(oldX) - 1
+        else:
+            raise Exception("Number of data points is {len(oldX)}."
+                            " Cannot build an interpolant.")
         # If allowExtrapolation is True but ext=2 then raise a warning
         # and override ext to 0
         if allowExtrapolation and kwargs["ext"] == 2:
