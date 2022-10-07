@@ -263,12 +263,16 @@ def get_interpolant(oldX,
                 "utils.get_default_spline_kwargs")
         # check that num of data points > order of spline
         if len(oldX) >= 2:
-            kwargs = spline_kwargs.copy()
-            if len(oldX) <= kwargs["k"]:
+            if len(oldX) <= spline_kwargs["k"]:
                 warnings.warn(f"No of data points is {len(oldX)} but "
-                              f"spline order k = {kwargs['k']}. "
+                              f"spline order k = {spline_kwargs['k']}. "
                               f"Decreasing k to {len(oldX) - 1}.")
+                # make a copy so that the original spline_kwargs remains
+                # unmodified.
+                kwargs = spline_kwargs.copy()
                 kwargs["k"] = len(oldX) - 1
+            else:
+                kwargs = spline_kwargs
         else:
             raise Exception("Number of data points is {len(oldX)}."
                             " Cannot build an interpolant.")

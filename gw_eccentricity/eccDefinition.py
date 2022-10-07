@@ -721,6 +721,10 @@ class eccDefinition:
         """Get interpolant.
 
         A wrapper of utils.get_interpolant with check_kwargs=False.
+        This is to make sure that the checking of kwargs is not performed
+        everytime the interpolation function is called. Instead, the kwargs
+        are checked once in the init and passed to the interpolation
+        function without repeating checks.
         """
         return get_interpolant(oldX, oldY, allowExtrapolation, interpolator,
                                spline_kwargs=self.spline_kwargs,
@@ -730,7 +734,8 @@ class eccDefinition:
                interpolator="spline"):
         """Get interpolated values.
 
-        A wrapper of utils.interpolate with check_kwargs=False.
+        A wrapper of utils.interpolate with check_kwargs=False for
+        reasons explained in the documentation of get_interp function.
         """
         return interpolate(newX, oldX, oldY, allowExtrapolation, interpolator,
                            spline_kwargs=self.spline_kwargs,
