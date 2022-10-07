@@ -164,7 +164,8 @@ def interpolate(newX,
                 oldY,
                 allowExtrapolation=False,
                 interpolator="spline",
-                spline_kwargs=None):
+                spline_kwargs=None,
+                check_kwargs=True):
     """Interpolate.
 
     Parameters:
@@ -186,6 +187,8 @@ def interpolate(newX,
         Default is "spline".
     spline_kwargs:
         See under get_interpolant.
+    check_kwargs:
+        Check spline_kwargs if check_kwargs is True. Default is True.
 
     Returns:
     --------
@@ -209,7 +212,7 @@ def interpolate(newX,
             raise Exception("Trying to extrapolate, "
                             "but allowExtrapolation=False")
     newY = get_interpolant(oldX, oldY, allowExtrapolation, interpolator,
-                           spline_kwargs)(newX)
+                           spline_kwargs, check_kwargs)(newX)
     return newY
 
 
@@ -217,7 +220,8 @@ def get_interpolant(oldX,
                     oldY,
                     allowExtrapolation=False,
                     interpolator="spline",
-                    spline_kwargs=None):
+                    spline_kwargs=None,
+                    check_kwargs=True):
     """Create Interpolant.
 
     Parameters:
@@ -242,6 +246,8 @@ def get_interpolant(oldX,
         defaults are set using gw_eccentricity.utils.get_default_spline_kwargs.
         Since we use allowExtraplotion arg separately, value of "ext" in
         extra_kwargs will be overridden by allowExtrapolation.
+    check_kwargs:
+        Check spline_kwargs if check_kwargs is True. Default is True.
 
     Returns:
     --------
@@ -251,11 +257,25 @@ def get_interpolant(oldX,
         raise Exception("oldX must have increasing values")
 
     if interpolator == "spline":
-        kwargs = check_kwargs_and_set_defaults(
-            spline_kwargs,
-            get_default_spline_kwargs(),
-            "spline kwargs",
-            "utils.get_default_spline_kwargs")
+        if check_kwargs:
+            spline_kwargs = check_kwargs_and_set_defaults(
+                spline_kwargs, get_default_spline_kwargs(), "spline kwargs",
+                "utils.get_default_spline_kwargs")
+        # check that num of data points > order of spline
+        if len(oldX) >= 2:
+            if len(oldX) <= spline_kwargs["k"]:
+                warnings.warn(f"No of data points is {len(oldX)} but "
+                              f"spline order k = {spline_kwargs['k']}. "
+                              f"Decreasing k to {len(oldX) - 1}.")
+                # make a copy so that the original spline_kwargs remains
+                # unmodified.
+                kwargs = spline_kwargs.copy()
+                kwargs["k"] = len(oldX) - 1
+            else:
+                kwargs = spline_kwargs
+        else:
+            raise Exception("Number of data points is {len(oldX)}."
+                            " Cannot build an interpolant.")
         # If allowExtrapolation is True but ext=2 then raise a warning
         # and override ext to 0
         if allowExtrapolation and kwargs["ext"] == 2:

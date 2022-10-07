@@ -716,6 +716,31 @@ class eccDefinition:
             pericenters, apocenters)
         return pericenters, apocenters
 
+    def get_interp(self, oldX, oldY, allowExtrapolation=False,
+                   interpolator="spline"):
+        """Get interpolant.
+
+        A wrapper of utils.get_interpolant with check_kwargs=False.
+        This is to make sure that the checking of kwargs is not performed
+        everytime the interpolation function is called. Instead, the kwargs
+        are checked once in the init and passed to the interpolation
+        function without repeating checks.
+        """
+        return get_interpolant(oldX, oldY, allowExtrapolation, interpolator,
+                               spline_kwargs=self.spline_kwargs,
+                               check_kwargs=False)
+
+    def interp(self, newX, oldX, oldY, allowExtrapolation=False,
+               interpolator="spline"):
+        """Get interpolated values.
+
+        A wrapper of utils.interpolate with check_kwargs=False for
+        reasons explained in the documentation of get_interp function.
+        """
+        return interpolate(newX, oldX, oldY, allowExtrapolation, interpolator,
+                           spline_kwargs=self.spline_kwargs,
+                           check_kwargs=False)
+
     def interp_extrema(self, extrema_type="pericenters"):
         """Build interpolant through extrema.
 
@@ -736,9 +761,8 @@ class eccDefinition:
             raise Exception("extrema_type must be either "
                             "'pericenrers' or 'apocenters'.")
         if len(extrema) >= 2:
-            return get_interpolant(self.t[extrema],
-                                   self.omega22[extrema],
-                                   spline_kwargs=self.spline_kwargs)
+            return self.get_interp(self.t[extrema],
+                                   self.omega22[extrema])
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
@@ -1077,7 +1101,7 @@ class eccDefinition:
                 self.t_for_checks)
 
         if self.ecc_interp is None:
-            self.ecc_interp = get_interpolant(self.t_for_checks,
+            self.ecc_interp = self.get_interp(self.t_for_checks,
                                               self.ecc_for_checks)
         # Get derivative of ecc(t) using spline
         return self.ecc_interp.derivative(n=n)(t)
@@ -1295,7 +1319,7 @@ class eccDefinition:
         # residual quantities can be computed. Above, we check that this
         # extrapolation does not happen before t_merger, which is where
         # eccentricity is normally measured.
-        self.amp22_zeroecc_interp = interpolate(
+        self.amp22_zeroecc_interp = self.interp(
             self.t, self.t_zeroecc_shifted, np.abs(self.h22_zeroecc),
             allowExtrapolation=True)
         self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
@@ -1303,7 +1327,7 @@ class eccDefinition:
         self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
         self.omega22_zeroecc = time_deriv_4thOrder(
             self.phase22_zeroecc, self.t_zeroecc[1] - self.t_zeroecc[0])
-        self.omega22_zeroecc_interp = interpolate(
+        self.omega22_zeroecc_interp = self.interp(
             self.t, self.t_zeroecc_shifted, self.omega22_zeroecc,
             allowExtrapolation=True)
         self.res_omega22 = (self.omega22 - self.omega22_zeroecc_interp)
@@ -1373,7 +1397,7 @@ class eccDefinition:
         self.check_monotonicity_of_omega22_average(
             omega22_average,
             "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
-        return interpolate(
+        return self.interp(
             t, self.t_average_mean_motion, omega22_average)
 
     def check_monotonicity_of_omega22_average(self,
@@ -1443,7 +1467,7 @@ class eccDefinition:
                 fig.savefig(figName)
                 plot_info = f"See the plot saved as {figName}."
             else:
-                plot_info = ""
+                plot_info = "For more details use debug=True in extra_kwargs"
             raise Exception(
                 f"{description} are non-monotonic.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
@@ -1452,6 +1476,7 @@ class eccDefinition:
                 f" {abs(change_at_first_idx)}.\nTotal number of places of"
                 f" non-monotonicity is {len(idx_non_monotonic)}.\n"
                 f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
+                f"{plot_info}\n"
                 "Possible fixes: \n"
                 "   - Increase sampling rate of data\n"
                 "   - Add to extra_kwargs the option 'treat_mid_points_between_pericenters_as_apocenters': True")
@@ -1467,7 +1492,7 @@ class eccDefinition:
 
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
-        return interpolate(
+        return self.interp(
             t, self.t_zeroecc_shifted, self.omega22_zeroecc)
 
     def get_available_omega22_averaging_methods(self):
@@ -1545,7 +1570,7 @@ class eccDefinition:
                 self.omega22_average, "Interpolated omega22_average")
 
             # Get tref_in using interpolation
-            tref_in = interpolate(fref_out,
+            tref_in = self.interp(fref_out,
                                   self.omega22_average/(2 * np.pi),
                                   self.t_for_omega22_average)
             # check if tref_in is monotonically increasing
