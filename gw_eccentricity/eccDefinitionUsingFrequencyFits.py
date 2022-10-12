@@ -613,7 +613,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                   f"prominence={prominence}")
         interval_changed_on_it = -1
         if self.return_diagnostic_data:
-            # intialize an empty dict and for each iteration add data to this dict with each iteration
+            # Append an empty dict and for each iteration add data to this dict with iteration
             # number as the key.
             self.diagnostic_data_dict['params'][extrema_type].append({})
             self.diagnostic_data_dict['t_extrema'][extrema_type].append({})
