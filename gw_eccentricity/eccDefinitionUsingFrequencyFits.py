@@ -80,7 +80,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         if self.return_diagnostic_data:
             # Initialize an empty dictionary to fill in during iteration over the extrema
             self.diagnostic_data_dict = {
-                "count": {"pericenters": [], "apocenters": []},
                 "params": {"pericenters": [], "apocenters": []},
                 "t_extrema": {"pericenters": [], "apocenters": []},
                 "data_extrema": {"pericenters": [], "apocenters": []},
@@ -326,8 +325,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         extra_extrema_phase22 = []
         while True:
             count = count+1
-            if self.return_diagnostic_data:
-                self.diagnostic_data_dict["count"][extrema_type].append(count)
             if verbose:
                 print(f"=== count={count} "+"="*60)
             idx_extrema, p, K, idx_ref, extrema_refined \
