@@ -76,6 +76,19 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
         self.debug = self.extra_kwargs["debug"]
+        # If return_diagnostic_data is true then return a dictionary of data for diagnostics.
+        if self.return_diagnostic_data:
+            # Initialize an empty dictionary to fill in during iteration over the extrema
+            self.diagnostic_data_dict = {
+                "count": {"pericenters": [], "apocenters": []},
+                "params": {"pericenters": [], "apocenters": []},
+                "t_extrema": {"pericenters": [], "apocenters": []},
+                "data_extrema": {"pericenters": [], "apocenters": []},
+                "t_ref": {"pericenters": [], "apocenters": []},
+                "f_fit": {"pericenters": [], "apocenters": []},
+                "data": self.data_for_finding_extrema,
+                "t": self.t
+            }
 
     def get_default_kwargs_for_fits_methods(self):
         """Get default kwargs to be used for Fits methods.
@@ -109,6 +122,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
           on the right.
         - "num_orbits_for_global_fit": Number of orbits to use for
           global fit in the Fits methods.
+        - "return_diagnostic_data": If True, Retuns a dictionary
+          of data useful for diagnostics. Default is False.
         """
         return {
             "nPN": -3./8,
@@ -117,7 +132,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             "prominence_factor": 0.03,  # prominence = 3% of residual_amp_max
             "distance_factor": 0.75,  # 75% of the average orbital period,
             "num_orbits": 3,
-            "num_orbits_for_global_fit": 10
+            "num_orbits_for_global_fit": 10,
+            "return_diagnostic_data": False
         }
 
     def set_fit_variables(self):
@@ -137,6 +153,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.num_orbits = self.kwargs_for_fits_methods["num_orbits"]
         self.num_orbits_for_global_fit = self.kwargs_for_fits_methods[
             "num_orbits_for_global_fit"]
+        self.return_diagnostic_data = self.kwargs_for_fits_methods["return_diagnostic_data"]
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
@@ -309,6 +326,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         extra_extrema_phase22 = []
         while True:
             count = count+1
+            if self.return_diagnostic_data:
+                self.diagnostic_data_dict["count"][extrema_type].append(count)
             if verbose:
                 print(f"=== count={count} "+"="*60)
             idx_extrema, p, K, idx_ref, extrema_refined \
@@ -539,6 +558,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             Nbefore+Nafter. This signals that the end of the data is reached,
             and that the user should not press to even larger idx_ref.
         """
+        extrema_type = {+1: "pericenters", -1: "apocenters"}[sign]
         if verbose:
             print(f"FindExtremaNearIdxRef  idx_ref={idx_ref}, "
                   f"K_initial={K:5.3f}, "
@@ -592,6 +612,14 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             print(f"       find_peaks: distance={distance}, "
                   f"prominence={prominence}")
         interval_changed_on_it = -1
+        if self.return_diagnostic_data:
+            # intialize an empty dict and for each iteration add data to this dict with each iteration
+            # number as the key.
+            self.diagnostic_data_dict['params'][extrema_type].append({})
+            self.diagnostic_data_dict['t_extrema'][extrema_type].append({})
+            self.diagnostic_data_dict['data_extrema'][extrema_type].append({})
+            self.diagnostic_data_dict['t_ref'][ extrema_type].append({})
+            self.diagnostic_data_dict['f_fit'][ extrema_type].append({})
         while True:
             it = it+1
             if verbose:
@@ -652,6 +680,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         print("")
                         print("       Delta t_extrema = "
                               f"{t_extrema - self.t[idx_extrema]}")
+            if N_extrema > 0 and self.return_diagnostic_data:
+                # Append the data from this iteration to the diagnostic_data_dict
+                self.diagnostic_data_dict['params'][extrema_type][-1].update({it: p})
+                self.diagnostic_data_dict['t_extrema'][extrema_type][-1].update({it: t_extrema})
+                self.diagnostic_data_dict['data_extrema'][extrema_type][-1].update({it: data_extrema})
+                self.diagnostic_data_dict['t_ref'][ extrema_type][-1].update({it: self.t[idx_ref]})
+                self.diagnostic_data_dict['f_fit'][ extrema_type][-1].update({it: f_fit})
             if pp:
                 # offset data vertically by 10^k*it
                 if plot_offset is None:

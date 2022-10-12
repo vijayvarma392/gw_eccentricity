@@ -57,5 +57,6 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "prominence_factor": 0.025,
             "distance_factor": 0.5,
             "num_orbits": 3,
-            "num_orbits_for_global_fit": 10
+            "num_orbits_for_global_fit": 10,
+            "return_diagnostic_data": False
         }
