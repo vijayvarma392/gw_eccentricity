@@ -78,8 +78,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         self.debug = self.extra_kwargs["debug"]
         # If return_diagnostic_data is true then return a dictionary of data for diagnostics.
         if self.return_diagnostic_data:
-            # Initialize an empty dictionary to fill in during iteration over the extrema
             self.diagnostic_data_dict = {
+                # Initialize with empty lists to fill in during iteration over the extrema
                 "params": {"pericenters": [], "apocenters": []},
                 "t_extrema": {"pericenters": [], "apocenters": []},
                 "data_extrema": {"pericenters": [], "apocenters": []},
@@ -678,7 +678,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         print("       Delta t_extrema = "
                               f"{t_extrema - self.t[idx_extrema]}")
             if N_extrema > 0 and self.return_diagnostic_data:
-                # Append the data from this iteration to the diagnostic_data_dict
+                # Update the dictionary for current extrema count with data for this iteration
                 self.diagnostic_data_dict['params'][extrema_type][-1].update({it: p})
                 self.diagnostic_data_dict['t_extrema'][extrema_type][-1].update({it: t_extrema})
                 self.diagnostic_data_dict['data_extrema'][extrema_type][-1].update({it: data_extrema})
