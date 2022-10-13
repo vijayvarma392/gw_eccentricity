@@ -147,6 +147,8 @@ labelsDict = {
     "amp22_fit": r"$A^{\mathrm{fit}}_{22}$",
     "omega22": r"$\omega_{22}$",
     "omega22_fit": r"$\omega^{\mathrm{fit}}_{22}$",
+    "omega22_fit_pericenters": r"$\omega^{\mathrm{fit,p}}_{22}$",
+    "omega22_fit_apocenters": r"$\omega^{\mathrm{fit,a}}_{22}$",
     "res_omega22": r"$\Delta\omega_{22}$",
     "res_omega22_dimless": r"$\Delta\omega_{22}$ [rad/$M$]",
     "res_amp22": r"$\Delta A_{22}$",
