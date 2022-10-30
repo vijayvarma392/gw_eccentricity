@@ -312,18 +312,19 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
             ls=lstyles.get(method, "-"),
             lw=lwidths.get(method, 1),
             alpha=lalphas.get(method, 1),
+            zorder=100 if method == "Amplitude" else idx,  # make Amplitude appear on top
             marker=None if args.paper else "."  # No marker for paper
         )
         # Customize the measured ecc at the first extrema vs time plots
         ax_ecc_vs_t[idx].grid()
         if len(tmaxList[method]) >= 1:
             tmin = max(tminList[method])  # Choose the shortest
-            tmax = max(tmaxList[method])
+            # tmax = max(tmaxList[method])
             ymax = max(measured_eccs_at_start[method])
             ymin = min(EOBeccs)
             if key in list(available_param_sets.keys())[4:]:
                 tmin = -20000
-            ax_ecc_vs_t[idx].set_xlim(tmin, tmax)
+            ax_ecc_vs_t[idx].set_xlim(tmin, 0)  # tmax)
             ax_ecc_vs_t[idx].set_ylim(ymin, ymax)
         ax_ecc_vs_t[idx].set_ylabel(labelsDict["eccentricity"])
         ax_ecc_vs_t[idx].set_yscale("log")
