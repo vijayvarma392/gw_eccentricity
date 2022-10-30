@@ -7,16 +7,16 @@ dark2 = mcm.get_cmap("Dark2").colors
 
 colorsDict = {
     "default": dark2[1],  # brown
-    "apocenter": dark2[2],  # purple
-    "pericenter": dark2[0],  # turquoise
+    "apocenter": dark2[3],  # dark2[2],  # purple
+    "pericenter": "tab:blue",  # dark2[0],  # turquoise
     "vline": dark2[3],  # pink
     "hline": dark2[5],  # orange
     "edge": dark2[-1],  # gray
     "pericentersvline": dark2[4],  # olive
-    "FrequencyFits": dark2[3],
-    "AmplitudeFits": dark2[2],
+    "FrequencyFits": dark2[2],
+    "AmplitudeFits": dark2[3],
     "ResidualFrequency": dark2[5],
-    "ResidualAmplitude": dark2[0],
+    "ResidualAmplitude": "tab:blue",  # dark2[0],
     "Frequency": dark2[0],
     "Amplitude": dark2[1],
     "turquoise": dark2[0],
@@ -25,7 +25,8 @@ colorsDict = {
     "pink": dark2[3],
     "olive": dark2[4],
     "orange": dark2[5],
-    "gray": dark2[7]
+    "gray": dark2[7],
+    "blue": "tab:blue"
 }
 
 lstyles = {"Amplitude": "solid",
@@ -130,11 +131,16 @@ labelsDict = {
     "mean_ano": r"$l_{\mathrm{gw}}$ [rad]",
     "eccentricity": r"$e_{\mathrm{gw}}$",
     "mean_anomaly": r"$l_{\mathrm{gw}}$ [rad]",
+    "mean_anomaly_no_units": r"$l_{\mathrm{gw}}$",
     "omega22_pericenters": r"$\omega^{\mathrm{p}}_{22}$",
     "omega22_apocenters": r"$\omega^{\mathrm{a}}_{22}$",
     "omega22_average": r"$\langle\omega_{22}\rangle$",
     "omega22_average_dimless": r"$\langle\omega_{22}\rangle$ [rad/$M$]",
+    "f22_average": r"$\langle f_{22}\rangle$",
+    "f22_average_ref": r"$\langle f_{\mathrm{ref}}\rangle$",
+    "f22_ref": r"$f_{\mathrm{ref}}$",
     "eob_eccentricity": r"$e_{\mathrm{eob}}$",
+    "eob_mean_anomaly_no_units": r"$l_{\mathrm{eob}}$",
     "geodesic_eccentricity": r"$e_{\mathrm{g}}$",
     "e_omega22": r"$e_{\omega_{22}}$",
     "t": r"$t$",
@@ -147,6 +153,8 @@ labelsDict = {
     "amp22_fit": r"$A^{\mathrm{fit}}_{22}$",
     "omega22": r"$\omega_{22}$",
     "omega22_fit": r"$\omega^{\mathrm{fit}}_{22}$",
+    "omega22_fit_pericenters": r"$\omega^{\mathrm{fit,p}}_{22}$",
+    "omega22_fit_apocenters": r"$\omega^{\mathrm{fit,a}}_{22}$",
     "res_omega22": r"$\Delta\omega_{22}$",
     "res_omega22_dimless": r"$\Delta\omega_{22}$ [rad/$M$]",
     "res_amp22": r"$\Delta A_{22}$",
@@ -159,5 +167,6 @@ labelsDict = {
     "q": r"$q$",
     "chi1z": r"$\chi_{1z}$",
     "chi2z": r"$\chi_{2z}$",
-    "h22_real": r"Re[$\mathpzc{h}_{22}$]"
+    "h22_real": r"Re[$\mathpzc{h}_{22}$]",
+    "chirp_mass": r"$\mathcal{M}$"
 }
