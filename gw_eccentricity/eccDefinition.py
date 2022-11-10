@@ -220,10 +220,18 @@ class eccDefinition:
         # derivative_of_eccentricity.
         self.ecc_interp = None
         # First derivative of eccentricity with respect to time at
-        # t_for_checks.  Will be used to check monotonicity, plot decc_dt
+        # t_for_checks. Will be used to check monotonicity, plot decc_dt
         # Initially set to None, but will get computed when necessary, either
         # in check_monotonicity_and_convexity or plot_decc_dt.
         self.decc_dt_for_checks = None
+        # omega22 average and associated times.
+        # These are used to compute eccentricity at a given reference frequency.
+        # Therefore, by default, when measuring eccentricity at a reference time,
+        # these are not computed and set to None. These are overwritten when
+        # get_omega22_average is called, for example, when eccentricity
+        # is computed at reference frequency.
+        self.t_for_omega22_average = None
+        self.omega22_average = None
 
         if "hlm_zeroecc" in self.dataDict:
             self.compute_res_amp_and_omega22()
@@ -1392,13 +1400,13 @@ class eccDefinition:
         # We now sort omega22_average using the same array of indices that was
         # used to obtain the t_average in the function
         # eccDefinition.get_t_average_for_mean_motion.
-        omega22_average = omega22_average[self.sorted_idx_mean_motion]
+        self.omega22_average_mean_motion = omega22_average[self.sorted_idx_mean_motion]
         # check that omega22_average in strictly monotonic
         self.check_monotonicity_of_omega22_average(
-            omega22_average,
+            self.omega22_average_mean_motion,
             "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
         return self.interp(
-            t, self.t_average_mean_motion, omega22_average)
+            t, self.t_average_mean_motion, self.omega22_average_mean_motion)
 
     def check_monotonicity_of_omega22_average(self,
                                               omega22_average,
@@ -1504,6 +1512,35 @@ class eccDefinition:
         }
         return available_methods
 
+    def get_omega22_average(self, method=None):
+        """Get times and corresponding values of omega22 average.
+
+        Parameters:
+        -----------
+        method: str
+            omega22 averaging method. Must be one of the following:
+            - "mean_of_extrema_interpolants"
+            - "mean_motion"
+            - "omega22_zeroecc"
+            See get_available_omega22_averaging_methods for available averaging methods.
+            Default is None which would use the method provided in self.extra_kwargs["omega22_averaging_method"]
+
+        Returns:
+        --------
+        t_for_omega22_average:
+            Times associated with omega22_average.
+        omega22_average:
+            omega22 average.
+        """
+        if method is None:
+            method = self.extra_kwargs["omega22_averaging_method"]
+        t_for_omega22_average = self.t[
+            np.logical_and(self.t >= self.tmin_for_fref,
+                           self.t <= self.tmax_for_fref)]
+        omega22_average = self.available_averaging_methods[
+            method](t_for_omega22_average)
+        return t_for_omega22_average, omega22_average
+
     def compute_tref_in_and_fref_out_from_fref_in(self, fref_in):
         """Compute tref_in and fref_out from fref_in.
 
@@ -1559,11 +1596,7 @@ class eccDefinition:
             # of omega22_average.
             # We get omega22_average by evaluating the omega22_average(t)
             # on t, from tmin_for_fref to tmax_for_fref
-            self.t_for_omega22_average = self.t[
-                np.logical_and(self.t >= self.tmin_for_fref,
-                               self.t <= self.tmax_for_fref)]
-            self.omega22_average = self.available_averaging_methods[
-                method](self.t_for_omega22_average)
+            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average(method)
 
             # check that omega22_average is monotonically increasing
             self.check_monotonicity_of_omega22_average(
@@ -2110,6 +2143,94 @@ class eccDefinition:
                 ha="left",
                 va="top",
                 transform=ax.transAxes)
+        ax.set_xlabel(r"$t$")
+        ax.set_ylabel(labelsDict["omega22"])
+        ax.legend(frameon=True,
+                  handlelength=1, labelspacing=0.2, columnspacing=1)
+        if fig is None or ax is None:
+            return figNew, ax
+        else:
+            return ax
+
+    def plot_omega22_average(
+            self,
+            fig=None,
+            ax=None,
+            usetex=True,
+            style="Notebook",
+            use_fancy_settings=True,
+            plot_omega22=True,
+            plot_omega22_mean_motion_at_extrema=True,
+            **kwargs):
+        """Plot omega22_average.
+
+        Parameters:
+        -----------
+        fig:
+            Figure object to add the plot to. If None, initiates a new figure
+            object.  Default is None.
+        ax:
+            Axis object to add the plot to. If None, initiates a new axis
+            object.  Default is None.
+        usetex:
+            If True, use TeX to render texts.
+            Default is True.
+        style:
+            Set font size, figure size suitable for particular use case. For
+            example, to generate plot for "APS" journals, use style="APS".  For
+            showing plots in a jupyter notebook, use "Notebook" so that plots
+            are bigger and fonts are appropriately larger and so on.  See
+            plot_settings.py for more details.
+            Default is Notebook.
+        use_fancy_settings:
+            Use fancy settings for matplotlib to make the plot look prettier.
+            See plot_settings.py for more details.
+            Default is True.
+        plot_omega22: bool
+            If True, plot omega22 also. Default is True.
+        plot_omega22_mean_motion_at_extrema: bool
+            If True and method is mean_motion, plot the the mean motion
+            at the extrema as well. Default is True.
+
+        Returns:
+        --------
+        fig, ax
+        """
+        if fig is None or ax is None:
+            figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
+        if use_fancy_settings:
+            use_fancy_plotsettings(usetex=usetex, style=style)
+        # check if omega22_average is already available. If non available, compute it.
+        if self.omega22_average is None:
+            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average()
+        ax.plot(self.t_for_omega22_average,
+                self.omega22_average,
+                c=colorsDict["default"],
+                label=labelsDict["omega22_average"],
+                **kwargs)
+        if plot_omega22:
+            ax.plot(self.t, self.omega22,
+                    c='k',
+                    alpha=0.4,
+                    lw=0.5,
+                    label=labelsDict["omega22"])
+        if (self.extra_kwargs["omega22_averaging_method"] == "mean_motion" and
+            plot_omega22_mean_motion_at_extrema):
+            ax.plot(self.t_average_apocenters,
+                    self.omega22_average_apocenters,
+                    c=colorsDict["apocenter"],
+                    marker=".", ls="",
+                    label=labelsDict["omega22_average_apocenters"])
+            ax.plot(self.t_average_pericenters,
+                    self.omega22_average_pericenters,
+                    c=colorsDict["pericenter"],
+                    marker=".", ls="",
+                    label=labelsDict["omega22_average_pericenters"])
+        # set reasonable ylims
+        ymin = min(self.omega22)
+        ymax = max(self.omega22)
+        pad = 0.05 * ymax  # 5 % buffer for better visibility
+        ax.set_ylim(ymin - pad, ymax + pad)
         ax.set_xlabel(r"$t$")
         ax.set_ylabel(labelsDict["omega22"])
         ax.legend(frameon=True,
