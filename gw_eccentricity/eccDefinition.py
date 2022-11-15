@@ -224,12 +224,10 @@ class eccDefinition:
         # Initially set to None, but will get computed when necessary, either
         # in check_monotonicity_and_convexity or plot_decc_dt.
         self.decc_dt_for_checks = None
-        # omega22 average and associated times.
-        # These are used to compute eccentricity at a given reference frequency.
-        # Therefore, by default, when measuring eccentricity at a reference time,
-        # these are not computed and set to None. These are overwritten when
-        # get_omega22_average is called, for example, when eccentricity
-        # is computed at reference frequency.
+        # omega22_average and the associated time array. omega22_average is
+        # used to convert a given fref to a tref. If fref is not specified,
+        # these will remain as None. However, if get_omega22_average() is
+        # called, these get set in that function.
         self.t_for_omega22_average = None
         self.omega22_average = None
 
@@ -939,9 +937,6 @@ class eccDefinition:
         self.t_apocenters = self.t[self.apocenters_location]
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
-        # Get the minimum and maximum allowed reference frequency
-        self.fref_min, self.fref_max = self.get_fref_bounds(
-            self.extra_kwargs["omega22_averaging_method"])
         # check that only one of tref_in or fref_in is provided
         if (tref_in is not None) + (fref_in is not None) != 1:
             raise KeyError("Exactly one of tref_in and fref_in"
@@ -1352,6 +1347,13 @@ class eccDefinition:
         And similarly, we calculate the t_average_apocenters. We combine
         t_average_pericenters and t_average_apocenters, and sort them to obtain
         t_average.
+
+        Returns:
+        --------
+        t_for_mean_motion:
+            Times associated with mean motion
+        sorted_idx_for_mean_motion:
+            Indices used to sort the times associated with mean motion
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -1363,12 +1365,12 @@ class eccDefinition:
         self.t_average_apocenters \
             = 0.5 * (self.t[self.apocenters_location][:-1]
                      + self.t[self.apocenters_location][1:])
-        t_average = np.append(self.t_average_apocenters,
-                              self.t_average_pericenters)
-        # sort the times
-        sorted_idx = np.argsort(t_average)
-        t_average = t_average[sorted_idx]
-        return t_average, sorted_idx
+        t_for_mean_motion = np.append(
+            self.t_average_apocenters,
+            self.t_average_pericenters)
+        sorted_idx_for_mean_motion = np.argsort(t_for_mean_motion)
+        t_for_mean_motion = t_for_mean_motion[sorted_idx_for_mean_motion]
+        return t_for_mean_motion, sorted_idx_for_mean_motion
 
     def compute_mean_motion_at_extrema(self, t):
         """Compute reference frequency by orbital averaging at extrema.
@@ -1395,18 +1397,23 @@ class eccDefinition:
         self.check_monotonicity_of_omega22_average(
             self.omega22_average_apocenters, "omega22 averaged [apocenter to apocenter]")
         # combine the average omega22 at pericenters and apocenters
-        omega22_average = np.append(self.omega22_average_apocenters,
-                                    self.omega22_average_pericenters)
-        # We now sort omega22_average using the same array of indices that was
-        # used to obtain the t_average in the function
-        # eccDefinition.get_t_average_for_mean_motion.
-        self.omega22_average_mean_motion = omega22_average[self.sorted_idx_mean_motion]
+        omega22_mean_motion = np.append(self.omega22_average_apocenters,
+                                        self.omega22_average_pericenters)
+
+        # get the times associated to the mean motion
+        if not hasattr(self, "t_for_mean_motion"):
+            self.t_for_mean_motion, self.sorted_idx_for_mean_motion = \
+                self.get_t_average_for_mean_motion()
+        # We now sort omega22_average using sorted_idx_for_mean_motion, the
+        # same array of indices that was used to obtain the t_for_mean_motion
+        # in the function eccDefinition.get_t_average_for_mean_motion.
+        omega22_mean_motion = omega22_mean_motion[self.sorted_idx_for_mean_motion]
         # check that omega22_average in strictly monotonic
         self.check_monotonicity_of_omega22_average(
-            self.omega22_average_mean_motion,
+            omega22_mean_motion,
             "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
         return self.interp(
-            t, self.t_average_mean_motion, self.omega22_average_mean_motion)
+            t, self.t_for_mean_motion, omega22_mean_motion)
 
     def check_monotonicity_of_omega22_average(self,
                                               omega22_average,
@@ -1534,6 +1541,20 @@ class eccDefinition:
         """
         if method is None:
             method = self.extra_kwargs["omega22_averaging_method"]
+        if method != "mean_motion":
+            # the average frequencies are using interpolants that use omega22
+            # values between tmin and tmax, therefore the min and max time for
+            # which omega22 average are the same as tmin and tmax, respectively.
+            self.tmin_for_fref = self.tmin
+            self.tmax_for_fref = self.tmax
+        else:
+            self.t_for_mean_motion, self.sorted_idx_for_mean_motion = \
+                self.get_t_average_for_mean_motion()
+            # for mean motion, the associated times are obtained using the temporal
+            # midpoints of the extrema, therefore we need to make sure that we use
+            # only those times that fall within tmin and tmax.
+            self.tmin_for_fref = max(self.tmin, min(self.t_for_mean_motion))
+            self.tmax_for_fref = min(self.tmax, max(self.t_for_mean_motion))
         t_for_omega22_average = self.t[
             np.logical_and(self.t >= self.tmin_for_fref,
                            self.t <= self.tmax_for_fref)]
@@ -1616,63 +1637,27 @@ class eccDefinition:
                            " Must be one of "
                            f"{list(self.available_averaging_methods.keys())}")
 
-    def get_fref_bounds(self, method):
+    def get_fref_bounds(self, method=None):
         """Get the allowed min and max reference frequency of 22 mode.
 
         Depending on the omega22 averaging method, this function returns the
         minimum and maximum allowed reference frequency of 22 mode.
-
-        We first find the minimum and maximum time, called tmin_for_fref and
-        tmax_for_fref, respectively, that falls with tmin and tmax and also
-        where omega22 average value exists.
-        For "mean_motion" tmin_for_fref >= tmin and tmax_for_fref <= tmax.
-        This is because for "mean_motion" the orbital average
-        of omega22 between ith and (i+1)th extrema is associated with a
-        time at midpoints between these two extrema, i. e.,
-        t = (t[i] + t[i+1]) / 2 giving an array of average times
-        (called t_average. See get_t_average_for_mean_motion for more details).
-        Since the eccentricity measurement is valid only within tmin and tmax,
-        we then set
-        tmin_for_fref = max(min(t_average), tmin) and
-        tmax_for_fref = min(max(t_average), tmax).
-        For other methods, tmin_for_fref/tmax_for_fref is the same as
-        tmin/tmax.
-
-        Once we have the tmin_for_fref/tmax_for_fref, the allowed bounds on
-        fref is obtained by evaluating the omega22_average function at these
-        times.
-        fref_min = omega22_average(tmin_for_fref)/2/pi
-        fref_max = omega22_average(tmax_for_fref)/2/pi
 
         Parameters:
         -----------
         method:
             Omega22 averaging methods.
             See get_available_omega22_averaging_methods for available methods.
+            Default is None which will use the default
+            method for omega22 averaging using extra_kwargs["omega22_averaging_method"]
 
         Returns:
-        fref_min:
-            Minimum allowed reference frequency.
-        fref_max:
-            Maximum allowed reference frequency.
+            Minimum allowed reference frequency, Maximum allowed reference frequency.
         --------
         """
-        if method == "mean_motion":
-            self.t_average_mean_motion, self.sorted_idx_mean_motion \
-                = self.get_t_average_for_mean_motion()
-            self.tmin_for_fref = max(min(self.t_average_mean_motion),
-                                     self.tmin)
-            self.tmax_for_fref = min(max(self.t_average_mean_motion),
-                                     self.tmax)
-        else:
-            self.tmin_for_fref = self.tmin
-            self.tmax_for_fref = self.tmax
-        # get min an max value fref from omega22_average
-        fref_min = self.available_averaging_methods[method](
-            self.tmin_for_fref)/2/np.pi
-        fref_max = self.available_averaging_methods[method](
-            self.tmax_for_fref)/2/np.pi
-        return fref_min, fref_max
+        if self.omega22_average is None:
+            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average()
+        return min(self.omega22_average)/2/np.pi, max(self.omega22_average)/2/np.pi
 
     def get_fref_out(self, fref_in, method):
         """Get fref_out from fref_in that falls within the valid average f22 range.
@@ -1691,18 +1676,17 @@ class eccDefinition:
             Slice of fref_in that satisfies:
             fref_in >= fref_min && fref_in < fref_max
         """
+        fref_min, fref_max = self.get_fref_bounds(method)
         fref_out = fref_in[
-            np.logical_and(fref_in >= self.fref_min,
-                           fref_in < self.fref_max)]
+            np.logical_and(fref_in >= fref_min,
+                           fref_in < fref_max)]
         if len(fref_out) == 0:
-            if fref_in[0] < self.fref_min:
+            if fref_in[0] < fref_min:
                 raise Exception("fref_in is earlier than minimum available "
-                                "frequency "
-                                f"{self.fref_min}")
-            if fref_in[-1] > self.fref_max:
+                                f"frequency {fref_min}")
+            if fref_in[-1] > fref_max:
                 raise Exception("fref_in is later than maximum available "
-                                "frequency "
-                                f"{self.fref_max}")
+                                f"frequency {fref_max}")
             else:
                 raise Exception("fref_out is empty. This can happen if the "
                                 "waveform has insufficient identifiable "
