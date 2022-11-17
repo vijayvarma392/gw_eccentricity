@@ -1537,7 +1537,25 @@ class eccDefinition:
         t_for_omega22_average:
             Times associated with omega22_average.
         omega22_average:
-            omega22 average.
+            omega22 average. These are data interpolated on the times t_for_omega22_average,
+            where t_for_omega22_average is a subset of tref_in passed to the
+            eccentricity measurement function.
+            
+            The original omega22_average data points <omega22>_i are obtained
+            by averaging the omega22 over the ith orbit between ith to i+1-th
+            extrema. The associated <t>_i are obtained by taking the times at
+            the midpoints between i-th and i+1-the extrema, i.e., <t>_i = (t_i
+            + t_(i+1))/2.
+
+            These original data points could be accessed using the gwecc_object
+            with the following variables
+            
+            - omega22_average_apocenters: orbit averaged omega22 between apocenters
+            - t_average_apocenters: temporal midpoints between
+              apocenters. These are associated with omega22_average_apocenters
+            - omega22_average_pericenters: orbit averaged omega22 between pericenters
+            - t_average_pericenters: temporal midpoints between
+              pericenters. These are associated with omega22_average_pericenters
         """
         if method is None:
             method = self.extra_kwargs["omega22_averaging_method"]
