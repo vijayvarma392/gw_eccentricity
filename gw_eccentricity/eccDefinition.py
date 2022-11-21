@@ -1660,11 +1660,19 @@ class eccDefinition:
 
         Depending on the omega22 averaging method, this function returns the
         minimum and maximum allowed reference frequency of 22 mode.
+        
+        Note: If omega22_average is already computed using a `method` and
+        therefore is not None, then it returns the minimum and maximum
+        of that omega22_average and does not recompute the omega22_average using
+        the input `method`. In other words, if omega22_average is already not None
+        then input `method` is ignored and the existing omega22_average is used.
+        To force recomputation of omega22_average, for example, with a new method
+        one need to set it to None first.
 
         Parameters:
         -----------
         method:
-            Omega22 averaging methods.
+            Omega22 averaging method.
             See get_available_omega22_averaging_methods for available methods.
             Default is None which will use the default
             method for omega22 averaging using extra_kwargs["omega22_averaging_method"]
@@ -1674,7 +1682,7 @@ class eccDefinition:
         --------
         """
         if self.omega22_average is None:
-            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average()
+            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average(method)
         return min(self.omega22_average)/2/np.pi, max(self.omega22_average)/2/np.pi
 
     def get_fref_out(self, fref_in, method):
