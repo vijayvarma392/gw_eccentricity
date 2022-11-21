@@ -283,12 +283,12 @@ def measure_eccentricity(tref_in=None,
 
     Returns:
     --------
-    A dictionary containing the following variables
+    A dictionary containing the following keys
     tref_out:
         tref_out is the output reference time at which eccentricity and mean
-        anomaly are measured. If tref_in is provided, tref_out is
-        computed. Otherwise it is set to None.  Units of tref_out is the same
-        as that of tref_in.
+        anomaly are measured.
+        tref_out is included in the returned dictionary only when tref_in is provided.
+        Units of tref_out is the same as that of tref_in.
 
         tref_out is set as
         tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
@@ -302,9 +302,9 @@ def measure_eccentricity(tref_in=None,
 
     fref_out:
         fref_out is the output reference frequency at which eccentricity and
-        mean anomaly are measured. If fref_in is provided, fref_out is
-        computed. Otherwise it is set to None.  Units of fref_out is the same
-        as that of fref_in.
+        mean anomaly are measured.
+        fref_out is included in the returned dictionary only when fref_in is provided.
+        Units of fref_out is the same as that of fref_in.
         
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
@@ -324,20 +324,17 @@ def measure_eccentricity(tref_in=None,
 
     gwecc_object:
         eccDefinition object used to compute eccentricity. This can be used to
-        make diagnostic plots.
+        make diagnostic plots and variables computed internally for measuring
+        eccentricity and mean anomaly.
     """
     available_methods = get_available_methods(return_dict=True)
 
     if method in available_methods:
         gwecc_object = available_methods[method](
             dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
-        tref_or_fref_out, ecc_ref, mean_ano_ref = gwecc_object.measure_ecc(
+        return_dict = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
-        return_dict = {"tref_out": tref_or_fref_out if tref_in is not None else None,
-                       "fref_out": tref_or_fref_out if fref_in is not None else None,
-                       "ecc_ref": ecc_ref,
-                       "mean_ano_ref": mean_ano_ref,
-                       "gwecc_object": gwecc_object}
+        return_dict.update({"gwecc_object": gwecc_object})
         return return_dict
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
