@@ -46,12 +46,13 @@ def test_time_convention():
         eccs = []
         meananos = []
         for data in [dataDict1, dataDict2]:
-            tref_out, ecc_ref, meanano_ref, gwecc_object = measure_eccentricity(
+            gwecc_dict = measure_eccentricity(
                 tref_in=data["t"],
                 method=method,
                 dataDict=data,
-                return_gwecc_object=True,
                 extra_kwargs=extra_kwargs)
+            ecc_ref = gwecc_dict["ecc_ref"]
+            meanano_ref = gwecc_dict["mean_ano_ref"]
             eccs.append(ecc_ref)
             meananos.append(meanano_ref)
         np.testing.assert_allclose(eccs[0], eccs[1])

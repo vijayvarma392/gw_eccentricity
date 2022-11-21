@@ -63,7 +63,6 @@ def measure_eccentricity(tref_in=None,
                          fref_in=None,
                          method="Amplitude",
                          dataDict=None,
-                         return_gwecc_object=False,
                          num_orbits_to_exclude_before_merger=2,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -203,12 +202,6 @@ def measure_eccentricity(tref_in=None,
             - We require that "hlm_zeroecc" be at least as long as "hlm" so
               that residual amplitude/frequency can be computed.
 
-    return_gwecc_object: bool
-        If True, returns the eccDefinition object used to compute the
-        eccentricity and mean anomaly. This can be used to make diagnostic
-        plots.
-        Default is False.
-
     num_orbits_to_exclude_before_merger:
         Can be None or a non negative number.
         If None, the full waveform data (even post-merger) is used for
@@ -290,11 +283,12 @@ def measure_eccentricity(tref_in=None,
 
     Returns:
     --------
-    tref_out/fref_out:
-        tref_out/fref_out is the output reference time/frequency at which
-        eccentricity and mean anomaly are measured. If tref_in is provided,
-        tref_out is returned, and if fref_in provided, fref_out is returned.
-        Units of tref_out/fref_out are the same as those of tref_in/fref_in.
+    A dictionary containing the following keys
+    tref_out:
+        tref_out is the output reference time at which eccentricity and mean
+        anomaly are measured.
+        tref_out is included in the returned dictionary only when tref_in is provided.
+        Units of tref_out is the same as that of tref_in.
 
         tref_out is set as
         tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
@@ -306,6 +300,12 @@ def measure_eccentricity(tref_in=None,
         omega22_pericenters(t) and omega22_apocenters(t) are within their
         bounds.
 
+    fref_out:
+        fref_out is the output reference frequency at which eccentricity and
+        mean anomaly are measured.
+        fref_out is included in the returned dictionary only when fref_in is provided.
+        Units of fref_out is the same as that of fref_in.
+        
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
         where fref_min/fref_max are minimum/maximum allowed reference
@@ -324,20 +324,18 @@ def measure_eccentricity(tref_in=None,
 
     gwecc_object:
         eccDefinition object used to compute eccentricity. This can be used to
-        make diagnostic plots. Only returned if return_gwecc_object is True.
+        make diagnostic plots and variables computed internally for measuring
+        eccentricity and mean anomaly.
     """
     available_methods = get_available_methods(return_dict=True)
 
     if method in available_methods:
         gwecc_object = available_methods[method](
             dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
-
-        tref_or_fref_out, ecc_ref, mean_ano_ref = gwecc_object.measure_ecc(
+        return_dict = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
-        if not return_gwecc_object:
-            return tref_or_fref_out, ecc_ref, mean_ano_ref
-        else:
-            return tref_or_fref_out, ecc_ref, mean_ano_ref, gwecc_object
+        return_dict.update({"gwecc_object": gwecc_object})
+        return return_dict
     else:
         raise Exception(f"Invalid method {method}, has to be one of"
                         f" {list(available_methods.keys())}")

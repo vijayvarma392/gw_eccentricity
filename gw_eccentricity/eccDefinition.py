@@ -860,23 +860,31 @@ class eccDefinition:
 
         returns:
         --------
-        tref_out/fref_out:
-            tref_out/fref_out is the output reference time/frequency at which
-            eccentricity and mean anomaly are measured. If tref_in is provided,
-            tref_out is returned, and if fref_in provided, fref_out is
-            returned.  Units of tref_out/fref_out are the same as those of
-            tref_in/fref_in.
+        A dictionary containing the following keys
+        tref_out:
+            tref_out is the output reference time at which eccentricity and
+            mean anomaly are measured.
+            tref_out is included in the returned dictionary only when tref_in
+            is provided.  Units of tref_out is the same as that of tref_in.
 
-            tref_out is set as tref_out = tref_in[tref_in >= tmin & tref_in <=
-            tmax], where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
-            tmin = max(t_pericenters[0], t_apocenters[0]), As eccentricity
-            measurement relies on the interpolants omega22_pericenters(t) and
-            omega22_apocenters(t), the above cutoffs ensure that we only
-            compute the eccentricity where both omega22_pericenters(t) and
-            omega22_apocenters(t) are within their bounds.
+            tref_out is set as
+            tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
+            where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
+                  tmin = max(t_pericenters[0], t_apocenters[0]),
+            As eccentricity measurement relies on the interpolants
+            omega22_pericenters(t) and omega22_apocenters(t), the above cutoffs
+            ensure that we only compute the eccentricity where both
+            omega22_pericenters(t) and omega22_apocenters(t) are within their
+            bounds.
 
+        fref_out:
+            fref_out is the output reference frequency at which eccentricity
+            and mean anomaly are measured.
+            fref_out is included in the returned dictionary only when fref_in
+            is provided.  Units of fref_out is the same as that of fref_in.
+        
             fref_out is set as
-            fref_out = fref_in[fref_in >= fref_min && frf_in <= fref_max],
+            fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
             where fref_min/fref_max are minimum/maximum allowed reference
             frequency, with fref_min = omega22_average(tmin_for_fref)/2/pi
             and fref_max = omega22_average(tmax_for_fref)/2/pi.
@@ -1028,8 +1036,13 @@ class eccDefinition:
         if fref_in is not None and fref_in_ndim == 0:
             self.fref_out = self.fref_out[0]
 
-        return_array = self.fref_out if fref_in is not None else self.tref_out
-        return return_array, self.ecc_ref, self.mean_ano_ref
+        return_dict = {"ecc_ref": self.ecc_ref,
+                       "mean_ano_ref": self.mean_ano_ref}
+        if fref_in is not None:
+            return_dict.update({"fref_out": self.fref_out})
+        else:
+            return_dict.update({"tref_out": self.tref_out})
+        return return_dict
 
     def et_from_ew22_0pn(self, ew22):
         """Get temporal eccentricity at Newtonian order.
