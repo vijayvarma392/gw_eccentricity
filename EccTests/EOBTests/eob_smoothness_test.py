@@ -267,11 +267,13 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
         tref_in = dataDict["t"]
         for idx, method in enumerate(methods):
             try:
-                tref_out, measured_ecc, mean_ano = measure_eccentricity(
+                gwecc_dict = measure_eccentricity(
                     tref_in=tref_in,
                     dataDict=dataDict,
                     method=method,
                     extra_kwargs=extra_kwargs)
+                tref_out = gwecc_dict["tref_out"]
+                measured_ecc = gwecc_dict["ecc_ref"]
                 model_eccs[method] += [ecc]
                 # Get the measured eccentricity at the first available index.
                 # This corresponds to the first extrema that occurs after the
