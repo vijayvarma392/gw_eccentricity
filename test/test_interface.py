@@ -57,8 +57,7 @@ def test_interface():
         gwecc_dict = measure_eccentricity(
             fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
             method=method,
-            dataDict=dataDict,
-            return_gwecc_object=True)
+            dataDict=dataDict)
         fref_out = gwecc_dict["fref_out"]
         ecc_ref = gwecc_dict["ecc_ref"]
         meanano_ref = gwecc_dict["mean_ano_ref"]

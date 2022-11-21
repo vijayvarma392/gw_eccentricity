@@ -164,7 +164,6 @@ def test_mks_vs_dimless_units():
             fref_in=fref_in,
             method=method,
             dataDict=dataDictMKS,
-            return_gwecc_object=True,
             extra_kwargs=extra_kwargs)
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["ecc_ref"]
