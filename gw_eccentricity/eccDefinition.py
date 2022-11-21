@@ -1036,8 +1036,8 @@ class eccDefinition:
         if fref_in is not None and fref_in_ndim == 0:
             self.fref_out = self.fref_out[0]
 
-        return_dict = {"ecc_ref": ecc_ref,
-                       "mean_ano_ref": mean_ano_ref}
+        return_dict = {"ecc_ref": self.ecc_ref,
+                       "mean_ano_ref": self.mean_ano_ref}
         if fref_in is not None:
             return_dict.update({"fref_out": self.fref_out})
         else:
