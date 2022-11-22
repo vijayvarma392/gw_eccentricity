@@ -1571,7 +1571,7 @@ class eccDefinition:
             - "orbit_averaged_omega22"
             - "omega22_zeroecc"
             See get_available_omega22_averaging_methods for available averaging methods.
-            Default is None which would use the method provided in self.extra_kwargs["omega22_averaging_method"]
+            Default is None which uses the method provided in self.extra_kwargs["omega22_averaging_method"]
 
         Returns:
         --------
@@ -1589,16 +1589,16 @@ class eccDefinition:
             associated <t>_i are obtained by taking the times at the midpoints
             between i-th and i+1-the extrema, i.e., <t>_i = (t_i + t_(i+1))/2.
 
-            These original orbit averaged omega22 data points could be accessed
+            These original orbit averaged omega22 data points can be accessed
             using the gwecc_object with the following variables
             
             - orbit_average_omega22_apocenters: orbit averaged omega22 between apocenters
-              This is already available when measuring eccentricity at reference frequency.
+              This is available when measuring eccentricity at reference frequency.
               If it is not available, it can be computed using `get_orbit_averaged_omega22_at_apocenters`
             - t_average_apocenters: temporal midpoints between
               apocenters. These are associated with orbit_average_omega22_apocenters
             - orbit_averaged_omega22_pericenters: orbit averaged omega22 between pericenters
-              This is already available when measuring eccentricity at reference frequency.
+              This is available when measuring eccentricity at reference frequency.
               If it is not available, it can be computed using `get_orbit_averaged_omega22_at_pericenters`
             - t_average_pericenters: temporal midpoints between
               pericenters. These are associated with orbit_averaged_omega22_pericenters
