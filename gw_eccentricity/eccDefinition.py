@@ -2276,7 +2276,7 @@ class eccDefinition:
                     self.orbit_average_omega22_apocenters,
                     c=colorsDict["apocenter"],
                     marker=".", ls="",
-                    label=labelsDict["orbit_average_omega22_apocenters"])
+                    label=labelsDict["orbit_averaged_omega22_apocenters"])
             ax.plot(self.t_average_pericenters,
                     self.orbit_averaged_omega22_pericenters,
                     c=colorsDict["pericenter"],
