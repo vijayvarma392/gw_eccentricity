@@ -1509,14 +1509,15 @@ class eccDefinition:
                 "   - Increase sampling rate of data\n"
                 "   - Add to extra_kwargs the option 'treat_mid_points_between_pericenters_as_apocenters': True")
 
-    def compute_omega22_average_between_extrema(self, t):
-        """Find omega22 average between extrema".
+    def compute_mean_of_extrema_interpolants(self, t):
+        """Find omega22 average by taking mean of the extrema interpolants".
 
-        Take mean of omega22 using spline through omega22 pericenters
-        and spline through omega22 apocenters.
+        Take mean of omega22 spline through omega22 pericenters
+        and apocenters to get
+        omega22_average = 0.5 * (omega22_p(t) + omega22_a(t))
         """
-        return ((self.omega22_pericenters_interp(t)
-                 + self.omega22_apocenters_interp(t)) / 2)
+        return 0.5 * (self.omega22_pericenters_interp(t) +
+                      self.omega22_apocenters_interp(t))
 
     def compute_omega22_zeroecc(self, t):
         """Find omega22 from zeroecc data."""
@@ -1526,7 +1527,7 @@ class eccDefinition:
     def get_available_omega22_averaging_methods(self):
         """Return available omega22 averaging methods."""
         available_methods = {
-            "mean_of_extrema_interpolants": self.compute_omega22_average_between_extrema,
+            "mean_of_extrema_interpolants": self.compute_mean_of_extrema_interpolants,
             "orbit_averaged_omega22": self.compute_orbit_averaged_omega22_at_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
