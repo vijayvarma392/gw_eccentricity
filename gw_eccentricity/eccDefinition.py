@@ -1386,7 +1386,7 @@ class eccDefinition:
         return t_for_orbit_averaged_omega22, sorted_idx_for_orbit_averaged_omega22
 
     def compute_orbit_averaged_omega22_at_extrema(self, t):
-        """Compute reference frequency by orbital averaging at extrema.
+        """Compute reference frequency by orbital averaging omega22 at extrema.
 
         We compute the orbital average of omega22 at the pericenters
         and the apocenters following:
@@ -1398,20 +1398,20 @@ class eccDefinition:
         """
         # integration of omega22(t) from t[i] to t[i+1] is the same
         # as taking the difference of phase22(t) between t[i] and t[i+1]
-        self.omega22_average_pericenters \
+        self.orbit_averaged_omega22_pericenters \
             = (np.diff(self.phase22[self.pericenters_location])
                / np.diff(self.t[self.pericenters_location]))
-        self.omega22_average_apocenters \
+        self.orbit_average_omega22_apocenters \
             = (np.diff(self.phase22[self.apocenters_location])
                / np.diff(self.t[self.apocenters_location]))
         # check monotonicity of the omega22 average
         self.check_monotonicity_of_omega22_average(
-            self.omega22_average_pericenters, "omega22 averaged [pericenter to pericenter]")
+            self.orbit_averaged_omega22_pericenters, "omega22 averaged [pericenter to pericenter]")
         self.check_monotonicity_of_omega22_average(
-            self.omega22_average_apocenters, "omega22 averaged [apocenter to apocenter]")
+            self.orbit_average_omega22_apocenters, "omega22 averaged [apocenter to apocenter]")
         # combine the average omega22 at pericenters and apocenters
-        omega22_orbit_averaged_omega22 = np.append(self.omega22_average_apocenters,
-                                        self.omega22_average_pericenters)
+        orbit_averaged_omega22 = np.append(self.orbit_average_omega22_apocenters,
+                                        self.orbit_averaged_omega22_pericenters)
 
         # get the times associated to the orbit averaged omega22
         if not hasattr(self, "t_for_orbit_averaged_omega22"):
@@ -1420,13 +1420,13 @@ class eccDefinition:
         # We now sort omega22_average using sorted_idx_for_orbit_averaged_omega22, the
         # same array of indices that was used to obtain the t_for_orbit_averaged_omega22
         # in the function eccDefinition.get_t_average_for_orbit_averaged_omega22.
-        omega22_orbit_averaged_omega22 = omega22_orbit_averaged_omega22[self.sorted_idx_for_orbit_averaged_omega22]
+        orbit_averaged_omega22 = orbit_averaged_omega22[self.sorted_idx_for_orbit_averaged_omega22]
         # check that omega22_average in strictly monotonic
         self.check_monotonicity_of_omega22_average(
-            omega22_orbit_averaged_omega22,
+            orbit_averaged_omega22,
             "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
         return self.interp(
-            t, self.t_for_orbit_averaged_omega22, omega22_orbit_averaged_omega22)
+            t, self.t_for_orbit_averaged_omega22, orbit_averaged_omega22)
 
     def check_monotonicity_of_omega22_average(self,
                                               omega22_average,
@@ -1459,12 +1459,12 @@ class eccDefinition:
                 axes[1].plot(np.diff(omega22_average), marker=".",
                              c=colorsDict["default"])
                 axes[2].plot(self.t_average_pericenters,
-                             self.omega22_average_pericenters,
+                             self.orbit_averaged_omega22_pericenters,
                              label=labelsDict["pericenters"],
                              c=colorsDict["pericenter"],
                              marker=".")
                 axes[2].plot(self.t_average_apocenters,
-                             self.omega22_average_apocenters,
+                             self.orbit_average_omega22_apocenters,
                              label=labelsDict["apocenters"],
                              c=colorsDict["apocenter"],
                              marker=".")
@@ -1563,12 +1563,12 @@ class eccDefinition:
             These original data points could be accessed using the gwecc_object
             with the following variables
             
-            - omega22_average_apocenters: orbit averaged omega22 between apocenters
+            - orbit_average_omega22_apocenters: orbit averaged omega22 between apocenters
             - t_average_apocenters: temporal midpoints between
-              apocenters. These are associated with omega22_average_apocenters
-            - omega22_average_pericenters: orbit averaged omega22 between pericenters
+              apocenters. These are associated with orbit_average_omega22_apocenters
+            - orbit_averaged_omega22_pericenters: orbit averaged omega22 between pericenters
             - t_average_pericenters: temporal midpoints between
-              pericenters. These are associated with omega22_average_pericenters
+              pericenters. These are associated with orbit_averaged_omega22_pericenters
         """
         if method is None:
             method = self.extra_kwargs["omega22_averaging_method"]
@@ -2240,15 +2240,15 @@ class eccDefinition:
         if (self.extra_kwargs["omega22_averaging_method"] == "orbit_averaged_omega22" and
             plot_orbit_averaged_omega22_at_extrema):
             ax.plot(self.t_average_apocenters,
-                    self.omega22_average_apocenters,
+                    self.orbit_average_omega22_apocenters,
                     c=colorsDict["apocenter"],
                     marker=".", ls="",
-                    label=labelsDict["omega22_average_apocenters"])
+                    label=labelsDict["orbit_average_omega22_apocenters"])
             ax.plot(self.t_average_pericenters,
-                    self.omega22_average_pericenters,
+                    self.orbit_averaged_omega22_pericenters,
                     c=colorsDict["pericenter"],
                     marker=".", ls="",
-                    label=labelsDict["omega22_average_pericenters"])
+                    label=labelsDict["orbit_averaged_omega22_pericenters"])
         # set reasonable ylims
         ymin = min(self.omega22)
         ymax = max(self.omega22)
