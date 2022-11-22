@@ -137,7 +137,7 @@ labelsDict = {
     "omega22_average": r"$\langle\omega_{22}\rangle$",
     "omega22_average_dimless": r"$\langle\omega_{22}\rangle$ [rad/$M$]",
     "orbit_averaged_omega22_pericenters": r"$\langle\omega_{22}\rangle^{\mathrm{p}}$",
-    "orbit_average_omega22_apocenters": r"$\langle\omega_{22}\rangle^{\mathrm{a}}$",
+    "orbit_averaged_omega22_apocenters": r"$\langle\omega_{22}\rangle^{\mathrm{a}}$",
     "f22_average": r"$\langle f_{22}\rangle$",
     "f22_average_ref": r"$\langle f_{\mathrm{ref}}\rangle$",
     "f22_ref": r"$f_{\mathrm{ref}}$",

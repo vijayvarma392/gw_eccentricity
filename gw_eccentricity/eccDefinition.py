@@ -1385,25 +1385,52 @@ class eccDefinition:
         t_for_orbit_averaged_omega22 = t_for_orbit_averaged_omega22[sorted_idx_for_orbit_averaged_omega22]
         return t_for_orbit_averaged_omega22, sorted_idx_for_orbit_averaged_omega22
 
+    def get_orbit_averaged_omega22_at_pericenters(self):
+        """Get orbital average of omega22 between two consecutive pericenters.
+        
+        Orbital average of omega22 between two consecutive pericenters
+        i-th and (i+1)-th is given by
+        <omega22>_i = (int_t[i]^t[i+1] omega22(t) dt)/(t[i+1] - t[i])
+        t[i] is the time at the i-th extrema.
+        Integration of omega22(t) from t[i] to t[i+1] is the same
+        as taking the difference of phase22(t) between t[i] and t[i+1]
+        <omega22>_i = (phase22[t[i+1]] - phase22[t[i]])/(t[i+1] - t[i])
+        """
+        return (np.diff(self.phase22[self.pericenters_location]) /
+                np.diff(self.t[self.pericenters_location]))
+
+    def get_orbit_averaged_omega22_at_apocenters(self):
+        """Get orbital average of omega22 between two consecutive apocenters."""
+        return (np.diff(self.phase22[self.apocenters_location]) /
+                np.diff(self.t[self.apocenters_location]))
+
     def compute_orbit_averaged_omega22_at_extrema(self, t):
         """Compute reference frequency by orbital averaging omega22 at extrema.
 
         We compute the orbital average of omega22 at the pericenters
         and the apocenters following:
-        omega22_avg((t[i]+ t[i+1])/2) = int_t[i]^t[i+1] omega22(t)dt
-                                        / (t[i+1] - t[i])
-        where t[i] is the time of ith extrema.
-        We do this for pericenters and apocenters and combine the results
-        and sort them using sorted indices from get_t_average_for_orbit_averaged_omega22.
+        <omega22>_i = (int_t[i]^t[i+1] omega22(t) dt) / (t[i+1] - t[i])
+        where t[i] is the time of ith extrema and the suffix `i` stands for the
+        i-th orbit between i-th and (i+1)-th extrema
+        <omega22>_i is associated with the temporal midpoint between the i-th
+        and (i+1)-th extrema,
+        <t>_i = (t[i] + t[i+1]) / 2
+        
+        We do this averaging for pericenters and apocenters using the functions
+        `get_orbit_averaged_omega22_at_pericenters` and
+        `get_orbit_averaged_omega22_at_apocenters` and combine the results.
+        The combined array is then sorted using the sorting indices from
+        `get_t_average_for_orbit_averaged_omega22`.
+        
+        Finally we interpolate the data {<t>_i, <omega22>_i} and evaluate the
+        interpolant at the input times `t`.
         """
-        # integration of omega22(t) from t[i] to t[i+1] is the same
-        # as taking the difference of phase22(t) between t[i] and t[i+1]
+        # get orbit averaged omega22 between consecutive pericenrers
+        # and apoceneters
         self.orbit_averaged_omega22_pericenters \
-            = (np.diff(self.phase22[self.pericenters_location])
-               / np.diff(self.t[self.pericenters_location]))
+            = self.get_orbit_averaged_omega22_at_pericenters()
         self.orbit_average_omega22_apocenters \
-            = (np.diff(self.phase22[self.apocenters_location])
-               / np.diff(self.t[self.apocenters_location]))
+            = self.get_orbit_averaged_omega22_at_apocenters()
         # check monotonicity of the omega22 average
         self.check_monotonicity_of_omega22_average(
             self.orbit_averaged_omega22_pericenters, "omega22 averaged [pericenter to pericenter]")
@@ -1551,23 +1578,28 @@ class eccDefinition:
         t_for_omega22_average:
             Times associated with omega22_average.
         omega22_average:
-            omega22 average. These are data interpolated on the times t_for_omega22_average,
+            omega22 average using given "method".
+            These are data interpolated on the times t_for_omega22_average,
             where t_for_omega22_average is a subset of tref_in passed to the
             eccentricity measurement function.
             
-            The original omega22_average data points <omega22>_i are obtained
-            by averaging the omega22 over the ith orbit between ith to i+1-th
-            extrema. The associated <t>_i are obtained by taking the times at
-            the midpoints between i-th and i+1-the extrema, i.e., <t>_i = (t_i
-            + t_(i+1))/2.
+            For the "orbit_averaged_omega22" method, the original
+            omega22_average data points <omega22>_i are obtained by averaging
+            the omega22 over the ith orbit between ith to i+1-th extrema. The
+            associated <t>_i are obtained by taking the times at the midpoints
+            between i-th and i+1-the extrema, i.e., <t>_i = (t_i + t_(i+1))/2.
 
-            These original data points could be accessed using the gwecc_object
-            with the following variables
+            These original orbit averaged omega22 data points could be accessed
+            using the gwecc_object with the following variables
             
             - orbit_average_omega22_apocenters: orbit averaged omega22 between apocenters
+              This is already available when measuring eccentricity at reference frequency.
+              If it is not available, it can be computed using `get_orbit_averaged_omega22_at_apocenters`
             - t_average_apocenters: temporal midpoints between
               apocenters. These are associated with orbit_average_omega22_apocenters
             - orbit_averaged_omega22_pericenters: orbit averaged omega22 between pericenters
+              This is already available when measuring eccentricity at reference frequency.
+              If it is not available, it can be computed using `get_orbit_averaged_omega22_at_pericenters`
             - t_average_pericenters: temporal midpoints between
               pericenters. These are associated with orbit_averaged_omega22_pericenters
         """
