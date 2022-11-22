@@ -249,7 +249,7 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
-            - "mean_motion": First, orbit averages are obtained at each
+            - "orbit_averaged_omega22": First, orbit averages are obtained at each
               pericenter by averaging omega22(t) over the time from the current
               pericenter to the next one. This average value is associated with
               the time at mid point between the current and the next
@@ -265,7 +265,7 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the quasicircular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
-            Default is "mean_motion".
+            Default is "orbit_averaged_omega22".
 
         treat_mid_points_between_pericenters_as_apocenters:
             If True, instead of trying to find apocenter locations by looking
