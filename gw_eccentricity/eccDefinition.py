@@ -129,7 +129,7 @@ class eccDefinition:
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
                 omega22(t).
-                - "mean_motion": First, orbit averages are obtained at each
+                - "orbit_averaged_omega22": First, orbit averages are obtained at each
                   pericenter by averaging omega22(t) over the time from the
                   current pericenter to the next one. This average value is
                   associated with the time at mid point between the current and
@@ -148,7 +148,7 @@ class eccDefinition:
                   counterpart is used as a proxy for the average
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
-                Default is "mean_motion".
+                Default is "orbit_averaged_omega22".
 
             treat_mid_points_between_pericenters_as_apocenters:
                 If True, instead of trying to find apocenter locations by
@@ -436,7 +436,7 @@ class eccDefinition:
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug": True,
-            "omega22_averaging_method": "mean_motion",
+            "omega22_averaging_method": "orbit_averaged_omega22",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
@@ -848,7 +848,7 @@ class eccDefinition:
             omega22_average(tref_in) = 2 * pi * fref_in. Here,
             omega22_average(t) is a monotonically increasing average frequency
             obtained from the instantaneous omega22(t). omega22_average(t)
-            defaults to the mean motion, but other options are available (see
+            defaults to the orbit averaged omega22, but other options are available (see
             omega22_averaging_method below).
 
             Eccentricity and mean anomaly measurements are returned on a subset
@@ -1348,11 +1348,11 @@ class eccDefinition:
             allowExtrapolation=True)
         self.res_omega22 = (self.omega22 - self.omega22_zeroecc_interp)
 
-    def get_t_average_for_mean_motion(self):
-        """Get the time array associated with the fref for mean motion.
+    def get_t_average_for_orbit_averaged_omega22(self):
+        """Get the time array associated with the fref for orbit averaged omega22.
 
         t_average_pericenters are the times at midpoints between consecutive
-        pericenters. We associate time (t[i] + t[i+1]) / 2 with the mean motion
+        pericenters. We associate time (t[i] + t[i+1]) / 2 with the orbit averaged omega22
         calculated between ith and (i+1)th pericenter. That is,
         omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
                                              / (t[i+1] - t[i]),
@@ -1363,10 +1363,10 @@ class eccDefinition:
 
         Returns:
         --------
-        t_for_mean_motion:
-            Times associated with mean motion
-        sorted_idx_for_mean_motion:
-            Indices used to sort the times associated with mean motion
+        t_for_orbit_averaged_omega22:
+            Times associated with orbit averaged omega22
+        sorted_idx_for_orbit_averaged_omega22:
+            Indices used to sort the times associated with orbit averaged omega22
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -1378,14 +1378,14 @@ class eccDefinition:
         self.t_average_apocenters \
             = 0.5 * (self.t[self.apocenters_location][:-1]
                      + self.t[self.apocenters_location][1:])
-        t_for_mean_motion = np.append(
+        t_for_orbit_averaged_omega22 = np.append(
             self.t_average_apocenters,
             self.t_average_pericenters)
-        sorted_idx_for_mean_motion = np.argsort(t_for_mean_motion)
-        t_for_mean_motion = t_for_mean_motion[sorted_idx_for_mean_motion]
-        return t_for_mean_motion, sorted_idx_for_mean_motion
+        sorted_idx_for_orbit_averaged_omega22 = np.argsort(t_for_orbit_averaged_omega22)
+        t_for_orbit_averaged_omega22 = t_for_orbit_averaged_omega22[sorted_idx_for_orbit_averaged_omega22]
+        return t_for_orbit_averaged_omega22, sorted_idx_for_orbit_averaged_omega22
 
-    def compute_mean_motion_at_extrema(self, t):
+    def compute_orbit_averaged_omega22_at_extrema(self, t):
         """Compute reference frequency by orbital averaging at extrema.
 
         We compute the orbital average of omega22 at the pericenters
@@ -1394,7 +1394,7 @@ class eccDefinition:
                                         / (t[i+1] - t[i])
         where t[i] is the time of ith extrema.
         We do this for pericenters and apocenters and combine the results
-        and sort them using sorted indices from get_t_average_for_mean_motion.
+        and sort them using sorted indices from get_t_average_for_orbit_averaged_omega22.
         """
         # integration of omega22(t) from t[i] to t[i+1] is the same
         # as taking the difference of phase22(t) between t[i] and t[i+1]
@@ -1410,23 +1410,23 @@ class eccDefinition:
         self.check_monotonicity_of_omega22_average(
             self.omega22_average_apocenters, "omega22 averaged [apocenter to apocenter]")
         # combine the average omega22 at pericenters and apocenters
-        omega22_mean_motion = np.append(self.omega22_average_apocenters,
+        omega22_orbit_averaged_omega22 = np.append(self.omega22_average_apocenters,
                                         self.omega22_average_pericenters)
 
-        # get the times associated to the mean motion
-        if not hasattr(self, "t_for_mean_motion"):
-            self.t_for_mean_motion, self.sorted_idx_for_mean_motion = \
-                self.get_t_average_for_mean_motion()
-        # We now sort omega22_average using sorted_idx_for_mean_motion, the
-        # same array of indices that was used to obtain the t_for_mean_motion
-        # in the function eccDefinition.get_t_average_for_mean_motion.
-        omega22_mean_motion = omega22_mean_motion[self.sorted_idx_for_mean_motion]
+        # get the times associated to the orbit averaged omega22
+        if not hasattr(self, "t_for_orbit_averaged_omega22"):
+            self.t_for_orbit_averaged_omega22, self.sorted_idx_for_orbit_averaged_omega22 = \
+                self.get_t_average_for_orbit_averaged_omega22()
+        # We now sort omega22_average using sorted_idx_for_orbit_averaged_omega22, the
+        # same array of indices that was used to obtain the t_for_orbit_averaged_omega22
+        # in the function eccDefinition.get_t_average_for_orbit_averaged_omega22.
+        omega22_orbit_averaged_omega22 = omega22_orbit_averaged_omega22[self.sorted_idx_for_orbit_averaged_omega22]
         # check that omega22_average in strictly monotonic
         self.check_monotonicity_of_omega22_average(
-            omega22_mean_motion,
+            omega22_orbit_averaged_omega22,
             "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
         return self.interp(
-            t, self.t_for_mean_motion, omega22_mean_motion)
+            t, self.t_for_orbit_averaged_omega22, omega22_orbit_averaged_omega22)
 
     def check_monotonicity_of_omega22_average(self,
                                               omega22_average,
@@ -1527,7 +1527,7 @@ class eccDefinition:
         """Return available omega22 averaging methods."""
         available_methods = {
             "mean_of_extrema_interpolants": self.compute_omega22_average_between_extrema,
-            "mean_motion": self.compute_mean_motion_at_extrema,
+            "orbit_averaged_omega22": self.compute_orbit_averaged_omega22_at_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
         return available_methods
@@ -1540,7 +1540,7 @@ class eccDefinition:
         method: str
             omega22 averaging method. Must be one of the following:
             - "mean_of_extrema_interpolants"
-            - "mean_motion"
+            - "orbit_averaged_omega22"
             - "omega22_zeroecc"
             See get_available_omega22_averaging_methods for available averaging methods.
             Default is None which would use the method provided in self.extra_kwargs["omega22_averaging_method"]
@@ -1572,20 +1572,20 @@ class eccDefinition:
         """
         if method is None:
             method = self.extra_kwargs["omega22_averaging_method"]
-        if method != "mean_motion":
+        if method != "orbit_averaged_omega22":
             # the average frequencies are using interpolants that use omega22
             # values between tmin and tmax, therefore the min and max time for
             # which omega22 average are the same as tmin and tmax, respectively.
             self.tmin_for_fref = self.tmin
             self.tmax_for_fref = self.tmax
         else:
-            self.t_for_mean_motion, self.sorted_idx_for_mean_motion = \
-                self.get_t_average_for_mean_motion()
-            # for mean motion, the associated times are obtained using the temporal
+            self.t_for_orbit_averaged_omega22, self.sorted_idx_for_orbit_averaged_omega22 = \
+                self.get_t_average_for_orbit_averaged_omega22()
+            # for orbit averaged omega22, the associated times are obtained using the temporal
             # midpoints of the extrema, therefore we need to make sure that we use
             # only those times that fall within tmin and tmax.
-            self.tmin_for_fref = max(self.tmin, min(self.t_for_mean_motion))
-            self.tmax_for_fref = min(self.tmax, max(self.t_for_mean_motion))
+            self.tmin_for_fref = max(self.tmin, min(self.t_for_orbit_averaged_omega22))
+            self.tmax_for_fref = min(self.tmax, max(self.t_for_orbit_averaged_omega22))
         t_for_omega22_average = self.t[
             np.logical_and(self.t >= self.tmin_for_fref,
                            self.t <= self.tmax_for_fref)]
@@ -1620,12 +1620,12 @@ class eccDefinition:
           the spline through the apocenters, we call this
           "mean_of_extrema_interpolants"
         - Orbital average at the extrema, we call this
-          "mean_motion"
+          "orbit_averaged_omega22"
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
         Users can provide a method through the "extra_kwargs" option with the
         key "omega22_averaging_method". Default is
-        "mean_motion"
+        "orbit_averaged_omega22"
 
         Once we get the reference frequencies, we create a spline to get time
         as a function of these reference frequencies. This should work if the
@@ -2183,7 +2183,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             plot_omega22=True,
-            plot_omega22_mean_motion_at_extrema=True,
+            plot_orbit_averaged_omega22_at_extrema=True,
             **kwargs):
         """Plot omega22_average.
 
@@ -2211,8 +2211,8 @@ class eccDefinition:
             Default is True.
         plot_omega22: bool
             If True, plot omega22 also. Default is True.
-        plot_omega22_mean_motion_at_extrema: bool
-            If True and method is mean_motion, plot the the mean motion
+        plot_orbit_averaged_omega22_at_extrema: bool
+            If True and method is orbit_averaged_omega22, plot the the orbit averaged omega22
             at the extrema as well. Default is True.
 
         Returns:
@@ -2237,8 +2237,8 @@ class eccDefinition:
                     alpha=0.4,
                     lw=0.5,
                     label=labelsDict["omega22"])
-        if (self.extra_kwargs["omega22_averaging_method"] == "mean_motion" and
-            plot_omega22_mean_motion_at_extrema):
+        if (self.extra_kwargs["omega22_averaging_method"] == "orbit_averaged_omega22" and
+            plot_orbit_averaged_omega22_at_extrema):
             ax.plot(self.t_average_apocenters,
                     self.omega22_average_apocenters,
                     c=colorsDict["apocenter"],

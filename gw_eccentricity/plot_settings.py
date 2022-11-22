@@ -163,7 +163,7 @@ labelsDict = {
     "t_ref": r"$t_\mathrm{ref}$",
     "dedt": r"$de/dt$",
     "mean_of_interpolants": r"Mean of $\omega^{\mathrm{p}}_{22}$ and $\omega^{\mathrm{a}}_{22}$",
-    "mean_motion": r"Mean motion",
+    "orbit_averaged_omega22": r"orbit averaged omega22",
     "omega22_zeroecc": r"$\omega_{22}$ of quasicircular counterpart",
     "omega_start": r"$\omega_0$",
     "q": r"$q$",
