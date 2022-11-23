@@ -32,35 +32,39 @@ def generate_regression_data():
 
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
+    extra_kwargs = {"debug": False}
+    regression_data.update({"extra_kwargs": extra_kwargs})
     for method in available_methods:
         # Try evaluating at an array of times
         gwecc_dict = measure_eccentricity(
             tref_in=dataDict["t"],
             method=method,
             dataDict=dataDict,
-            extra_kwargs={"debug": False})
+            extra_kwargs=extra_kwargs)
         tref_out = gwecc_dict["tref_out"]
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
         # For each method we save the measured data 3 reference times
         n = len(tref_out)
-        regression_data.update({"time": {method: {"tref": [tref_out[0], tref_out[n//2], tref_out[-1]],
-                                                  "eccentricity": [ecc_ref[0], ecc_ref[n//2], ecc_ref[-1]],
-                                                  "mean_anomaly": [meanano_ref[0], meanano_ref[n//2], meanano_ref[-1]]}}})
-
+        dict_tref =  {"time": [tref_out[0], tref_out[n//2], tref_out[-1]],
+                      "eccentricity": [ecc_ref[0], ecc_ref[n//2], ecc_ref[-1]],
+                      "mean_anomaly": [meanano_ref[0], meanano_ref[n//2], meanano_ref[-1]]}
+        
         # Try evaluating at an array of frequencies
         gwecc_dict = measure_eccentricity(
             fref_in=np.arange(0.025, 0.035, 0.001) / (2 * np.pi),
             method=method,
             dataDict=dataDict,
-            extra_kwargs={"debug": False})
+            extra_kwargs=extra_kwargs)
         fref_out = gwecc_dict["fref_out"]
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
         n = len(fref_out)
-        regression_data.update({"frequency": {method: {"fref": [fref_out[0], fref_out[n//2], fref_out[-1]],
-                                                       "eccentricity": [ecc_ref[0], ecc_ref[n//2], ecc_ref[-1]],
-                                                       "mean_anomaly": [meanano_ref[0], meanano_ref[n//2], meanano_ref[-1]]}}})
+        dict_fref = {"frequency": [fref_out[0], fref_out[n//2], fref_out[-1]],
+                     "eccentricity": [ecc_ref[0], ecc_ref[n//2], ecc_ref[-1]],
+                     "mean_anomaly": [meanano_ref[0], meanano_ref[n//2], meanano_ref[-1]]}
+        regression_data.update({method: {"tref": dict_tref,
+                                         "fref": dict_fref}})
 
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
