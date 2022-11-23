@@ -47,8 +47,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDict,
             extra_kwargs=extra_kwargs)
         tref_out = gwecc_dict["tref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
         gwecc_object = gwecc_dict["gwecc_object"]
         # Try evaluating at a single MKS time
         gwecc_dict_MKS = measure_eccentricity(
@@ -57,8 +57,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDictMKS,
             extra_kwargs=extra_kwargs)
         tref_out_MKS = gwecc_dict_MKS["tref_out"]
-        ecc_ref_MKS = gwecc_dict_MKS["ecc_ref"]
-        meanano_ref_MKS = gwecc_dict_MKS["mean_ano_ref"]
+        ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
+        meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         gwecc_object_MKS = gwecc_dict_MKS["gwecc_object"]
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
@@ -83,8 +83,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDict,
             extra_kwargs=extra_kwargs)
         tref_out = gwecc_dict["tref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
         # Try evaluating at an array of MKS times
         gwecc_dict_MKS = measure_eccentricity(
             tref_in=dataDictMKS["t"][idx_start: idx_end],
@@ -92,8 +92,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDictMKS,
             extra_kwargs=extra_kwargs)
         tref_out_MKS = gwecc_dict_MKS["tref_out"]
-        ecc_ref_MKS = gwecc_dict_MKS["ecc_ref"]
-        meanano_ref_MKS = gwecc_dict_MKS["mean_ano_ref"]
+        ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
+        meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             ecc_ref,
@@ -119,8 +119,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDict,
             extra_kwargs=extra_kwargs)
         fref_out = gwecc_dict["fref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
         # Try evaluating at single MKS frequency
         fref_in = gwecc_object_MKS.compute_orbit_averaged_omega22_at_extrema(
             dataDictMKS["t"][idx]) / (2 * np.pi)
@@ -130,8 +130,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDictMKS,
             extra_kwargs=extra_kwargs)
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
-        ecc_ref_MKS = gwecc_dict_MKS["ecc_ref"]
-        meanano_ref_MKS = gwecc_dict_MKS["mean_ano_ref"]
+        ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
+        meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             [ecc_ref],
@@ -155,8 +155,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDict,
             extra_kwargs=extra_kwargs)
         fref_out = gwecc_dict["fref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
         # Try evaluating at an array of MKS frequencies
         fref_in = gwecc_object_MKS.compute_orbit_averaged_omega22_at_extrema(
             dataDictMKS["t"][idx: idx+500]) / (2 * np.pi)
@@ -166,8 +166,8 @@ def test_mks_vs_dimless_units():
             dataDict=dataDictMKS,
             extra_kwargs=extra_kwargs)
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
-        ecc_ref_MKS = gwecc_dict_MKS["ecc_ref"]
-        meanano_ref_MKS = gwecc_dict_MKS["mean_ano_ref"]
+        ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
+        meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             ecc_ref,

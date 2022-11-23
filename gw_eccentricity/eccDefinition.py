@@ -891,11 +891,11 @@ class eccDefinition:
             tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
             eccDefinition.get_fref_bounds() for details.
 
-        ecc_ref:
+        eccentricity:
             Measured eccentricity at tref_out/fref_out. Same type as
             tref_out/fref_out.
 
-        mean_ano_ref:
+        mean_anomaly:
             Measured mean anomaly at tref_out/fref_out. Same type as
             tref_out/fref_out.
         """
@@ -1015,12 +1015,12 @@ class eccDefinition:
             raise Exception("Reference time must be within two pericenters.")
 
         # compute eccentricity at self.tref_out
-        self.ecc_ref = self.compute_eccentricity(self.tref_out)
+        self.eccentricity = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
-        self.mean_ano_ref = self.compute_mean_anomaly(self.tref_out)
+        self.mean_anomaly = self.compute_mean_anomaly(self.tref_out)
 
         # check if eccentricity is positive
-        if any(self.ecc_ref < 0):
+        if any(self.eccentricity < 0):
             warnings.warn("Encountered negative eccentricity.")
 
         # check if eccentricity is monotonic and convex
@@ -1029,15 +1029,15 @@ class eccDefinition:
 
         # If tref_in is a scalar, return a scalar
         if tref_in_ndim == 0:
-            self.mean_ano_ref = self.mean_ano_ref[0]
-            self.ecc_ref = self.ecc_ref[0]
+            self.mean_anomaly = self.mean_anomaly[0]
+            self.eccentricity = self.eccentricity[0]
             self.tref_out = self.tref_out[0]
 
         if fref_in is not None and fref_in_ndim == 0:
             self.fref_out = self.fref_out[0]
 
-        return_dict = {"ecc_ref": self.ecc_ref,
-                       "mean_ano_ref": self.mean_ano_ref}
+        return_dict = {"eccentricity": self.eccentricity,
+                       "mean_anomaly": self.mean_anomaly}
         if fref_in is not None:
             return_dict.update({"fref_out": self.fref_out})
         else:
@@ -1959,7 +1959,7 @@ class eccDefinition:
         if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=labelsDict["t_ref"])
-            ax.plot(self.tref_out, self.ecc_ref, ls="", marker=".")
+            ax.plot(self.tref_out, self.eccentricity, ls="", marker=".")
             ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
                       columnspacing=1)
         ax.set_xlabel(labelsDict["t"])
@@ -2104,7 +2104,7 @@ class eccDefinition:
         if self.tref_out.size == 1 and add_vline_at_tref:
             ax.axvline(self.tref_out, c=colorsDict["pericentersvline"], ls=":",
                        label=labelsDict["t_ref"])
-            ax.plot(self.tref_out, self.mean_ano_ref, ls="", marker=".")
+            ax.plot(self.tref_out, self.mean_anomaly, ls="", marker=".")
             ax.legend(frameon=True, handlelength=1, labelspacing=0.2,
                       columnspacing=1)
         ax.set_xlabel(labelsDict["t"])

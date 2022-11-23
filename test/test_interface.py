@@ -28,8 +28,8 @@ def test_interface():
             method=method,
             dataDict=dataDict)
         tref_out = gwecc_dict["tref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
 
         # Try evaluating at an array of times
         gwecc_dict = measure_eccentricity(
@@ -37,8 +37,8 @@ def test_interface():
             method=method,
             dataDict=dataDict)
         tref_out = gwecc_dict["tref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
         gwecc_object = gwecc_dict["gwecc_object"]
 
         # Make diagnostic plots
@@ -50,8 +50,8 @@ def test_interface():
             method=method,
             dataDict=dataDict)
         fref_out = gwecc_dict["fref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
 
         # Try evaluating at an array of frequencies
         gwecc_dict = measure_eccentricity(
@@ -59,6 +59,6 @@ def test_interface():
             method=method,
             dataDict=dataDict)
         fref_out = gwecc_dict["fref_out"]
-        ecc_ref = gwecc_dict["ecc_ref"]
-        meanano_ref = gwecc_dict["mean_ano_ref"]
+        ecc_ref = gwecc_dict["eccentricity"]
+        meanano_ref = gwecc_dict["mean_anomaly"]
         gwecc_object = gwecc_dict["gwecc_object"]

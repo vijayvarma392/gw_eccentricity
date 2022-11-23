@@ -314,11 +314,11 @@ def measure_eccentricity(tref_in=None,
         tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
         eccDefinition.get_fref_bounds() for details.
 
-    ecc_ref:
+    eccentricity:
         Measured eccentricity at tref_out/fref_out. Same type as
         tref_out/fref_out.
 
-    mean_ano_ref:
+    mean_anomaly:
         Measured mean anomaly at tref_out/fref_out. Same type as
         tref_out/fref_out.
 
