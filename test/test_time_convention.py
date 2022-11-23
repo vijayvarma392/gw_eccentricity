@@ -51,8 +51,8 @@ def test_time_convention():
                 method=method,
                 dataDict=data,
                 extra_kwargs=extra_kwargs)
-            ecc_ref = gwecc_dict["ecc_ref"]
-            meanano_ref = gwecc_dict["mean_ano_ref"]
+            ecc_ref = gwecc_dict["eccentricity"]
+            meanano_ref = gwecc_dict["mean_anomaly"]
             eccs.append(ecc_ref)
             meananos.append(meanano_ref)
         np.testing.assert_allclose(eccs[0], eccs[1])

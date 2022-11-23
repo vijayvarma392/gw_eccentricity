@@ -273,7 +273,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                     method=method,
                     extra_kwargs=extra_kwargs)
                 tref_out = gwecc_dict["tref_out"]
-                measured_ecc = gwecc_dict["ecc_ref"]
+                measured_ecc = gwecc_dict["eccentricity"]
                 model_eccs[method] += [ecc]
                 # Get the measured eccentricity at the first available index.
                 # This corresponds to the first extrema that occurs after the
