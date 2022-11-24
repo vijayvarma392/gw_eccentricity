@@ -16,7 +16,8 @@ def test_regression():
     available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
         # Load regression data
-        regression_data_file = f"test/regression_data/{method}_regression_data.json"
+        regression_data_file = os.path.join(os.getcwd(),
+                                            f"test/regression_data/{method}_regression_data.json")
         if not os.path.exists(regression_data_file):
             raise Exception(f"Regression data not found at {regression_data_file}\n"
                             "You may generate it using `generate_regression_data.py`")
