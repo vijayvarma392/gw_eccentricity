@@ -6,7 +6,7 @@ from gw_eccentricity import load_data
 from gw_eccentricity import measure_eccentricity
 
 # locally it passs without problem but on github action, we need to set this tolerance
-atol = 1e-11
+atol = 1e-9
 
 def test_regression():
     """Regression test using all methods."""
