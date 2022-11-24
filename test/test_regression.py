@@ -1,8 +1,6 @@
 """Regression test."""
-import os
 import numpy as np
 import json
-import subprocess
 import gw_eccentricity
 from gw_eccentricity import load_data
 from gw_eccentricity import measure_eccentricity
@@ -16,11 +14,7 @@ def test_regression():
     available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
         # Load regression data
-        regression_data_file = os.path.join(os.getcwd(),
-                                            f"test/regression_data/{method}_regression_data.json")
-        if not os.path.exists(regression_data_file):
-            raise Exception(f"Regression data not found at {regression_data_file}\n"
-                            "You may generate it using `generate_regression_data.py`")
+        regression_data_file = f"test/regression_data/{method}_regression_data.json"
         # Load the regression data
         fl = open(regression_data_file, "r")
         regression_data = json.load(fl)
