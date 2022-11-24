@@ -2,10 +2,11 @@
 import os
 import numpy as np
 import json
+import subprocess
 import gw_eccentricity
 from gw_eccentricity import load_data
 from gw_eccentricity import measure_eccentricity
-import subprocess
+
 git_home = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'],
                                    text=True).strip('\n')
 

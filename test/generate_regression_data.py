@@ -46,9 +46,9 @@ def generate_regression_data():
         meanano_ref = gwecc_dict["mean_anomaly"]
         # For each method we save the measured data 3 reference times
         n = len(tref_out)
-        dict_tref =  {"time": [tref_out[0], tref_out[n//2], tref_out[-1]],
-                      "eccentricity": [ecc_ref[0], ecc_ref[n//2], ecc_ref[-1]],
-                      "mean_anomaly": [meanano_ref[0], meanano_ref[n//2], meanano_ref[-1]]}
+        dict_tref =  {"time": [tref_out[0], tref_out[n//4], tref_out[n//2]],
+                      "eccentricity": [ecc_ref[0], ecc_ref[n//4], ecc_ref[n//2]],
+                      "mean_anomaly": [meanano_ref[0], meanano_ref[n//4], meanano_ref[n//2]]}
         
         # Try evaluating at an array of frequencies
         gwecc_dict = measure_eccentricity(
@@ -60,9 +60,9 @@ def generate_regression_data():
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
         n = len(fref_out)
-        dict_fref = {"frequency": [fref_out[0], fref_out[n//2], fref_out[-1]],
-                     "eccentricity": [ecc_ref[0], ecc_ref[n//2], ecc_ref[-1]],
-                     "mean_anomaly": [meanano_ref[0], meanano_ref[n//2], meanano_ref[-1]]}
+        dict_fref = {"frequency": [fref_out[0], fref_out[n//4], fref_out[n//2]],
+                     "eccentricity": [ecc_ref[0], ecc_ref[n//4], ecc_ref[n//2]],
+                     "mean_anomaly": [meanano_ref[0], meanano_ref[n//4], meanano_ref[n//2]]}
         regression_data.update({method: {"tref": dict_tref,
                                          "fref": dict_fref}})
 
