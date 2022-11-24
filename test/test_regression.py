@@ -45,8 +45,11 @@ def test_regression():
         np.testing.assert_allclose(
             ecc_ref, regression_data_at_tref["eccentricity"],
             err_msg="measured and saved eccentricity at saved times do not match.")
+        # locally it pass without problem but on github action need to set these tolerance
+        mean_anomaly_atol = 1e-11
         np.testing.assert_allclose(
             meanano_ref, regression_data_at_tref["mean_anomaly"],
+            atol=mean_anomaly_atol,
             err_msg="measured and saved mean anomaly at saved times do not match.")
         
         
@@ -67,4 +70,5 @@ def test_regression():
             err_msg="measured and saved eccentricity at saved frequencies do not match.")
         np.testing.assert_allclose(
             meanano_ref, regression_data_at_fref["mean_anomaly"],
+            atol=mean_anomaly_atol,
             err_msg="measured and saved mean anomaly at saved frequencies do not match.")
