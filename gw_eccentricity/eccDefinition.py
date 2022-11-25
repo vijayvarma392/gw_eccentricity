@@ -468,6 +468,9 @@ class eccDefinition:
         apocenters/pericenters before the first pericenters/apocenters then
         drop the extra apocenters/pericenters.
         """
+        # If apocenters or pericenetrs is None then skip the whole thing
+        if apocenters is None or pericenters is None:
+            return pericenters, apocenters
         # At the end of the data
         pericenters_at_end = pericenters[pericenters > apocenters[-1]]
         if len(pericenters_at_end) > 1:
@@ -672,6 +675,9 @@ class eccDefinition:
         We also discard extrema before and after a jump (due to an extremum
         being missed) in the detected extrema.
 
+        NOTE: If no apocenters/pericenters is needed to be checked, provide it
+        as None
+
         To retain only the good extrema, we first remove the extrema
         before/after jumps and then remove any extra extrema at the ends. This
         order is important because if we remove the extrema at the ends first
@@ -710,14 +716,17 @@ class eccDefinition:
         apocenters:
             1d array of apocenters after dropping apocenters as necessary.
         """
-        pericenters = self.drop_extrema_if_extrema_jumps(
-            pericenters, max_r_delta_phase22_extrema, "pericenters")
-        apocenters = self.drop_extrema_if_extrema_jumps(
-            apocenters, max_r_delta_phase22_extrema, "apocenters")
-        pericenters = self.drop_extrema_if_too_close(
-            pericenters, extrema_type="pericenters")
-        apocenters = self.drop_extrema_if_too_close(
-            apocenters, extrema_type="apocenters")
+        # Perform the drop extrema only when it is not None
+        if pericenters is not None:
+            pericenters = self.drop_extrema_if_extrema_jumps(
+                pericenters, max_r_delta_phase22_extrema, "pericenters")
+            pericenters = self.drop_extrema_if_too_close(
+                pericenters, extrema_type="pericenters")
+        if apocenters is not None:
+            apocenters = self.drop_extrema_if_extrema_jumps(
+                apocenters, max_r_delta_phase22_extrema, "apocenters")
+            apocenters = self.drop_extrema_if_too_close(
+                apocenters, extrema_type="apocenters")
         pericenters, apocenters = self.drop_extra_extrema_at_ends(
             pericenters, apocenters)
         return pericenters, apocenters
@@ -774,6 +783,81 @@ class eccDefinition:
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolant.")
 
+    def get_omega22_interpolants_at_extrema(self, extrema_type="both"):
+        """Get omega22 interpolants at the extrema.
+
+        Parameters:
+        -----------
+        extrema_type: str
+        Can be one of the followings:
+        - "pericenters": To get omega22_p(t), the interpolant of omega22 values
+          at the pericenters.
+        - "apocenters": To get omega22_a(t), the interpolant of omega22 values
+          at the apocenters.
+        - "both": To get the both omega22_p(t) and omega22_a(t)
+
+        Returns:
+        --------
+        A dictionary with the following keys:
+        "pericenters": Interpolant of omega22 at the pericenters.
+            Included when `extrema_type` is "pericenters" or "both".
+        "apocenters": Interpolant of omega22 at the apocenters.
+            Included when `extrema_type` is "apocenters" or "both".
+        """
+        # Get the pericenters and apocenters
+        if extrema_type in ["both", "pericenters"]:
+            pericenters = self.find_extrema("pericenters")
+            original_pericenters = pericenters.copy()
+            self.check_num_extrema(pericenters, "pericenters")
+        else:
+            pericenters = None
+            original_pericenters = pericenters
+        if extrema_type in ["both", "apocenters"]:
+            # In some cases it is easier to find the pericenters than finding
+            # the apocenters. For such cases, one can only find the pericenters
+            # and use the mid points between two consecutive pericenters as the
+            # location of the apocenters.
+            if self.extra_kwargs[
+                    "treat_mid_points_between_pericenters_as_apocenters"]:
+                apocenters = self.get_apocenters_from_pericenters(pericenters)
+            else:
+                apocenters = self.find_extrema("apocenters")
+            original_apocenters = apocenters.copy()
+            self.check_num_extrema(apocenters, "apocenters")
+        else:
+            apocenters = None
+            original_apocenters = apocenters
+        # Choose good extrema
+        self.pericenters_location, self.apocenters_location \
+            = self.get_good_extrema(pericenters, apocenters)
+        # Check if we dropped too many extrema.
+        self.check_if_dropped_too_many_extrema(original_pericenters,
+                                               self.pericenters_location,
+                                               "pericenters", 0.5)
+        self.check_if_dropped_too_many_extrema(original_apocenters,
+                                               self.apocenters_location,
+                                               "apocenters", 0.5)
+        if extrema_type == "both":
+            # check that pericenters and apocenters are appearing alternately
+            self.check_pericenters_and_apocenters_appear_alternately()
+        # check extrema separation and build interpolants
+        interpolants_dict = {}
+        if extrema_type in ["both", "pericenters"]:
+            self.orb_phase_diff_at_pericenters, \
+                self.orb_phase_diff_ratio_at_pericenters \
+                = self.check_extrema_separation(self.pericenters_location,
+                                                "pericenters")
+            interpolants_dict.update(
+                {"pericenters": self.interp_extrema("pericenters")})
+        if extrema_type in ["both", "apocenters"]:
+            self.orb_phase_diff_at_apocenters, \
+                self.orb_phase_diff_ratio_at_apocenters \
+                = self.check_extrema_separation(self.apocenters_location,
+                                                "apocenters")
+            interpolants_dict.update(
+                {"apocenters": self.interp_extrema("apocenters")})
+        return interpolants_dict
+
     def check_num_extrema(self, extrema, extrema_type="extrema"):
         """Check number of extrema."""
         num_extrema = len(extrema)
@@ -810,6 +894,8 @@ class eccDefinition:
             When num_dropped_extrema > threshold_fraction * len(original_extrema),
             an warning is raised.
         """
+        if original_extrema is None:
+            return
         num_dropped_extrema = len(original_extrema) - len(new_extrema)
         if num_dropped_extrema > (threshold_fraction * len(original_extrema)):
             warnings.warn(f"More than {threshold_fraction * 100}% of the "
@@ -899,47 +985,10 @@ class eccDefinition:
             Measured mean anomaly at tref_out/fref_out. Same type as
             tref_out/fref_out.
         """
-        # Get the pericenters and apocenters
-        pericenters = self.find_extrema("pericenters")
-        original_pericenters = pericenters.copy()
-        self.check_num_extrema(pericenters, "pericenters")
-        # In some cases it is easier to find the pericenters than finding the
-        # apocenters. For such cases, one can only find the pericenters and use
-        # the mid points between two consecutive pericenters as the location of
-        # the apocenters.
-        if self.extra_kwargs[
-                "treat_mid_points_between_pericenters_as_apocenters"]:
-            apocenters = self.get_apocenters_from_pericenters(pericenters)
-        else:
-            apocenters = self.find_extrema("apocenters")
-        original_apocenters = apocenters.copy()
-        self.check_num_extrema(apocenters, "apocenters")
-        # Choose good extrema
-        self.pericenters_location, self.apocenters_location \
-            = self.get_good_extrema(pericenters, apocenters)
-
-        # Check if we dropped too many extrema.
-        self.check_if_dropped_too_many_extrema(original_pericenters,
-                                               self.pericenters_location,
-                                               "pericenters", 0.5)
-        self.check_if_dropped_too_many_extrema(original_apocenters,
-                                               self.apocenters_location,
-                                               "apocenters", 0.5)
-        # check that pericenters and apocenters are appearing alternately
-        self.check_pericenters_and_apocenters_appear_alternately()
-        # check extrema separation
-        self.orb_phase_diff_at_pericenters, \
-            self.orb_phase_diff_ratio_at_pericenters \
-            = self.check_extrema_separation(self.pericenters_location,
-                                            "pericenters")
-        self.orb_phase_diff_at_apocenters, \
-            self.orb_phase_diff_ratio_at_apocenters \
-            = self.check_extrema_separation(self.apocenters_location,
-                                            "apocenters")
-
         # Build the interpolants of omega22 at the extrema
-        self.omega22_pericenters_interp = self.interp_extrema("pericenters")
-        self.omega22_apocenters_interp = self.interp_extrema("apocenters")
+        interpolant_dict = self.get_omega22_interpolants_at_extrema("both")
+        self.omega22_pericenters_interp = interpolant_dict["pericenters"]
+        self.omega22_apocenters_interp = interpolant_dict["apocenters"]
 
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
@@ -2746,3 +2795,85 @@ class eccDefinition:
             Minimal width to separate consecutive peaks.
         """
         return int(width_for_unit_timestep / (self.t[1] - self.t[0]))
+
+    def truncate_at_flow(self, flow, m_max=None):
+        """Truncate waveform data at flow.
+
+        Eccentric waveforms have a non-monotonic instantaneous frequency.
+        Therefore, truncating the waveform by demanding that the truncated
+        waveform should contain all frequencies that are greater than or equal
+        to a given minimum frequency, say flow, must be done carefully since
+        the instantaneous frequency can be equal to the given flow at multiple
+        points in time.
+
+        We need to find the time tlow, such that all the frequencies at t <
+        tlow are < flow and therefore the t >= tlow part of the waveform would
+        retain all the frequencies that are >= flow. Note that the t >= tlow
+        part could contain some frequencies < flow but that is fine, all we
+        need is not to lose any frequencies >= flow.
+
+        This can be done by using the frequency interpolant omega22_p(t)
+        through the pericenters because
+        1. It is a monotonic function of time.
+        2. If at a time tlow, omega22_p(tlow) * (m_max/2) = 2*pi*flow, then all
+        frequencies >= flow will be included in the waveform truncated at
+        t=tlow. The m_max/2 factor ensures that this statement is true for all
+        modes, as the frequency of the h_{l, m} mode scales approximately as
+        m/2 * omega_22/(2*pi).
+
+        Thus, we find tlow such that omega22_p(tlow) * (m_max/2) = 2*pi*flow
+        and truncate the waveform by keeping only the part where t >= tlow.
+
+        Parameters:
+        -----------
+        flow: float
+            Lower cutoff frequency to truncate the given waveform modes.
+            The truncated waveform modes will contain all the frequencies >= flow.
+
+        m_max: int
+            Maximum m (index of h_{l, m}) to account for while setting the tlow
+            for truncation.  If None, then it is set using the highest available
+            m from the modes in the dataDict.
+            Default is None.
+        """
+        if not hasattr(self, "omega22_pericenters_interp"):
+            interpolant_dict = self.get_omega22_interpolants_at_extrema("pericenters")
+            self.omega22_pericenters_interp = interpolant_dict["pericenters"]
+        # If m_max is not provided, get the highest available m from the dataDict
+        if m_max is None:
+            modes = self.dataDict["hlm"].keys()
+            m_max = max([m for (l, m) in modes])
+        # Find time where omega22_apocenter_interp(tlow) = 2 * pi * flow
+        tmin = self.t[self.pericenters_location[0]]
+        tmax = self.t[self.pericenters_location[-1]]
+
+        self.t_pericenters_interp = self.t[
+            np.logical_and(self.t >= tmin,
+                           self.t <= tmax)]
+        self.f22_pericenters_interp \
+            = self.omega22_pericenters_interp(self.t_pericenters_interp)/2/np.pi
+
+        self.flow_for_truncating = flow
+        idx_arr = np.where(
+            self.f22_pericenters_interp * (m_max/2) >= self.flow_for_truncating)[0]
+        if len(idx_arr) == 0:
+            raise Exception("The waveform is too short. Found no frequency >= "
+                            f"{self.flow_for_truncating}")
+        else:
+            idx_low = idx_arr[0]
+        self.tlow_for_truncating = self.t_pericenters_interp[idx_low]
+
+        # truncate dataDict
+        self.dataDict_trucated_at_flow = copy.deepcopy(dataDict)
+        for mode in self.dataDict_trucated_at_flow["hlm"]:
+            self.dataDict_trucated_at_flow["hlm"][mode] \
+                = self.dataDict_trucated_at_flow["hlm"][mode][
+                    self.dataDict_trucated_at_flow["t"] >= self.tlow_for_truncating]
+        self.dataDict_trucated_at_flow["t"] = self.dataDict_trucated_at_flow["t"][
+            self.dataDict_trucated_at_flow["t"] >= self.tlow_for_truncating]
+
+        return self.dataDict_trucated_at_flow
+
+        
+
+        
