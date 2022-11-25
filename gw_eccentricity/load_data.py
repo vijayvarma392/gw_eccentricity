@@ -90,6 +90,12 @@ def load_LAL_waveform(**kwargs):
     physicalUnits: bool
         If True returns modes in MKS units.
         Default is False.
+    M: float
+        Total mass in units of solar mass. Required when physicalUnits
+        is true. Default is None.
+    D: float
+        Luminosity distance in units of mega parsec. Required when
+        physicalUnits is true. Default is None.
     include_zero_ecc: bool
         If True, quasicircular waveform is created and
         returned. The quasicircular waveform is generated using the
@@ -108,6 +114,8 @@ def load_LAL_waveform(**kwargs):
         "Momega0": 0.01,
         "deltaTOverM": 0.1,
         "physicalUnits": False,
+        "M": None,
+        "D": None,
         "include_zero_ecc": False
     }
 
@@ -125,7 +133,9 @@ def load_LAL_waveform(**kwargs):
         kwargs['mean_ano'],
         kwargs['Momega0'],
         kwargs['deltaTOverM'],
-        kwargs['physicalUnits'])
+        kwargs['physicalUnits'],
+        kwargs['M'],
+        kwargs['D'])
 
     if kwargs['include_zero_ecc']:
         # Keep all other params fixed but set ecc=0.
@@ -145,7 +155,7 @@ def load_LAL_waveform(**kwargs):
 
 
 def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
-                                 Momega0, deltaTOverM, physicalUnits=False):
+                                 Momega0, deltaTOverM, physicalUnits, M, D):
     """Load LAL waveforms."""
     # Many LAL models don't return the modes. So, to get h22 we evaluate the
     # strain at (incl, phi)=(0,0) and divide by Ylm(0,0).  NOTE: This only
@@ -157,7 +167,7 @@ def load_LAL_waveform_using_hack(approximant, q, chi1, chi2, ecc, mean_ano,
     t, h = generate_LAL_waveform(approximant, q, chi1, chi2,
                                  deltaTOverM, Momega0, eccentricity=ecc,
                                  phi_ref=phi_ref, inclination=inclination,
-                                 physicalUnits=physicalUnits)
+                                 physicalUnits=physicalUnits, M=M, D=D)
 
     Ylm = lal.SpinWeightedSphericalHarmonic(inclination, phi_ref, -2, 2, 2)
     mode_dict = {(2, 2): h/Ylm}
@@ -175,7 +185,7 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
                           inclination=0, phi_ref=0., longAscNodes=0,
                           eccentricity=0, meanPerAno=0,
                           alignedSpin=True, lambda1=None, lambda2=None,
-                          physicalUnits=False):
+                          physicalUnits=False, M=None, D=None):
     """Generate waveform for a given approximant using LALSuite.
 
     Returns dimless time and dimless complex strain.
@@ -211,6 +221,11 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
         Tidal parameter for smaller BH.
     physicalUnits:
         If True, return in physical units.
+    M:
+        Total mass in units of solar mass. Required when physicalUnits is True.
+    D:
+        Luminosity distance in units of mega parsec. Required when
+        physicalUnits is True.
 
     return:
     t: array
@@ -241,9 +256,17 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     if len(chi2) != 3:
         raise Exception('chi2 must have size 3.')
 
-    # use M=10 and distance=1 Mpc, but will scale these out before outputting h
-    M = 10      # dimless mass
-    distance = 1.0e6 * lal.PC_SI
+    # if physicalUnits is True then M and D must be provided
+    if physicalUnits:
+        if M is None:
+            raise Exception("Must provide total mass `M` for physical units.")
+        if D is None:
+            raise Exception("Must provide luminosity distance `D` for physical units.")
+        distance = D * 1e6 * lal.PC_SI
+    else:
+        # use M=10 and distance=1 Mpc, but will scale these out before outputting h
+        M = 10      # dimless mass
+        distance = 1.0e6 * lal.PC_SI
 
     approxTag = lalsim.GetApproximantFromString(approximant)
     MT = M * lal.MTSUN_SI

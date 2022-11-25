@@ -40,21 +40,28 @@ def test_time_convention():
     dataDict2["t_zeroecc"] = (dataDict2["t_zeroecc"]
                               - dataDict2["t_zeroecc"][-1])
 
+    # time shift between dataDict1 and dataDict2
+    time_shift = dataDict1["t"][0] - dataDict2["t"][0]
+
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
         eccs = []
         meananos = []
+        tref_outs = []
         for data in [dataDict1, dataDict2]:
             gwecc_dict = measure_eccentricity(
                 tref_in=data["t"],
                 method=method,
                 dataDict=data,
                 extra_kwargs=extra_kwargs)
+            tref_out = gwecc_dict["tref_out"]
             ecc_ref = gwecc_dict["eccentricity"]
             meanano_ref = gwecc_dict["mean_anomaly"]
+            tref_outs.append(tref_out)
             eccs.append(ecc_ref)
             meananos.append(meanano_ref)
+        np.testing.assert_allclose(tref_outs[0], tref_outs[1] + time_shift)
         np.testing.assert_allclose(eccs[0], eccs[1])
         np.testing.assert_allclose(np.unwrap(meananos[0]),
                                    np.unwrap(meananos[1]))
