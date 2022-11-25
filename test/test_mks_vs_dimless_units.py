@@ -2,7 +2,7 @@ import gw_eccentricity
 from gw_eccentricity import load_data
 from gw_eccentricity import measure_eccentricity
 import numpy as np
-from gw_eccentricity.utils import 
+from lal import MTSUN_SI
 
 
 def test_mks_vs_dimless_units():
@@ -62,6 +62,16 @@ def test_mks_vs_dimless_units():
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         gwecc_object_MKS = gwecc_dict_MKS["gwecc_object"]
         # Check that the tref_out is the same as rescaled (to dimless) tref_out_MKS
+        # A feducial total mass of 10 M_Sun is used to convert the time to dimless
+        # in the waveform generating function load_data.generate_LAL_waveform
+        M_fed = 10
+        sec_to_dimless = 1/M_fed/MTSUN_SI
+        np.testing.assert_allclose(
+            [tref_out],
+            [tref_out_MKS * sec_to_dimless],
+            err_msg=("tref_out at a single dimensionless and MKS"
+                     " time are inconsistent.\n"
+                     "x = Dimensionless, y = MKS converted to dimless"))
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             [ecc_ref],
@@ -96,6 +106,13 @@ def test_mks_vs_dimless_units():
         tref_out_MKS = gwecc_dict_MKS["tref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
+        # check that the tref_out times are consistent
+        np.testing.assert_allclose(
+            [tref_out],
+            [tref_out_MKS * sec_to_dimless],
+            err_msg=("tref_out array for dimensionless and MKS"
+                     " tref_in are inconsistent.\n"
+                     "x = Dimensionless, y = MKS converted to dimless"))
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             ecc_ref,
@@ -134,6 +151,13 @@ def test_mks_vs_dimless_units():
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
+        # Check the fref_out frequencies are consistent
+        np.testing.assert_allclose(
+            [fref_out],
+            [fref_out_MKS / sec_to_dimless],
+            err_msg=("fref_out for a single dimensionless and MKS"
+                     " fref_in are inconsistent.\n"
+                     "x = Dimensionless, y = MKS converted to dimless"))
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             [ecc_ref],
@@ -170,6 +194,13 @@ def test_mks_vs_dimless_units():
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
+        # Check fref_out
+        np.testing.assert_allclose(
+            [fref_out],
+            [fref_out_MKS / sec_to_dimless],
+            err_msg=("fref_out for an array of dimensionless and MKS"
+                     " fref_in are inconsistent.\n"
+                     "x = Dimensionless, y = MKS converted to dimless"))
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             ecc_ref,
