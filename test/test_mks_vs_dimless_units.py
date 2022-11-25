@@ -34,7 +34,9 @@ def test_mks_vs_dimless_units():
     # load_waveform returns dimensionless dataDict
     dataDict = load_data.load_waveform(**lal_kwargs)
     # get dataDict in MKS units.
-    lal_kwargs.update({"physicalUnits": True})
+    lal_kwargs.update({"physicalUnits": True,
+                       "M": 10,
+                       "D": 1})
     dataDictMKS = load_data.load_waveform(**lal_kwargs)
 
     # List of all available methods
@@ -62,10 +64,7 @@ def test_mks_vs_dimless_units():
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         gwecc_object_MKS = gwecc_dict_MKS["gwecc_object"]
         # Check that the tref_out is the same as rescaled (to dimless) tref_out_MKS
-        # A fiducial total mass of 10 M_Sun is used to convert the time to dimless
-        # in the waveform generating function load_data.generate_LAL_waveform
-        M_fid = 10
-        sec_to_dimless = 1/M_fid/MTSUN_SI
+        sec_to_dimless = 1/lal_kwargs["M"]/MTSUN_SI
         np.testing.assert_allclose(
             [tref_out],
             [tref_out_MKS * sec_to_dimless],
