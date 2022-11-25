@@ -2,6 +2,7 @@ import gw_eccentricity
 from gw_eccentricity import load_data
 from gw_eccentricity import measure_eccentricity
 import numpy as np
+from gw_eccentricity.utils import 
 
 
 def test_mks_vs_dimless_units():
@@ -60,6 +61,7 @@ def test_mks_vs_dimless_units():
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         gwecc_object_MKS = gwecc_dict_MKS["gwecc_object"]
+        # Check that the tref_out is the same as rescaled (to dimless) tref_out_MKS
         # Check if the measured ecc an mean ano are the same from the two units
         np.testing.assert_allclose(
             [ecc_ref],
