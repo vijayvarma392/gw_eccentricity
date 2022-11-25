@@ -62,10 +62,10 @@ def test_mks_vs_dimless_units():
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
         gwecc_object_MKS = gwecc_dict_MKS["gwecc_object"]
         # Check that the tref_out is the same as rescaled (to dimless) tref_out_MKS
-        # A feducial total mass of 10 M_Sun is used to convert the time to dimless
+        # A fiducial total mass of 10 M_Sun is used to convert the time to dimless
         # in the waveform generating function load_data.generate_LAL_waveform
-        M_fed = 10
-        sec_to_dimless = 1/M_fed/MTSUN_SI
+        M_fid = 10
+        sec_to_dimless = 1/M_fid/MTSUN_SI
         np.testing.assert_allclose(
             [tref_out],
             [tref_out_MKS * sec_to_dimless],
