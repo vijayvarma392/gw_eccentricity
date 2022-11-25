@@ -91,11 +91,11 @@ def load_LAL_waveform(**kwargs):
         If True returns modes in MKS units.
         Default is False.
     M: float
-       Fiducial total mass in units of solar mass. Required when physicalUnits
-       is true. Default is None.
+        Total mass in units of solar mass. Required when physicalUnits
+        is true. Default is None.
     D: float
-       Fidual luminosity distance in units of mega parsec. Required when
-       physicalUnits is true. Default is None.
+        Luminosity distance in units of mega parsec. Required when
+        physicalUnits is true. Default is None.
     include_zero_ecc: bool
         If True, quasicircular waveform is created and
         returned. The quasicircular waveform is generated using the
