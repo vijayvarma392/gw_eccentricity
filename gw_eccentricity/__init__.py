@@ -8,3 +8,4 @@ __doc__ = gw_eccentricity.__doc__
 
 from .gw_eccentricity import measure_eccentricity
 from .gw_eccentricity import get_available_methods
+from .gw_eccentricity import truncate_at_flow

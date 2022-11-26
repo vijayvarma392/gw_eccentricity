@@ -675,7 +675,7 @@ class eccDefinition:
         We also discard extrema before and after a jump (due to an extremum
         being missed) in the detected extrema.
 
-        NOTE: If no apocenters/pericenters is needed to be checked, provide it
+        NOTE: If apocenters/pericenters is NOT needed to be checked, provide it
         as None
 
         To retain only the good extrema, we first remove the extrema
@@ -716,7 +716,7 @@ class eccDefinition:
         apocenters:
             1d array of apocenters after dropping apocenters as necessary.
         """
-        # Perform the drop extrema only when it is not None
+        # Perform the drop extrema only when the input extrema is not None
         if pericenters is not None:
             pericenters = self.drop_extrema_if_extrema_jumps(
                 pericenters, max_r_delta_phase22_extrema, "pericenters")
@@ -2864,7 +2864,7 @@ class eccDefinition:
         self.tlow_for_truncating = self.t_pericenters_interp[idx_low]
 
         # truncate dataDict
-        self.dataDict_trucated_at_flow = copy.deepcopy(dataDict)
+        self.dataDict_trucated_at_flow = copy.deepcopy(self.dataDict)
         for mode in self.dataDict_trucated_at_flow["hlm"]:
             self.dataDict_trucated_at_flow["hlm"][mode] \
                 = self.dataDict_trucated_at_flow["hlm"][mode][
@@ -2873,7 +2873,3 @@ class eccDefinition:
             self.dataDict_trucated_at_flow["t"] >= self.tlow_for_truncating]
 
         return self.dataDict_trucated_at_flow
-
-        
-
-        
