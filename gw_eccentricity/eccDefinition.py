@@ -2854,6 +2854,7 @@ class eccDefinition:
             = self.omega22_pericenters_interp(self.t_pericenters_interp)/2/np.pi
 
         self.flow_for_truncating = flow
+        # check if the waveform is long enough to contain any frequency above flow
         idx_arr = np.where(
             self.f22_pericenters_interp * (m_max/2) >= self.flow_for_truncating)[0]
         if len(idx_arr) == 0:
