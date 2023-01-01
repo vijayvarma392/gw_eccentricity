@@ -143,7 +143,7 @@ labelsDict = {
     "f22_ref": r"$f_{\mathrm{ref}}$",
     "eob_eccentricity": r"$e_{\mathrm{eob}}$",
     "eob_mean_anomaly_no_units": r"$l_{\mathrm{eob}}$",
-    "geodesic_eccentricity": r"$e_{\mathrm{g}}$",
+    "geodesic_eccentricity": r"$e_{\mathrm{geo}}$",
     "e_omega22": r"$e_{\omega_{22}}$",
     "t": r"$t$",
     "t_dimless": r"$t$ [$M$]",
