@@ -2862,6 +2862,16 @@ class eccDefinition:
                             f"{self.flow_for_truncating}")
         else:
             idx_low = idx_arr[0]
+        # check if the frequency at the first pericenter is higher than flow.
+        # This would imply that the waveform should be generated using a smaller
+        # initial frequency.
+        freq_at_first_peri = self.omega22[self.pericenters_location[0]]/2/np.pi
+        if freq_at_first_peri > self.flow_for_truncating:
+            raise Exception("The waveform is not long enough. The (2, 2) frequency at the "
+                            f"first pericenter = {freq_at_first_peri} is greater than"
+                            f" flow = {self.flow_for_truncating}. Try generating the waveform"
+                            " using a smaller initial frequency.")
+
         self.tlow_for_truncating = self.t_pericenters_interp[idx_low]
 
         # truncate dataDict
