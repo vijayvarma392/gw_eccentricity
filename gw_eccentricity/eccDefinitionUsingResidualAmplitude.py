@@ -24,9 +24,19 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         of the form `(l, m)`.
         """
         super().__init__(*args, **kwargs)
-        self.label_for_data_for_finding_extrema = r"$\Delta A_{22}$"
         self.method = "ResidualAmplitude"
+        self.label_for_data_for_finding_extrema = r"$\Delta A_{22}$"
+
+    def check_and_raise_zeroecc_data_not_found(self, method):
+        """Raise exception if zeroecc data not found for Residual method."""
+        if "hlm_zeroecc" not in self.dataDict:
+            raise Exception(f"Method {method} must have zeroecc data in "
+                            "dataDict. 'hlm_zeroecc' data not found.")
+        if "t_zeroecc" not in self.dataDict:
+            raise Exception(f"Method {method} must have zeroecc data in "
+                            "dataDict. 't_zeroecc' data not found.")
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
+        self.check_and_raise_zeroecc_data_not_found("ResidualAmplitude")
         return self.res_amp22
