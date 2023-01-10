@@ -38,11 +38,12 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         - t_zeroecc: 1d array of times of quasicircular waveform.
         - hlm_zeroecc: Dictionary of modes of the quasicircular waveform.
         For more details on the format of the dataDict, see documentation
-        of gw_eccentricity.measure_eccentricity."""
+        of gw_eccentricity.measure_eccentricity.
+        """
         for k in ["t_zeroecc", "hlm_zeroecc"]:
-            if k is not in self.dataDict:
+            if k not in self.dataDict:
                 raise Exception(f"Method {method} must have zeroecc data in "
-                                "dataDict. {k} data not found.")
+                                f"dataDict. {k} data not found.")
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
