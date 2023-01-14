@@ -86,12 +86,12 @@ def compute_errors_between_methods(gwecc_obj1,
     # Check that common tref out is the same.
     np.testing.assert_allclose(tref_out_1_common, tref_out_2_common)
     # Compute errors in eccentricity at common tref_out
-    ecc_ref_1_common = gwecc_obj1.ecc_ref[common_idx1]
-    ecc_ref_2_common = gwecc_obj2.ecc_ref[common_idx2]
+    ecc_ref_1_common = gwecc_obj1.eccentricity[common_idx1]
+    ecc_ref_2_common = gwecc_obj2.eccentricity[common_idx2]
     ecc_errors = np.abs(ecc_ref_1_common - ecc_ref_2_common)
     # Compute errors in mean anomaly at common tref_out
-    mean_ano_ref_1_common = gwecc_obj1.mean_ano_ref[common_idx1]
-    mean_ano_ref_2_common = gwecc_obj2.mean_ano_ref[common_idx2]
+    mean_ano_ref_1_common = gwecc_obj1.mean_anomaly[common_idx1]
+    mean_ano_ref_2_common = gwecc_obj2.mean_anomaly[common_idx2]
     # We need to unwrap the mean anomaly since zero and
     # 2pi should be treated as the same and hence should give zero errors.
     mean_ano_errors = np.abs(

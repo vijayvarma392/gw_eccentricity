@@ -148,6 +148,7 @@ labelsDict = {
     "t": r"$t$",
     "t_dimless": r"$t$ [$M$]",
     "t_start": r"$t_{0}$",
+    "t_start_hat": r"$\widehat{t}_{0}$",
     "omega22_dimless": r"$\omega_{22}$ [rad/$M$]",
     "pericenters": "Pericenters",
     "apocenters": "Apocenters",
