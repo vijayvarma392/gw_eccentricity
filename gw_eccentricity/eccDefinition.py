@@ -440,6 +440,7 @@ class eccDefinition:
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
+            "num_cycles_suggested": 6,
         }
         return default_extra_kwargs
 
@@ -780,8 +781,8 @@ class eccDefinition:
                                    self.omega22[extrema])
         else:
             raise Exception(
-                f"Sufficient number of {extrema_type} are not found."
-                " Can not create an interpolant.")
+                f"Number of {extrema_type} is {len(extrema)}. "
+                "Cannot build interpolant.")
 
     def get_omega22_interpolants_at_extrema(self, extrema_type="both"):
         """Get omega22 interpolants at the extrema.
@@ -808,7 +809,9 @@ class eccDefinition:
         if extrema_type in ["both", "pericenters"]:
             pericenters = self.find_extrema("pericenters")
             original_pericenters = pericenters.copy()
-            self.check_num_extrema(pericenters, "pericenters")
+            self.check_quasicircular(pericenters, "pericenters")
+            if self.is_quasicircular:
+                self.pericenters_location = np.arange(0, len(self.t))
         else:
             pericenters = None
             original_pericenters = pericenters
@@ -823,58 +826,86 @@ class eccDefinition:
             else:
                 apocenters = self.find_extrema("apocenters")
             original_apocenters = apocenters.copy()
-            self.check_num_extrema(apocenters, "apocenters")
+            self.check_quasicircular(apocenters, "apocenters")
+            if self.is_quasicircular:
+                self.apocenters_location = np.arange(0, len(self.t))
         else:
             apocenters = None
             original_apocenters = apocenters
-        # Choose good extrema
-        self.pericenters_location, self.apocenters_location \
-            = self.get_good_extrema(pericenters, apocenters)
-        # Check if we dropped too many extrema.
-        self.check_if_dropped_too_many_extrema(original_pericenters,
-                                               self.pericenters_location,
-                                               "pericenters", 0.5)
-        self.check_if_dropped_too_many_extrema(original_apocenters,
-                                               self.apocenters_location,
-                                               "apocenters", 0.5)
-        if extrema_type == "both":
-            # check that pericenters and apocenters are appearing alternately
-            self.check_pericenters_and_apocenters_appear_alternately()
+        if not self.is_quasicircular:
+            # Choose good extrema
+            self.pericenters_location, self.apocenters_location \
+                = self.get_good_extrema(pericenters, apocenters)
+            # Check if we dropped too many extrema.
+            self.check_if_dropped_too_many_extrema(original_pericenters,
+                                                   self.pericenters_location,
+                                                   "pericenters", 0.5)
+            self.check_if_dropped_too_many_extrema(original_apocenters,
+                                                   self.apocenters_location,
+                                                   "apocenters", 0.5)
+            if extrema_type == "both":
+                # check that pericenters and apocenters are appearing alternately
+                self.check_pericenters_and_apocenters_appear_alternately()
         # check extrema separation and build interpolants
         interpolants_dict = {}
         if extrema_type in ["both", "pericenters"]:
-            self.orb_phase_diff_at_pericenters, \
-                self.orb_phase_diff_ratio_at_pericenters \
-                = self.check_extrema_separation(self.pericenters_location,
-                                                "pericenters")
+            if not self.is_quasicircular:
+                self.orb_phase_diff_at_pericenters, \
+                    self.orb_phase_diff_ratio_at_pericenters \
+                    = self.check_extrema_separation(self.pericenters_location,
+                                                    "pericenters")
             interpolants_dict.update(
                 {"pericenters": self.interp_extrema("pericenters")})
         if extrema_type in ["both", "apocenters"]:
-            self.orb_phase_diff_at_apocenters, \
-                self.orb_phase_diff_ratio_at_apocenters \
-                = self.check_extrema_separation(self.apocenters_location,
-                                                "apocenters")
+            if not self.is_quasicircular:
+                self.orb_phase_diff_at_apocenters, \
+                    self.orb_phase_diff_ratio_at_apocenters \
+                    = self.check_extrema_separation(self.apocenters_location,
+                                                    "apocenters")
             interpolants_dict.update(
                 {"apocenters": self.interp_extrema("apocenters")})
         return interpolants_dict
 
-    def check_num_extrema(self, extrema, extrema_type="extrema"):
-        """Check number of extrema."""
+    def check_quasicircular(self, extrema, extrema_type="extrema"):
+        """Check if the waveform is quasicircular."""
+        self.is_quasicircular = False
         num_extrema = len(extrema)
-        if num_extrema <= 2:
-            message = f"Only {num_extrema}" \
-                if num_extrema > 0 else "No"
-            recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
-            if self.method not in recommended_methods:
-                method_message = (f" Possibly `{self.method}` method is not "
-                                  f"efficient to detect the {extrema_type}."
-                                  f" Try one of {recommended_methods}.")
+        recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
+        if num_extrema < 2:
+            # check if the waveform is quasicircular
+            # Number of extrema could be < 2 if the waveform is quasicircular
+            # To decide that, we check the number of cycles in the data. If it
+            # is > num_cycles_suggested, then it is assumed to be quasicircular.
+            num_cycles_suggested = self.extra_kwargs["num_cycles_suggested"]
+            num_cycles = abs(self.phase22[-1] - self.phase22[0]) / (4 * np.pi)
+            if num_cycles < num_cycles_suggested:
+                warnings.warn(f"Number of cycles = {num_cycles} < suggested {num_cycles_suggested}.\n")
+                raise Exception(
+                    f"{len(extrema)} {extrema_type} found. Can not create interpolants.\n")
             else:
-                method_message = ""
-            warnings.warn(f"{message} {extrema_type} found. There can be "
-                          "problem when building interpolant through the "
-                          f"{extrema_type}.{method_message}")
-
+                warnings.warn(
+                    f"Number of cycles = {num_cycles} >= suggested {num_cycles_suggested}"
+                    f" but number of {extrema_type} is {len(extrema)}.")
+                if self.method in ["Amplitude", "Frequency"]:
+                    recommended = ["ResidualAmplitude", "AmplitudeFits"]
+                    message = (f"{self.method} method might not be efficient in detecting "
+                               "extrema for small eccentricity (< 1e-3). "
+                               f"Using {recommended} method might give better result.")
+                elif "Fits" in self.method:
+                    recommended = ["ResidualAmplitude", "ResidualFrequency"]
+                    message = ("Using {recommended} method might give better result.")
+                else:
+                    message = ""
+                if len(extrema) == 0:
+                    warnings.warn(
+                        "Assuming the waveform to be quasicircular.\n"
+                        f"{message}")
+                    self.is_quasicircular = True
+                else:
+                    raise Exception(
+                        f"Only {len(extrema)} {extrema_type} found. Can not create interpolants.\n"
+                        f"{message}")
+            
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
                                           threshold_fraction=0.5):
@@ -1652,6 +1683,8 @@ class eccDefinition:
             - t_average_pericenters: temporal midpoints between
               pericenters. These are associated with orbit_averaged_omega22_pericenters
         """
+        if self.is_quasicircular:
+            return self.t, self.omega22
         if method is None:
             method = self.extra_kwargs["omega22_averaging_method"]
         if method != "orbit_averaged_omega22":
@@ -2858,8 +2891,9 @@ class eccDefinition:
         idx_arr = np.where(
             self.f22_pericenters_interp * (m_max/2) >= self.flow_for_truncating)[0]
         if len(idx_arr) == 0:
+            max_freq = self.f22_pericenters_interp[-1]
             raise Exception("The waveform is too short. Found no frequency >= "
-                            f"{self.flow_for_truncating}")
+                            f"{self.flow_for_truncating}. Maximum (2, 2) mode frequency is {max_freq}")
         else:
             idx_low = idx_arr[0]
         # check if the frequency at the first pericenter is higher than flow.
@@ -2884,3 +2918,5 @@ class eccDefinition:
             self.dataDict_trucated_at_flow["t"] >= self.tlow_for_truncating]
 
         return self.dataDict_trucated_at_flow
+        
+        

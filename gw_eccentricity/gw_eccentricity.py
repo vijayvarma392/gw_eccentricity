@@ -408,7 +408,7 @@ def truncate_at_flow(flow,
 
     if method in available_methods:
         gwecc_object = available_methods[method](
-            dataDict, num_orbits_to_exclude_before_merger=None,
+            dataDict, num_orbits_to_exclude_before_merger=0,
             extra_kwargs=extra_kwargs)
         truncatedDataDict = gwecc_object.truncate_at_flow(flow, m_max)
         return truncatedDataDict, gwecc_object
