@@ -808,10 +808,19 @@ class eccDefinition:
         # Get the pericenters and apocenters
         if extrema_type in ["both", "pericenters"]:
             pericenters = self.find_extrema("pericenters")
+            # make a copy to compare it after passing through chekcks
+            # and dropping bad ones along the way.
             original_pericenters = pericenters.copy()
+            # in case no extrema are found but the data has enough cycles,
+            # it is assumed that the waveform is quasicircular
             self.check_quasicircular(pericenters, "pericenters")
             if self.is_quasicircular:
-                self.pericenters_location = np.arange(0, len(self.t))
+                # when the waveform is assumed to be quasicircular,
+                # there are no unique locations of pericenters/apoceneters
+                # and pericenrers should be the same as the apoceneters.
+                # Therefore, we can choose the peri-/apocenters to be
+                # num_cycles equidistant points.
+                self.pericenters_location = np.linspace(0, len(self.t)-1, int(self.num_cycles)).astype(int)
         else:
             pericenters = None
             original_pericenters = pericenters
@@ -828,7 +837,7 @@ class eccDefinition:
             original_apocenters = apocenters.copy()
             self.check_quasicircular(apocenters, "apocenters")
             if self.is_quasicircular:
-                self.apocenters_location = np.arange(0, len(self.t))
+                self.apocenters_location = np.linspace(0, len(self.t)-1, int(self.num_cycles)).astype(int)
         else:
             apocenters = None
             original_apocenters = apocenters
@@ -867,30 +876,40 @@ class eccDefinition:
         return interpolants_dict
 
     def check_quasicircular(self, extrema, extrema_type="extrema"):
-        """Check if the waveform is quasicircular."""
+        """Check if the waveform is quasicircular.
+        
+        This function checks the number of extrema and approximate number
+        of cycles in the waveform to decide whether the waveform
+        could be assumed to be quasicircular in case of no extrema.
+        """
+        # by default we always take the waveform to be NOT quasicircular
         self.is_quasicircular = False
         num_extrema = len(extrema)
-        recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
         if num_extrema < 2:
             # check if the waveform is quasicircular
             # Number of extrema could be < 2 if the waveform is quasicircular
             # To decide that, we check the number of cycles in the data. If it
             # is > num_cycles_suggested, then it is assumed to be quasicircular.
-            num_cycles_suggested = self.extra_kwargs["num_cycles_suggested"]
-            num_cycles = abs(self.phase22[-1] - self.phase22[0]) / (4 * np.pi)
-            if num_cycles < num_cycles_suggested:
-                warnings.warn(f"Number of cycles = {num_cycles} < suggested {num_cycles_suggested}.\n")
+            if not hasattr(self, "num_cycles_suggested"):
+                self.num_cycles_suggested = self.extra_kwargs["num_cycles_suggested"]
+            if not hasattr(self, "num_cycles"):
+                self.num_cycles = abs(self.phase22[-1] - self.phase22[0]) / (4 * np.pi)
+            if self.num_cycles < self.num_cycles_suggested:
+                warnings.warn(f"Number of cycles = {self.num_cycles} < suggested {self.num_cycles_suggested}.\n")
                 raise Exception(
                     f"{len(extrema)} {extrema_type} found. Can not create interpolants.\n")
             else:
                 warnings.warn(
-                    f"Number of cycles = {num_cycles} >= suggested {num_cycles_suggested}"
+                    f"Number of cycles = {self.num_cycles} >= suggested {self.num_cycles_suggested}"
                     f" but number of {extrema_type} is {len(extrema)}.")
+                # TODO check the width for find_peaks. It should not be > number of index for 4pi phase22 diff.
+                # amp and freq methods are not always the best choice, issue warning to suggest better methods.
                 if self.method in ["Amplitude", "Frequency"]:
                     recommended = ["ResidualAmplitude", "AmplitudeFits"]
                     message = (f"{self.method} method might not be efficient in detecting "
                                "extrema for small eccentricity (< 1e-3). "
                                f"Using {recommended} method might give better result.")
+                # residual methods are more robust compared to fits. Issue warning to suggest residual methods.
                 elif "Fits" in self.method:
                     recommended = ["ResidualAmplitude", "ResidualFrequency"]
                     message = ("Using {recommended} method might give better result.")
