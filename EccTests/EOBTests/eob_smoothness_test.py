@@ -287,7 +287,7 @@ def plot_waveform_ecc_vs_model_ecc(methods, key):
                 # to make each line plot visible. This is true only for this
                 # plot.  For ecc at first extrema vs eob eccs, we plot for all
                 # eccs.
-                if idx0 % args.slice == 0:
+                if idx0 % args.slice == 0 or idx0 == (len(EOBeccs) - 1):
                     ax_ecc_vs_t[idx].plot(tref_out, measured_ecc,
                                           c=colors[idx0], label=f"{ecc:.7f}")
                 if idx == len(methods) - 1:
