@@ -4,10 +4,10 @@ Find pericenters and apocenters using Residual Frequency.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, May 14, 2022
 """
-from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
+from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
 
 
-class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
+class eccDefinitionUsingResidualFrequency(eccDefinitionUsingResidualAmplitude):
     """Measure eccentricity by finding extrema from residual frequency."""
 
     def __init__(self, *args, **kwargs):
@@ -24,9 +24,10 @@ class eccDefinitionUsingResidualFrequency(eccDefinitionUsingAmplitude):
         of the form `(l, m)`.
         """
         super().__init__(*args, **kwargs)
-        self.label_for_data_for_finding_extrema = r"$\Delta\omega_{22}$"
         self.method = "ResidualFrequency"
+        self.label_for_data_for_finding_extrema = r"$\Delta\omega_{22}$"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
+        self.check_and_raise_zeroecc_data_not_found("ResidualFrequency")
         return self.res_omega22
