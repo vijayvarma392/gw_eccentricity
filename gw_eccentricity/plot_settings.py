@@ -2,17 +2,21 @@
 from matplotlib import rc
 from cycler import cycler
 import matplotlib.cm as mcm
+import seaborn as sns
 
 dark2 = mcm.get_cmap("Dark2").colors
+green  = "#1b9e77"
+purple = "#7570b3"
+orange = "#d95f02"
 
 colorsDict = {
-    "default": dark2[1],  # brown
-    "apocenter": dark2[3],  # dark2[2],  # purple
-    "pericenter": "tab:blue",  # dark2[0],  # turquoise
+    "default": purple, # dark2[1],  # brown
+    "apocenter": green,  # dark2[2],  # purple
+    "pericenter": orange,  # dark2[0],  # turquoise
     "vline": dark2[3],  # pink
     "hline": dark2[5],  # orange
-    "edge": dark2[-1],  # gray
-    "pericentersvline": dark2[4],  # olive
+    "edge": dark2[7],  # gray
+    "pericentersvline": dark2[7], # dark2[4],  # olive
     "FrequencyFits": dark2[2],
     "AmplitudeFits": dark2[3],
     "ResidualFrequency": dark2[5],
@@ -28,6 +32,13 @@ colorsDict = {
     "gray": dark2[7],
     "blue": "tab:blue"
 }
+
+markersDict = {"apocenter": "s", # "^"
+              "pericenter": "o", # "v"
+              }
+markersSizeDict = {"apocenter": 3, #3,
+                  "pericenter": 4, #3
+                  }
 
 lstyles = {"Amplitude": "solid",
            "Frequency": "dashdot",
