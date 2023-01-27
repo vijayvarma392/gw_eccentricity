@@ -562,8 +562,8 @@ class eccDefinition:
                 f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
                 "phase22 difference between the previous pair of "
                 f"{extrema_type}={phase_diff_previous/(4*np.pi):.2f}*4pi\n"
-                f"{extrema_type} after {first_pair_indices[0]}, i.e.,"
-                f"t > t={first_pair_times[0]} are therefore dropped.")
+                f"{extrema_type} after idx={first_pair_indices[0]}, i.e.,"
+                f"t > {first_pair_times[0]} are therefore dropped.")
             extrema_location = extrema_location[extrema_location <=
                                                 extrema_location[first_idx+1]]
         # Check if ratio is too small
