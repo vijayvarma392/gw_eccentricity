@@ -482,6 +482,143 @@ def load_lvcnr_waveform(**kwargs):
     return return_dict
 
 
+def load_sxs_waveform(**kwargs):
+    """Load modes from sxs waveform files.
+
+    parameters:
+    ----------
+    kwargs: Could be the followings
+    filepath: str
+        Path to lvcnr file.
+
+    dt: float
+        Time step to use for interpolating the waveform modes. Default is 0.1
+
+    include_zero_ecc: bool
+        If True returns IMRPhenomT waveform mode for same set of parameters
+        except eccentricity set to zero. Requires metadata file to get the
+        binary parameters.
+        Default is False.
+
+    metadata_path: str
+        path to the metadata file. Required when include_zero_ecc is True.
+        If provided, a dictionary containing binary mass ratio and spins are returned.
+
+    num_orbits_to_remove_as_junk: float
+        Number of orbits to throw away as junk from the begining of the NR
+        data. Default is 2.
+    
+    mode_array: 1d array
+        1d array containing list of modes to load.
+        Default is [(2, 2)] which loads only the (2, 2) mode.
+    
+    extrap_order: int
+        Extrapolation order to use for loading the waveform data.
+        Default is 2.
+
+    returns:
+    -------
+        Dictionary of modes dict. Also includes
+        - parameter dict if metadata_path is not None.
+        - zero ecc mode dict if include_zero_ecc is True.
+
+    t:
+        Time array.
+    hlm:
+        Dictionary of modes.
+    Optionally,
+    params_dict:
+        Dictionary of parameters.
+    t_zeroecc:
+        Time array for zero ecc modes
+    hlm_zeroecc:
+        Mode dictionary for zero eccentricity
+    """
+    default_kwargs = {
+        "filepath": None,
+        "metadata_path": None,
+        "dt": 0.1,
+        "include_zero_ecc": False,
+        "num_orbits_to_remove_as_junk": 2,
+        "mode_array": [(2, 2)],
+        "extrap_order": 2}
+
+    kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
+                                           "sxs kwargs")
+    filepath = kwargs["filepath"]
+    metadata_path = kwargs["metadata_path"]
+    dt = kwargs["dt"]
+    mode_array = kwargs["mode_array"]
+    extrap_order = kwargs["extrap_order"]
+    # check filepath
+    if filepath is None:
+        raise Exception("Must provide path to the waveform file. `filepath` "
+                        "can not be None.")
+    # check metadata_path
+    if kwargs["include_zero_ecc"]:
+        if metadata_path is None:
+            raise Exception("Must provide path to metadata file `metadata_path` "
+                            "when `include_zero_ecc` is True.\n"
+                            "This is required to get the binary parameters which are "
+                            "used to eavaluate an IMRPhenomT waveform.")
+
+    # load modes
+    modes_dict = {}
+    data = h5py.File(filepath, "r")
+    waveform_data = data[f"Extrapolated_N{extrap_order}.dir"]
+    for idx, mode in enumerate(mode_array):
+        ell, m = mode
+        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"] 
+        # create the time array only once
+        if idx == 0:
+            time = mode_data[:, 0]
+            t = np.arange(time[0], time[-1], dt)
+        hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
+        amp_interp = interpolate(t, time, np.abs(hlm))
+        phase_interp = interpolate(t, time, np.unwrap(np.angle(hlm)))
+        hlm_interp = amp_interp * np.exp(1j * phase_interp)
+        modes_dict.update({(ell, m): hlm_interp})
+
+    # remove junk from the begining of the data
+    t, modes_dict = reomve_junk_from_nr_data(
+        t,
+        modes_dict,
+        kwargs["num_orbits_to_remove_as_junk"])
+    tpeak = peak_time_via_quadratic_fit(t, amplitude_using_all_modes(modes_dict))[0]
+    # clean data
+    dataDict = {"t": t - tpeak,
+                "hlm": modes_dict}
+    if metadata_path is not None:
+        params_dict = get_params_dict_from_sxs_metadata(metadata_path)
+        dataDict.update({"params_dict": params_dict})
+    # if include_zero_ecc is True, load zeroecc dataDict using IMRphenomT
+    if kwargs["include_zero_ecc"]:
+        dataDict_zeroecc = get_zeroecc_dataDict_for_lvcnr(dataDict)
+        dataDict.update({"t_zeroecc": dataDict_zeroecc["t_zeroecc"],
+                         "hlm_zeroecc": dataDict_zeroecc["hlm_zeroecc"]})
+    return dataDict
+
+
+def get_params_dict_from_sxs_metadata(metadata_path):
+    """Get binary parameters from metadata file."""
+    fl = open(metadata_path, "r")
+    lines = fl.readlines()
+    fl.close()
+    for line in lines:
+        if "reference-dimensionless-spin1" in line:
+            chi1 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
+        if "reference-dimensionless-spin2" in line:
+            chi2 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
+        if "reference-mass1" in line:
+            m1 = float(line.split("=")[-1].strip())
+        if "reference-mass2" in line:
+            m2 = float(line.split("=")[-1].strip())
+    params_dict = {"q": m1/m2,
+                   "chi1": chi1,
+                   "chi2": chi2}
+    return params_dict
+
+
 def get_zeroecc_dataDict_for_lvcnr(nr_dataDict):
     """Get the zero ecc data dict corresponding to a nr data.
 
