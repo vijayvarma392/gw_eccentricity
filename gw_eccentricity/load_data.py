@@ -516,13 +516,13 @@ def load_sxs_catalogformat(**kwargs):
         frequency to use for generating `IMRPhenomT` waveform based on
         the inspiral time of the NR waveform.  Download it from
         https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
-        and set the path using `export
-        LAL_DATA_PATH=/path/to/downloaded/file`.
+        and set the path using
+        `export LAL_DATA_PATH=/path/to/directory/containing/seobnrv4rom_file/`.
 
         Default is False.
 
     metadata_path: str
-        Path to the sxs metadata file. This file is generally can be
+        Path to the sxs metadata file. This file generally can be
         found in the same directory as the waveform file and has the
         name `metadata.txt`. It contains the metadata including binary
         parameters along with other information related to the NR
@@ -551,11 +551,11 @@ def load_sxs_catalogformat(**kwargs):
     t:
         1d uniform array of times in dimensionless units and shifted
         such that t=0 coincides with the peak of the waveform
-        amplitude (obtained using amplitude of all modes). The
-        original times of the NR data and the user provided time step
-        `dt` is used to create this uniform array.
+        amplitude (obtained using all available modes in
+        `mode_array`). The original times of the NR data and the user
+        provided time step `dt` is used to create this uniform array.
         This array of times is obtained after throwing away the intial
-        times that correspond to junk radiation which are determined
+        times that correspond to junk radiation determined
         by `num_orbits_to_remove_as_junk`.
     hlm:
         Dictionary of NR waveform modes interpolated on uniform time
