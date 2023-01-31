@@ -164,6 +164,9 @@ class eccDefinition:
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
                 for allowed keys.
         """
+        # check dataDict
+        if dataDict is None:
+            raise Exception("`dataDict` can not be `None`.")
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():

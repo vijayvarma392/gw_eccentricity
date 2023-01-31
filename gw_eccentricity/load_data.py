@@ -494,14 +494,14 @@ def load_sxs_catalogformat(**kwargs):
     ----------
     kwargs: Dictionary with the followings keys
     filepath: str
-        Path to waveform file in sxs format. The name of the file is
-        usually `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
+        Path to waveform file in sxs catalog format. The name of the
+        file is usually `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
         This must be provided to load waveform modes.
         Default is None which raises exception.
 
     dt: float
-        Time step to use for interpolating the waveform modes.
-        The unit is the same as the time array in the sxs format
+        Time step to use for interpolating the waveform modes.  The
+        unit is the same as the time array in the sxs catalog format
         waveform file which is dimensionless.
         Default is 0.1
 
@@ -522,9 +522,9 @@ def load_sxs_catalogformat(**kwargs):
         Default is False.
 
     metadata_path: str
-        Path to the sxs metadata file. This file is generally located
-        in the same directory as the waveform file and has the name
-        `metadata.txt`. It contains the metadata including binary
+        Path to the sxs metadata file. This file is generally can be
+        found in the same directory as the waveform file and has the
+        name `metadata.txt`. It contains the metadata including binary
         parameters along with other information related to the NR
         simulation performed to obtain the waveform modes.
         Required when `include_zero_ecc` is True.
@@ -601,10 +601,11 @@ def load_sxs_catalogformat(**kwargs):
     # check metadata_path
     if kwargs["include_zero_ecc"]:
         if metadata_path is None:
-            raise Exception("Must provide path to metadata file `metadata_path` "
-                            "when `include_zero_ecc` is True.\n"
-                            "This is required to get the binary parameters which are "
-                            "used to eavaluate an IMRPhenomT waveform.")
+            raise Exception(
+                "Must provide path to metadata file `metadata_path` "
+                "when `include_zero_ecc` is True.\n"
+                "This is required to get the binary parameters which are "
+                "used to eavaluate an IMRPhenomT waveform.")
 
     # load modes
     modes_dict = {}
@@ -612,7 +613,7 @@ def load_sxs_catalogformat(**kwargs):
     waveform_data = data[f"Extrapolated_N{extrap_order}.dir"]
     for idx, mode in enumerate(mode_array):
         ell, m = mode
-        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"] 
+        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"]
         # create the time array only once
         if idx == 0:
             time = mode_data[:, 0]
@@ -628,8 +629,10 @@ def load_sxs_catalogformat(**kwargs):
         t,
         modes_dict,
         kwargs["num_orbits_to_remove_as_junk"])
-    tpeak = peak_time_via_quadratic_fit(t, amplitude_using_all_modes(modes_dict))[0]
-    # clean data
+    # get time at peak amplitude to shift the time axis
+    tpeak = peak_time_via_quadratic_fit(
+        t, amplitude_using_all_modes(modes_dict))[0]
+    # shift time axis by tpeak such that peak occurs at t = 0
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
     if metadata_path is not None:
