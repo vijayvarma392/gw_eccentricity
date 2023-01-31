@@ -477,62 +477,106 @@ def load_lvcnr_waveform(**kwargs):
     return_dict.update({"params_dict": params_dict})
 
     if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
-        dataDict_zeroecc = get_zeroecc_dataDict_for_lvcnr(return_dict)
+        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(return_dict)
         return_dict.update(dataDict_zeroecc)
     return return_dict
 
 
-def load_sxs_waveform(**kwargs):
-    """Load modes from sxs waveform files.
+def load_sxs_catalogformat(**kwargs):
+    """Load modes from sxs waveform files in sxs catalog format.
+
+    This function is intended for loading waveform modes from files in
+    the sxs catalog format (see
+    https://data.black-holes.org/waveforms/documentation.html).
+    For loading lvcnr format files, see `load_lvcnr_waveform`.
 
     parameters:
     ----------
-    kwargs: Could be the followings
+    kwargs: Dictionary with the followings keys
     filepath: str
-        Path to lvcnr file.
+        Path to waveform file in sxs format. The name of the file is
+        usually `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
+        This must be provided to load waveform modes.
+        Default is None which raises exception.
 
     dt: float
-        Time step to use for interpolating the waveform modes. Default is 0.1
+        Time step to use for interpolating the waveform modes.
+        The unit is the same as the time array in the sxs format
+        waveform file which is dimensionless.
+        Default is 0.1
 
     include_zero_ecc: bool
-        If True returns IMRPhenomT waveform mode for same set of parameters
-        except eccentricity set to zero. Requires metadata file to get the
-        binary parameters.
+        If True, returns `IMRPhenomT` waveform mode (only (2, 2) mode)
+        for the same set of parameters except eccentricity set to
+        zero.  Requires metadata file (which is provided using
+        `metadata_path`, see below) to get the binary parameters.
+
+        Also need `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.
+        Currently it is used to get an estimate for the intial
+        frequency to use for generating `IMRPhenomT` waveform based on
+        the inspiral time of the NR waveform.  Download it from
+        https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
+        and set the path using `export
+        LAL_DATA_PATH=/path/to/downloaded/file`.
+
         Default is False.
 
     metadata_path: str
-        path to the metadata file. Required when include_zero_ecc is True.
-        If provided, a dictionary containing binary mass ratio and spins are returned.
+        Path to the sxs metadata file. This file is generally located
+        in the same directory as the waveform file and has the name
+        `metadata.txt`. It contains the metadata including binary
+        parameters along with other information related to the NR
+        simulation performed to obtain the waveform modes.
+        Required when `include_zero_ecc` is True.
+        If provided, a dictionary containing binary mass ratio and
+        spins is returned.
+        Default is None.
 
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the begining of the NR
-        data. Default is 2.
-    
+        data.
+        Default is 2.
+
     mode_array: 1d array
-        1d array containing list of modes to load.
+        1d array of modes to load.
         Default is [(2, 2)] which loads only the (2, 2) mode.
-    
+
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
         Default is 2.
 
     returns:
     -------
-        Dictionary of modes dict. Also includes
-        - parameter dict if metadata_path is not None.
-        - zero ecc mode dict if include_zero_ecc is True.
-
+    Returns a dictionary with the following quantities:
     t:
-        Time array.
+        1d uniform array of times in dimensionless units and shifted
+        such that t=0 coincides with the peak of the waveform
+        amplitude (obtained using amplitude of all modes). The
+        original times of the NR data and the user provided time step
+        `dt` is used to create this uniform array.
+        This array of times is obtained after throwing away the intial
+        times that correspond to junk radiation which are determined
+        by `num_orbits_to_remove_as_junk`.
     hlm:
-        Dictionary of modes.
+        Dictionary of NR waveform modes interpolated on uniform time
+        grid `t` (see above) obtained after throwing away initial junk
+        radition using `num_orbits_to_remove_as_junk`. The dictionary
+        contains all available modes given in `mode_array`.
+
     Optionally,
     params_dict:
-        Dictionary of parameters.
+        Dictionary of parameters containing mass ratio and spins.
+        Returned when `metadata_path` is provided.
     t_zeroecc:
-        Time array for zero ecc modes
+        1d uniform array of times corresponding to zero eccentricity
+        modes in dimensionless units.
+        Returned when `include_zero_ecc` is True.
     hlm_zeroecc:
-        Mode dictionary for zero eccentricity
+        Dictionary of modes created using `IMRPhenomT` waveform model
+        with the same mass ratio and spin components as the NR
+        simulation and eccentricity set to zero. Currently it contains
+        only the (2, 2) mode.
+        Returned when `include_zero_ecc` is True.
     """
     default_kwargs = {
         "filepath": None,
@@ -593,14 +637,19 @@ def load_sxs_waveform(**kwargs):
         dataDict.update({"params_dict": params_dict})
     # if include_zero_ecc is True, load zeroecc dataDict using IMRphenomT
     if kwargs["include_zero_ecc"]:
-        dataDict_zeroecc = get_zeroecc_dataDict_for_lvcnr(dataDict)
+        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(dataDict)
         dataDict.update({"t_zeroecc": dataDict_zeroecc["t_zeroecc"],
                          "hlm_zeroecc": dataDict_zeroecc["hlm_zeroecc"]})
     return dataDict
 
 
 def get_params_dict_from_sxs_metadata(metadata_path):
-    """Get binary parameters from metadata file."""
+    """Get binary parameters from sxs metadata file.
+
+    This file is usually located in the same directory as the waveform
+    file and has the name `metadata.txt`. It contains metadata related
+    to the NR simulation performed to obtain the waveform modes.
+    """
     fl = open(metadata_path, "r")
     lines = fl.readlines()
     fl.close()
@@ -619,7 +668,7 @@ def get_params_dict_from_sxs_metadata(metadata_path):
     return params_dict
 
 
-def get_zeroecc_dataDict_for_lvcnr(nr_dataDict):
+def get_zeroecc_dataDict_for_nr(nr_dataDict):
     """Get the zero ecc data dict corresponding to a nr data.
 
     Params:
@@ -920,7 +969,7 @@ def load_lvcnr_hack(**kwargs):
     return_dict.update({"params_dict": params_dict})
 
     if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
-        dataDict_zeroecc = get_zeroecc_dataDict_for_lvcnr(return_dict)
+        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(return_dict)
         return_dict.update(dataDict_zeroecc)
 
     return return_dict
