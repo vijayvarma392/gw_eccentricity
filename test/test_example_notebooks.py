@@ -20,6 +20,9 @@ def test_example_notebooks():
     """
     notebooks_list = glob(f'{git_home}/examples/*.ipynb')
     notebooks_list.sort()
+    # change dir to get the correct path to data files
+    curret_dir = os.getcwd()
+    os.chdir(f"{git_home}/examples/")
 
     if len(notebooks_list) == 0:
         raise Exception("No notebooks found!")
@@ -32,3 +35,6 @@ def test_example_notebooks():
 
         ep = ExecutePreprocessor(timeout=None, kernel_name=python_version)
         ep.preprocess(nb, {'metadata': {'path': '.'}})
+
+    # change back dir
+    os.chdir(curret_dir)
