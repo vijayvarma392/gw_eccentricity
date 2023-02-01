@@ -243,12 +243,16 @@ def measure_eccentricity(tref_in=None,
             details.
 
         debug_level: int
-            Run additional sanity checks based on debug_level.
-            Allowed values are -1, 0, 1 with the following actions
-            -1: All warnings are muted. Nothing is displayed.
-            0: Warnings are displayed and diagnostic plots are
+            Based on the debug_level, sanity checks either display
+            warnings or raise exceptions or do none of those and
+            display no message. See below for actions performed for a
+            given debug_level. Allowed values are -1, 0, 1 with the
+            following actions:
+            -1: No warning is issued.
+            0: Warnings are issued. Additionally diagnostic plots are
               generated wherever this is demanded.
-            1: All warnings are raised to Exceptions.
+            1: Same as debug_level = 0 but warnings are replaced by
+              exceptions.
             Default: -1.
 
         omega22_averaging_method:

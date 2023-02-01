@@ -309,20 +309,19 @@ def debug_message(message, debug_level):
 
     debug_level: int
         Indicator for level of debug message. Based on it, one of the
-        following is done:
-        -1: Nothing is printed. All warnings are ignored.
-        0: Warnings are printed.
-        1: All warnings becomes exceptions.
+        following actions if performed:
+        -1: No action is performed and hence no message is displayed.
+        0: Warning is issued with the input message.
+        1: Exception is raised with the input message.
         Default is -1.
     """
     debug_levels = [-1, 0, 1]
     if debug_level not in debug_levels:
         raise ValueError(
             f"Unknown debug_level {debug_level}. Should one "
-            f"of {debug_levels} with the following actions intended "
-            "-1: Nothing is printed. All warnings are ignored.\n"
-            "0: Warnings are printed.\n"
-            "1: All warnings becomes exceptions.")
+            f"of {debug_levels}. See "
+            "`gw_eccentricity.utils.debug_message` for action"
+            "performed with each debug level.")
     if debug_level == -1:
         # Do nothing
         return
