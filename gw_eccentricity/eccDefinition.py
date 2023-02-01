@@ -11,10 +11,10 @@ from .utils import time_deriv_4thOrder
 from .utils import interpolate
 from .utils import get_interpolant
 from .utils import get_default_spline_kwargs
+from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
-import warnings
 import copy
 
 
@@ -122,9 +122,14 @@ class eccDefinition:
                 eccDefinition.get_width_for_peak_finder_from_phase22 for more
                 details.
 
-            debug:
-                Run additional sanity checks if debug is True.
-                Default: True.
+            debug_level: int
+                Run additional sanity checks based on debug_level.
+                Allowed values are -1, 0, 1 with the following actions
+                -1: All warnings are muted. Nothing is displayed.
+                0: Warnings are displayed and diagnostic plots are
+                  generated wherever this is demanded.
+                1: All warnings are raised to Exceptions.
+                Default: -1.
 
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
@@ -168,8 +173,9 @@ class eccDefinition:
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
             if kw not in self.recognized_dataDict_keys:
-                warnings.warn(
-                    f"kw {kw} is not a recognized key word in dataDict.")
+                debug_message(
+                    f"kw {kw} is not a recognized key word in dataDict.",
+                    debug_level=self.debug_level)
         # Truncate dataDict if num_orbits_to_exclude_before_merger is not None
         self.dataDict, self.t_merger, self.amp22_merger, min_width_for_extrema \
             = self.truncate_dataDict_if_necessary(
@@ -204,6 +210,7 @@ class eccDefinition:
             "utils.get_default_spline_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega22_averaging_methods()
+        self.debug_level = self.extra_kwargs["debug_level"]
         # Measured values of eccentricities to perform diagnostic checks.  For
         # example to plot ecc vs time plot, or checking monotonicity of
         # eccentricity as a function of time. These are values of
@@ -435,7 +442,7 @@ class eccDefinition:
             "num_orbits_to_exclude_before_merger": 1,
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
-            "debug": True,
+            "debug_level": -1,
             "omega22_averaging_method": "orbit_averaged_omega22",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
@@ -471,30 +478,34 @@ class eccDefinition:
         # At the end of the data
         pericenters_at_end = pericenters[pericenters > apocenters[-1]]
         if len(pericenters_at_end) > 1:
-            warnings.warn(
+            debug_message(
                 f"Found {len(pericenters_at_end) - 1} extra pericenters at the"
-                " end. Extra pericenters are not chosen for building spline.")
+                " end. Extra pericenters are not chosen for building spline.",
+                self.debug_level)
             pericenters = pericenters[pericenters <= pericenters_at_end[0]]
         apocenters_at_end = apocenters[apocenters > pericenters[-1]]
         if len(apocenters_at_end) > 1:
-            warnings.warn(
+            debug_message(
                 f"Found {len(apocenters_at_end) - 1} extra apocenters at the "
-                "end. Extra apocenters are not chosen for building spline.")
+                "end. Extra apocenters are not chosen for building spline.",
+                self.debug_level)
             apocenters = apocenters[apocenters <= apocenters_at_end[0]]
 
         # At the start of the data
         pericenters_at_start = pericenters[pericenters < apocenters[0]]
         if len(pericenters_at_start) > 1:
-            warnings.warn(
+            debug_message(
                 f"Found {len(pericenters_at_start) - 1} extra pericenters at "
                 "the start. Extra pericenters are not chosen for building "
-                "spline.")
+                "spline.",
+                self.debug_level)
             pericenters = pericenters[pericenters >= pericenters_at_start[-1]]
         apocenters_at_start = apocenters[apocenters < pericenters[0]]
         if len(apocenters_at_start) > 1:
-            warnings.warn(
+            debug_message(
                 f"Found {len(apocenters_at_start) - 1} extra apocenters at the"
-                " start. Extra apocenters are not chosen for building spline.")
+                " start. Extra apocenters are not chosen for building spline.",
+                self.debug_level)
             apocenters = apocenters[apocenters >= apocenters_at_start[-1]]
 
         return pericenters, apocenters
@@ -552,7 +563,7 @@ class eccDefinition:
                                 self.t[first_pair_indices[1]]]
             phase_diff_current = delta_phase22_extrema[first_idx+1]
             phase_diff_previous = delta_phase22_extrema[first_idx]
-            warnings.warn(
+            debug_message(
                 f"At least a pair of {extrema_type} are too widely separated"
                 " from each other near the end of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
@@ -563,7 +574,8 @@ class eccDefinition:
                 "phase22 difference between the previous pair of "
                 f"{extrema_type}={phase_diff_previous/(4*np.pi):.2f}*4pi\n"
                 f"{extrema_type} after idx={first_pair_indices[0]}, i.e.,"
-                f"t > {first_pair_times[0]} are therefore dropped.")
+                f"t > {first_pair_times[0]} are therefore dropped.",
+                self.debug_level)
             extrema_location = extrema_location[extrema_location <=
                                                 extrema_location[first_idx+1]]
         # Check if ratio is too small
@@ -581,7 +593,7 @@ class eccDefinition:
                                self.t[last_pair_indices[1]]]
             phase_diff_current = delta_phase22_extrema[last_idx+1]
             phase_diff_previous = delta_phase22_extrema[last_idx]
-            warnings.warn(
+            debug_message(
                 f"At least a pair of {extrema_type} are too widely separated"
                 " from each other near the start of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
@@ -592,7 +604,8 @@ class eccDefinition:
                 f"phase22 difference between the next pair of {extrema_type}="
                 f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
                 f"{extrema_type} before {last_pair_indices[1]}, i.e., t < t="
-                f"{last_pair_times[-1]} are therefore dropped.")
+                f"{last_pair_times[-1]} are therefore dropped.",
+                self.debug_level)
             extrema_location = extrema_location[extrema_location >=
                                                 extrema_location[last_idx]]
         return extrema_location
@@ -628,7 +641,7 @@ class eccDefinition:
                 first_pair = [extrema_location[first_index],
                               extrema_location[first_index+1]]
                 first_pair_times = self.t[first_pair]
-                warnings.warn(
+                debug_message(
                     f"At least a pair of {extrema_type} are too close to "
                     "each other with phase22 difference = "
                     f"{phase22_diff_extrema[first_index]/(4*np.pi):.2f}*4pi.\n"
@@ -637,7 +650,8 @@ class eccDefinition:
                     f"i.e., t={first_pair_times}.\n"
                     f"{extrema_type} after {extrema_location[first_index]}"
                     f" i.e., t > {self.t[extrema_location[first_index]]} "
-                    "are dropped.")
+                    "are dropped.",
+                    self.debug_level)
                 extrema_location = extrema_location[
                     extrema_location <= extrema_location[first_index]]
             # Look for too close pairs in the first half
@@ -646,7 +660,7 @@ class eccDefinition:
                 last_pair = [extrema_location[last_index],
                              extrema_location[last_index-1]]
                 last_pair_times = self.t[last_pair]
-                warnings.warn(
+                debug_message(
                     f"At least a pair of {extrema_type} are too close to "
                     "each other with phase22 difference = "
                     f"{phase22_diff_extrema[last_index]/(4*np.pi):.2f}*4pi.\n"
@@ -655,7 +669,8 @@ class eccDefinition:
                     f"i.e., t={last_pair_times}.\n"
                     f" {extrema_type} before {extrema_location[last_index]}"
                     f" i.e., t < {self.t[extrema_location[last_index]]} "
-                    "are dropped.")
+                    "are dropped.",
+                    self.debug_level)
                 extrema_location = extrema_location[
                     extrema_location >= extrema_location[last_index]]
         return extrema_location
@@ -787,9 +802,11 @@ class eccDefinition:
                                   f" Try one of {recommended_methods}.")
             else:
                 method_message = ""
-            warnings.warn(f"{message} {extrema_type} found. There can be "
+            debug_level = self.debug_level if num_extrema == 2 else 1
+            debug_message(f"{message} {extrema_type} found. There can be "
                           "problem when building interpolant through the "
-                          f"{extrema_type}.{method_message}")
+                          f"{extrema_type}.{method_message}",
+                          debug_level=debug_level)
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
@@ -812,8 +829,9 @@ class eccDefinition:
         """
         num_dropped_extrema = len(original_extrema) - len(new_extrema)
         if num_dropped_extrema > (threshold_fraction * len(original_extrema)):
-            warnings.warn(f"More than {threshold_fraction * 100}% of the "
-                          f"original {extrema_type} was dropped.")
+            debug_message(f"More than {threshold_fraction * 100}% of the "
+                          f"original {extrema_type} was dropped.",
+                          self.debug_level)
 
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -882,7 +900,7 @@ class eccDefinition:
             and mean anomaly are measured.
             fref_out is included in the returned dictionary only when fref_in
             is provided.  Units of fref_out is the same as that of fref_in.
-        
+
             fref_out is set as
             fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
             where fref_min/fref_max are minimum/maximum allowed reference
@@ -1021,11 +1039,11 @@ class eccDefinition:
 
         # check if eccentricity is positive
         if any(self.eccentricity < 0):
-            warnings.warn("Encountered negative eccentricity.")
+            debug_message("Encountered negative eccentricity.",
+                          self.debug_level)
 
         # check if eccentricity is monotonic and convex
-        if self.extra_kwargs["debug"]:
-            self.check_monotonicity_and_convexity()
+        self.check_monotonicity_and_convexity()
 
         # If tref_in is a scalar, return a scalar
         if tref_in_ndim == 0:
@@ -1191,13 +1209,15 @@ class eccDefinition:
         if any(orb_phase_diff < min_orb_phase_diff):
             too_close_idx = np.where(orb_phase_diff < min_orb_phase_diff)[0]
             too_close_times = t_at_extrema[too_close_idx]
-            warnings.warn(f"At least a pair of {extrema_type} are too close."
+            debug_message(f"At least a pair of {extrema_type} are too close."
                           " Minimum orbital phase diff is "
                           f"{min(orb_phase_diff)}. Times of occurrences are"
-                          f" {too_close_times}")
+                          f" {too_close_times}",
+                          self.debug_level)
         if any(np.abs(orb_phase_diff - np.pi)
                < np.abs(orb_phase_diff - 2 * np.pi)):
-            warnings.warn("Phase shift closer to pi than 2 pi detected.")
+            debug_message("Phase shift closer to pi than 2 pi detected.",
+                          self.debug_level)
         # This might suggest that the extrema finding method missed an extrema.
         # We will check if the phase diff at an extrema is greater than
         # max_orb_phase_diff_factor times the orb_phase_diff at the
@@ -1209,10 +1229,11 @@ class eccDefinition:
             too_far_idx = np.where(orb_phase_diff_ratio
                                    > max_orb_phase_diff_factor)[0]
             too_far_times = t_at_extrema[too_far_idx]
-            warnings.warn(f"At least a pair of {extrema_type} are too far."
+            debug_message(f"At least a pair of {extrema_type} are too far."
                           " Maximum orbital phase diff is "
                           f"{max(orb_phase_diff)}. Times of occurrences are"
-                          f" {too_far_times}")
+                          f" {too_far_times}",
+                          self.debug_level)
         return orb_phase_diff, orb_phase_diff_ratio
 
     def check_monotonicity_and_convexity(self,
@@ -1230,14 +1251,14 @@ class eccDefinition:
 
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt_for_checks > 0):
-            warnings.warn("Ecc(t) is non monotonic.")
+            debug_message("Ecc(t) is non monotonic.", self.debug_level)
 
         # Is ecc(t) a convex function? That is, is the second
         # derivative always positive?
         if check_convexity:
             self.d2ecc_dt_for_checks = self.derivative_of_eccentricity(n=2)
             if any(self.d2ecc_dt_for_checks > 0):
-                warnings.warn("Ecc(t) is concave.")
+                debug_message("Ecc(t) is concave.", self.debug_level)
 
     def check_pericenters_and_apocenters_appear_alternately(self):
         """Check that pericenters and apocenters appear alternately."""
@@ -1245,11 +1266,12 @@ class eccDefinition:
         # of pericenters and apocenters should differ by one.
         if abs(len(self.pericenters_location)
                - len(self.apocenters_location)) >= 2:
-            warnings.warn(
+            debug_message(
                 "Number of pericenters and number of apocenters differ by "
                 f"{abs(len(self.pericenters_location) - len(self.apocenters_location))}"
                 ". This implies that pericenters and apocenters are not "
-                "appearing alternately.")
+                "appearing alternately.",
+                self.debug_level)
         else:
             # If the number of pericenters and apocenters differ by zero or one
             # then we do the following:
@@ -1289,9 +1311,10 @@ class eccDefinition:
             # If pericenters and apocenters appear alternately then all the
             # time differences in t_diff should be positive
             if any(t_diff < 0):
-                warnings.warn(
+                debug_message(
                     "There is at least one instance where "
-                    "pericenters and apocenters do not appear alternately.")
+                    "pericenters and apocenters do not appear alternately.",
+                    self.debug_level)
 
     def compute_res_amp_and_omega22(self):
         """Compute residual amp22 and omega22."""
@@ -1387,7 +1410,7 @@ class eccDefinition:
 
     def get_orbit_averaged_omega22_at_pericenters(self):
         """Get orbital average of omega22 between two consecutive pericenters.
-        
+
         Orbital average of omega22 between two consecutive pericenters
         i-th and (i+1)-th is given by
         <omega22>_i = (int_t[i]^t[i+1] omega22(t) dt)/(t[i+1] - t[i])
@@ -1415,13 +1438,13 @@ class eccDefinition:
         <omega22>_i is associated with the temporal midpoint between the i-th
         and (i+1)-th extrema,
         <t>_i = (t[i] + t[i+1]) / 2
-        
+
         We do this averaging for pericenters and apocenters using the functions
         `get_orbit_averaged_omega22_at_pericenters` and
         `get_orbit_averaged_omega22_at_apocenters` and combine the results.
         The combined array is then sorted using the sorting indices from
         `get_t_average_for_orbit_averaged_omega22`.
-        
+
         Finally we interpolate the data {<t>_i, <omega22>_i} and evaluate the
         interpolant at the input times `t`.
         """
@@ -1433,12 +1456,15 @@ class eccDefinition:
             = self.get_orbit_averaged_omega22_at_apocenters()
         # check monotonicity of the omega22 average
         self.check_monotonicity_of_omega22_average(
-            self.orbit_averaged_omega22_pericenters, "omega22 averaged [pericenter to pericenter]")
+            self.orbit_averaged_omega22_pericenters,
+            "omega22 averaged [pericenter to pericenter]")
         self.check_monotonicity_of_omega22_average(
-            self.orbit_average_omega22_apocenters, "omega22 averaged [apocenter to apocenter]")
+            self.orbit_average_omega22_apocenters,
+            "omega22 averaged [apocenter to apocenter]")
         # combine the average omega22 at pericenters and apocenters
-        orbit_averaged_omega22 = np.append(self.orbit_average_omega22_apocenters,
-                                        self.orbit_averaged_omega22_pericenters)
+        orbit_averaged_omega22 = np.append(
+            self.orbit_average_omega22_apocenters,
+            self.orbit_averaged_omega22_pericenters)
 
         # get the times associated to the orbit averaged omega22
         if not hasattr(self, "t_for_orbit_averaged_omega22"):
@@ -1473,7 +1499,7 @@ class eccDefinition:
             change_at_first_idx = (
                 omega22_average[first_idx+1]
                 - omega22_average[first_idx])
-            if self.extra_kwargs["debug"]:
+            if self.debug_level == 0:
                 style = "APS"
                 use_fancy_plotsettings(style=style)
                 nrows = 4
@@ -1522,7 +1548,7 @@ class eccDefinition:
                 fig.savefig(figName)
                 plot_info = f"See the plot saved as {figName}."
             else:
-                plot_info = "For more details use debug=True in extra_kwargs"
+                plot_info = "For more details use debug_level=0 in extra_kwargs"
             raise Exception(
                 f"{description} are non-monotonic.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
@@ -1693,8 +1719,9 @@ class eccDefinition:
                                   self.t_for_omega22_average)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
-                warnings.warn(f"tref_in from fref_in using method {method} is"
-                              " not monotonically increasing.")
+                debug_message(f"tref_in from fref_in using method {method} is"
+                              " not monotonically increasing.",
+                              self.debug_level)
             return tref_in, fref_out
         else:
             raise KeyError(f"Omega22 averaging method {method} does not exist."

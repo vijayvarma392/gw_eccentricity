@@ -75,7 +75,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             "eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods()")
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
-        self.debug = self.extra_kwargs["debug"]
+        # turn debug plots if debug_level != -1
+        self.debug = False if self.debug_level == -1 else True
         # If return_diagnostic_data is true then return a dictionary of data for diagnostics.
         if self.return_diagnostic_data:
             self.diagnostic_data_dict = {

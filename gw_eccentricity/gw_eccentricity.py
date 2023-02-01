@@ -242,9 +242,14 @@ def measure_eccentricity(tref_in=None,
             eccDefinition.get_width_for_peak_finder_from_phase22 for more
             details.
 
-        debug:
-            Run additional sanity checks if debug is True.
-            Default: True.
+        debug_level: int
+            Run additional sanity checks based on debug_level.
+            Allowed values are -1, 0, 1 with the following actions
+            -1: All warnings are muted. Nothing is displayed.
+            0: Warnings are displayed and diagnostic plots are
+              generated wherever this is demanded.
+            1: All warnings are raised to Exceptions.
+            Default: -1.
 
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous

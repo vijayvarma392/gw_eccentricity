@@ -297,3 +297,38 @@ def get_interpolant(oldX,
         raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
                          " of ['spline', 'monotonic_spline']")
     return interpolant
+
+
+def debug_message(message, debug_level):
+    """Show message based on debug_level.
+
+    parameters:
+    -----------
+    message: str
+        Message to display.
+
+    debug_level: int
+        Indicator for level of debug message. Based on it, one of the
+        following is done:
+        -1: Nothing is printed. All warnings are ignored.
+        0: Warnings are printed.
+        1: All warnings becomes exceptions.
+        Default is -1.
+    """
+    debug_levels = [-1, 0, 1]
+    if debug_level not in debug_levels:
+        raise ValueError(
+            f"Unknown debug_level {debug_level}. Should one "
+            f"of {debug_levels} with the following actions intended "
+            "-1: Nothing is printed. All warnings are ignored.\n"
+            "0: Warnings are printed.\n"
+            "1: All warnings becomes exceptions.")
+    if debug_level == -1:
+        # Do nothing
+        return
+    if debug_level == 0:
+        # Issue warning
+        warnings.warn(message)
+    if debug_level == 1:
+        # raise Exception
+        raise Exception(message)
