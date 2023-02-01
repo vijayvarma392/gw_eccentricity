@@ -494,8 +494,10 @@ def load_sxs_catalogformat(**kwargs):
     ----------
     kwargs: Dictionary with the followings keys
     filepath: str
-        Path to waveform file in sxs catalog format. The name of the
-        file is usually `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
+        Path to waveform file in sxs catalog format. The file should
+        be named rhOverM_Asymptotic_GeometricUnits_CoM.h5, and
+        contains the waveform extrapolated to future null-infinity and
+        corrected for initial center-of-mass drift.
         This must be provided to load waveform modes.
         Default is None which raises exception.
 
@@ -507,11 +509,11 @@ def load_sxs_catalogformat(**kwargs):
 
     include_zero_ecc: bool
         If True, returns `IMRPhenomT` waveform mode (only (2, 2) mode)
-        for the same set of parameters except eccentricity set to
+        for the same set of parameters except with eccentricity set to
         zero.  Requires metadata file (which is provided using
         `metadata_path`, see below) to get the binary parameters.
 
-        Also need `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.
+        Also needs `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.
         Currently it is used to get an estimate for the intial
         frequency to use for generating `IMRPhenomT` waveform based on
         the inspiral time of the NR waveform.  Download it from
@@ -549,19 +551,18 @@ def load_sxs_catalogformat(**kwargs):
     -------
     Returns a dictionary with the following quantities:
     t:
-        1d uniform array of times in dimensionless units and shifted
-        such that t=0 coincides with the peak of the waveform
-        amplitude (obtained using all available modes in
-        `mode_array`). The original times of the NR data and the user
-        provided time step `dt` is used to create this uniform array.
-        This array of times is obtained after throwing away the intial
-        times that correspond to junk radiation determined
-        by `num_orbits_to_remove_as_junk`.
+        1d array of times, in dimensionless units, with uniform time
+        step `dt`, shifted such t=0 coincides with the peak waveform
+        amplitude (obtained using all requested modes in
+        mode_array). This already discards the first
+        num_orbits_to_remove_as_junk orbits.
+
     hlm:
-        Dictionary of NR waveform modes interpolated on uniform time
-        grid `t` (see above) obtained after throwing away initial junk
-        radition using `num_orbits_to_remove_as_junk`. The dictionary
-        contains all available modes given in `mode_array`.
+        Dictionary of NR waveform modes interpolated onto the time
+        array, `t`. This already discards the first
+        `num_orbits_to_remove_as_junk orbits`. The dictionary contains
+        all requested modes in `mode_array`.  To get a particular mode,
+        do h22 = hlm[(2, 2)].
 
     Optionally,
     params_dict:
@@ -620,8 +621,8 @@ def load_sxs_catalogformat(**kwargs):
             t = np.arange(time[0], time[-1], dt)
         hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
         amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(1j * phase_interp)
+        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
+        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
         modes_dict.update({(ell, m): hlm_interp})
 
     # remove junk from the begining of the data
@@ -665,6 +666,10 @@ def get_params_dict_from_sxs_metadata(metadata_path):
             m1 = float(line.split("=")[-1].strip())
         if "reference-mass2" in line:
             m2 = float(line.split("=")[-1].strip())
+    # numerical noise can make m1 slightly greater than m2. Catch this
+    # whenver it happens
+    if m1 > m2:
+        raise Exception(f"SXS metadata gives m1 = {m1} > m2 = {m2}")
     params_dict = {"q": m1/m2,
                    "chi1": chi1,
                    "chi2": chi2}
