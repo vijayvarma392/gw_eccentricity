@@ -299,7 +299,8 @@ def get_interpolant(oldX,
     return interpolant
 
 
-def debug_message(message, debug_level):
+def debug_message(message, debug_level, important=True,
+                  point_to_verbose_output=False):
     """Show message based on debug_level.
 
     parameters:
@@ -311,11 +312,20 @@ def debug_message(message, debug_level):
         Indicator for level of debug message. Based on it, one of the
         following actions if performed:
         -1: No action is performed and hence no message is displayed.
-        0: Warning is issued with the input message.
-        1: Exception is raised with the input message.
-        Default is -1.
+        0: Warning is issued with the input message only if important=True
+        1: Warning is issued with the input message.
+        2: Exception is raised with the input message.
+
+    important: bool
+        When True, debug_level = 0 issues warning with input message.
+        Default is True.
+
+    point_to_verbose_output: bool
+        When True, if debug_level is 0 and important is True, points to
+        debug_level = 1 for more verbose output.
+        Default is False
     """
-    debug_levels = [-1, 0, 1]
+    debug_levels = [-1, 0, 1, 2]
     if debug_level not in debug_levels:
         raise ValueError(
             f"Unknown debug_level {debug_level}. Should one "
@@ -325,9 +335,11 @@ def debug_message(message, debug_level):
     if debug_level == -1:
         # Do nothing
         return
-    if debug_level == 0:
+    if (debug_level == 0 and important) or debug_level == 1:
+        if debug_level == 0 and point_to_verbose_output:
+            message += "\nFor more verbose output use `debug_level=1`."
         # Issue warning
         warnings.warn(message)
-    if debug_level == 1:
+    if debug_level == 2:
         # raise Exception
         raise Exception(message)

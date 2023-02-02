@@ -75,8 +75,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             "eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods()")
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
-        # turn debug plots if debug_level != -1
-        self.debug = False if self.debug_level == -1 else True
+        # show more verbose output if debug_level is >= 1
+        self.verbose = True if self.debug_level >= 1 else False
         # If return_diagnostic_data is true then return a dictionary of data for diagnostics.
         if self.return_diagnostic_data:
             self.diagnostic_data_dict = {
@@ -202,8 +202,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # diagnostic output?
         # setting diag_file to a valid pdf-filename will trigger diagnostic
         # plots
-        verbose = self.debug
-        diag_file = (f"Diagnostics-{self.method}-{extrema_type}.pdf") if verbose else ""
+        # Print more verbose output if debug_level >= 1
+        verbose = self.verbose
+        # Create debug plots if debug_plots is True
+        diag_file = (f"Diagnostics-{self.method}-{extrema_type}.pdf") if self.debug_plots else ""
         pp = PdfPages(diag_file) if diag_file != "" else False
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema

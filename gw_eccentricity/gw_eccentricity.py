@@ -249,11 +249,16 @@ def measure_eccentricity(tref_in=None,
             given debug_level. Allowed values are -1, 0, 1 with the
             following actions:
             -1: No warning is issued.
-            0: Warnings are issued. Additionally diagnostic plots are
-              generated wherever this is demanded.
-            1: Same as debug_level = 0 but warnings are replaced by
+            0: Only important warnings are issued.
+            1: All warnings are issued.
+            2: Same as debug_level = 1 but warnings are replaced by
               exceptions.
-            Default: -1.
+            Default: 0.
+
+        debug_plots: bool
+            If True, diagnostic plots are generated, for example, in
+            Fits methods.
+            Default is False.
 
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
