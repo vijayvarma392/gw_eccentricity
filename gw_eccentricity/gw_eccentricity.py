@@ -251,8 +251,10 @@ def measure_eccentricity(tref_in=None,
             Default: 0.
 
         debug_plots: bool
-            If True, diagnostic plots are generated, for example, in
-            Fits methods.
+            If True, diagnostic plots are generated. This can be
+            computationally expensive and should be used only for
+            debugging purpose. When True, look for figures saved as
+            `gwecc_{method_name}_*.pdf`.
             Default is False.
 
         omega22_averaging_method:

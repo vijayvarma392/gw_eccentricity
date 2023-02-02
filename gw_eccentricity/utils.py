@@ -317,7 +317,8 @@ def debug_message(message, debug_level, important=True,
         2: Exception is raised with the input message.
 
     important: bool
-        When True, debug_level = 0 issues warning with input message.
+        Only if True, the message gets printed when debug_level=0. For
+        other debug_levels, this does nothing.
         Default is True.
 
     point_to_verbose_output: bool

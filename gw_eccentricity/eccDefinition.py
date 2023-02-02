@@ -131,8 +131,10 @@ class eccDefinition:
                 Default: 0.
 
             debug_plots: bool
-                If True, diagnostic plots are generated, for example,
-                in Fits methods.
+                If True, diagnostic plots are generated. This can be
+                computationally expensive and should be used only for
+                debugging purpose. When True, look for figures saved
+                as `gwecc_{method_name}_*.pdf`.
                 Default is False.
 
             omega22_averaging_method:
@@ -223,7 +225,7 @@ class eccDefinition:
         # time array in dataDict lying between tmin and tmax.  tmin is
         # max(t_pericenters, t_apocenters) and tmax is min(t_pericenters,
         # t_apocenters) Initially set to None, but will get computed when
-        # necessary, in either derivative_of_eccentricity or plot_measured_ecc.
+        # necessary, in either derivative_of_eccentricity or plot_eccentricity.
         self.ecc_for_checks = None
         # Spline interpolant of measured eccentricity as function of time built
         # using ecc_for_checks at t_for_checks. This is used to get
@@ -1057,6 +1059,11 @@ class eccDefinition:
         if fref_in is not None and fref_in_ndim == 0:
             self.fref_out = self.fref_out[0]
 
+        if self.debug_plots:
+            # make a plot for diagnostics
+            fig, axes = self.make_diagnostic_plots()
+            fig.savefig(f"gwecc_{self.method}_diagnostics.pdf")
+
         return_dict = {"eccentricity": self.eccentricity,
                        "mean_anomaly": self.mean_anomaly}
         if fref_in is not None:
@@ -1255,7 +1262,7 @@ class eccDefinition:
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt_for_checks > 0):
             idx = np.where(self.decc_dt_for_checks > 0)[0]
-            range = self.get_range_from_indices(idx)
+            range = self.get_range_from_indices(idx, self.t_for_checks)
             message = ("egw(t) is nonmonotonic "
                        f"{'at' if len(idx) == 1 else 'in the range'} {range}")
             debug_message(message, self.debug_level,
@@ -1268,7 +1275,7 @@ class eccDefinition:
                 self.t_for_checks, n=2)
             if any(self.d2ecc_dt_for_checks > 0):
                 idx = np.where(self.d2ecc_dt_for_checks > 0)[0]
-                range = self.get_range_from_indices(idx)
+                range = self.get_range_from_indices(idx, self.t_for_checks)
                 message = ("Second derivative of egw(t) is positive "
                            f"{'at' if len(idx) == 1 else 'in the range'} "
                            f"{range}")
@@ -1276,13 +1283,13 @@ class eccDefinition:
                               self.debug_level,
                               point_to_verbose_output=True)
 
-    def get_range_from_indices(self, indices):
-        """Get the range of time from indices."""
+    def get_range_from_indices(self, indices, times):
+        """Get the range of time from indices for gives times array."""
         if len(indices) == 1:
-            return self.t_for_checks[indices[0]]
+            return times[indices[0]]
         else:
-            return [self.t_for_checks[indices[0]],
-                    self.t_for_checks[indices[-1]]]
+            return [times[indices[0]],
+                    times[indices[-1]]]
 
     def check_pericenters_and_apocenters_appear_alternately(self):
         """Check that pericenters and apocenters appear alternately."""
@@ -1568,7 +1575,7 @@ class eccDefinition:
                 axes[0].set_title(
                     self.extra_kwargs["omega22_averaging_method"])
                 fig.tight_layout()
-                figName = f"./debug_{description.replace(' ', '_')}.pdf"
+                figName = f"./gwecc_{self.method}_{description.replace(' ', '_')}.pdf"
                 fig.savefig(figName)
                 plot_info = f"See the plot saved as {figName}."
             else:
@@ -1896,8 +1903,8 @@ class eccDefinition:
             Axes object.
         """
         # Make a list of plots we want to add
-        list_of_plots = [self.plot_measured_ecc,
-                         self.plot_mean_ano,
+        list_of_plots = [self.plot_eccentricity,
+                         self.plot_mean_anomaly,
                          self.plot_omega22,
                          self.plot_data_used_for_finding_extrema,
                          self.plot_decc_dt,
@@ -1950,7 +1957,7 @@ class eccDefinition:
         fig.tight_layout()
         return fig, axarr
 
-    def plot_measured_ecc(
+    def plot_eccentricity(
             self,
             fig=None,
             ax=None,
@@ -2095,7 +2102,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_mean_ano(
+    def plot_mean_anomaly(
             self,
             fig=None,
             ax=None,
