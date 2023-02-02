@@ -243,16 +243,11 @@ def measure_eccentricity(tref_in=None,
             details.
 
         debug_level: int
-            Based on the debug_level, sanity checks either display
-            warnings or raise exceptions or do none of those and
-            display no message. See below for actions performed for a
-            given debug_level. Allowed values are -1, 0, 1 with the
-            following actions:
-            -1: No warning is issued.
+            Controls the output of warnings, depending on the value passed:
+            -1: All warnings are suppressed. NOTE: Use at your own risk!
             0: Only important warnings are issued.
-            1: All warnings are issued.
-            2: Same as debug_level = 1 but warnings are replaced by
-              exceptions.
+            1: All warnings are issued. Use when investigating.
+            2: All warnings become exceptions.
             Default: 0.
 
         debug_plots: bool

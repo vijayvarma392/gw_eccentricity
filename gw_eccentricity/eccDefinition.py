@@ -123,16 +123,11 @@ class eccDefinition:
                 details.
 
             debug_level: int
-                Based on the debug_level, sanity checks either display
-                warnings or raise exceptions or do none of those and
-                display no message. See below for actions performed
-                for a given debug_level. Allowed values are -1, 0, 1
-                with the following actions:
-                -1: No warning is issued.
+                Controls the output of warnings, depending on the value passed:
+                -1: All warnings are suppressed. NOTE: Use at your own risk!
                 0: Only important warnings are issued.
-                1: All warnings are issued.
-                2: Same as debug_level = 1 but warnings are replaced
-                  by exceptions.
+                1: All warnings are issued. Use when investigating.
+                2: All warnings become exceptions.
                 Default: 0.
 
             debug_plots: bool
@@ -491,15 +486,15 @@ class eccDefinition:
         if len(pericenters_at_end) > 1:
             debug_message(
                 f"Found {len(pericenters_at_end) - 1} extra pericenters at the"
-                " end. Extra pericenters are not chosen for building spline.",
-                self.debug_level, important=False)
+                " end. The extra pericenters are not used when building the "
+                "spline.", self.debug_level, important=False)
             pericenters = pericenters[pericenters <= pericenters_at_end[0]]
         apocenters_at_end = apocenters[apocenters > pericenters[-1]]
         if len(apocenters_at_end) > 1:
             debug_message(
                 f"Found {len(apocenters_at_end) - 1} extra apocenters at the "
-                "end. Extra apocenters are not chosen for building spline.",
-                self.debug_level, important=False)
+                "end. The extra apocenters are not used when building the "
+                "spline.", self.debug_level, important=False)
             apocenters = apocenters[apocenters <= apocenters_at_end[0]]
 
         # At the start of the data
@@ -507,16 +502,15 @@ class eccDefinition:
         if len(pericenters_at_start) > 1:
             debug_message(
                 f"Found {len(pericenters_at_start) - 1} extra pericenters at "
-                "the start. Extra pericenters are not chosen for building "
-                "spline.",
-                self.debug_level, important=False)
+                "the start. The extra pericenters are not used when building "
+                "the spline.", self.debug_level, important=False)
             pericenters = pericenters[pericenters >= pericenters_at_start[-1]]
         apocenters_at_start = apocenters[apocenters < pericenters[0]]
         if len(apocenters_at_start) > 1:
             debug_message(
                 f"Found {len(apocenters_at_start) - 1} extra apocenters at the"
-                " start. Extra apocenters are not chosen for building spline.",
-                self.debug_level, important=False)
+                " start. The extra apocenters are not used when building the "
+                "spline.", self.debug_level, important=False)
             apocenters = apocenters[apocenters >= apocenters_at_start[-1]]
 
         return pericenters, apocenters
@@ -806,9 +800,10 @@ class eccDefinition:
         if num_extrema < 2:
             recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
             if self.method not in recommended_methods:
-                method_message = (f"Possibly `{self.method}` method is not "
-                                  f"efficient to detect the {extrema_type}."
-                                  f" Try one of {recommended_methods}.")
+                method_message = ("It's possible that the eccentricity is too "
+                                  f"low for the {self.method} method to detect"
+                                  f" the {extrema_type}. Try one of "
+                                  f"{recommended_methods}.")
             else:
                 method_message = ""
             raise Exception(
@@ -1259,7 +1254,11 @@ class eccDefinition:
 
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt_for_checks > 0):
-            debug_message("Ecc(t) is non monotonic.", self.debug_level,
+            idx = np.where(self.decc_dt_for_checks > 0)[0]
+            range = self.get_range_from_indices(idx)
+            message = ("egw(t) is nonmonotonic "
+                       f"{'at' if len(idx) == 1 else 'in the range'} {range}")
+            debug_message(message, self.debug_level,
                           point_to_verbose_output=True)
 
         # Is ecc(t) a convex function? That is, is the second
@@ -1267,8 +1266,22 @@ class eccDefinition:
         if check_convexity:
             self.d2ecc_dt_for_checks = self.derivative_of_eccentricity(n=2)
             if any(self.d2ecc_dt_for_checks > 0):
-                debug_message("Ecc(t) is concave.", self.debug_level,
+                idx = np.where(self.d2ecc_dt_for_checks > 0)[0]
+                range = self.get_range_from_indices(idx)
+                message = ("Second derivative of egw(t) is negative "
+                           f"{'at' if len(idx) == 1 else 'in the range'} "
+                           f"{range}")
+                debug_message(f"{message} expected to be always positive",
+                              self.debug_level,
                               point_to_verbose_output=True)
+
+    def get_range_from_indices(self, indices):
+        """Get the range of time from indices."""
+        if len(indices) == 1:
+            return self.t_for_checks[indices[0]]
+        else:
+            return [self.t_for_checks[indices[0]],
+                    self.t_for_checks[indices[-1]]]
 
     def check_pericenters_and_apocenters_appear_alternately(self):
         """Check that pericenters and apocenters appear alternately."""
