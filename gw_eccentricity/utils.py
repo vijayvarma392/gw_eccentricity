@@ -339,8 +339,9 @@ def debug_message(message, debug_level, important=True,
     if (debug_level == 0 and important) or debug_level == 1:
         if debug_level == 0 and point_to_verbose_output:
             message += "\nFor more verbose output use `debug_level=1`."
-        # Issue warning
-        warnings.warn(message)
+        # Issue warning. Use stacklevel=2 to point to actual line number
+        # causing this warning instead of pointing to here.
+        warnings.warn(message, stacklevel=2)
     if debug_level == 2:
         # raise Exception
         raise Exception(message)
