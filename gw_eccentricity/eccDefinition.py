@@ -1754,7 +1754,7 @@ class eccDefinition:
             if any(np.diff(tref_in) <= 0):
                 debug_message(f"tref_in from fref_in using method {method} is"
                               " not monotonically increasing.",
-                              self.debug_level, point_to_verbose_output=True)
+                              self.debug_level, important=False)
             return tref_in, fref_out
         else:
             raise KeyError(f"Omega22 averaging method {method} does not exist."
@@ -1766,7 +1766,7 @@ class eccDefinition:
 
         Depending on the omega22 averaging method, this function returns the
         minimum and maximum allowed reference frequency of 22 mode.
-        
+
         Note: If omega22_average is already computed using a `method` and
         therefore is not None, then it returns the minimum and maximum
         of that omega22_average and does not recompute the omega22_average using
