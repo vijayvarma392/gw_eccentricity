@@ -815,7 +815,9 @@ class eccDefinition:
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
-                                          threshold_fraction=0.5):
+                                          threshold_fraction=0.5,
+                                          debug_level=1,
+                                          skip=False):
         """Check if too many extrema was dropped.
 
         Parameters:
@@ -831,12 +833,23 @@ class eccDefinition:
             Fraction of the original extrema.
             When num_dropped_extrema > threshold_fraction * len(original_extrema),
             an warning is raised.
+        debug_level: int
+            See under utils.debug_message.
+        skip:
+            If True, the function returns without executing the body,
+            and hence no checks are done.  This is useful when the
+            check is muted, for example when `debug_level=-1`, and we
+            want to suppress warnings.  To avoid unnecessary
+            computation, one can use `skip=True`.
+            Default is False.
         """
+        if skip:
+            return
         num_dropped_extrema = len(original_extrema) - len(new_extrema)
         if num_dropped_extrema > (threshold_fraction * len(original_extrema)):
             debug_message(f"More than {threshold_fraction * 100}% of the "
                           f"original {extrema_type} was dropped.",
-                          self.debug_level, important=False)
+                          debug_level, important=False)
 
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -941,25 +954,38 @@ class eccDefinition:
         self.pericenters_location, self.apocenters_location \
             = self.get_good_extrema(pericenters, apocenters)
 
-        if self.debug_level >= 1:
-            # Check if we dropped too many extrema.
-            self.check_if_dropped_too_many_extrema(original_pericenters,
-                                                   self.pericenters_location,
-                                                   "pericenters", 0.5)
-            self.check_if_dropped_too_many_extrema(original_apocenters,
-                                                   self.apocenters_location,
-                                                   "apocenters", 0.5)
-            # check that pericenters and apocenters are appearing alternately
-            self.check_pericenters_and_apocenters_appear_alternately()
-            # check extrema separation
-            self.orb_phase_diff_at_pericenters, \
-                self.orb_phase_diff_ratio_at_pericenters \
-                = self.check_extrema_separation(self.pericenters_location,
-                                                "pericenters")
-            self.orb_phase_diff_at_apocenters, \
-                self.orb_phase_diff_ratio_at_apocenters \
-                = self.check_extrema_separation(self.apocenters_location,
-                                                "apocenters")
+        # Check if we dropped too many extrema.
+        skip = self.debug_level <= 0
+        # if skip is True, checks are skipped.  For debug_level <= 0,
+        # any warnings from these checks are suppressed. Therefore, we
+        # skip the checks for such cases since these checks does not
+        # affect the eccentricity measurement in any other ways.
+        self.check_if_dropped_too_many_extrema(original_pericenters,
+                                               self.pericenters_location,
+                                               "pericenters", 0.5,
+                                               self.debug_level,
+                                               skip=skip)
+        self.check_if_dropped_too_many_extrema(original_apocenters,
+                                               self.apocenters_location,
+                                               "apocenters", 0.5,
+                                               self.debug_level,
+                                               skip=skip)
+        # check that pericenters and apocenters are appearing alternately
+        self.check_pericenters_and_apocenters_appear_alternately(
+            self.debug_level, self.debug_level <= 0)
+        # check extrema separation
+        self.orb_phase_diff_at_pericenters, \
+            self.orb_phase_diff_ratio_at_pericenters \
+            = self.check_extrema_separation(self.pericenters_location,
+                                            "pericenters",
+                                            debug_level=self.debug_level,
+                                            skip=skip)
+        self.orb_phase_diff_at_apocenters, \
+            self.orb_phase_diff_ratio_at_apocenters \
+            = self.check_extrema_separation(self.apocenters_location,
+                                            "apocenters",
+                                            debug_level=self.debug_level,
+                                            skip=skip)
 
         # Build the interpolants of omega22 at the extrema
         self.omega22_pericenters_interp = self.interp_extrema("pericenters")
@@ -1210,8 +1236,24 @@ class eccDefinition:
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
                                  max_orb_phase_diff_factor=1.5,
-                                 min_orb_phase_diff=np.pi):
-        """Check if two extrema are too close or too far."""
+                                 min_orb_phase_diff=np.pi,
+                                 debug_level=1,
+                                 skip=False):
+        """Check if two extrema are too close or too far.
+
+        parameters:
+        debug_level: int
+            See under utils.debug_message.
+        skip:
+            If True, the function returns without executing the body,
+            and hence no checks are done.  This is useful when the
+            check is muted, for example when `debug_level=-1`, and we
+            want to suppress warnings.  To avoid unnecessary
+            computation, one can use `skip=True`.
+            Default is False.
+        """
+        if skip:
+            return None, None
         orb_phase_at_extrema = self.phase22[extrema_location] / 2
         orb_phase_diff = np.diff(orb_phase_at_extrema)
         # This might suggest that the data is noisy, for example, and a
@@ -1224,11 +1266,11 @@ class eccDefinition:
                           " Minimum orbital phase diff is "
                           f"{min(orb_phase_diff)}. Times of occurrences are"
                           f" {too_close_times}",
-                          self.debug_level, important=False)
+                          debug_level, important=False)
         if any(np.abs(orb_phase_diff - np.pi)
                < np.abs(orb_phase_diff - 2 * np.pi)):
             debug_message("Phase shift closer to pi than 2 pi detected.",
-                          self.debug_level, important=False)
+                          debug_level, important=False)
         # This might suggest that the extrema finding method missed an extrema.
         # We will check if the phase diff at an extrema is greater than
         # max_orb_phase_diff_factor times the orb_phase_diff at the
@@ -1244,7 +1286,7 @@ class eccDefinition:
                           " Maximum orbital phase diff is "
                           f"{max(orb_phase_diff)}. Times of occurrences are"
                           f" {too_far_times}",
-                          self.debug_level, important=False)
+                          debug_level, important=False)
         return orb_phase_diff, orb_phase_diff_ratio
 
     def check_monotonicity_and_convexity(self,
@@ -1292,8 +1334,25 @@ class eccDefinition:
             return [times[indices[0]],
                     times[indices[-1]]]
 
-    def check_pericenters_and_apocenters_appear_alternately(self):
-        """Check that pericenters and apocenters appear alternately."""
+    def check_pericenters_and_apocenters_appear_alternately(self,
+                                                            debug_level=1,
+                                                            skip=False):
+        """Check that pericenters and apocenters appear alternately.
+
+        parameters:
+        -----------
+        debug_level: int
+            See under utils.debug_message.
+        skip:
+            If True, the function returns without executing the body,
+            and hence no checks are done.  This is useful when the
+            check is muted, for example when `debug_level=-1`, and we
+            want to suppress warnings.  To avoid unnecessary
+            computation, one can use `skip=True`.
+            Default is False.
+        """
+        if skip:
+            return
         # if pericenters and apocenters appear alternately, then the number
         # of pericenters and apocenters should differ by one or zero.
         if abs(len(self.pericenters_location)
@@ -1303,7 +1362,7 @@ class eccDefinition:
                 f"{abs(len(self.pericenters_location) - len(self.apocenters_location))}"
                 ". This implies that pericenters and apocenters are not "
                 "appearing alternately.",
-                self.debug_level, important=False)
+                debug_level, important=False)
         else:
             # If the number of pericenters and apocenters differ by zero or one
             # then we do the following:
@@ -1346,7 +1405,7 @@ class eccDefinition:
                 debug_message(
                     "There is at least one instance where "
                     "pericenters and apocenters do not appear alternately.",
-                    self.debug_level, important=False)
+                    debug_level, important=False)
 
     def compute_res_amp_and_omega22(self):
         """Compute residual amp22 and omega22."""
@@ -1911,7 +1970,7 @@ class eccDefinition:
                          self.plot_omega22,
                          self.plot_data_used_for_finding_extrema,
                          self.plot_decc_dt,
-                         self.plot_phase_diff_ratio_between_pericenters]
+                         self.plot_phase_diff_ratio_between_extrema]
         if "hlm_zeroecc" in self.dataDict:
             # add residual amp22 plot
             if self.method != "ResidualAmplitude":
@@ -2429,7 +2488,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_phase_diff_ratio_between_pericenters(
+    def plot_phase_diff_ratio_between_extrema(
             self,
             fig=None,
             ax=None,
@@ -2438,7 +2497,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot phase diff ratio between consecutive as function of time.
+        """Plot phase diff ratio between consecutive extrema as function of time.
 
         Plots deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
         change in orbital phase from the previous extrema to the ith extrema.
@@ -2481,15 +2540,17 @@ class eccDefinition:
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
         tpericenters = self.t[self.pericenters_location[1:]]
-        if not hasattr(self, "orb_phase_diff_ratio_at_pericenters"):
+        if self.orb_phase_diff_ratio_at_pericenters is None:
             self.orb_phase_diff_at_pericenters, \
                 self.orb_phase_diff_ratio_at_pericenters \
                 = self.check_extrema_separation(self.pericenters_location,
-                                                "pericenters")
+                                                "pericenters",
+                                                debug_level=self.debug_level)
             self.orb_phase_diff_at_apocenters, \
                 self.orb_phase_diff_ratio_at_apocenters \
                 = self.check_extrema_separation(self.apocenters_location,
-                                                "apocenters")
+                                                "apocenters",
+                                                debug_level=self.debug_level)
         ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
                 c=colorsDict["pericenter"],
                 marker=".", label="Pericenter phase diff ratio")
