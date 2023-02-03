@@ -941,24 +941,25 @@ class eccDefinition:
         self.pericenters_location, self.apocenters_location \
             = self.get_good_extrema(pericenters, apocenters)
 
-        # Check if we dropped too many extrema.
-        self.check_if_dropped_too_many_extrema(original_pericenters,
-                                               self.pericenters_location,
-                                               "pericenters", 0.5)
-        self.check_if_dropped_too_many_extrema(original_apocenters,
-                                               self.apocenters_location,
-                                               "apocenters", 0.5)
-        # check that pericenters and apocenters are appearing alternately
-        self.check_pericenters_and_apocenters_appear_alternately()
-        # check extrema separation
-        self.orb_phase_diff_at_pericenters, \
-            self.orb_phase_diff_ratio_at_pericenters \
-            = self.check_extrema_separation(self.pericenters_location,
-                                            "pericenters")
-        self.orb_phase_diff_at_apocenters, \
-            self.orb_phase_diff_ratio_at_apocenters \
-            = self.check_extrema_separation(self.apocenters_location,
-                                            "apocenters")
+        if self.debug_level >= 1:
+            # Check if we dropped too many extrema.
+            self.check_if_dropped_too_many_extrema(original_pericenters,
+                                                   self.pericenters_location,
+                                                   "pericenters", 0.5)
+            self.check_if_dropped_too_many_extrema(original_apocenters,
+                                                   self.apocenters_location,
+                                                   "apocenters", 0.5)
+            # check that pericenters and apocenters are appearing alternately
+            self.check_pericenters_and_apocenters_appear_alternately()
+            # check extrema separation
+            self.orb_phase_diff_at_pericenters, \
+                self.orb_phase_diff_ratio_at_pericenters \
+                = self.check_extrema_separation(self.pericenters_location,
+                                                "pericenters")
+            self.orb_phase_diff_at_apocenters, \
+                self.orb_phase_diff_ratio_at_apocenters \
+                = self.check_extrema_separation(self.apocenters_location,
+                                                "apocenters")
 
         # Build the interpolants of omega22 at the extrema
         self.omega22_pericenters_interp = self.interp_extrema("pericenters")
@@ -1294,7 +1295,7 @@ class eccDefinition:
     def check_pericenters_and_apocenters_appear_alternately(self):
         """Check that pericenters and apocenters appear alternately."""
         # if pericenters and apocenters appear alternately, then the number
-        # of pericenters and apocenters should differ by one.
+        # of pericenters and apocenters should differ by one or zero.
         if abs(len(self.pericenters_location)
                - len(self.apocenters_location)) >= 2:
             debug_message(
@@ -2478,6 +2479,15 @@ class eccDefinition:
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
         tpericenters = self.t[self.pericenters_location[1:]]
+        if not hasattr(self, "orb_phase_diff_ratio_at_pericenters"):
+            self.orb_phase_diff_at_pericenters, \
+                self.orb_phase_diff_ratio_at_pericenters \
+                = self.check_extrema_separation(self.pericenters_location,
+                                                "pericenters")
+            self.orb_phase_diff_at_apocenters, \
+                self.orb_phase_diff_ratio_at_apocenters \
+                = self.check_extrema_separation(self.apocenters_location,
+                                                "apocenters")
         ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
                 c=colorsDict["pericenter"],
                 marker=".", label="Pericenter phase diff ratio")
