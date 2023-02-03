@@ -1063,8 +1063,8 @@ class eccDefinition:
         if self.debug_plots:
             # make a plot for diagnostics
             fig, axes = self.make_diagnostic_plots()
-            fig.savefig(f"gwecc_{self.method}_diagnostics.pdf")
-
+            self.save_debug_fig(fig, f"gwecc_{self.method}_diagnostics.pdf")
+            plt.close(fig)
         return_dict = {"eccentricity": self.eccentricity,
                        "mean_anomaly": self.mean_anomaly}
         if fref_in is not None:
@@ -2759,6 +2759,11 @@ class eccDefinition:
             return figNew, ax
         else:
             return ax
+
+    def save_debug_fig(self, fig, fig_name):
+        """Save debug fig to fig_name."""
+        print(f"Saving debug plot to {fig_name}")
+        fig.savefig(fig_name)
 
     def get_apocenters_from_pericenters(self, pericenters):
         """Get apocenters locations from pericenetrs locations.
