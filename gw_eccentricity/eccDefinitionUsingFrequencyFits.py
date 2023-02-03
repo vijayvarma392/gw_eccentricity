@@ -295,7 +295,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             axs[2].legend()
             fig.tight_layout()
             # fig.savefig(pp, format='pdf')
-            self.save_debug_fig(fig, diag_file)
+            self.save_debug_fig(fig, pp, diag_file)
             plt.close(fig)
 
         # STEP 2 From start of data, move through data and do local fits across

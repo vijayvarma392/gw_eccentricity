@@ -1577,7 +1577,9 @@ class eccDefinition:
                     self.extra_kwargs["omega22_averaging_method"])
                 fig.tight_layout()
                 figName = f"./gwecc_{self.method}_{description.replace(' ', '_')}.pdf"
-                fig.savefig(figName)
+                # fig.savefig(figName)
+                self.save_debug_fig(fig, figName)
+                plt.close(fig)
                 plot_info = f"See the plot saved as {figName}."
             else:
                 plot_info = ("For more verbose output use `debug_level=1` and "
@@ -2760,10 +2762,34 @@ class eccDefinition:
         else:
             return ax
 
-    def save_debug_fig(self, fig, fig_name):
-        """Save debug fig to fig_name."""
+    def save_debug_fig(self, fig, fname, fig_name=None, format="pdf"):
+        """Save debug plots in fig using fname.
+
+        parameters:
+        -----------
+        fig:
+            fig object to use for saving the plots.
+        fname:
+            A path, or a Python file-like object, or possibly some
+            backend-dependent object such as
+            `matplotlib.backends.backend_pdf.PdfPages`. See `fname` in
+            plt.savefig for more documentation.
+        fig_name:
+            fig_name to print before saving the plot. If None, fname is
+            used as message assuming that fname is a string. If
+            message is None and fname is not a string, Exception is
+            raised.
+            Default is None.
+        format:
+            Format for saving the plot. Default is pdf.
+        """
+        if fig_name is None:
+            if type(fname) != str:
+                raise Exception("Message cannot be None when fname is not a"
+                                " string.")
+            fig_name = fname
         print(f"Saving debug plot to {fig_name}")
-        fig.savefig(fig_name)
+        fig.savefig(fname, format=format)
 
     def get_apocenters_from_pericenters(self, pericenters):
         """Get apocenters locations from pericenetrs locations.
