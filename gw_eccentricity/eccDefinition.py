@@ -2530,13 +2530,11 @@ class eccDefinition:
             self.orb_phase_diff_at_pericenters, \
                 self.orb_phase_diff_ratio_at_pericenters \
                 = self.check_extrema_separation(self.pericenters_location,
-                                                "pericenters",
-                                                debug_level=self.debug_level)
+                                                "pericenters")
             self.orb_phase_diff_at_apocenters, \
                 self.orb_phase_diff_ratio_at_apocenters \
                 = self.check_extrema_separation(self.apocenters_location,
-                                                "apocenters",
-                                                debug_level=self.debug_level)
+                                                "apocenters")
         ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
                 c=colorsDict["pericenter"],
                 marker=".", label="Pericenter phase diff ratio")
