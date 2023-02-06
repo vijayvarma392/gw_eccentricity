@@ -838,6 +838,10 @@ class eccDefinition:
             check is muted, for example when `debug_level=-1`, and we
             want to suppress warnings.  To avoid unnecessary
             computation, one can use `skip=True`.
+            NOTE: In measure_ecc, when debug_level is low (<=0), skip
+            is set to True assuming that the warning is not
+            important. In case, this warning is changed to important
+            in future, set the skip value accordingly.
             Default is False.
         """
         if skip:
@@ -1239,6 +1243,10 @@ class eccDefinition:
             check is muted, for example when `debug_level=-1`, and we
             want to suppress warnings.  To avoid unnecessary
             computation, one can use `skip=True`.
+            NOTE: In measure_ecc, when debug_level is low (<=0), skip
+            is set to True assuming that the warning is not
+            important. In case, this warning is changed to important
+            in future, set the skip value accordingly.
             Default is False.
         """
         if skip:
@@ -1335,6 +1343,10 @@ class eccDefinition:
             check is muted, for example when `debug_level=-1`, and we
             want to suppress warnings.  To avoid unnecessary
             computation, one can use `skip=True`.
+            NOTE: In measure_ecc, when debug_level is low (<=0), skip
+            is set to True assuming that the warning is not
+            important. In case, this warning is changed to important
+            in future, set the skip value accordingly.
             Default is False.
         """
         if skip:
