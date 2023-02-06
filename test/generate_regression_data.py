@@ -42,7 +42,7 @@ def generate_regression_data(method):
         raise Exception(f"method {method} is not available. Must be one of "
                         f"{available_methods}")
 
-    extra_kwargs = {"debug": False}
+    extra_kwargs = {}
     user_kwargs = extra_kwargs.copy()
     regression_data.update({"extra_kwargs": extra_kwargs})
     # Try evaluating at an array of times

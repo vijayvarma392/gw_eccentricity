@@ -45,8 +45,7 @@ def test_regression():
             meanano_ref, regression_data_at_tref["mean_anomaly"],
             atol=atol,
             err_msg="measured and saved mean anomaly at saved times do not match.")
-        
-        
+
         # Try evaluating at frequencies where regression data are saved
         regression_data_at_fref = regression_data["fref"]
         fref_in = regression_data_at_fref["frequency"]
