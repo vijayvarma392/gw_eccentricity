@@ -5,7 +5,6 @@ Part of Eccentricity Definition project.
 """
 from .eccDefinitionUsingFrequencyFits import eccDefinitionUsingFrequencyFits
 from .plot_settings import labelsDict
-import numpy as np
 from .utils import check_kwargs_and_set_defaults
 
 
