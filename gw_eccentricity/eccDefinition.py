@@ -815,9 +815,16 @@ class eccDefinition:
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
-                                          threshold_fraction=0.5,
-                                          skip=False):
+                                          threshold_fraction=0.5):
         """Check if too many extrema was dropped.
+
+        This function only has checks with the flag important=False, which
+        means that warnings are suppressed when debug_level < 1. To avoid
+        unnecessary computations, this function will therefore return without
+        executing the body if debug_level < 1.
+        If calling this function externally from an instance of eccDefinition,
+        you need to change self.debug_level to be >= 1 if you want to
+        un-suppress the warnings.
 
         Parameters:
         -----------
@@ -832,20 +839,14 @@ class eccDefinition:
             Fraction of the original extrema.
             When num_dropped_extrema > threshold_fraction * len(original_extrema),
             an warning is raised.
-        skip:
-            If True, the function returns without executing the body,
-            and hence no checks are done.  This is useful when the
-            check is muted, for example when `debug_level=-1`, and we
-            want to suppress warnings.  To avoid unnecessary
-            computation, one can use `skip=True`.
-            NOTE: In measure_ecc, when debug_level is low (<=0), skip
-            is set to True assuming that the warning is not
-            important. In case, this warning is changed to important
-            in future, set the skip value accordingly.
-            Default is False.
         """
-        if skip:
+        # This function only has checks with the flag important=False, which
+        # means that warnings are suppressed when debug_level < 1.
+        # We return without running the rest of the body to avoid unnecessary
+        # computations.
+        if self.debug_level < 1:
             return
+
         num_dropped_extrema = len(original_extrema) - len(new_extrema)
         if num_dropped_extrema > (threshold_fraction * len(original_extrema)):
             debug_message(f"More than {threshold_fraction * 100}% of the "
@@ -956,32 +957,23 @@ class eccDefinition:
             = self.get_good_extrema(pericenters, apocenters)
 
         # Check if we dropped too many extrema.
-        skip = self.debug_level <= 0
-        # if skip is True, checks are skipped.  For debug_level <= 0,
-        # any warnings from these checks are suppressed. Therefore, we
-        # skip the checks for such cases since these checks does not
-        # affect the eccentricity measurement in any other ways.
         self.check_if_dropped_too_many_extrema(original_pericenters,
                                                self.pericenters_location,
-                                               "pericenters", 0.5,
-                                               skip=skip)
+                                               "pericenters", 0.5)
         self.check_if_dropped_too_many_extrema(original_apocenters,
                                                self.apocenters_location,
-                                               "apocenters", 0.5,
-                                               skip=skip)
+                                               "apocenters", 0.5)
         # check that pericenters and apocenters are appearing alternately
-        self.check_pericenters_and_apocenters_appear_alternately(skip=skip)
+        self.check_pericenters_and_apocenters_appear_alternately()
         # check extrema separation
         self.orb_phase_diff_at_pericenters, \
             self.orb_phase_diff_ratio_at_pericenters \
             = self.check_extrema_separation(self.pericenters_location,
-                                            "pericenters",
-                                            skip=skip)
+                                            "pericenters")
         self.orb_phase_diff_at_apocenters, \
             self.orb_phase_diff_ratio_at_apocenters \
             = self.check_extrema_separation(self.apocenters_location,
-                                            "apocenters",
-                                            skip=skip)
+                                            "apocenters")
 
         # Build the interpolants of omega22 at the extrema
         self.omega22_pericenters_interp = self.interp_extrema("pericenters")
@@ -1233,24 +1225,35 @@ class eccDefinition:
                                  extrema_type="extrema",
                                  max_orb_phase_diff_factor=1.5,
                                  min_orb_phase_diff=np.pi,
-                                 skip=False):
+                                 always_return=False):
         """Check if two extrema are too close or too far.
 
+        This function only has checks with the flag important=False, which
+        means that warnings are suppressed when debug_level < 1. To avoid
+        unnecessary computations, this function will therefore return without
+        executing the body if debug_level < 1, unless always_return=True.
+
+        If calling this function externally from an instance of eccDefinition,
+        you need to change self.debug_level to be >= 1 if you want to
+        un-suppress the warnings. always_return=True is not sufficient to
+        un-suppress the warnings.
+
         parameters:
-        skip:
-            If True, the function returns without executing the body,
-            and hence no checks are done.  This is useful when the
-            check is muted, for example when `debug_level=-1`, and we
-            want to suppress warnings.  To avoid unnecessary
-            computation, one can use `skip=True`.
-            NOTE: In measure_ecc, when debug_level is low (<=0), skip
-            is set to True assuming that the warning is not
-            important. In case, this warning is changed to important
-            in future, set the skip value accordingly.
+        always_return:
+            The return values of this function are used by some plotting
+            functions, so if always_return=True, we execute the body and
+            return values regardless of debug_level. However, the warnings
+            will still be suppressed for debug_level < 1.
             Default is False.
         """
-        if skip:
+
+        # This function only has checks with the flag important=False, which
+        # means that warnings are suppressed when debug_level < 1.
+        # We return without running the rest of the body to avoid unnecessary
+        # computations, unless always_return=True.
+        if self.debug_level < 1 and always_return is False:
             return None, None
+
         orb_phase_at_extrema = self.phase22[extrema_location] / 2
         orb_phase_diff = np.diff(orb_phase_at_extrema)
         # This might suggest that the data is noisy, for example, and a
@@ -1331,26 +1334,24 @@ class eccDefinition:
             return [times[indices[0]],
                     times[indices[-1]]]
 
-    def check_pericenters_and_apocenters_appear_alternately(self,
-                                                            skip=False):
+    def check_pericenters_and_apocenters_appear_alternately(self):
         """Check that pericenters and apocenters appear alternately.
 
-        parameters:
-        -----------
-        skip:
-            If True, the function returns without executing the body,
-            and hence no checks are done.  This is useful when the
-            check is muted, for example when `debug_level=-1`, and we
-            want to suppress warnings.  To avoid unnecessary
-            computation, one can use `skip=True`.
-            NOTE: In measure_ecc, when debug_level is low (<=0), skip
-            is set to True assuming that the warning is not
-            important. In case, this warning is changed to important
-            in future, set the skip value accordingly.
-            Default is False.
+        This function only has checks with the flag important=False, which
+        means that warnings are suppressed when debug_level < 1. To avoid
+        unnecessary computations, this function will therefore return without
+        executing the body if debug_level < 1.
+        If calling this function externally from an instance of eccDefinition,
+        you need to change self.debug_level to be >= 1 if you want to
+        un-suppress the warnings.
         """
-        if skip:
+        # This function only has checks with the flag important=False, which
+        # means that warnings are suppressed when debug_level < 1.
+        # We return without running the rest of the body to avoid unnecessary
+        # computations.
+        if self.debug_level < 1:
             return
+
         # if pericenters and apocenters appear alternately, then the number
         # of pericenters and apocenters should differ by one or zero.
         if abs(len(self.pericenters_location)
@@ -2542,11 +2543,13 @@ class eccDefinition:
             self.orb_phase_diff_at_pericenters, \
                 self.orb_phase_diff_ratio_at_pericenters \
                 = self.check_extrema_separation(self.pericenters_location,
-                                                "pericenters")
+                                                "pericenters",
+                                                always_return=True)
             self.orb_phase_diff_at_apocenters, \
                 self.orb_phase_diff_ratio_at_apocenters \
                 = self.check_extrema_separation(self.apocenters_location,
-                                                "apocenters")
+                                                "apocenters",
+                                                always_return=True)
         ax.plot(tpericenters[1:], self.orb_phase_diff_ratio_at_pericenters[1:],
                 c=colorsDict["pericenter"],
                 marker=".", label="Pericenter phase diff ratio")

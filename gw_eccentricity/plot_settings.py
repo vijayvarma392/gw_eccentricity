@@ -1,9 +1,9 @@
 """Fancy settings for plots."""
 from matplotlib import rc
 from cycler import cycler
-import matplotlib.cm as mcm
+from matplotlib import colormaps
 
-dark2 = mcm.get_cmap("Dark2").colors
+dark2 = colormaps["Dark2"].colors
 
 colorsDict = {
     "default": dark2[1],  # brown
@@ -29,12 +29,12 @@ colorsDict = {
     "blue": "tab:blue"
 }
 
-markersDict = {"apocenter": "s", # "^"
-              "pericenter": "o", # "v"
-              }
-markersSizeDict = {"apocenter": 3, #3,
-                  "pericenter": 4, #3
-                  }
+markersDict = {"apocenter": "s",
+               "pericenter": "o",
+               }
+markersSizeDict = {"apocenter": 3,
+                   "pericenter": 4,
+                   }
 
 lstyles = {"Amplitude": "solid",
            "Frequency": "dashdot",
