@@ -796,8 +796,8 @@ def get_zeroecc_dataDict_for_nr(nr_dataDict):
     dataDict_zeroecc:
         Data Dictionary containing zero ecc data.
     """
-    # Keep all other params fixed but set ecc = 0 and generate IMRPhenomT
-    # waveform
+    # Keep all other params fixed but set ecc = 0 and generate
+    # waveform with approximant provided in nr_dataDict["params_dict"]
     zero_ecc_kwargs = nr_dataDict["params_dict"].copy()
     zero_ecc_kwargs["ecc"] = 0.0
     zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
