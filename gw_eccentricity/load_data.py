@@ -330,30 +330,134 @@ def amplitude_dimless_to_mks(M, D):
     return lal.G_SI * M * lal.MSUN_SI / (lal.C_SI**2 * D * 1e6 * lal.PC_SI)
 
 
+def check_kwargs_and_set_defaults_for_nr(kwargs, allowed_kwargs_list,
+                                         location):
+    """Check kwargs in kwargs list and set dafults.
+
+    Parameters:
+    -----------
+    kwargs: dict
+        Dictionary of kwargs to check and set default values.
+
+    allowed_kwargs_list: list
+        List of allowed kwargs determined by the NR loading function
+        that calls this function. This is used to check whether the keys
+        in user provided `kwargs` are allowed or not.
+        The allowed kwargs should be a subset of the following keys:
+
+        filepath: str
+            Path to the nr file.
+
+        deltaTOverM: float
+            Time step in dimensionless unit. Default is 0.1
+
+        Momega0: float
+            Lower frequency to start waveform generation.
+            If Momega0 = 0, uses the entire NR data. The actual Momega0 will be
+            returned.
+            NOTE: This key might be used only for LVCNR format waveform.
+            Default is 0.
+
+        include_zero_ecc: bool
+            If True returns waveform mode for same set of parameters
+            except eccentricity set to zero.
+            Default is True.
+
+        zero_ecc_approximant: str
+            Waveform model to generate zero ecc waveform when
+            `include_zero_ecc` is True.
+            Default is IMRPhenomT
+
+        metadata_path: str
+            NOTE: Only for SXS catalog format waveform.
+            Path to the sxs metadata file. This file generally can be
+            found in the same directory as the waveform file and has the
+            name `metadata.txt`. It contains the metadata including binary
+            parameters along with other information related to the NR
+            simulation performed to obtain the waveform modes.
+            Required when `include_zero_ecc` is True.
+            If provided, a dictionary containing binary mass ratio and
+            spins is returned.
+            Default is None.
+
+        num_orbits_to_remove_as_junk: float
+            Number of orbits to throw away as junk from the begining of the NR
+            data.
+            Default is 2.
+
+        mode_array: 1d array
+            1d array of modes to load.
+            Default is [(2, 2)] which loads only the (2, 2) mode.
+
+        extrap_order: int
+            Extrapolation order to use for loading the waveform data.
+            NOTE: This is used only for sxs catalog formatted waveforms.
+
+    location: str
+        Function which calls this to set defaults.
+    """
+    # check that keys in kwargs are in allowed_kwargs_list
+    for kw in kwargs:
+        if kw not in allowed_kwargs_list:
+            raise Exception(f"Unknown key {kw}. "
+                            f"Must be one of {allowed_kwargs_list}. "
+                            "To change the allowed list of keys, change "
+                            f"modify possible kwargs in {location}.")
+    default_nr_kwargs = {"filepath": None,
+                         "deltaTOverM": 0.1,
+                         "Momega0": 0.0,
+                         "include_zero_ecc": False,
+                         "zero_ecc_approximant": "IMRPhenomT",
+                         "metadata_path": None,
+                         "num_orbits_to_remove_as_junk": 2,
+                         "mode_array": [(2, 2)],
+                         "extrap_order": 2}
+    # check that keys in allowed_kwargs_list are in default_nr_kwargs
+    for kw in allowed_kwargs_list:
+        if kw not in default_nr_kwargs:
+            raise Exception(f"Unknown key {kw}. Must be one of "
+                            f"{list(default_nr_kwargs.keys())}. "
+                            "To change the list of allowed NR keys, modify"
+                            "`load_data.check_kwargs_and_set_defaults_for_nr`.")
+    # add default values to keys absent in kwargs but present in allowed_kwargs
+    # using default_nr_kwargs
+    for kw in allowed_kwargs_list:
+        if kw not in kwargs:
+            kwargs[kw] = default_nr_kwargs[kw]
+
+    return kwargs
+
+
 def load_lvcnr_waveform(**kwargs):
     """Load modes from lvcnr files.
 
     parameters:
     ----------
-    kwargs: Could be the followings
+    kwargs: Could be the followings.
+    NOTE: The default values are set using
+    `check_kwargs_and_set_defaults_for_nr`
+
     filepath: str
         Path to lvcnr file.
 
     deltaTOverM: float
-        Time step. Default is 0.1
+        Time step.
 
     Momega0: float
-        Lower frequency to start waveform generation. Default is 0.
+        Lower frequency to start waveform generation.
         If Momega0 = 0, uses the entire NR data. The actual Momega0 will be
         returned.
 
     include_zero_ecc: bool
         If True returns PhenomT waveform mode for same set of parameters
-        except eccentricity set to zero. Default is True.
+        except eccentricity set to zero.
+
+    zero_ecc_approximant: str
+        Waveform model to generate zero ecc waveform.
 
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the begining of the NR
-        data. Default is 2.
+        data.
 
     returns:
     -------
@@ -372,15 +476,16 @@ def load_lvcnr_waveform(**kwargs):
     hlm_zeroecc:
         Mode dictionary for zero eccentricity
     """
-    default_kwargs = {
-        "filepath": None,
-        "deltaTOverM": 0.1,
-        "Momega0": 0,  # 0 means that the full NR waveform is returned
-        "include_zero_ecc": True,
-        "num_orbits_to_remove_as_junk": 2}
+    kwargs = check_kwargs_and_set_defaults_for_nr(
+        kwargs,
+        ["filepath",
+         "deltaTOverM",
+         "Momega0",
+         "include_zero_ecc",
+         "zero_ecc_approximant",
+         "num_orbits_to_remove_as_junk"],
+        "`load_lvcnr_waveform`")
 
-    kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
-                                           "lvcnr kwargs")
     filepath = kwargs["filepath"]
     M = 10  # will be factored out
     dt = kwargs["deltaTOverM"] * time_dimless_to_mks(M)
@@ -473,6 +578,7 @@ def load_lvcnr_waveform(**kwargs):
                        f_low
                        * np.pi
                        * time_dimless_to_mks(M)),
+                   "zero_ecc_approximant": kwargs["zero_ecc_approximant"]
                    }
     return_dict.update({"params_dict": params_dict})
 
@@ -492,36 +598,40 @@ def load_sxs_catalogformat(**kwargs):
 
     parameters:
     ----------
-    kwargs: Dictionary with the followings keys
+    kwargs: Dictionary with the followings keys.
+    NOTE: The default values are set using
+    `check_kwargs_and_set_defaults_for_nr`
     filepath: str
         Path to waveform file in sxs catalog format. The file should
         be named rhOverM_Asymptotic_GeometricUnits_CoM.h5, and
         contains the waveform extrapolated to future null-infinity and
         corrected for initial center-of-mass drift.
         This must be provided to load waveform modes.
-        Default is None which raises exception.
 
-    dt: float
+    deltaTOverM: float
         Time step to use for interpolating the waveform modes.  The
         unit is the same as the time array in the sxs catalog format
         waveform file which is dimensionless.
-        Default is 0.1
 
     include_zero_ecc: bool
-        If True, returns `IMRPhenomT` waveform mode (only (2, 2) mode)
+        If True, returns waveform mode (only (2, 2) mode)
         for the same set of parameters except with eccentricity set to
         zero.  Requires metadata file (which is provided using
         `metadata_path`, see below) to get the binary parameters.
+        The zero ecc waveform is generated using an approximant
+        provided via `zero_ecc_approximant` (see below).
 
         Also needs `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.
         Currently it is used to get an estimate for the intial
-        frequency to use for generating `IMRPhenomT` waveform based on
+        frequency to use for generating zero ecc waveform based on
         the inspiral time of the NR waveform.  Download it from
         https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
         and set the path using
         `export LAL_DATA_PATH=/path/to/directory/containing/seobnrv4rom_file/`.
 
-        Default is False.
+    zero_ecc_approximant: str
+        Waveform model to generate zero ecc waveform when
+        `include_zero_ecc` is True.
 
     metadata_path: str
         Path to the sxs metadata file. This file generally can be
@@ -532,20 +642,16 @@ def load_sxs_catalogformat(**kwargs):
         Required when `include_zero_ecc` is True.
         If provided, a dictionary containing binary mass ratio and
         spins is returned.
-        Default is None.
 
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the begining of the NR
         data.
-        Default is 2.
 
     mode_array: 1d array
         1d array of modes to load.
-        Default is [(2, 2)] which loads only the (2, 2) mode.
 
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
-        Default is 2.
 
     returns:
     -------
@@ -573,26 +679,26 @@ def load_sxs_catalogformat(**kwargs):
         modes in dimensionless units.
         Returned when `include_zero_ecc` is True.
     hlm_zeroecc:
-        Dictionary of modes created using `IMRPhenomT` waveform model
+        Dictionary of modes created using `zero_ecc_approximant` model
         with the same mass ratio and spin components as the NR
         simulation and eccentricity set to zero. Currently it contains
         only the (2, 2) mode.
         Returned when `include_zero_ecc` is True.
     """
-    default_kwargs = {
-        "filepath": None,
-        "metadata_path": None,
-        "dt": 0.1,
-        "include_zero_ecc": False,
-        "num_orbits_to_remove_as_junk": 2,
-        "mode_array": [(2, 2)],
-        "extrap_order": 2}
-
-    kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
-                                           "sxs kwargs")
+    kwargs = check_kwargs_and_set_defaults_for_nr(
+        kwargs,
+        ["filepath",
+         "metadata_path",
+         "deltaTOverM",
+         "include_zero_ecc",
+         "zero_ecc_approximant",
+         "num_orbits_to_remove_as_junk",
+         "mode_array",
+         "extrap_order"],
+        "`load_sxs_catalogformat`")
     filepath = kwargs["filepath"]
     metadata_path = kwargs["metadata_path"]
-    dt = kwargs["dt"]
+    dt = kwargs["deltaTOverM"]
     mode_array = kwargs["mode_array"]
     extrap_order = kwargs["extrap_order"]
     # check filepath
@@ -606,7 +712,7 @@ def load_sxs_catalogformat(**kwargs):
                 "Must provide path to metadata file `metadata_path` "
                 "when `include_zero_ecc` is True.\n"
                 "This is required to get the binary parameters which are "
-                "used to eavaluate an IMRPhenomT waveform.")
+                "used to eavaluate the zero ecc waveform.")
 
     # load modes
     modes_dict = {}
@@ -638,8 +744,10 @@ def load_sxs_catalogformat(**kwargs):
                 "hlm": modes_dict}
     if metadata_path is not None:
         params_dict = get_params_dict_from_sxs_metadata(metadata_path)
+        params_dict.update(
+            {"approximant": kwargs["zero_ecc_approximant"]})
         dataDict.update({"params_dict": params_dict})
-    # if include_zero_ecc is True, load zeroecc dataDict using IMRphenomT
+    # if include_zero_ecc is True, load zeroecc dataDict
     if kwargs["include_zero_ecc"]:
         dataDict_zeroecc = get_zeroecc_dataDict_for_nr(dataDict)
         dataDict.update({"t_zeroecc": dataDict_zeroecc["t_zeroecc"],
@@ -668,8 +776,8 @@ def get_params_dict_from_sxs_metadata(metadata_path):
             m2 = float(line.split("=")[-1].strip())
     # numerical noise can make m1 slightly greater than m2. Catch this
     # whenver it happens
-    if m1 > m2:
-        raise Exception(f"SXS metadata gives m1 = {m1} > m2 = {m2}")
+    if m1 < m2:
+        raise Exception(f"SXS metadata gives m1 = {m1} < m2 = {m2}")
     params_dict = {"q": m1/m2,
                    "chi1": chi1,
                    "chi2": chi2}
@@ -692,7 +800,6 @@ def get_zeroecc_dataDict_for_nr(nr_dataDict):
     # waveform
     zero_ecc_kwargs = nr_dataDict["params_dict"].copy()
     zero_ecc_kwargs["ecc"] = 0.0
-    zero_ecc_kwargs["approximant"] = "IMRPhenomT"
     zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
     # calculate the Momega0 so that the length is >= the length of the NR
     # waveform.
@@ -885,21 +992,21 @@ def load_lvcnr_hack(**kwargs):
 
     parameters:
     ----------
-    kwargs: Could be the followings
+    kwargs: Could be the followings.
+    NOTE: Defaults are set using `check_kwargs_and_set_defaults_for_nr`.
     filepath: str
         Path to lvcnr file.
 
     deltaTOverM: float
         Time step. The loaded data will be interpolated using this time step.
-        Default is 0.1
 
     include_zero_ecc: bool
         If True returns PhenomT waveform mode for same set of parameters
-        except eccentricity set to zero. Default is True.
+        except eccentricity set to zero.
 
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the begining of the NR
-        data. Default is 2.
+        data.
 
     returns:
     -------
@@ -918,13 +1025,14 @@ def load_lvcnr_hack(**kwargs):
     hlm_zeroecc:
         Mode dictionary for zero eccentricity.
     """
-    default_kwargs = {"filepath": None,
-                      "deltaTOverM": 0.1,
-                      "include_zero_ecc": True,
-                      "num_orbits_to_remove_as_junk": 2}
-
-    kwargs = check_kwargs_and_set_defaults(kwargs, default_kwargs,
-                                           "lvcnr kwargs")
+    kwargs = check_kwargs_and_set_defaults_for_nr(
+        kwargs,
+        ["filepath",
+         "deltaTOverM",
+         "include_zero_ecc",
+         "zero_ecc_approximant",
+         "num_orbits_to_remove_as_junk"],
+        "`load_lvcnr_hack`")
     f = h5py.File(kwargs["filepath"])
     t_for_amp22 = f["amp_l2_m2"]["X"][:]
     amp22 = f["amp_l2_m2"]["Y"][:]
@@ -972,6 +1080,7 @@ def load_lvcnr_hack(**kwargs):
                    "ecc": ecc,
                    "mean_ano": mean_ano,
                    "deltaTOverM": t_interp[1] - t_interp[0],
+                   "zero_ecc_approximant": kwargs["zero_ecc_approximant"]
                    }
 
     return_dict.update({"params_dict": params_dict})
