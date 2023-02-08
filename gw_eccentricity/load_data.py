@@ -783,7 +783,7 @@ def get_params_dict_from_sxs_metadata(metadata_path):
             m1 = float(line.split("=")[-1].strip())
         if "reference-mass2" in line:
             m2 = float(line.split("=")[-1].strip())
-    # numerical noise can make m1 slightly greater than m2. Catch this
+    # numerical noise can make m1 slightly lesser than m2. Catch this
     # whenver it happens
     if m1 < m2:
         raise Exception(f"SXS metadata gives m1 = {m1} < m2 = {m2}")
