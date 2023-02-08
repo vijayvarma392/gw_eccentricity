@@ -587,7 +587,7 @@ def load_lvcnr_waveform(**kwargs):
                        f_low
                        * np.pi
                        * time_dimless_to_mks(M)),
-                   "zero_ecc_approximant": kwargs["zero_ecc_approximant"]
+                   "approximant": kwargs["zero_ecc_approximant"]
                    }
     return_dict.update({"params_dict": params_dict})
 
@@ -1089,7 +1089,7 @@ def load_lvcnr_hack(**kwargs):
                    "ecc": ecc,
                    "mean_ano": mean_ano,
                    "deltaTOverM": t_interp[1] - t_interp[0],
-                   "zero_ecc_approximant": kwargs["zero_ecc_approximant"]
+                   "approximant": kwargs["zero_ecc_approximant"]
                    }
 
     return_dict.update({"params_dict": params_dict})
