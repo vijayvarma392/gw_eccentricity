@@ -9,12 +9,12 @@
 from gravitational waveforms.
 
 These methods are described in the following paper: <br/>
-[1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
+- [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
 "Defining eccentricity for gravitational wave astronomy", (2022). [Add arXiv number]
 
 If you find this package useful in your work, please cite reference [1] and
 this package: <br>
-Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
+- Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
 "gw_eccentricity: A Python package for measuring eccentricity from gravitational waves",
 https://pypi.org/project/gw-eccentricity/
 
