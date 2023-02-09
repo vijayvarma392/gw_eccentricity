@@ -9,10 +9,14 @@
 from gravitational waveforms.
 
 These methods are described in the following paper: <br/>
-[1] FIXME.
+[1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
+"Defining eccentricity for gravitational wave astronomy", (2022). [Add arXiv number]
 
 If you find this package useful in your work, please cite reference [1] and
-this package.
+this package: <br>
+Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
+"gw_eccentricity: A Python package for measuring eccentricity from gravitational waves",
+https://pypi.org/project/gw-eccentricity/
 
 This package lives on
 [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
@@ -63,7 +67,3 @@ Please report bugs by raising an issue on our
 See this
 [README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
 for instructions on how to make contributions to this package.
-
-
-## Eventually remove
-For quick access to the paper: [![Latest build](https://img.shields.io/badge/PDF-latest-orange.svg?style=flat)](https://github.com/vijayvarma392/measure_eccentricity_paper/blob/pdflatex/paper.pdf)
