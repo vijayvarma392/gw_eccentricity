@@ -1055,10 +1055,11 @@ def load_EOB_waveform(**kwargs):
         "`load_data.get_load_waveform_defaults`")
     if kwargs["filepath"] is None:
         raise Exception("Must provide file path to EOB waveform")
+    if kwargs["include_zero_ecc"] and kwargs["filepath_zero_ecc"] is None:
+        raise Exception("Must provide `filepath_zero_ecc`, file path to zeroecc EOB waveform,"
+                        " when `include_zero_ecc` is `True`.")
     if "EccTest" in kwargs["filepath"]:
         return load_EOB_EccTest_file(**kwargs)
-    elif "Case" in kwargs["filepath"]:
-        return load_h22_from_EOBfile(**kwargs)
     else:
         raise Exception("Unknown filepath pattern.")
 
