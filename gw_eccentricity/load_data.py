@@ -15,7 +15,7 @@ def get_available_waveform_origins():
     return {
         "LAL": load_LAL_waveform,
         "LVCNR": load_lvcnr_waveform,
-        "SXSCatalogFormat": load_sxs_catalogformat,
+        "SXSCatalog": load_sxs_catalogformat,
         "EOB": load_EOB_waveform,
         "EMRI": load_EMRI_waveform}
 
@@ -29,7 +29,7 @@ def load_waveform(origin="LAL", **kwargs):
         The origin of the waveform to be provided.  This can be one of
         - "LAL": Compute waveform by a call to the LAL-library.
         - "LVCNR": Import waveform by reading a file in the LVCNR-data format.
-        - "SXSCatalogFormat": Import waveform by reading a file in the SXS catalog format.
+        - "SXSCatalog": Import waveform by reading a file in the SXS catalog format.
             (see https://data.black-holes.org/waveforms/documentation.html)
         - "EOB": Import EOB waveform generated using SEOBNRv4EHM
             (arxiv:2112.06952).
@@ -45,7 +45,7 @@ def load_waveform(origin="LAL", **kwargs):
         - "LVCNR": For importing NR waveform in LVCNR format the function
             `load_data.load_lvcnr_waveform` is called. Look for the allowed
             and default list of kwargs there.
-        - "SXSCatalogFormat": For importing waveform from file in SXS catalog format,
+        - "SXSCatalog": For importing waveform from file in SXS catalog format,
             `load_data.load_sxs_catalogformat` is called. Look for the allowed kwargs
             there.
         - "EOB": For importing EOB waveforms generated using SEOBNRv4EHM.
