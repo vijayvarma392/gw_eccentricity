@@ -63,6 +63,10 @@ Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/per
 Please report bugs by raising an issue on our
 [GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
 
+### Contributors
+<!-- readme: <md-arif-shaikh>,<vijayvarma392>,<haraldp271>/- -start -->
+<!-- readme: <md-arif-shaikh>,<vijayvarma392>,<haraldp271>/- -end -->
+
 ### Making contributions
 See this
 [README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
