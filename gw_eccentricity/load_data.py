@@ -1,4 +1,4 @@
-"""Utility to load waveform data from lvcnr files or LAL."""
+"""Utility to load waveform of different origins."""
 import numpy as np
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
