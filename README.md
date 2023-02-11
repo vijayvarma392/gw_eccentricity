@@ -10,16 +10,10 @@ from gravitational waveforms.
 
 These methods are described in the following paper: <br/>
 - [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
-"Defining eccentricity for gravitational wave astronomy", (2022). [Add arXiv number]
+"Defining eccentricity for gravitational wave astronomy", (2023). [Add arXiv number]
 
-If you find this package useful in your work, please cite reference [1] and
-this package: <br>
-- Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
-"gw_eccentricity: A Python package for measuring eccentricity from gravitational waves",
-https://pypi.org/project/gw-eccentricity/
-
-This package lives on
-[GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
+Please see [Credits](https://github.com/vijayvarma392/gw_eccentricity#credits) for citing this work.   
+This package lives on [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
 `python3`, and is tested every week. You can see the current build status of
 the main branch at the top of this page.
 
@@ -60,10 +54,35 @@ See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity
 The main contributors to this code are [Md Arif Shaikh](https://md-arif-shaikh.github.io/), [Vijay
 Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/person/54205/2784). You can find the full list of contributors
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
-Please report bugs by raising an issue on our
-[GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
+
+If you find this package useful in your work, please cite reference [1] and
+this package. You can use the following bibtex keys:
+```
+@article{Varma:2018rcg,
+      author         = "Varma, Vijay and Stein, Leo C. and Gerosa, Davide",
+      title          = "{The binary black hole explorer: on-the-fly
+                        visualizations of precessing binary black holes}",
+      journal        = "Class. Quant. Grav.",
+      volume         = "36",
+      year           = "2019",
+      number         = "9",
+      pages          = "095007",
+      doi            = "10.1088/1361-6382/ab0ee9",
+      eprint         = "1811.06552",
+      archivePrefix  = "arXiv",
+      primaryClass   = "astro-ph.HE",
+      Note = {\href{https://vijayvarma392.github.io/binaryBHexp/}{https://vijayvarma392.github.io/binaryBHexp/}},
+      SLACcitation   = "%%CITATION = ARXIV:1811.06552;%%"
+}
+```
+```diff
+-[ARIF: Please modify the above bibtex keys accordingly. I suggest using pypi link insatead of github like in the above example. For the key itself, use the one from inspire once the paper is ready. The difference is we also link the package through the NOTE option]
+```
 
 ### Making contributions
 See this
 [README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
 for instructions on how to make contributions to this package.
+
+Please report bugs by raising an issue on our
+[GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
