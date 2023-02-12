@@ -75,7 +75,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             "eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods()")
         # Set variables needed for envelope fits and find_peaks
         self.set_fit_variables()
-        self.debug = self.extra_kwargs["debug"]
+        # show more verbose output if debug_level is >= 1
+        self.verbose = self.debug_level >= 1
         # If return_diagnostic_data is true then return a dictionary of data for diagnostics.
         if self.return_diagnostic_data:
             self.diagnostic_data_dict = {
@@ -201,8 +202,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # diagnostic output?
         # setting diag_file to a valid pdf-filename will trigger diagnostic
         # plots
-        verbose = self.debug
-        diag_file = (f"Diagnostics-{self.method}-{extrema_type}.pdf") if verbose else ""
+        # Print more verbose output if debug_level >= 1
+        # Create debug plots if debug_plots is True
+        diag_file = (f"gwecc_{self.method}_diagnostics_{extrema_type}.pdf") if self.debug_plots else ""
         pp = PdfPages(diag_file) if diag_file != "" else False
         # STEP 1:
         # global fit as initialization of envelope-subtraced extrema
@@ -218,7 +220,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         if idx_end == 0:  # don't have that much data, so use all
             idx_end = -1
 
-        if verbose:
+        if self.verbose:
             print(f"t[0]={self.t[0]}, t[-1]="
                   f"{self.t[-1]}, "
                   f"global fit to t<={self.t[idx_end]}")
@@ -237,7 +239,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                    [self.fit_bounds_max_amp_factor*f0,
                     self.fit_bounds_max_nPN_factor*f0/(-fit_center_time),
                     -fit_center_time]]
-        if verbose:
+        if self.verbose:
             print(f"global fit: guess p0={p0},  t_center={fit_center_time}")
             print(f"            bounds={bounds0}")
 
@@ -265,7 +267,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             f_fit, self.t[:idx_end],
             self.data_for_finding_extrema[:idx_end], p0=p0,
             bounds=bounds0)
-        if verbose:
+        if self.verbose:
             print(f"            result p_global={p_global}")
 
         if pp:
@@ -292,7 +294,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             axs[0].legend()
             axs[2].legend()
             fig.tight_layout()
-            fig.savefig(pp, format='pdf')
+            # fig.savefig(pp, format='pdf')
+            self.save_debug_fig(fig, pp, diag_file)
             plt.close(fig)
 
         # STEP 2 From start of data, move through data and do local fits across
@@ -325,7 +328,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         extra_extrema_phase22 = []
         while True:
             count = count+1
-            if verbose:
+            if self.verbose:
                 print(f"=== count={count} "+"="*60)
             idx_extrema, p, K, idx_ref, extrema_refined \
                 = self.FindExtremaNearIdxRef(
@@ -335,10 +338,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     1e-8,
                     increase_idx_ref_if_needed=True,
                     refine_extrema=refine_extrema,
-                    verbose=verbose,
+                    verbose=self.verbose,
                     pp=pp,
                     plot_info=f"count={count}")
-            if verbose:
+            if self.verbose:
                 print(f"IDX_EXTREMA={idx_extrema}, "
                       f"{self.data_str}_fit"
                       f"={f_fit.format(*p)}, "
@@ -402,7 +405,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # be set, too.
                 if not terminate:
                     raise Exception("Logical error -- should never get here")
-                if verbose:
+                if self.verbose:
                     print("terminating with very few extrema in this "
                           "iteration. Take left-over extrema from previous "
                           "iteration")
@@ -428,7 +431,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                                 "This has triggered a saftey exception."
                                 "If your waveform is really this long, "
                                 "please remove this exception and run again.")
-        if verbose:
+        if self.verbose:
             print(f"Reached end of data.  Identified extrema = {extrema}")
         if pp:
             pp.close()

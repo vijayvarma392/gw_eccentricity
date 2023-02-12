@@ -297,3 +297,51 @@ def get_interpolant(oldX,
         raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
                          " of ['spline', 'monotonic_spline']")
     return interpolant
+
+
+def debug_message(message, debug_level, important=True,
+                  point_to_verbose_output=False):
+    """Show message based on debug_level.
+
+    parameters:
+    -----------
+    message: str
+        Message to display.
+
+    debug_level: int
+        Indicator for level of debug message. Based on it, one of the
+        following actions if performed:
+        -1: No action is performed and hence no message is displayed.
+        0: Warning is issued with the input message only if important=True
+        1: Warning is issued with the input message.
+        2: Exception is raised with the input message.
+
+    important: bool
+        Only if True, the message gets printed when debug_level=0. For
+        other debug_levels, this does nothing.
+        Default is True.
+
+    point_to_verbose_output: bool
+        When True, if debug_level is 0 and important is True, points to
+        debug_level = 1 for more verbose output.
+        Default is False
+    """
+    debug_levels = [-1, 0, 1, 2]
+    if debug_level not in debug_levels:
+        raise ValueError(
+            f"Unknown debug_level {debug_level}. Should one "
+            f"of {debug_levels}. See "
+            "`gw_eccentricity.utils.debug_message` for action"
+            "performed with each debug level.")
+    if debug_level == -1:
+        # Do nothing
+        return
+    if (debug_level == 0 and important) or debug_level == 1:
+        if debug_level == 0 and point_to_verbose_output:
+            message += "\nFor more verbose output use `debug_level=1`."
+        # Issue warning. Use stacklevel=2 to point to actual line number
+        # causing this warning instead of pointing to here.
+        warnings.warn(message, stacklevel=2)
+    if debug_level == 2:
+        # raise Exception
+        raise Exception(message)
