@@ -1542,18 +1542,18 @@ class eccDefinition:
         # and apoceneters
         self.orbit_averaged_omega22_pericenters \
             = self.get_orbit_averaged_omega22_at_pericenters()
-        self.orbit_average_omega22_apocenters \
+        self.orbit_averaged_omega22_apocenters \
             = self.get_orbit_averaged_omega22_at_apocenters()
         # check monotonicity of the omega22 average
         self.check_monotonicity_of_omega22_average(
             self.orbit_averaged_omega22_pericenters,
             "omega22 averaged [pericenter to pericenter]")
         self.check_monotonicity_of_omega22_average(
-            self.orbit_average_omega22_apocenters,
+            self.orbit_averaged_omega22_apocenters,
             "omega22 averaged [apocenter to apocenter]")
         # combine the average omega22 at pericenters and apocenters
         orbit_averaged_omega22 = np.append(
-            self.orbit_average_omega22_apocenters,
+            self.orbit_averaged_omega22_apocenters,
             self.orbit_averaged_omega22_pericenters)
 
         # get the times associated to the orbit averaged omega22
@@ -1607,7 +1607,7 @@ class eccDefinition:
                              c=colorsDict["pericenter"],
                              marker=".")
                 axes[2].plot(self.t_average_apocenters,
-                             self.orbit_average_omega22_apocenters,
+                             self.orbit_averaged_omega22_apocenters,
                              label=labelsDict["apocenters"],
                              c=colorsDict["apocenter"],
                              marker=".")
@@ -1712,11 +1712,11 @@ class eccDefinition:
             These original orbit averaged omega22 data points can be accessed
             using the gwecc_object with the following variables
             
-            - orbit_average_omega22_apocenters: orbit averaged omega22 between apocenters
+            - orbit_averaged_omega22_apocenters: orbit averaged omega22 between apocenters
               This is available when measuring eccentricity at reference frequency.
               If it is not available, it can be computed using `get_orbit_averaged_omega22_at_apocenters`
             - t_average_apocenters: temporal midpoints between
-              apocenters. These are associated with orbit_average_omega22_apocenters
+              apocenters. These are associated with orbit_averaged_omega22_apocenters
             - orbit_averaged_omega22_pericenters: orbit averaged omega22 between pericenters
               This is available when measuring eccentricity at reference frequency.
               If it is not available, it can be computed using `get_orbit_averaged_omega22_at_pericenters`
@@ -1913,6 +1913,11 @@ class eccDefinition:
           This helps to look for missing extrema, as there will be a drastic
           (roughly factor of 2) change in deltaPhi_orb(i) if there is a missing
           extrema, and the ratio will go from ~1 to ~2.
+        - omega22_average, where the omega22 average computed using the
+          `omega22_averaging_method` is plotted as a function of time.
+          omega22_average is used to get the reference time for a given
+          reference frequency. Therefore, it should be a strictly monotonic
+          function of time.
 
         Additionally, we plot the following if data for zero eccentricity is
         provided and method is not residual method
@@ -1969,7 +1974,8 @@ class eccDefinition:
                          self.plot_omega22,
                          self.plot_data_used_for_finding_extrema,
                          self.plot_decc_dt,
-                         self.plot_phase_diff_ratio_between_extrema]
+                         self.plot_phase_diff_ratio_between_extrema,
+                         self.plot_omega22_average]
         if "hlm_zeroecc" in self.dataDict:
             # add residual amp22 plot
             if self.method != "ResidualAmplitude":
@@ -2030,7 +2036,7 @@ class eccDefinition:
             **kwargs):
         """Plot measured ecc as function of time.
 
-                Parameters:
+        Parameters:
         -----------
         fig:
             Figure object to add the plot to. If None, initiates a new figure
@@ -2333,6 +2339,7 @@ class eccDefinition:
             self,
             fig=None,
             ax=None,
+            add_help_text=True,
             usetex=True,
             style="Notebook",
             use_fancy_settings=True,
@@ -2349,6 +2356,9 @@ class eccDefinition:
         ax:
             Axis object to add the plot to. If None, initiates a new axis
             object.  Default is None.
+        add_help_text:
+            If True, add text to describe features in the plot.
+            Default is True.
         usetex:
             If True, use TeX to render texts.
             Default is True.
@@ -2377,7 +2387,8 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        # check if omega22_average is already available. If non available, compute it.
+        # check if omega22_average is already available. If not
+        # available, compute it.
         if self.omega22_average is None:
             self.t_for_omega22_average, self.omega22_average = self.get_omega22_average()
         ax.plot(self.t_for_omega22_average,
@@ -2394,7 +2405,7 @@ class eccDefinition:
         if (self.extra_kwargs["omega22_averaging_method"] == "orbit_averaged_omega22" and
             plot_orbit_averaged_omega22_at_extrema):
             ax.plot(self.t_average_apocenters,
-                    self.orbit_average_omega22_apocenters,
+                    self.orbit_averaged_omega22_apocenters,
                     c=colorsDict["apocenter"],
                     marker=".", ls="",
                     label=labelsDict["orbit_averaged_omega22_apocenters"])
