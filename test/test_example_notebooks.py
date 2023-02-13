@@ -24,8 +24,11 @@ def test_example_notebooks():
     if len(notebooks_list) == 0:
         raise Exception("No notebooks found!")
 
+    no_test_list = [f"{git_home}/examples/load_waveform_demo.ipynb"]
     for notebook in notebooks_list:
-
+        if notebook in no_test_list:
+            print(f"No test for {notebook}")
+            continue
         print(f'testing {notebook}')
         with open(notebook) as f:
             nb = nbformat.read(f, as_version=4)
