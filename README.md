@@ -5,6 +5,8 @@
 
 
 # Welcome to gw_eccentricity!
+<div> <img src="./data/hreal.png"></div>
+
 **gw_eccentricity** provides methods to measure eccentricity and mean anomaly
 from gravitational waveforms.
 
@@ -86,3 +88,6 @@ for instructions on how to make contributions to this package.
 
 Please report bugs by raising an issue on our
 [GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
+
+---
+Image at the top shows an eccentric gravitational wave signal from [arXiv:2209.03390](https://arxiv.org/abs/2209.03390) (SXS:BBH:2558).
