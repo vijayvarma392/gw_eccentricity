@@ -5,6 +5,7 @@
 
 
 # Welcome to gw_eccentricity!
+<div> <img src="./data/hreal.png"></div>
 **gw_eccentricity** provides methods to measure eccentricity and mean anomaly
 from gravitational waveforms.
 
