@@ -1,6 +1,6 @@
 <h1> <a href="https://github.com/vijayvarma392/gw_eccentricity"> <img src="https://github.com/vijayvarma392/gw_eccentricity/blob/main/data/hreal.png"></a></h1>
 
-<h4 align="center"> Defining eccentricity for gravitational wave astronomy </h4>
+<h3 align="center"> Defining eccentricity for gravitational wave astronomy </h4>
 
 <div align="center">
 
