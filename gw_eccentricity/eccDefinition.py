@@ -1,7 +1,9 @@
 """
 Base module to measure eccentricity and mean anomaly for given waveform data.
 
-Part of Defining eccentricity project
+Classes for eccentricity definitions should be derived from `eccDefinition`
+(or one of it's derived classes. See the following wiki
+https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-definitions)
 """
 
 import numpy as np
@@ -19,7 +21,7 @@ import copy
 
 
 class eccDefinition:
-    """Measure eccentricity from given waveform data dictionary."""
+    """Base class to define eccentricity for given waveform data dictionary."""
 
     def __init__(self, dataDict, num_orbits_to_exclude_before_merger=2,
                  extra_kwargs=None):
@@ -27,7 +29,7 @@ class eccDefinition:
 
         parameters:
         ---------
-        dataDict:
+        dataDict: dict
             Dictionary containing waveform modes dict, time etc. Should follow
             the format:
             dataDict = {"t": time,
@@ -35,19 +37,20 @@ class eccDefinition:
                         "t_zeroecc": time,
                         "hlm_zeroecc": modeDict,
                        },
-            "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc" are only
-            required for ResidualAmplitude and ResidualFrequency methods, but
-            if provided, they are used for additional diagnostic plots, which
-            can be helpful for all methods. Any other keys in dataDict will be
+            "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc"
+            are only required for `ResidualAmplitude` and
+            `ResidualFrequency` methods, but if provided, they are
+            used for additional diagnostic plots, which can be helpful
+            for all methods. Any other keys in dataDict will be
             ignored, with a warning.
 
             The recognized keys are:
             - "t": 1d array of times.
                 - Should be uniformly sampled, with a small enough time step
-                  that omega22(t) can be accurately computed. We use a
+                  so that omega22(t) can be accurately computed. We use a
                   4th-order finite difference scheme. In dimensionless units,
                   we recommend a time step of dtM = 0.1M to be conservative,
-                  but you may be able to get away with larger time steps like
+                  but one may be able to get away with larger time steps like
                   dtM = 1M. The corresponding time step in seconds would be dtM
                   * M * lal.MTSUN_SI, where M is the total mass in Solar
                   masses.
@@ -72,7 +75,7 @@ class eccDefinition:
                   generate "hlm") but setting the eccentricity to zero. For NR,
                   if such a quasicircular counterpart is not available, we
                   recommend using quasicircular models like NRHybSur3dq8 or
-                  PhenomT, depending on the mass ratio and spins.
+                  IMRPhenomT, depending on the mass ratio and spins.
                 - "t_zeroecc" should be uniformly spaced, but does not have to
                   follow the same time step as that of "t", as long as the step
                   size is small enough to compute the frequency. Similarly,
@@ -94,16 +97,17 @@ class eccDefinition:
                 https://github.com/vijayvarma392/gw_eccentricity/wiki/NR-investigation-to-set-default-number-of-orbits-to-exclude-before-merger
                 Default: 2.
 
-        extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs
+        extra_kwargs: dict
+            A dictionary of any extra kwargs to be passed. Allowed kwargs
             are:
-            spline_kwargs:
+            spline_kwargs: dict
                 Dictionary of arguments to be passed to the spline
                 interpolation routine
                 (scipy.interpolate.InterpolatedUnivariateSpline) used to
                 compute omega22_pericenters(t) and omega22_apocenters(t).
                 Defaults are set using utils.get_default_spline_kwargs
 
-            extrema_finding_kwargs:
+            extrema_finding_kwargs: dict
                 Dictionary of arguments to be passed to the extrema finder,
                 scipy.signal.find_peaks.
                 The Defaults are the same as those of scipy.signal.find_peaks,
@@ -132,17 +136,17 @@ class eccDefinition:
 
             debug_plots: bool
                 If True, diagnostic plots are generated. This can be
-                computationally expensive and should be used only for
-                debugging purpose. When True, look for figures saved
-                as `gwecc_{method_name}_*.pdf`.
+                computationally expensive and should be used only for debugging
+                purpose. When True, look for figures saved as
+                `gwecc_{method_name}_*.pdf`.
                 Default is False.
 
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
                 omega22(t).
-                - "orbit_averaged_omega22": First, orbit averages are obtained at each
-                  pericenter by averaging omega22(t) over the time from the
-                  current pericenter to the next one. This average value is
+                - "orbit_averaged_omega22": First, orbit averages are obtained
+                  at each pericenter by averaging omega22(t) over the time from
+                  the current pericenter to the next one. This average value is
                   associated with the time at mid point between the current and
                   the next pericenter. Similarly orbit averages are computed at
                   apocenters.  Finally, a spline interpolant is constructed
@@ -268,8 +272,8 @@ class eccDefinition:
         ----------
         dataDict:
             Dictionary containing modes and times.
-        num_orbits_to_exclude_before_merger:
-            Number of orbits to exclude before merger to get the truncated dataDict.
+        num_orbits_to_exclude_before_merger: Number of orbits to exclude before
+            merger to get the truncated dataDict.
         extra_kwargs:
             Extra kwargs passed to the measure eccentricity.
 
@@ -446,7 +450,6 @@ class eccDefinition:
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
             "spline_kwargs": {},
-            "num_orbits_to_exclude_before_merger": 1,
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug_level": 0,
@@ -862,14 +865,16 @@ class eccDefinition:
         evaluate omega22(t) at pericenter times, t_pericenters, and build a
         spline interpolant omega22_pericenters(t) using those
         points. Similarly, we build omega22_apocenters(t) using omega22(t) at
-        the apocenter times, t_apocenters. Finally, eccentricity is defined
-        using omega22_pericenters(t) and omega22_apocenters(t), as described in
-        Eq.(1) of arxiv:xxxx.xxxx. Mean anomaly is defined using t_pericenters,
-        as described in Eq.(2) of arxiv:xxxx.xxxx.
+        the apocenter times, t_apocenters.
+
+        Using omega22_pericenters(t) and omega22_apocenters(t), we first
+        compute e_omega22(t), as described in Eq.(4) of arxiv:xxxx.xxxx. We
+        then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
+        of arxiv:xxxx.xxxx.  Mean anomaly is defined using t_pericenters, as
+        described in Eq.(10) of arxiv:xxxx.xxxx.
 
         FIXME ARIF: In the above text, fill in arxiv number when
-        available. Make sure the above Eq numbers are right, once the paper is
-        finalized.
+        available.
 
         parameters:
         ----------
@@ -886,8 +891,8 @@ class eccDefinition:
             omega22_average(tref_in) = 2 * pi * fref_in. Here,
             omega22_average(t) is a monotonically increasing average frequency
             obtained from the instantaneous omega22(t). omega22_average(t)
-            defaults to the orbit averaged omega22, but other options are available (see
-            omega22_averaging_method below).
+            defaults to the orbit averaged omega22, but other options are
+            available (see omega22_averaging_method below).
 
             Eccentricity and mean anomaly measurements are returned on a subset
             of tref_in/fref_in, called tref_out/fref_out, which are described
@@ -903,7 +908,8 @@ class eccDefinition:
             tref_out is the output reference time at which eccentricity and
             mean anomaly are measured.
             tref_out is included in the returned dictionary only when tref_in
-            is provided.  Units of tref_out is the same as that of tref_in.
+            is provided.
+            Units of tref_out is the same as that of tref_in.
 
             tref_out is set as
             tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
@@ -919,7 +925,8 @@ class eccDefinition:
             fref_out is the output reference frequency at which eccentricity
             and mean anomaly are measured.
             fref_out is included in the returned dictionary only when fref_in
-            is provided.  Units of fref_out is the same as that of fref_in.
+            is provided.
+            Units of fref_out is the same as that of fref_in.
 
             fref_out is set as
             fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
