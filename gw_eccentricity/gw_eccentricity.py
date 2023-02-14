@@ -129,13 +129,13 @@ def measure_eccentricity(tref_in=None,
           quasicircular counterpart from the omega22(t) of the eccentric
           waveform.
         - "AmplitudeFits": Uses Amp22(t) and iteratively subtracts a
-          PN-inspired fitting function from it, and finds extrema of the
-          residual.
+          PN-inspired fit of the extrema of Amp22(t) from it, and finds extrema
+          of the residual.
         - "FrequencyFits": Uses omega22(t) and iteratively subtracts a
-          PN-inspired fitting function from it, and finds extrema of the
-          residual.
+          PN-inspired fit of the extrema of omega22(t) from it, and finds
+          extrema of the residual.
         Default is "Amplitude".
-        Available list of methods can be also obtained from
+        The available list of methods can be also obtained from
         gw_eccentricity.get_available_methods().
         Detail description of these methods can be found in our paper,
         see Sec. III of arxiv.xxxx.xxxx.
@@ -143,11 +143,15 @@ def measure_eccentricity(tref_in=None,
         The Amplitude and Frequency methods can struggle for very small
         eccentricities (~1e-3), especially near the merger, as the secular
         amplitude/frequency growth dominates the modulations due to
-        eccentricity, making extrema finding difficult. This is the main reason
-        for using the residual methods,
-        ResidualAmplitude/ResidualFrequency/FrequencyFits, which first remove
-        the secular growth before finding extrema. However, methods that use
-        the frequency for finding extrema
+        eccentricity, making extrema finding difficult. See Eq.(25) of
+        arxiv.xxxx.xxxx to get an estimate of the smallest eccentricity that
+        can be measured using the Amplitude/Frequency method.
+
+        Due to the above limitation of the Amplitude/Frequency method, one should
+        use the residual methods,
+        ResidualAmplitude/ResidualFrequency/AmplitudeFits/FrequencyFits, which
+        remove the secular growth before finding extrema. However,
+        methods that use the frequency for finding extrema
         (Frequency/ResidualFrequency/FrequencyFits) can be more sensitive to
         junk radiation in NR data.
 
