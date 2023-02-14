@@ -5,7 +5,7 @@
 
 
 # Welcome to gw_eccentricity!
-<div> <img src="./data/hreal.png"></div>
+<div> <img src="https://github.com/vijayvarma392/gw_eccentricity/blob/main/data/hreal.png"></div>
 
 **gw_eccentricity** provides methods to measure eccentricity and mean anomaly
 from gravitational waveforms.
@@ -50,7 +50,15 @@ All of these can be installed through pip or conda.
 
 
 ## Usage
-See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb).
+See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb) for a demo.
+
+## Making contributions
+See this
+[README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
+for instructions on how to make contributions to this package.
+
+Please report bugs by raising an issue on our
+[GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
 
 ## Credits
 The main contributors to this code are [Md Arif Shaikh](https://md-arif-shaikh.github.io/), [Vijay
@@ -81,13 +89,5 @@ this package. You can use the following bibtex keys:
 -[ARIF: Please modify the above bibtex keys accordingly. I suggest using pypi link insatead of github like in the above example. For the key itself, use the one from inspire once the paper is ready. The difference is we also link the package through the NOTE option]
 ```
 
-### Making contributions
-See this
-[README](https://github.com/vijayvarma392/gw_eccentricity/blob/main/README_developers.md)
-for instructions on how to make contributions to this package.
-
-Please report bugs by raising an issue on our
-[GitHub](https://github.com/vijayvarma392/gw_eccentricity) repository.
-
 ---
-Image at the top shows an eccentric gravitational wave signal from [arXiv:2209.03390](https://arxiv.org/abs/2209.03390) (SXS:BBH:2558).
+Image at the top shows an eccentric gravitational wave signal (SXS:BBH:2558) from [arXiv:2209.03390](https://arxiv.org/abs/2209.03390).
