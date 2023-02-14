@@ -1,4 +1,4 @@
-"""gw_eccentricity.
+"""gw_eccentricity wrapper function to call different eccDefinition methods.
 
 Measure eccentricity and mean anomaly from gravitational waves.
 See our paper https://arxiv.org/abs/xxxx.xxxx and
@@ -67,19 +67,22 @@ def measure_eccentricity(tref_in=None,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
-    Eccentricity is measured using the GW frequency omega22(t) = dphi22(t)/dt,
-    where phi22(t) is the phase of the (2, 2) waveform mode. We currently only
-    allow time-domain, nonprecessing waveforms. We evaluate omega22(t) at
-    pericenter times, t_pericenters, and build a spline interpolant
-    omega22_pericenters(t) using those points. Similarly, we build
-    omega22_apocenters(t) using omega22(t) at the apocenter times,
-    t_apocenters. Finally, eccentricity is defined using omega22_pericenters(t)
-    and omega22_apocenters(t), as described in Eq.(1) of arxiv:xxxx.xxxx. Mean
-    anomaly is defined using t_pericenters, as described in Eq.(2) of
-    arxiv:xxxx.xxxx.
+    Eccentricity is measured using the GW frequency omega22(t) =
+    dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
+    mode. We currently only allow time-domain, nonprecessing waveforms. We
+    evaluate omega22(t) at pericenter times, t_pericenters, and build a
+    spline interpolant omega22_pericenters(t) using those
+    points. Similarly, we build omega22_apocenters(t) using omega22(t) at
+    the apocenter times, t_apocenters.
 
-    FIXME ARIF: In the above text, fill in arxiv number when available. Make
-    sure the above Eq numbers are right, once the paper is finalized.
+    Using omega22_pericenters(t) and omega22_apocenters(t), we first
+    compute e_omega22(t), as described in Eq.(4) of arxiv:xxxx.xxxx. We
+    then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
+    of arxiv:xxxx.xxxx.  Mean anomaly is defined using t_pericenters, as
+    described in Eq.(10) of arxiv:xxxx.xxxx.
+
+    FIXME ARIF: In the above text, fill in arxiv number when
+    available.
 
     To find t_pericenters/t_apocenters, one can look for extrema in different
     waveform data, like omega22(t) or Amp22(t), the amplitude of the (2, 2)
@@ -134,6 +137,8 @@ def measure_eccentricity(tref_in=None,
         Default is "Amplitude".
         Available list of methods can be also obtained from
         gw_eccentricity.get_available_methods().
+        Detail description of these methods can be found in our paper,
+        see Sec. III of arxiv.xxxx.xxxx.
 
         The Amplitude and Frequency methods can struggle for very small
         eccentricities (~1e-3), especially near the merger, as the secular
@@ -193,8 +198,8 @@ def measure_eccentricity(tref_in=None,
               parameters fixed (same as the ones used to generate "hlm") but
               setting the eccentricity to zero. For NR, if such a quasicircular
               counterpart is not available, we recommend using quasicircular
-              models like NRHybSur3dq8 or PhenomT, depending on the mass ratio
-              and spins.
+              models like NRHybSur3dq8 or IMRPhenomT, depending on the mass
+              ratio and spins.
             - "t_zeroecc" should be uniformly spaced, but does not have to
               follow the same time step as that of "t", as long as the step
               size is small enough to compute the frequency. Similarly, peak
@@ -276,6 +281,8 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the quasicircular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
+            See Sec. IID of arxiv.xxxx.xxxx for more detail description of
+            average omega22.
             Default is "orbit_averaged_omega22".
 
         treat_mid_points_between_pericenters_as_apocenters:
@@ -298,7 +305,8 @@ def measure_eccentricity(tref_in=None,
     tref_out:
         tref_out is the output reference time at which eccentricity and mean
         anomaly are measured.
-        tref_out is included in the returned dictionary only when tref_in is provided.
+        tref_out is included in the returned dictionary only when tref_in is
+        provided.
         Units of tref_out is the same as that of tref_in.
 
         tref_out is set as
@@ -314,9 +322,10 @@ def measure_eccentricity(tref_in=None,
     fref_out:
         fref_out is the output reference frequency at which eccentricity and
         mean anomaly are measured.
-        fref_out is included in the returned dictionary only when fref_in is provided.
+        fref_out is included in the returned dictionary only when fref_in is
+        provided.
         Units of fref_out is the same as that of fref_in.
-        
+
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
         where fref_min/fref_max are minimum/maximum allowed reference

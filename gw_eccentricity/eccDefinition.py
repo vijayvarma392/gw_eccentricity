@@ -163,6 +163,8 @@ class eccDefinition:
                   counterpart is used as a proxy for the average
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
+                See Sec. IID of arxiv.xxxx.xxxx for more detail description of
+                average omega22.
                 Default is "orbit_averaged_omega22".
 
             treat_mid_points_between_pericenters_as_apocenters:
