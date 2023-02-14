@@ -12,7 +12,7 @@ Before doing a pull request, you should check that your changes don't break
 anything by running the following from the root directory of your check-out.
 Every pull request will be automatically tested by github.
 ```
-py.test test
+./run_tests
 ```
 
 ## Adding a new eccentricity definition
