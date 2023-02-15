@@ -1471,15 +1471,14 @@ class eccDefinition:
         self.res_omega22 = (self.omega22 - self.omega22_zeroecc_interp)
 
     def get_t_average_for_orbit_averaged_omega22(self):
-        """Get the time array associated with the fref for orbit averaged omega22.
+        """Get the times associated with the fref for orbit averaged omega22.
 
         t_average_pericenters are the times at midpoints between consecutive
-        pericenters. We associate time (t[i] + t[i+1]) / 2 with the orbit averaged omega22
-        calculated between ith and (i+1)th pericenter. That is,
-        omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
-                                             / (t[i+1] - t[i]),
-        where t[i] is the time at the ith pericenter.
-        And similarly, we calculate the t_average_apocenters. We combine
+        pericenters. We associate time (t[i] + t[i+1]) / 2 with the orbit
+        averaged omega22 calculated between ith and (i+1)th pericenter. That
+        is, omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
+        / (t[i+1] - t[i]), where t[i] is the time at the ith pericenter.  And
+        similarly, we calculate the t_average_apocenters. We combine
         t_average_pericenters and t_average_apocenters, and sort them to obtain
         t_average.
 
@@ -1488,7 +1487,8 @@ class eccDefinition:
         t_for_orbit_averaged_omega22:
             Times associated with orbit averaged omega22
         sorted_idx_for_orbit_averaged_omega22:
-            Indices used to sort the times associated with orbit averaged omega22
+            Indices used to sort the times associated with orbit averaged
+            omega22
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -1503,9 +1503,12 @@ class eccDefinition:
         t_for_orbit_averaged_omega22 = np.append(
             self.t_average_apocenters,
             self.t_average_pericenters)
-        sorted_idx_for_orbit_averaged_omega22 = np.argsort(t_for_orbit_averaged_omega22)
-        t_for_orbit_averaged_omega22 = t_for_orbit_averaged_omega22[sorted_idx_for_orbit_averaged_omega22]
-        return t_for_orbit_averaged_omega22, sorted_idx_for_orbit_averaged_omega22
+        sorted_idx_for_orbit_averaged_omega22 = np.argsort(
+            t_for_orbit_averaged_omega22)
+        t_for_orbit_averaged_omega22 = t_for_orbit_averaged_omega22[
+            sorted_idx_for_orbit_averaged_omega22]
+        return [t_for_orbit_averaged_omega22,
+                sorted_idx_for_orbit_averaged_omega22]
 
     def get_orbit_averaged_omega22_at_pericenters(self):
         """Get orbital average of omega22 between two consecutive pericenters.
@@ -1522,7 +1525,12 @@ class eccDefinition:
                 np.diff(self.t[self.pericenters_location]))
 
     def get_orbit_averaged_omega22_at_apocenters(self):
-        """Get orbital average of omega22 between two consecutive apocenters."""
+        """Get orbital average of omega22 between two consecutive apocenters.
+
+        The procedure to get the orbital average of omega22 at apocenters is
+        the same as that at pericenters. See documentation of
+        `get_orbit_averaged_omega22_at_pericenters` for details.
+        """
         return (np.diff(self.phase22[self.apocenters_location]) /
                 np.diff(self.t[self.apocenters_location]))
 
@@ -1567,16 +1575,20 @@ class eccDefinition:
 
         # get the times associated to the orbit averaged omega22
         if not hasattr(self, "t_for_orbit_averaged_omega22"):
-            self.t_for_orbit_averaged_omega22, self.sorted_idx_for_orbit_averaged_omega22 = \
-                self.get_t_average_for_orbit_averaged_omega22()
-        # We now sort omega22_average using sorted_idx_for_orbit_averaged_omega22, the
-        # same array of indices that was used to obtain the t_for_orbit_averaged_omega22
-        # in the function eccDefinition.get_t_average_for_orbit_averaged_omega22.
-        orbit_averaged_omega22 = orbit_averaged_omega22[self.sorted_idx_for_orbit_averaged_omega22]
+            self.t_for_orbit_averaged_omega22,\
+                self.sorted_idx_for_orbit_averaged_omega22\
+                = self.get_t_average_for_orbit_averaged_omega22()
+        # We now sort omega22_average using
+        # `sorted_idx_for_orbit_averaged_omega22`, the same array of indices
+        # that was used to obtain the `t_for_orbit_averaged_omega22` in the
+        # function `eccDefinition.get_t_average_for_orbit_averaged_omega22`.
+        orbit_averaged_omega22 = orbit_averaged_omega22[
+            self.sorted_idx_for_orbit_averaged_omega22]
         # check that omega22_average in strictly monotonic
         self.check_monotonicity_of_omega22_average(
             orbit_averaged_omega22,
-            "omega22 averaged [apocenter to apocenter] and [pericenter to pericenter]")
+            "omega22 averaged [apocenter to apocenter] and "
+            "[pericenter to pericenter]")
         return self.interp(
             t, self.t_for_orbit_averaged_omega22, orbit_averaged_omega22)
 
@@ -1643,7 +1655,9 @@ class eccDefinition:
                 axes[0].set_title(
                     self.extra_kwargs["omega22_averaging_method"])
                 fig.tight_layout()
-                figName = f"./gwecc_{self.method}_{description.replace(' ', '_')}.pdf"
+                figName = (
+                    "./gwecc_"
+                    f"{self.method}_{description.replace(' ', '_')}.pdf")
                 # fig.savefig(figName)
                 self.save_debug_fig(fig, figName)
                 plt.close(fig)
@@ -1663,7 +1677,8 @@ class eccDefinition:
                 f"{plot_info}\n"
                 "Possible fixes: \n"
                 "   - Increase sampling rate of data\n"
-                "   - Add to extra_kwargs the option 'treat_mid_points_between_pericenters_as_apocenters': True")
+                "   - Add to extra_kwargs the option 'treat_mid_points_between"
+                "_pericenters_as_apocenters': True")
 
     def compute_mean_of_extrema_interpolants(self, t):
         """Find omega22 average by taking mean of the extrema interpolants".
@@ -1699,8 +1714,9 @@ class eccDefinition:
             - "mean_of_extrema_interpolants"
             - "orbit_averaged_omega22"
             - "omega22_zeroecc"
-            See get_available_omega22_averaging_methods for available averaging methods.
-            Default is None which uses the method provided in self.extra_kwargs["omega22_averaging_method"]
+            See get_available_omega22_averaging_methods for available averaging
+            methods.  Default is None which uses the method provided in
+            `self.extra_kwargs["omega22_averaging_method"]`
 
         Returns:
         --------
@@ -1711,7 +1727,7 @@ class eccDefinition:
             These are data interpolated on the times t_for_omega22_average,
             where t_for_omega22_average is a subset of tref_in passed to the
             eccentricity measurement function.
-            
+
             For the "orbit_averaged_omega22" method, the original
             omega22_average data points <omega22>_i are obtained by averaging
             the omega22 over the ith orbit between ith to i+1-th extrema. The
@@ -1720,17 +1736,21 @@ class eccDefinition:
 
             These original orbit averaged omega22 data points can be accessed
             using the gwecc_object with the following variables
-            
-            - orbit_averaged_omega22_apocenters: orbit averaged omega22 between apocenters
-              This is available when measuring eccentricity at reference frequency.
-              If it is not available, it can be computed using `get_orbit_averaged_omega22_at_apocenters`
+
+            - orbit_averaged_omega22_apocenters: orbit averaged omega22 between
+              apocenters This is available when measuring eccentricity at
+              reference frequency.  If it is not available, it can be computed
+              using `get_orbit_averaged_omega22_at_apocenters`
             - t_average_apocenters: temporal midpoints between
-              apocenters. These are associated with orbit_averaged_omega22_apocenters
-            - orbit_averaged_omega22_pericenters: orbit averaged omega22 between pericenters
-              This is available when measuring eccentricity at reference frequency.
-              If it is not available, it can be computed using `get_orbit_averaged_omega22_at_pericenters`
+              apocenters. These are associated with
+              `orbit_averaged_omega22_apocenters`
+            - orbit_averaged_omega22_pericenters: orbit averaged omega22
+              between pericenters This is available when measuring eccentricity
+              at reference frequency.  If it is not available, it can be
+              computed using `get_orbit_averaged_omega22_at_pericenters`
             - t_average_pericenters: temporal midpoints between
-              pericenters. These are associated with orbit_averaged_omega22_pericenters
+              pericenters. These are associated with
+              `orbit_averaged_omega22_pericenters`
         """
         if method is None:
             method = self.extra_kwargs["omega22_averaging_method"]
@@ -1743,11 +1763,14 @@ class eccDefinition:
         else:
             self.t_for_orbit_averaged_omega22, self.sorted_idx_for_orbit_averaged_omega22 = \
                 self.get_t_average_for_orbit_averaged_omega22()
-            # for orbit averaged omega22, the associated times are obtained using the temporal
-            # midpoints of the extrema, therefore we need to make sure that we use
-            # only those times that fall within tmin and tmax.
-            self.tmin_for_fref = max(self.tmin, min(self.t_for_orbit_averaged_omega22))
-            self.tmax_for_fref = min(self.tmax, max(self.t_for_orbit_averaged_omega22))
+            # for orbit averaged omega22, the associated times are obtained
+            # using the temporal midpoints of the extrema, therefore we need to
+            # make sure that we use only those times that fall within tmin and
+            # tmax.
+            self.tmin_for_fref = max(self.tmin,
+                                     min(self.t_for_orbit_averaged_omega22))
+            self.tmax_for_fref = min(self.tmax,
+                                     max(self.t_for_orbit_averaged_omega22))
         t_for_omega22_average = self.t[
             np.logical_and(self.t >= self.tmin_for_fref,
                            self.t <= self.tmax_for_fref)]
@@ -1838,28 +1861,30 @@ class eccDefinition:
         minimum and maximum allowed reference frequency of 22 mode.
 
         Note: If omega22_average is already computed using a `method` and
-        therefore is not None, then it returns the minimum and maximum
-        of that omega22_average and does not recompute the omega22_average using
-        the input `method`. In other words, if omega22_average is already not None
-        then input `method` is ignored and the existing omega22_average is used.
-        To force recomputation of omega22_average, for example, with a new method
-        one need to set it to None first.
+        therefore is not None, then it returns the minimum and maximum of that
+        omega22_average and does not recompute the omega22_average using the
+        input `method`. In other words, if omega22_average is already not None
+        then input `method` is ignored and the existing omega22_average is
+        used.  To force recomputation of omega22_average, for example, with a
+        new method one need to set it to None first.
 
         Parameters:
         -----------
         method:
-            Omega22 averaging method.
-            See get_available_omega22_averaging_methods for available methods.
-            Default is None which will use the default
-            method for omega22 averaging using extra_kwargs["omega22_averaging_method"]
+            Omega22 averaging method.  See
+            get_available_omega22_averaging_methods for available methods.
+            Default is None which will use the default method for omega22
+            averaging using `extra_kwargs["omega22_averaging_method"]`
 
         Returns:
-            Minimum allowed reference frequency, Maximum allowed reference frequency.
+            Minimum allowed reference frequency, Maximum allowed reference
+            frequency.
         --------
         """
         if self.omega22_average is None:
             self.t_for_omega22_average, self.omega22_average = self.get_omega22_average(method)
-        return min(self.omega22_average)/2/np.pi, max(self.omega22_average)/2/np.pi
+        return [min(self.omega22_average)/2/np.pi,
+                max(self.omega22_average)/2/np.pi]
 
     def get_fref_out(self, fref_in, method):
         """Get fref_out from fref_in that falls within the valid average f22 range.

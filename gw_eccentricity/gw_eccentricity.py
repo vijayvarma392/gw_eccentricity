@@ -142,17 +142,17 @@ def measure_eccentricity(tref_in=None,
         see Sec. III of arxiv.xxxx.xxxx.
 
         The Amplitude and Frequency methods can struggle for very small
-        eccentricities (1e-2~1e-3), especially near the merger, as the secular
-        amplitude/frequency growth dominates the modulations due to
+        eccentricities (~1e-2...1e-3), especially near the merger, as the
+        secular amplitude/frequency growth dominates the modulations due to
         eccentricity, making extrema finding difficult. See Eq.(25) of
         arxiv.xxxx.xxxx to get an estimate of the smallest eccentricity that
         can be measured using the Amplitude/Frequency method.
 
-        Due to the above limitation of the Amplitude/Frequency method, one should
-        use the residual methods,
+        Due to the above limitation of the Amplitude/Frequency method, one
+        should use the residual methods,
         ResidualAmplitude/ResidualFrequency/AmplitudeFits/FrequencyFits, which
-        remove the secular growth before finding extrema. However,
-        methods that use the frequency for finding extrema
+        remove the secular growth before finding extrema. However, methods that
+        use the frequency for finding extrema
         (Frequency/ResidualFrequency/FrequencyFits) can be more sensitive to
         junk radiation in NR data.
 
