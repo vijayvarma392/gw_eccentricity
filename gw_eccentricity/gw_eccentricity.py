@@ -216,7 +216,7 @@ def measure_eccentricity(tref_in=None,
         If None, the full waveform data (even post-merger) is used for
         finding extrema, but this might cause interpolation issues.
         For a non negative num_orbits_to_exclude_before_merger, that
-        many orbits prior to merger are excluded when finding extrema.
+        many orbits before the merger are excluded when finding extrema.
         If your waveform does not have a merger (e.g. PN/EMRI), use
         num_orbits_to_exclude_before_merger = None.
 
@@ -269,16 +269,17 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
-            - "orbit_averaged_omega22": First, orbit averages are obtained at each
-              pericenter by averaging omega22(t) over the time from the current
-              pericenter to the next one. This average value is associated with
-              the time at mid point between the current and the next
-              pericenter. Similarly orbit averages are computed at apocenters.
-              Finally, a spline interpolant is constructed between all of these
-              orbit averages at extrema locations. However, the final time over
-              which the spline is constructed is constrained to be between
-              tmin_for_fref and tmax_for_fref which are close to tmin and tmax,
-              respectively. See eccDefinition.get_fref_bounds() for details.
+            - "orbit_averaged_omega22": First, orbit averages are obtained at
+              each pericenter by averaging omega22(t) over the time from the
+              current pericenter to the next one. This average value is
+              associated with the time at midpoint between the current and the
+              next pericenter. Similarly, orbit averages are computed at
+              apocenters.  Finally, a spline interpolant is constructed between
+              all of these orbit averages at extrema locations. However, the
+              final time over which the spline is constructed is constrained to
+              be between tmin_for_fref and tmax_for_fref which are close to
+              tmin and tmax, respectively. See eccDefinition.get_fref_bounds()
+              for details.
             - "mean_of_extrema_interpolants":
               The mean of omega22_pericenters(t) and omega22_apocenters(t) is
               used as a proxy for the average frequency.
@@ -311,7 +312,7 @@ def measure_eccentricity(tref_in=None,
         anomaly are measured.
         tref_out is included in the returned dictionary only when tref_in is
         provided.
-        Units of tref_out is the same as that of tref_in.
+        Unit of tref_out is the same as that of tref_in.
 
         tref_out is set as
         tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
@@ -328,7 +329,7 @@ def measure_eccentricity(tref_in=None,
         mean anomaly are measured.
         fref_out is included in the returned dictionary only when fref_in is
         provided.
-        Units of fref_out is the same as that of fref_in.
+        Unit of fref_out is the same as that of fref_in.
 
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
