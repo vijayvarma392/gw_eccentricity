@@ -71,14 +71,14 @@ def measure_eccentricity(tref_in=None,
     dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
     mode. We currently only allow time-domain, nonprecessing waveforms. We
     evaluate omega22(t) at pericenter times, t_pericenters, and build a
-    spline interpolant omega22_pericenters(t) using those
+    spline interpolant omega22_pericenters(t) using those data
     points. Similarly, we build omega22_apocenters(t) using omega22(t) at
     the apocenter times, t_apocenters.
 
     Using omega22_pericenters(t) and omega22_apocenters(t), we first
     compute e_omega22(t), as described in Eq.(4) of arxiv:xxxx.xxxx. We
     then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-    of arxiv:xxxx.xxxx.  Mean anomaly is defined using t_pericenters, as
+    of arxiv:xxxx.xxxx. Mean anomaly is defined using t_pericenters, as
     described in Eq.(10) of arxiv:xxxx.xxxx.
 
     FIXME ARIF: In the above text, fill in arxiv number when
@@ -86,9 +86,10 @@ def measure_eccentricity(tref_in=None,
 
     To find t_pericenters/t_apocenters, one can look for extrema in different
     waveform data, like omega22(t) or Amp22(t), the amplitude of the (2, 2)
-    mode. Pericenters correspond to peaks, while apocenters correspond to
-    troughs in the data. The method option (described below) lets you pick
-    which waveform data to use to find t_pericenters/t_apocenters.
+    mode. Pericenters correspond to the peaks (local maxima), while apocenters
+    correspond to the troughs (local minima) in the data. The method option
+    (described below) lets the user pick which waveform data to use to find
+    t_pericenters/t_apocenters.
 
     Parameters:
     ----------
@@ -104,9 +105,9 @@ def measure_eccentricity(tref_in=None,
         Given an fref_in, we find the corresponding tref_in such that
         omega22_average(tref_in) = 2 * pi * fref_in. Here, omega22_average(t)
         is a monotonically increasing average frequency obtained from the
-        instantaneous omega22(t). omega22_average(t) defaults to the mean
-        motion, but other options are available (see omega22_averaging_method
-        below).
+        instantaneous omega22(t). omega22_average(t) defaults to the orbit
+        averaged omega22, but other options are available (see
+        omega22_averaging_method below).
 
         Eccentricity and mean anomaly measurements are returned on a subset of
         tref_in/fref_in, called tref_out/fref_out, which are described below.
@@ -141,7 +142,7 @@ def measure_eccentricity(tref_in=None,
         see Sec. III of arxiv.xxxx.xxxx.
 
         The Amplitude and Frequency methods can struggle for very small
-        eccentricities (~1e-3), especially near the merger, as the secular
+        eccentricities (1e-2~1e-3), especially near the merger, as the secular
         amplitude/frequency growth dominates the modulations due to
         eccentricity, making extrema finding difficult. See Eq.(25) of
         arxiv.xxxx.xxxx to get an estimate of the smallest eccentricity that
@@ -174,7 +175,7 @@ def measure_eccentricity(tref_in=None,
 
         The recognized keys are:
         - "t": 1d array of times.
-            - Should be uniformly sampled, with a small enough time step
+            - Should be uniformly sampled, with a small enough time step so
               that omega22(t) can be accurately computed. We use a 4th-order
               finite difference scheme. In dimensionless units, we recommend a
               time step of dtM = 0.1M to be conservative, but you may be able
@@ -349,7 +350,8 @@ def measure_eccentricity(tref_in=None,
 
     gwecc_object:
         eccDefinition object used to compute eccentricity. This can be used to
-        make diagnostic plots and variables computed internally for measuring
+        make diagnostic plots, call member functions to do further
+        investigation or access variables computed internally for measuring
         eccentricity and mean anomaly.
     """
     available_methods = get_available_methods(return_dict=True)
