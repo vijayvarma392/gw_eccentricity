@@ -2465,7 +2465,7 @@ class eccDefinition:
         # add help text
         if add_help_text:
             ax.text(
-                0.22,
+                0.35,
                 0.98,
                 (rf"\noindent {labelsDict['omega22_average']} should be "
                  "monotonically increasing."),
@@ -2626,7 +2626,9 @@ class eccDefinition:
                 0.5,
                 0.98,
                 ("If phase difference ratio exceeds 1.5,\n"
-                 "there might be missing extrema."),
+                 "there may be missing extrema.\n"
+                 "If the ratio falls below 0.5,\n"
+                 "there may be spurious extrema."),
                 ha="center",
                 va="top",
                 transform=ax.transAxes)
