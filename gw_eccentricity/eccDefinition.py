@@ -104,7 +104,8 @@ class eccDefinition:
                 Dictionary of arguments to be passed to the spline
                 interpolation routine
                 (scipy.interpolate.InterpolatedUnivariateSpline) used to
-                compute omega22_pericenters(t) and omega22_apocenters(t).
+                compute quantities like omega22_pericenters(t) and
+                omega22_apocenters(t).
                 Defaults are set using utils.get_default_spline_kwargs
 
             extrema_finding_kwargs: dict
@@ -127,7 +128,7 @@ class eccDefinition:
                 details.
 
             debug_level: int
-                Controls the output of warnings, depending on the value passed:
+                Debug settings for warnings/errors:
                 -1: All warnings are suppressed. NOTE: Use at your own risk!
                 0: Only important warnings are issued.
                 1: All warnings are issued. Use when investigating.
@@ -136,10 +137,9 @@ class eccDefinition:
 
             debug_plots: bool
                 If True, diagnostic plots are generated. This can be
-                computationally expensive and should be used only for debugging
-                purpose. When True, look for figures saved as
-                `gwecc_{method_name}_*.pdf`.
-                Default is False.
+                computationally expensive and should only be used when
+                debugging. When True, look for figures saved as
+                `gwecc_{method}_*.pdf`.
 
             omega22_averaging_method:
                 Options for obtaining omega22_average(t) from the instantaneous
@@ -865,18 +865,24 @@ class eccDefinition:
         dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
         mode. We currently only allow time-domain, nonprecessing waveforms. We
         evaluate omega22(t) at pericenter times, t_pericenters, and build a
-        spline interpolant omega22_pericenters(t) using those
+        spline interpolant omega22_pericenters(t) using those data
         points. Similarly, we build omega22_apocenters(t) using omega22(t) at
         the apocenter times, t_apocenters.
 
         Using omega22_pericenters(t) and omega22_apocenters(t), we first
         compute e_omega22(t), as described in Eq.(4) of arxiv:xxxx.xxxx. We
         then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-        of arxiv:xxxx.xxxx.  Mean anomaly is defined using t_pericenters, as
+        of arxiv:xxxx.xxxx. Mean anomaly is defined using t_pericenters, as
         described in Eq.(10) of arxiv:xxxx.xxxx.
 
-        FIXME ARIF: In the above text, fill in arxiv number when
-        available.
+        FIXME ARIF: In the above text, fill in arxiv number when available.
+
+        To find t_pericenters/t_apocenters, one can look for extrema in
+        different waveform data, like omega22(t) or Amp22(t), the amplitude of
+        the (2, 2) mode. Pericenters correspond to the local maxima, while
+        apocenters correspond to the local minima in the data. The method
+        option (described below) lets the user pick which waveform data to use
+        to find t_pericenters/t_apocenters.
 
         parameters:
         ----------
@@ -911,7 +917,7 @@ class eccDefinition:
             mean anomaly are measured.
             tref_out is included in the returned dictionary only when tref_in
             is provided.
-            Unit of tref_out is the same as that of tref_in.
+            Units of tref_out are the same as that of tref_in.
 
             tref_out is set as
             tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
@@ -928,7 +934,7 @@ class eccDefinition:
             and mean anomaly are measured.
             fref_out is included in the returned dictionary only when fref_in
             is provided.
-            Unit of fref_out is the same as that of fref_in.
+            Units of fref_out are the same as that of fref_in.
 
             fref_out is set as
             fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
@@ -1715,7 +1721,8 @@ class eccDefinition:
             - "orbit_averaged_omega22"
             - "omega22_zeroecc"
             See get_available_omega22_averaging_methods for available averaging
-            methods.  Default is None which uses the method provided in
+            methods and Sec.IID of arxiv.xxxx.xxxx for more details.
+            Default is None which uses the method provided in
             `self.extra_kwargs["omega22_averaging_method"]`
 
         Returns:
@@ -1809,8 +1816,8 @@ class eccDefinition:
         - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
 
         Users can provide a method through the "extra_kwargs" option with the
-        key "omega22_averaging_method". Default is
-        "orbit_averaged_omega22"
+        key "omega22_averaging_method".
+        Default is "orbit_averaged_omega22"
 
         Once we get the reference frequencies, we create a spline to get time
         as a function of these reference frequencies. This should work if the

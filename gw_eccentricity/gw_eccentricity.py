@@ -1,4 +1,4 @@
-"""gw_eccentricity wrapper function to call different eccDefinition methods.
+"""gw_eccentricity wrapper to call different eccDefinition methods.
 
 Measure eccentricity and mean anomaly from gravitational waves.
 See our paper https://arxiv.org/abs/xxxx.xxxx and
@@ -86,8 +86,8 @@ def measure_eccentricity(tref_in=None,
 
     To find t_pericenters/t_apocenters, one can look for extrema in different
     waveform data, like omega22(t) or Amp22(t), the amplitude of the (2, 2)
-    mode. Pericenters correspond to the peaks (local maxima), while apocenters
-    correspond to the troughs (local minima) in the data. The method option
+    mode. Pericenters correspond to the local maxima, while apocenters
+    correspond to the local minima in the data. The method option
     (described below) lets the user pick which waveform data to use to find
     t_pericenters/t_apocenters.
 
@@ -138,26 +138,22 @@ def measure_eccentricity(tref_in=None,
         Default is "Amplitude".
         The available list of methods can be also obtained from
         gw_eccentricity.get_available_methods().
-        Detail description of these methods can be found in our paper,
-        see Sec. III of arxiv.xxxx.xxxx.
+        Detailed description of these methods can be found in Sec. III of
+        arxiv.xxxx.xxxx.
 
         The Amplitude and Frequency methods can struggle for very small
-        eccentricities (~1e-2...1e-3), especially near the merger, as the
+        eccentricities, especially near the merger, as the
         secular amplitude/frequency growth dominates the modulations due to
-        eccentricity, making extrema finding difficult. See Eq.(25) of
-        arxiv.xxxx.xxxx to get an estimate of the smallest eccentricity that
-        can be measured using the Amplitude/Frequency method.
+        eccentricity, making extrema finding difficult.
 
-        Due to the above limitation of the Amplitude/Frequency method, one
-        should use the residual methods,
-        ResidualAmplitude/ResidualFrequency/AmplitudeFits/FrequencyFits, which
-        remove the secular growth before finding extrema. However, methods that
-        use the frequency for finding extrema
-        (Frequency/ResidualFrequency/FrequencyFits) can be more sensitive to
-        junk radiation in NR data.
+        The ResidualAmplitude/ResidualFrequency/AmplitudeFits/FrequencyFits
+        methods avoid this limitation by removing the secular growth before
+        finding extrema. However, methods that use the frequency for finding
+        extrema (Frequency/ResidualFrequency/FrequencyFits) can be more
+        sensitive to junk radiation in NR data.
 
         Therefore, the recommended methods are
-        Amplitude/ResidualAmplitude/FrequencyFits.
+        ResidualAmplitude/AmplitudeFits/Amplitude
 
     dataDict:
         Dictionary containing waveform modes dict, time etc. Should follow the
@@ -228,10 +224,10 @@ def measure_eccentricity(tref_in=None,
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         spline_kwargs:
-            Dictionary of arguments to be passed to the spline
-            interpolation routine
-            (scipy.interpolate.InterpolatedUnivariateSpline) used to
-            compute omega22_pericenters(t) and omega22_apocenters(t).
+            Dictionary of arguments to be passed to the spline interpolation
+            routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
+            compute quantities like omega22_pericenters(t) and
+            omega22_apocenters(t).
             Defaults are set using utils.get_default_spline_kwargs
 
         extrema_finding_kwargs:
@@ -253,7 +249,7 @@ def measure_eccentricity(tref_in=None,
             details.
 
         debug_level: int
-            Controls the output of warnings, depending on the value passed:
+            Debug settings for warnings/errors:
             -1: All warnings are suppressed. NOTE: Use at your own risk!
             0: Only important warnings are issued.
             1: All warnings are issued. Use when investigating.
@@ -262,9 +258,9 @@ def measure_eccentricity(tref_in=None,
 
         debug_plots: bool
             If True, diagnostic plots are generated. This can be
-            computationally expensive and should be used only for
-            debugging purpose. When True, look for figures saved as
-            `gwecc_{method_name}_*.pdf`.
+            computationally expensive and should only be used when
+            debugging. When True, look for figures saved as
+            `gwecc_{method}_*.pdf`.
             Default is False.
 
         omega22_averaging_method:
@@ -287,8 +283,8 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the quasicircular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
-            See Sec. IID of arxiv.xxxx.xxxx for more detail description of
-            average omega22.
+            See Sec. IID of arxiv.xxxx.xxxx for a more detailed description of
+            "omega22_average".
             Default is "orbit_averaged_omega22".
 
         treat_mid_points_between_pericenters_as_apocenters:
@@ -313,7 +309,7 @@ def measure_eccentricity(tref_in=None,
         anomaly are measured.
         tref_out is included in the returned dictionary only when tref_in is
         provided.
-        Unit of tref_out is the same as that of tref_in.
+        Units of tref_out are the same as that of tref_in.
 
         tref_out is set as
         tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
@@ -330,7 +326,7 @@ def measure_eccentricity(tref_in=None,
         mean anomaly are measured.
         fref_out is included in the returned dictionary only when fref_in is
         provided.
-        Unit of fref_out is the same as that of fref_in.
+        Units of fref_out are the same as that of fref_in.
 
         fref_out is set as
         fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
