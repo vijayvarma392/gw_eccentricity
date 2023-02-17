@@ -2385,7 +2385,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             plot_omega22=True,
-            plot_orbit_averaged_omega22_at_extrema=True,
+            plot_orbit_averaged_omega22_at_extrema=False,
             **kwargs):
         """Plot omega22_average.
 
@@ -2417,8 +2417,8 @@ class eccDefinition:
         plot_omega22: bool
             If True, plot omega22 also. Default is True.
         plot_orbit_averaged_omega22_at_extrema: bool
-            If True and method is orbit_averaged_omega22, plot the the orbit averaged omega22
-            at the extrema as well. Default is True.
+            If True and method is orbit_averaged_omega22, plot the the orbit
+            averaged omega22 at the extrema as well. Default is False.
 
         Returns:
         --------
@@ -2435,7 +2435,7 @@ class eccDefinition:
         ax.plot(self.t_for_omega22_average,
                 self.omega22_average,
                 c=colorsDict["default"],
-                label=labelsDict["omega22_average"],
+                label="omega22_average",
                 **kwargs)
         if plot_omega22:
             ax.plot(self.t, self.omega22,
@@ -2461,13 +2461,13 @@ class eccDefinition:
         pad = 0.05 * ymax  # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         ax.set_xlabel(r"$t$")
-        ax.set_ylabel(labelsDict["omega22_average"])
+        ax.set_ylabel("Averaged frequency")
         # add help text
         if add_help_text:
             ax.text(
                 0.35,
                 0.98,
-                (rf"\noindent {labelsDict['omega22_average']} should be "
+                (r"\noindent omega22_average should be "
                  "monotonically increasing."),
                 ha="left",
                 va="top",
