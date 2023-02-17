@@ -86,12 +86,12 @@ this package. You can use the following bibtex keys:
       eprint         = "1811.06552",
       archivePrefix  = "arXiv",
       primaryClass   = "astro-ph.HE",
-      Note = {\href{https://vijayvarma392.github.io/binaryBHexp/}{https://vijayvarma392.github.io/binaryBHexp/}},
+      Note = {\href{https://pypi.org/project/gw_eccentricity}{pypi.org/project/gw\_eccentricity}},
       SLACcitation   = "%%CITATION = ARXIV:1811.06552;%%"
 }
 ```
 ```diff
--[ARIF: Please modify the above bibtex keys accordingly. I suggest using pypi link insatead of github like in the above example. For the key itself, use the one from inspire once the paper is ready. The difference is we also link the package through the NOTE option]
+-[ARIF: Please modify the above bibtex keys accordingly. For the key itself, use the one from inspire once the paper is ready. The difference is we also link the package through the NOTE option]
 ```
 
 ---
