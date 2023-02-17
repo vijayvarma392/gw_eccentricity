@@ -20,7 +20,6 @@ def test_example_notebooks():
     """
     notebooks_list = glob(f'{git_home}/examples/*.ipynb')
     notebooks_list.sort()
-
     if len(notebooks_list) == 0:
         raise Exception("No notebooks found!")
 

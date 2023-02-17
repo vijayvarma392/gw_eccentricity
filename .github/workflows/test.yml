@@ -12,7 +12,6 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        # Apparently macos is 10x more expensive in Github minutes!
         #os: [macos-latest, ubuntu-latest]
         os: [ubuntu-latest]
         python-version: ['3.9']
@@ -32,14 +31,22 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          # The apt stuff will only work for ubuntu.
-          # See https://stackoverflow.com/questions/58121461/runtimeerror-failed-to-process-string-with-tex-because-latex-could-not-be-found
-          # and https://github.com/garrettj403/SciencePlots/issues/53
-          sudo apt update
-          sudo apt-get install dvipng texlive-latex-extra texlive-fonts-recommended cm-super
-          pip install pytest nbconvert ipykernel latex
-          
 
+          if [ "$RUNNER_OS" == "Linux" ]; then
+              # See https://stackoverflow.com/questions/58121461/runtimeerror-failed-to-process-string-with-tex-because-latex-could-not-be-found
+              # and https://github.com/garrettj403/SciencePlots/issues/53
+              sudo apt update
+              sudo apt-get install texlive-latex-extra texlive-fonts-recommended cm-super
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+
+              # Install macports for the latex stuff. See https://github.com/GiovanniBussi/macports-ci
+              curl -LO https://raw.githubusercontent.com/GiovanniBussi/macports-ci/master/macports-ci
+              source ./macports-ci install
+
+              sudo port install texlive-latex-extra texlive-fonts-recommended
+          fi
+
+          pip install pytest nbconvert ipykernel latex
 
       - name: Install pipenv
         shell: bash -l {0}
