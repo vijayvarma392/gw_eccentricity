@@ -189,9 +189,9 @@ def load_LAL_waveform(**kwargs):
     The kwargs could be the following:
     Run `load_data.get_load_waveform_defaults('LAL')` to see allowed
     keys and defaults.
+
     approximant: str
         Name of the waveform model to be used for generating the waveform.
-        default is "EccentricTD".
     q: float
         Mass ratio of the system.
     chi1: 1d array of size 3
@@ -245,7 +245,7 @@ def load_LAL_waveform(**kwargs):
     if kwargs['include_zero_ecc']:
         # Keep all other params fixed but set ecc=0.
         zero_ecc_kwargs = kwargs.copy()
-        # FIXME: Stupid EccentricTD only works for finite ecc
+        # EccentricTD does not support eccentricity < 1e-5
         if kwargs["approximant"] == "EccentricTD":
             zero_ecc_kwargs['ecc'] = 1e-5
         else:
