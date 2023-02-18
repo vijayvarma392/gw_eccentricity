@@ -10,15 +10,35 @@ import warnings
 from .utils import interpolate
 
 
-def get_available_waveform_origins():
-    """Get available origins of waveforms that could be loaded."""
-    return {
+def get_available_waveform_origins(return_dict=False):
+    """Get available origins of waveforms that could be loaded.
+
+    parameters:
+    -----------
+    return_dict: bool
+        If True, returns a dictionary of origins and corresponding loading
+        functions, otherwise just the list of origins.
+        Default is False.
+    """
+    origin_dict = {
         "LAL": load_LAL_waveform,
         "SXSCatalog": load_sxs_catalogformat,
         "LVCNR": load_lvcnr_waveform,
         "LVCNR_hack": load_lvcnr_hack,
         "EOB": load_EOB_waveform,
         "EMRI": load_EMRI_waveform}
+
+    return origin_dict if return_dict else list(origin_dict.keys())
+
+
+def get_load_waveform_docs(origin):
+    """Get the docs for the loading function for given waveform origin."""
+    # check origin
+    origins = get_available_waveform_origins(return_dict=True)
+    if origin not in origins:
+        raise Exception(f"Unknown {origin}. Must be one of "
+                        f"{list(origins.keys())}")
+    return help(origins[origin])
 
 
 def get_load_waveform_defaults(origin="LAL"):
@@ -40,13 +60,13 @@ def get_load_waveform_defaults(origin="LAL"):
     # for waveforms using LALSimulation
     if origin == "LAL":
         return {
-            "approximant": "EccentricTD",
-            "q": 1.0,
-            "chi1": [0.0, 0.0, 0.0],
-            "chi2": [0.0, 0.0, 0.0],
-            "ecc": 1e-5,
-            "mean_ano": 0.0,
-            "Momega0": 0.01,
+            "approximant": None,
+            "q": None,
+            "chi1": None,
+            "chi2": None,
+            "ecc": None,
+            "mean_ano": None,
+            "Momega0": None,
             "deltaTOverM": 0.1,
             "physicalUnits": False,
             "M": None,
@@ -99,7 +119,7 @@ def get_load_waveform_defaults(origin="LAL"):
                 "include_geodesic_ecc": False}
     else:
         raise Exception(f"Unknown origin {origin}. Must be one of "
-                        f"{list(get_available_waveform_origins())}.")
+                        f"{get_available_waveform_origins()}.")
 
 
 def make_a_sub_dict(super_dict, sub_dict_keys):
@@ -155,7 +175,7 @@ def load_waveform(origin="LAL", **kwargs):
         Dictionary of time, modes etc. For detailed structure of the returned
         dataDict see gw_eccentricity.measure_eccentricity.
     """
-    available_origins = get_available_waveform_origins()
+    available_origins = get_available_waveform_origins(return_dict=True)
     if origin in available_origins:
         return available_origins[origin](**kwargs)
     else:
@@ -174,22 +194,16 @@ def load_LAL_waveform(**kwargs):
         default is "EccentricTD".
     q: float
         Mass ratio of the system.
-        default is 1.
     chi1: 1d array of size 3
         3-element 1d array of spin components of the 1st Black hole.
-        default is [0.0, 0.0, 0.0].
     chi2: 1d array of size 3
         3-element 1d array of spin components of the 1st Black hole.
-        default is [0.0, 0.0, 0.0].
     ecc: float
         Initial eccentricity of the binary at Momega0 (see below).
-        default is 1e-5.
     mean_ano: float
         Initial Mean anomaly of the bianry at Momega0 (see below).
-        default is 0.0.
     Momega0: float
         Starting orbital frequency in dimensionless units.
-        default is 0.01.
     deltaTOverM: float
         Time steps in dimensionless units. default is 0.1.
     physicalUnits: bool
