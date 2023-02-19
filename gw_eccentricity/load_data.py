@@ -3,6 +3,7 @@ import numpy as np
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
 from .utils import check_kwargs_and_set_defaults
+from .utils import raise_exception_if_none
 import h5py
 import lal
 import lalsimulation as lalsim
@@ -79,6 +80,7 @@ def get_load_waveform_defaults(origin="LAL"):
                        "metadata_path",
                        "deltaTOverM",
                        "include_zero_ecc",
+                       "include_params_dict",
                        "zero_ecc_approximant",
                        "num_orbits_to_remove_as_junk",
                        "mode_array",
@@ -90,6 +92,7 @@ def get_load_waveform_defaults(origin="LAL"):
                        "deltaTOverM",
                        "Momega0",
                        "include_zero_ecc",
+                       "include_params_dict",
                        "zero_ecc_approximant",
                        "num_orbits_to_remove_as_junk"]
         # We get the dictionary for all possible nr kwargs and
@@ -100,6 +103,7 @@ def get_load_waveform_defaults(origin="LAL"):
         kwargs_list = ["filepath",
                        "deltaTOverM",
                        "include_zero_ecc",
+                       "include_params_dict",
                        "zero_ecc_approximant",
                        "num_orbits_to_remove_as_junk"]
         return make_a_sub_dict(get_defaults_for_nr(), kwargs_list)
@@ -197,36 +201,38 @@ def load_LAL_waveform(**kwargs):
     chi1: 1d array of size 3
         3-element 1d array of spin components of the 1st Black hole.
     chi2: 1d array of size 3
-        3-element 1d array of spin components of the 1st Black hole.
+        3-element 1d array of spin components of the 2nd Black hole.
     ecc: float
         Initial eccentricity of the binary at Momega0 (see below).
     mean_ano: float
-        Initial Mean anomaly of the bianry at Momega0 (see below).
+        Initial Mean anomaly of the binary at Momega0 (see below).
     Momega0: float
         Starting orbital frequency in dimensionless units.
     deltaTOverM: float
-        Time steps in dimensionless units. default is 0.1.
+        Time steps in dimensionless units.
     physicalUnits: bool
         If True returns modes in MKS units.
-        Default is False.
     M: float
         Total mass in units of solar mass. Required when physicalUnits
-        is true. Default is None.
+        is true.
     D: float
-        Luminosity distance in units of mega parsec. Required when
-        physicalUnits is true. Default is None.
+        Luminosity distance in units of megaparsec. Required when
+        physicalUnits is true.
     include_zero_ecc: bool
-        If True, quasicircular waveform is created and
+        If True, a quasicircular waveform is created and
         returned. The quasicircular waveform is generated using the
         same set of parameters except eccentricity set to zero.
-        In some cases, e=0 is not supported and we set it small value
+        In some cases, e=0 is not supported and we set it to a small value
         like e=1e-5.
-        Default is False.
     """
     default_lal_kwargs = get_load_waveform_defaults("LAL")
     # check and set default kwargs
     check_kwargs_and_set_defaults(kwargs, default_lal_kwargs, "LAL Kwargs",
                                   "load_data.get_load_waveform_defaults")
+    raise_exception_if_none(
+        kwargs,
+        ["approximant", "q", "chi1", "chi2", "ecc", "mean_ano", "Momega0"],
+        "LAL kwargs", "`load_data.load_LAL_waveform.py`")
     # FIXME, this assumes single mode models, talk to Vijay about
     # how to handle other models.
     dataDict = load_LAL_waveform_using_hack(
@@ -460,7 +466,10 @@ def get_defaults_for_nr():
     include_zero_ecc: bool
         If True returns waveform mode for same set of parameters
         except eccentricity set to zero.
-        Default is True.
+        Default is False.
+
+    include_params_dict: bool
+        If True, returns a dictionary containing paramaters of the binary.
 
     zero_ecc_approximant: str
         Waveform model to generate zero ecc waveform when
@@ -496,6 +505,7 @@ def get_defaults_for_nr():
             "deltaTOverM": 0.1,
             "Momega0": 0.0,
             "include_zero_ecc": False,
+            "include_params_dict": False,
             "zero_ecc_approximant": "IMRPhenomT",
             "metadata_path": None,
             "num_orbits_to_remove_as_junk": 2,
@@ -508,7 +518,7 @@ def load_lvcnr_waveform(**kwargs):
 
     parameters:
     ----------
-    kwargs: Could be the followings.
+    kwargs: Could be the following.
     Run `load_data.get_load_waveform_defaults('LVCNR')` to see allowed
     keys and defaults.
 
@@ -524,30 +534,33 @@ def load_lvcnr_waveform(**kwargs):
         returned.
 
     include_zero_ecc: bool
-        If True returns PhenomT waveform mode for same set of parameters
+        If True, returns PhenomT waveform mode for the same set of parameters
         except eccentricity set to zero.
 
+    include_params_dict: bool
+        If True, returns a dictionary of binary parameters.
+
     zero_ecc_approximant: str
-        Waveform model to generate zero ecc waveform.
+        Waveform model to generate zero eccentricity waveform.
 
     num_orbits_to_remove_as_junk: float
-        Number of orbits to throw away as junk from the begining of the NR
+        Number of orbits to throw away as junk from the beginning of the NR
         data.
 
     returns:
     -------
-        Dictionary of modes dict, parameter dict and also zero ecc mode dict if
+        Dictionary of modes dict, parameter dict and also zero eccentricity mode dict if
         include_zero_ecc is True.
 
     t:
         Time array.
     hlm:
         Dictionary of modes.
-    params_dict:
-        Dictionary of parameters.
     Optionally,
+    params_dict:
+        Dictionary of parameters
     t_zeroecc:
-        Time array for zero ecc modes
+        Time array for zero eccentricity modes
     hlm_zeroecc:
         Mode dictionary for zero eccentricity
     """
@@ -628,6 +641,10 @@ def load_lvcnr_waveform(**kwargs):
         eccentricity = float(NRh5File.attrs["eccentricity"])
     except ValueError:
         eccentricity = None
+    try:
+        mean_anomaly = float(NRh5File.attrs["mean_anomaly"])
+    except ValueError:
+        mean_anomaly = None
 
     NRh5File.close()
 
@@ -640,23 +657,22 @@ def load_lvcnr_waveform(**kwargs):
     return_dict = {"t": t,
                    "hlm": modes_dict}
 
-    params_dict = {"q": q,
-                   "chi1": [s1x, s1y, s1z],
-                   "chi2": [s2x, s2y, s2z],
-                   "ecc": eccentricity,
-                   "mean_ano": 0.0,
-                   "deltaTOverM": t[1] - t[0],
-                   "Momega0": (
-                       f_low
-                       * np.pi
-                       * time_dimless_to_mks(M)),
-                   "approximant": kwargs["zero_ecc_approximant"]
-                   }
-    return_dict.update({"params_dict": params_dict})
+    if kwargs["include_params_dict"] or kwargs["include_zero_ecc"]:
+        params_dict = {"q": q,
+                       "chi1": [s1x, s1y, s1z],
+                       "chi2": [s2x, s2y, s2z],
+                       "ecc": eccentricity,
+                       "mean_ano": mean_anomaly}
 
-    if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
-        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(return_dict)
-        return_dict.update(dataDict_zeroecc)
+    if kwargs["include_zero_ecc"]:
+        params_dict_zero_ecc = params_dict.copy()
+        params_dict_zero_ecc.update(
+            {"approximant": kwargs["zero_ecc_approximant"]})
+        dataDict_zero_ecc = get_zeroecc_dataDict_for_nr(
+            return_dict, params_dict_zero_ecc)
+        return_dict.update(dataDict_zero_ecc)
+    if kwargs["include_params_dict"]:
+        return_dict.update({"params_dict": params_dict})
     return return_dict
 
 
@@ -670,7 +686,7 @@ def load_sxs_catalogformat(**kwargs):
 
     parameters:
     ----------
-    kwargs: Dictionary with the followings keys.
+    kwargs: Dictionary with the following keys.
     Run `load_data.get_load_waveform_defaults('SXSCatalog')` to see allowed
     keys and defaults.
     filepath: str
@@ -690,19 +706,22 @@ def load_sxs_catalogformat(**kwargs):
         for the same set of parameters except with eccentricity set to
         zero.  Requires metadata file (which is provided using
         `metadata_path`, see below) to get the binary parameters.
-        The zero ecc waveform is generated using an approximant
+        The zero eccentricity waveform is generated using an approximant
         provided via `zero_ecc_approximant` (see below).
 
         Also needs `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.
-        Currently it is used to get an estimate for the intial
-        frequency to use for generating zero ecc waveform based on
+        Currently, it is used to get an estimate for the initial
+        frequency to use for generating zero eccentricity waveform based on
         the inspiral time of the NR waveform.  Download it from
         https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
         and set the path using
         `export LAL_DATA_PATH=/path/to/directory/containing/seobnrv4rom_file/`.
 
+    include_params_dict:
+        If True, returns a dictionary of binary parameters.
+
     zero_ecc_approximant: str
-        Waveform model to generate zero ecc waveform when
+        Waveform model to generate zero eccentricity waveform when
         `include_zero_ecc` is True.
 
     metadata_path: str
@@ -716,7 +735,7 @@ def load_sxs_catalogformat(**kwargs):
         spins is returned.
 
     num_orbits_to_remove_as_junk: float
-        Number of orbits to throw away as junk from the begining of the NR
+        Number of orbits to throw away as junk from the beginning of the NR
         data.
 
     mode_array: 1d array
@@ -745,7 +764,8 @@ def load_sxs_catalogformat(**kwargs):
     Optionally,
     params_dict:
         Dictionary of parameters containing mass ratio and spins.
-        Returned when `metadata_path` is provided.
+        Returned when `metadata_path` is provided and `include_params_dict` is
+        True.
     t_zeroecc:
         1d uniform array of times corresponding to zero eccentricity
         modes in dimensionless units.
@@ -753,7 +773,7 @@ def load_sxs_catalogformat(**kwargs):
     hlm_zeroecc:
         Dictionary of modes created using `zero_ecc_approximant` model
         with the same mass ratio and spin components as the NR
-        simulation and eccentricity set to zero. Currently it contains
+        simulation and eccentricity set to zero. Currently, it contains
         only the (2, 2) mode.
         Returned when `include_zero_ecc` is True.
     """
@@ -772,11 +792,11 @@ def load_sxs_catalogformat(**kwargs):
         raise Exception("Must provide path to the waveform file. `filepath` "
                         "can not be None.")
     # check metadata_path
-    if kwargs["include_zero_ecc"]:
+    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
         if metadata_path is None:
             raise Exception(
                 "Must provide path to metadata file `metadata_path` "
-                "when `include_zero_ecc` is True.\n"
+                "when `include_zero_ecc` or `include_params_dict` is True.\n"
                 "This is required to get the binary parameters which are "
                 "used to eavaluate the zero ecc waveform.")
 
@@ -808,16 +828,22 @@ def load_sxs_catalogformat(**kwargs):
     # shift time axis by tpeak such that peak occurs at t = 0
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
-    if metadata_path is not None:
+    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
         params_dict = get_params_dict_from_sxs_metadata(metadata_path)
-        params_dict.update(
-            {"approximant": kwargs["zero_ecc_approximant"]})
-        dataDict.update({"params_dict": params_dict})
     # if include_zero_ecc is True, load zeroecc dataDict
     if kwargs["include_zero_ecc"]:
-        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(dataDict)
+        params_dict_zero_ecc = params_dict.copy()
+        # provide the approximant to be used for zero eccentricity waveform
+        params_dict_zero_ecc.update(
+            {"approximant": kwargs["zero_ecc_approximant"],
+             "mean_ano": 0.0  # Needed for LAL waveform models used to generate zero eccentricity waveform
+             })
+        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(
+            dataDict, params_dict_zero_ecc)
         dataDict.update({"t_zeroecc": dataDict_zeroecc["t_zeroecc"],
                          "hlm_zeroecc": dataDict_zeroecc["hlm_zeroecc"]})
+    if kwargs["include_params_dict"]:
+        dataDict.update({"params_dict": params_dict})
     return dataDict
 
 
@@ -850,13 +876,15 @@ def get_params_dict_from_sxs_metadata(metadata_path):
     return params_dict
 
 
-def get_zeroecc_dataDict_for_nr(nr_dataDict):
+def get_zeroecc_dataDict_for_nr(nr_dataDict, params_dict):
     """Get the zero ecc data dict corresponding to a nr data.
 
     Params:
     -------
     nr_dataDict:
-        Data Dictionary containing NR data including params_dict.
+        Data Dictionary containing NR data.
+    params_dict:
+        Dictionary of parameters to generate zero eccentricity waveform.
     Returns:
     -------
     dataDict_zeroecc:
@@ -864,7 +892,7 @@ def get_zeroecc_dataDict_for_nr(nr_dataDict):
     """
     # Keep all other params fixed but set ecc = 0 and generate
     # waveform with approximant provided in nr_dataDict["params_dict"]
-    zero_ecc_kwargs = nr_dataDict["params_dict"].copy()
+    zero_ecc_kwargs = params_dict.copy()
     zero_ecc_kwargs["ecc"] = 0.0
     zero_ecc_kwargs["include_zero_ecc"] = False  # to avoid double calc
     # calculate the Momega0 so that the length is >= the length of the NR
@@ -1089,6 +1117,9 @@ def load_lvcnr_hack(**kwargs):
         If True returns PhenomT waveform mode for same set of parameters
         except eccentricity set to zero.
 
+    include_params_dict: bool
+        If True, returns a dictionary of binary parameters.
+
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the begining of the NR
         data.
@@ -1102,9 +1133,9 @@ def load_lvcnr_hack(**kwargs):
         Time array.
     hlm:
         Dictionary of modes.
+    Optionally,
     params_dict:
         Dictionary of parameters.
-    Optionally,
     t_zeroecc:
         Time array for zero ecc modes.
     hlm_zeroecc:
@@ -1156,19 +1187,22 @@ def load_lvcnr_hack(**kwargs):
     ecc = f.attrs["eccentricity"]
     mean_ano = f.attrs["mean_anomaly"]
     f.close()
-    params_dict = {"q": m1/m2,
-                   "chi1": [s1x, s1y, s1z],
-                   "chi2": [s2x, s2y, s2z],
-                   "ecc": ecc,
-                   "mean_ano": mean_ano,
-                   "deltaTOverM": t_interp[1] - t_interp[0],
-                   "approximant": kwargs["zero_ecc_approximant"]
-                   }
 
-    return_dict.update({"params_dict": params_dict})
+    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
+        params_dict = {"q": m1/m2,
+                       "chi1": [s1x, s1y, s1z],
+                       "chi2": [s2x, s2y, s2z],
+                       "ecc": ecc,
+                       "mean_ano": mean_ano}
+    if kwargs["include_params_dict"]:
+        return_dict.update({"params_dict": params_dict})
 
-    if ("include_zero_ecc" in kwargs) and kwargs["include_zero_ecc"]:
-        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(return_dict)
+    if kwargs["include_zero_ecc"]:
+        params_dict_zero_ecc = params_dict.copy()
+        params_dict_zero_ecc.update(
+            {"approximant": kwargs["zero_ecc_approximant"]})
+        dataDict_zeroecc = get_zeroecc_dataDict_for_nr(
+            return_dict, params_dict_zero_ecc)
         return_dict.update(dataDict_zeroecc)
 
     return return_dict
