@@ -158,10 +158,12 @@ def load_waveform(origin="LAL", **kwargs):
     origin: str
         The origin of the waveform to be generated/loaded. This can be one of
         - "LAL": Compute waveform by a call to the LAL-library.
+            (see https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/)
         - "SXSCatalog": Import waveform by reading a file in the SXS catalog
             format.
             (see https://data.black-holes.org/waveforms/documentation.html)
         - "LVCNR": Import waveform by reading a file in the LVCNR-data format.
+            (see https://arxiv.org/abs/1703.01076)
         - "LVCNR_hack": Reading LVCNR-data format file using h5py.
             NOTE: This is NOT the recommended way to load lvcnr file.
         - "EOB": Import EOB waveform generated using SEOBNRv4EHM
@@ -211,19 +213,19 @@ def load_LAL_waveform(**kwargs):
     deltaTOverM: float
         Time steps in dimensionless units.
     physicalUnits: bool
-        If True returns modes in MKS units.
+        If True, returns modes in MKS units.
     M: float
         Total mass in units of solar mass. Required when physicalUnits
-        is true.
+        is True.
     D: float
         Luminosity distance in units of megaparsec. Required when
-        physicalUnits is true.
+        physicalUnits is True.
     include_zero_ecc: bool
         If True, a quasicircular waveform is created and
         returned. The quasicircular waveform is generated using the
         same set of parameters except eccentricity set to zero.
-        In some cases, e=0 is not supported and we set it to a small value
-        like e=1e-5.
+        In some cases, e = 0 is not supported and we set it to a small value
+        like e = 1e-5.
     """
     default_lal_kwargs = get_load_waveform_defaults("LAL")
     # check and set default kwargs
@@ -689,9 +691,10 @@ def load_sxs_catalogformat(**kwargs):
     kwargs: Dictionary with the following keys.
     Run `load_data.get_load_waveform_defaults('SXSCatalog')` to see allowed
     keys and defaults.
+
     filepath: str
         Path to waveform file in sxs catalog format. The file should
-        be named rhOverM_Asymptotic_GeometricUnits_CoM.h5, and
+        be named "rhOverM_Asymptotic_GeometricUnits_CoM.h5", and
         contains the waveform extrapolated to future null-infinity and
         corrected for initial center-of-mass drift.
         This must be provided to load waveform modes.
@@ -727,19 +730,18 @@ def load_sxs_catalogformat(**kwargs):
     metadata_path: str
         Path to the sxs metadata file. This file generally can be
         found in the same directory as the waveform file and has the
-        name `metadata.txt`. It contains the metadata including binary
+        name "metadata.txt". It contains the metadata including binary
         parameters along with other information related to the NR
         simulation performed to obtain the waveform modes.
-        Required when `include_zero_ecc` is True.
-        If provided, a dictionary containing binary mass ratio and
-        spins is returned.
+        Required when `include_zero_ecc` or `include_params_dict` is True.
 
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the beginning of the NR
         data.
 
     mode_array: 1d array
-        1d array of modes to load.
+        1d array of modes to load. Should have the format `[(l1, m1), (l2,
+        m2),..]`
 
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
