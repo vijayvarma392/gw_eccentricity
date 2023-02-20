@@ -519,12 +519,8 @@ def load_lvcnr_waveform(**kwargs):
     """Load modes from lvcnr files.
 
     Loading waveform modes from files in lvcnr format require the file
-    `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.  NR simulation data is
-    compressed using ROM and saved in LVCNR format to reduce file size and the
-    above file is required to correctly interpolate the NR data while loading
-    the waveform modes.
-
-    This file can be downloaded from
+    `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`. This file can be downloaded
+    from
     https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
     and the path can be set using `export
     LAL_DATA_PATH=/path/to/directory/containing/seobnrv4rom_file/`.
@@ -548,7 +544,7 @@ def load_lvcnr_waveform(**kwargs):
     include_zero_ecc: bool
         If True, returns zero eccentricity waveform mode (only (2, 2) mode) for
         the same set of parameters except eccentricity set to zero.
-        The zero eccentricity waveform is generated using a waveform model
+        The zero eccentricity waveform is generated using the waveform model
         provided via `zero_ecc_approximant` (see below).
 
     include_params_dict: bool
