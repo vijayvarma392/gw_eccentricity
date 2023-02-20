@@ -13,7 +13,7 @@ dist
 # notebook symlinks
 # If you symlink notebooks to the base dir, you can run them directly. But
 # let's not add such symlinks to the repo to avoid clutter.
-/gw_eccentricity_demo.ipynb
+/*_demo.ipynb
 
 # ignore pdfs, pngs in notebook
 /notebook/*.pdf

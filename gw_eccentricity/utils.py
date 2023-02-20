@@ -103,6 +103,15 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
     return user_kwargs
 
 
+def raise_exception_if_none(kwargs, keys_to_check, name, location):
+    """Raise exception if any key from `keys_to_check` has value None."""
+    for kw in keys_to_check:
+        if kwargs[kw] is None:
+            raise Exception(f"kw {kw} for {name} can not be None."
+                            f" Check documentation of {location} for more"
+                            " details.")
+
+
 class SmartFormatter(argparse.ArgumentDefaultsHelpFormatter):
     """Smart Formatter for argparse helper strings.
 
