@@ -518,6 +518,17 @@ def get_defaults_for_nr():
 def load_lvcnr_waveform(**kwargs):
     """Load modes from lvcnr files.
 
+    Loading waveform modes from files in lvcnr format require the file
+    `SEOBNRv4ROM_v2.0.hdf5` in `LAL_DATA_PATH`.  NR simulation data is
+    compressed using ROM and saved in LVCNR format to reduce file size and the
+    above file is required to correctly interpolate the NR data while loading
+    the waveform modes.
+
+    This file can be downloaded from
+    https://git.ligo.org/lscsoft/lalsuite-extra/-/blob/master/data/lalsimulation/SEOBNRv4ROM_v2.0.hdf5
+    and the path can be set using `export
+    LAL_DATA_PATH=/path/to/directory/containing/seobnrv4rom_file/`.
+
     parameters:
     ----------
     kwargs: Could be the following.
@@ -525,19 +536,20 @@ def load_lvcnr_waveform(**kwargs):
     keys and defaults.
 
     filepath: str
-        Path to lvcnr file.
+        Path to lvcnr file in format described in arXiv:1703.01076.
 
     deltaTOverM: float
-        Time step.
+        Time step in dimensionless units.
 
     Momega0: float
         Lower frequency to start waveform generation.
-        If Momega0 = 0, uses the entire NR data. The actual Momega0 will be
-        returned.
+        If Momega0 = 0, uses the entire NR data.
 
     include_zero_ecc: bool
-        If True, returns PhenomT waveform mode for the same set of parameters
-        except eccentricity set to zero.
+        If True, returns zero eccentricity waveform mode (only (2, 2) mode) for
+        the same set of parameters except eccentricity set to zero.
+        The zero eccentricity waveform is generated using a waveform model
+        provided via `zero_ecc_approximant` (see below).
 
     include_params_dict: bool
         If True, returns a dictionary of binary parameters.
@@ -551,20 +563,34 @@ def load_lvcnr_waveform(**kwargs):
 
     returns:
     -------
-        Dictionary of modes dict, parameter dict and also zero eccentricity mode dict if
-        include_zero_ecc is True.
+        Dictionary of time and modes dictionary. Optionally the returned
+        dictionary includes a dictionary of binary parameters, dictionary of
+        zero eccentricity modes etc.
 
     t:
-        Time array.
+        Time array in dimensionless units. This already discards the first
+        `num_orbits_to_remove_as_junk` orbits.
     hlm:
-        Dictionary of modes.
+        Dictionary of modes in dimensionless units. This already discards the
+        first `num_orbits_to_remove_as_junk` orbits.  To get a particular mode,
+        do h22 = hlm[(2, 2)].
+
     Optionally,
     params_dict:
-        Dictionary of parameters
+        Dictionary of parameters of the binary. Returned when
+        `include_params_dict` is True.
+
     t_zeroecc:
-        Time array for zero eccentricity modes
+        1d uniform array of times corresponding to zero eccentricity
+        modes in dimensionless units.
+        Returned when `include_zero_ecc` is True.
+
     hlm_zeroecc:
-        Mode dictionary for zero eccentricity
+        Dictionary of modes created using `zero_ecc_approximant` model
+        with the same mass ratio and spin components as the NR
+        simulation and eccentricity set to zero. Currently, it contains
+        only the (2, 2) mode.
+        Returned when `include_zero_ecc` is True.
     """
     kwargs = check_kwargs_and_set_defaults(
         kwargs,
@@ -754,12 +780,12 @@ def load_sxs_catalogformat(**kwargs):
         step `dt`, shifted such t=0 coincides with the peak waveform
         amplitude (obtained using all requested modes in
         mode_array). This already discards the first
-        num_orbits_to_remove_as_junk orbits.
+        `num_orbits_to_remove_as_junk` orbits.
 
     hlm:
         Dictionary of NR waveform modes interpolated onto the time
         array, `t`. This already discards the first
-        `num_orbits_to_remove_as_junk orbits`. The dictionary contains
+        `num_orbits_to_remove_as_junk` orbits. The dictionary contains
         all requested modes in `mode_array`.  To get a particular mode,
         do h22 = hlm[(2, 2)].
 
