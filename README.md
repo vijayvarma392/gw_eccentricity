@@ -71,28 +71,7 @@ Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/per
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
 
 If you find this package useful in your work, please cite reference [1] and
-this package. You can use the following bibtex keys:
-```
-@article{Varma:2018rcg,
-      author         = "Varma, Vijay and Stein, Leo C. and Gerosa, Davide",
-      title          = "{The binary black hole explorer: on-the-fly
-                        visualizations of precessing binary black holes}",
-      journal        = "Class. Quant. Grav.",
-      volume         = "36",
-      year           = "2019",
-      number         = "9",
-      pages          = "095007",
-      doi            = "10.1088/1361-6382/ab0ee9",
-      eprint         = "1811.06552",
-      archivePrefix  = "arXiv",
-      primaryClass   = "astro-ph.HE",
-      Note = {\href{https://pypi.org/project/gw_eccentricity}{pypi.org/project/gw\_eccentricity}},
-      SLACcitation   = "%%CITATION = ARXIV:1811.06552;%%"
-}
-```
-```diff
--[ARIF: Please modify the above bibtex keys accordingly. For the key itself, use the one from inspire once the paper is ready. The difference is we also link the package through the NOTE option]
-```
+this package.
 
 ---
 Image at the top shows an eccentric gravitational wave signal (SXS:BBH:2558) from [arXiv:2209.03390](https://arxiv.org/abs/2209.03390).
