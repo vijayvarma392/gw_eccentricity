@@ -5,10 +5,10 @@ See our paper https://arxiv.org/abs/xxxx.xxxx and
 https://pypi.org/project/gw_eccentricity for more details.
 FIXME ARIF: Add arxiv link when available.
 """
-__copyright__ = "Copyright (C) 2022 Md Arif Shaikh, Vijay Varma"
+__copyright__ = "Copyright (C) 2023 Md Arif Shaikh, Vijay Varma, Harald Pfeiffer"
 __email__ = "arifshaikh.astro@gmail.com, vijay.varma392@gmail.com"
 __status__ = "testing"
-__author__ = "Md Arif Shaikh, Vijay Varma"
+__author__ = "Md Arif Shaikh, Vijay Varma, Harald Pfeiffer"
 __version__ = "0.0.2"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy

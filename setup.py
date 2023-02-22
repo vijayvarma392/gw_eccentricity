@@ -17,9 +17,9 @@ def get_version():
 setuptools.setup(
     name="gw_eccentricity",
     version=get_version(),
-    author="Md Arif Shaikh, Vijay Varma",
+    author="Md Arif Shaikh, Vijay Varma, Harald Pfeiffer",
     author_email="arifshaikh.astro@gmail.com, vijay.varma392@gmail.com",
-    description="Measure eccentricity from gravitational waves.",
+    description="Defining eccentricity for gravitational wave astronomy.",
     keywords='black-holes gravitational-waves',
     long_description=long_description,
     long_description_content_type="text/markdown",
