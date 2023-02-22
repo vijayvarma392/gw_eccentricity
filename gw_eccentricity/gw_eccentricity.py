@@ -9,7 +9,7 @@ __copyright__ = "Copyright (C) 2022 Md Arif Shaikh, Vijay Varma"
 __email__ = "arifshaikh.astro@gmail.com, vijay.varma392@gmail.com"
 __status__ = "testing"
 __author__ = "Md Arif Shaikh, Vijay Varma"
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
