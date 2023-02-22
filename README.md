@@ -20,7 +20,7 @@ These methods are described in the following paper: <br/>
 - [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
 "Defining eccentricity for gravitational wave astronomy", (2023). [Add arXiv number]
 
-Please see [Credits](#credits) for citing this work.   
+Please see [Credits](#credits) below for citing this work.
 This package lives on [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
 `python3`, and is tested every week. You can see the current build status of
 the main branch at the top of this page.
