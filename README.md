@@ -1,4 +1,4 @@
-<h1> <img src="https://github.com/vijayvarma392/gw_eccentricity/blob/main/data/hreal.png"></h1>
+<h1> <img src="https://raw.githubusercontent.com/vijayvarma392/gw_eccentricity/main/data/hreal.png"></h1>
 
 <h3 align="center"> Defining eccentricity for gravitational wave astronomy </h4>
 
