@@ -71,7 +71,19 @@ Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/per
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
 
 If you find this package useful in your work, please cite reference [1] and
-this package.
+this package. You can use the following bibtex keys:
+```BibTeX
+@article{Shaikh:2023ypz,
+    author = "Shaikh, Md Arif and Varma, Vijay and Pfeiffer, Harald P. and Ramos-Buades, Antoni and van de Meent, Maarten",
+    title = "{Defining eccentricity for gravitational wave astronomy}",
+    eprint = "2302.11257",
+    archivePrefix = "arXiv",
+    primaryClass = "gr-qc",
+    month = "2",
+    year = "2023",
+    Note = "{\href{https://pypi.org/project/gw_eccentricity}{pypi.org/project/gw\_eccentricity}}",
+}
+```
 
 ---
 Image at the top shows an eccentric gravitational wave signal (SXS:BBH:2558) from [arXiv:2209.03390](https://arxiv.org/abs/2209.03390).
