@@ -1,9 +1,8 @@
 """gw_eccentricity wrapper to call different eccDefinition methods.
 
 Measure eccentricity and mean anomaly from gravitational waves.
-See our paper https://arxiv.org/abs/xxxx.xxxx and
+See our paper https://arxiv.org/abs/2302.11257 and
 https://pypi.org/project/gw_eccentricity for more details.
-FIXME ARIF: Add arxiv link when available.
 """
 __copyright__ = "Copyright (C) 2023 Md Arif Shaikh, Vijay Varma, Harald Pfeiffer"
 __email__ = "arifshaikh.astro@gmail.com, vijay.varma392@gmail.com"
@@ -76,13 +75,10 @@ def measure_eccentricity(tref_in=None,
     the apocenter times, t_apocenters.
 
     Using omega22_pericenters(t) and omega22_apocenters(t), we first
-    compute e_omega22(t), as described in Eq.(4) of arxiv:xxxx.xxxx. We
+    compute e_omega22(t), as described in Eq.(4) of arXiv:2302.11257. We
     then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-    of arxiv:xxxx.xxxx. Mean anomaly is defined using t_pericenters, as
-    described in Eq.(10) of arxiv:xxxx.xxxx.
-
-    FIXME ARIF: In the above text, fill in arxiv number when
-    available.
+    of arXiv:2302.11257. Mean anomaly is defined using t_pericenters, as
+    described in Eq.(10) of arXiv:2302.11257.
 
     To find t_pericenters/t_apocenters, one can look for extrema in different
     waveform data, like omega22(t) or Amp22(t), the amplitude of the (2, 2)
@@ -139,7 +135,7 @@ def measure_eccentricity(tref_in=None,
         The available list of methods can be also obtained from
         gw_eccentricity.get_available_methods().
         Detailed description of these methods can be found in Sec. III of
-        arxiv.xxxx.xxxx.
+        arXiv:2302.11257.
 
         The Amplitude and Frequency methods can struggle for very small
         eccentricities, especially near the merger, as the
@@ -283,7 +279,7 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the quasicircular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
-            See Sec. IID of arxiv.xxxx.xxxx for a more detailed description of
+            See Sec. IID of arXiv:2302.11257 for a more detailed description of
             "omega22_average".
             Default is "orbit_averaged_omega22".
 

@@ -18,7 +18,7 @@ from gravitational waveforms.
 
 These methods are described in the following paper: <br/>
 - [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
-"Defining eccentricity for gravitational wave astronomy", (2023). [Add arXiv number]
+"Defining eccentricity for gravitational wave astronomy", (2023). [arXiv:2302.11257](https://arxiv.org/abs/2302.11257)
 
 Please see [Credits](#credits) below for citing this work.
 This package lives on [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with

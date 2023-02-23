@@ -163,7 +163,7 @@ class eccDefinition:
                   counterpart is used as a proxy for the average
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
-                See Sec. IID of arxiv.xxxx.xxxx for more detail description of
+                See Sec. IID of arXiv:2302.11257 for more detail description of
                 average omega22.
                 Default is "orbit_averaged_omega22".
 
@@ -870,12 +870,10 @@ class eccDefinition:
         the apocenter times, t_apocenters.
 
         Using omega22_pericenters(t) and omega22_apocenters(t), we first
-        compute e_omega22(t), as described in Eq.(4) of arxiv:xxxx.xxxx. We
+        compute e_omega22(t), as described in Eq.(4) of arXiv:2302.11257. We
         then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-        of arxiv:xxxx.xxxx. Mean anomaly is defined using t_pericenters, as
-        described in Eq.(10) of arxiv:xxxx.xxxx.
-
-        FIXME ARIF: In the above text, fill in arxiv number when available.
+        of arXiv:2302.11257. Mean anomaly is defined using t_pericenters, as
+        described in Eq.(10) of arXiv:2302.11257.
 
         To find t_pericenters/t_apocenters, one can look for extrema in
         different waveform data, like omega22(t) or Amp22(t), the amplitude of
@@ -1124,12 +1122,9 @@ class eccDefinition:
         """
         Compute eccentricity at time t.
 
-        Compute eccentricity from the value of omega22_pericenters_interpolant
-        and omega22_apocenters_interpolant at t using the formula in
-        ref. arXiv:2101.11798 Eq. (4).
-
-        #FIXME: ARIF change the above reference when gw eccentricity paper is
-        #out
+        Compute e_omega22 from the value of omega22_pericenters_interpolant and
+        omega22_apocenters_interpolant at t using Eq.(4) in arXiv:2302.11257
+        and then use Eq.(8) in arXiv:2302.11257 to compute e_gw from e_omega22.
 
         Paramerers:
         -----------
@@ -1183,8 +1178,8 @@ class eccDefinition:
     def compute_mean_anomaly(self, t):
         """Compute mean anomlay for given t.
 
-        Compute the mean anomaly using Eq.7 of arXiv:2101.11798.  Mean anomaly
-        grows linearly in time from 0 to 2 pi over the range
+        Compute the mean anomaly using Eq.(10) of arXiv:2302.11257.  Mean
+        anomaly grows linearly in time from 0 to 2 pi over the range
         [time_at_last_pericenter, time_at_next_pericenter], where
         time_at_last_pericenter is the time at the previous pericenter, and
         time_at_next_pericenter is the time at the next pericenter.
@@ -1196,9 +1191,6 @@ class eccDefinition:
         where tp_n is the time at the nth pericenter.
         Finally, we build a linear interpolant for y using these xVals and
         yVals.
-
-        #FIXME: ARIF Change the above reference when gw eccentricity paper is
-        #out
 
         Parameters:
         -----------
@@ -1721,7 +1713,7 @@ class eccDefinition:
             - "orbit_averaged_omega22"
             - "omega22_zeroecc"
             See get_available_omega22_averaging_methods for available averaging
-            methods and Sec.IID of arxiv.xxxx.xxxx for more details.
+            methods and Sec.IID of arXiv:2302.11257 for more details.
             Default is None which uses the method provided in
             `self.extra_kwargs["omega22_averaging_method"]`
 
