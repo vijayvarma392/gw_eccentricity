@@ -2350,12 +2350,20 @@ class eccDefinition:
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
         if add_help_text:
+            if usetex:
+                help_text = (
+                    r"\noindent To avoid extrapolation, first and last\\"
+                    r"extrema are excluded when\\"
+                    r"evaluating $\omega_{a}$/$\omega_{p}$ interpolants")
+            else:
+                help_text = (
+                    "To avoid extrapolation, first and last\n"
+                    "extrema are excluded when\n"
+                    r"evaluating $\omega_{a}$/$\omega_{p}$ interpolants")
             ax.text(
                 0.22,
                 0.98,
-                (r"\noindent To avoid extrapolation, first and last\\"
-                 r"extrema are excluded when\\"
-                 r"evaluating $\omega_{a}$/$\omega_{p}$ interpolants"),
+                help_text,
                 ha="left",
                 va="top",
                 transform=ax.transAxes)
@@ -2459,7 +2467,7 @@ class eccDefinition:
             ax.text(
                 0.35,
                 0.98,
-                (r"\noindent omega22_average should be "
+                (r"omega22_average should be "
                  "monotonically increasing."),
                 ha="left",
                 va="top",
