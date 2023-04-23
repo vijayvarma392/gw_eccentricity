@@ -1922,7 +1922,7 @@ class eccDefinition:
     def make_diagnostic_plots(
             self,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style=None,
             use_fancy_settings=True,
             twocol=False,
@@ -1977,7 +1977,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2062,7 +2062,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             add_vline_at_tref=True,
@@ -2082,7 +2082,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2134,7 +2134,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
@@ -2155,7 +2155,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2207,7 +2207,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             add_vline_at_tref=True,
@@ -2227,7 +2227,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2279,7 +2279,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
@@ -2302,7 +2302,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2373,7 +2373,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             plot_omega22=True,
@@ -2394,7 +2394,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2476,7 +2476,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
@@ -2498,7 +2498,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2546,7 +2546,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
@@ -2571,7 +2571,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2637,7 +2637,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
@@ -2660,7 +2660,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2710,7 +2710,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
@@ -2729,7 +2729,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
@@ -2781,7 +2781,7 @@ class eccDefinition:
             fig=None,
             ax=None,
             add_help_text=True,
-            usetex=True,
+            usetex=False,
             style="Notebook",
             use_fancy_settings=True,
             add_vline_at_tref=True,
@@ -2802,7 +2802,7 @@ class eccDefinition:
             Default is True.
         usetex:
             If True, use TeX to render texts.
-            Default is True.
+            Default is False.
         style:
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
