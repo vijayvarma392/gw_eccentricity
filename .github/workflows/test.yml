@@ -36,14 +36,14 @@ jobs:
               # See https://stackoverflow.com/questions/58121461/runtimeerror-failed-to-process-string-with-tex-because-latex-could-not-be-found
               # and https://github.com/garrettj403/SciencePlots/issues/53
               sudo apt update
-              sudo apt-get install texlive-latex-extra texlive-fonts-recommended cm-super
+              # sudo apt-get install texlive-latex-extra texlive-fonts-recommended cm-super
           elif [ "$RUNNER_OS" == "macOS" ]; then
 
               # Install macports for the latex stuff. See https://github.com/GiovanniBussi/macports-ci
               curl -LO https://raw.githubusercontent.com/GiovanniBussi/macports-ci/master/macports-ci
               source ./macports-ci install
 
-              sudo port install texlive-latex-extra texlive-fonts-recommended
+              # sudo port install texlive-latex-extra texlive-fonts-recommended
           fi
 
           pip install pytest nbconvert ipykernel latex

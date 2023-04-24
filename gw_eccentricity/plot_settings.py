@@ -125,8 +125,9 @@ def use_fancy_plotsettings(usetex=True, style="Notebook"):
     rc("legend", frameon=False)
     rc("legend", fontsize=fontSizeDict[style])
     # Fonts
-    rc("font", family="serif")
-    rc("font", serif="times")
+    if usetex:
+        rc("font", family="serif")
+        rc("font", serif="times")
     rc("font", size=fontSizeDict[style])
     # Lines
     rc("lines", linewidth=1.0)
