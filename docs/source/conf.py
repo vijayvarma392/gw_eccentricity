@@ -31,7 +31,8 @@ extensions = ['sphinx_rtd_theme',
               'sphinx_tabs.tabs',
               "sphinx.ext.viewcode",
               'sphinx.ext.doctest',
-              'sphinx.ext.napoleon'
+              'sphinx.ext.napoleon',
+              'myst_parser'
               ]
 autosummary_generate = True
 numpydoc_show_class_members = False
@@ -46,5 +47,5 @@ exclude_patterns = []
 
 html_static_path = ['_static']
 pygments_style = 'sphinx'
-html_theme = 'furo'
+html_theme = 'sphinx_rtd_theme'
 htmlhelp_basename = 'gw_eccentricitydoc'
