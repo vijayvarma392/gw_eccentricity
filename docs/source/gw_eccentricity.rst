@@ -68,14 +68,6 @@ gw\_eccentricity.eccDefinitionUsingResidualFrequency module
    :undoc-members:
    :show-inheritance:
 
-gw\_eccentricity.group\_nr\_waveforms module
---------------------------------------------
-
-.. automodule:: gw_eccentricity.group_nr_waveforms
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 gw\_eccentricity.gw\_eccentricity module
 ----------------------------------------
 

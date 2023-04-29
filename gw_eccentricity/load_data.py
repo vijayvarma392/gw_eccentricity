@@ -153,10 +153,11 @@ def make_a_sub_dict(super_dict, sub_dict_keys):
 def load_waveform(origin="LAL", **kwargs):
     """Load waveform.
 
-    parameters:
+    Parameters
     ----------
     origin: str
         The origin of the waveform to be generated/loaded. This can be one of
+
         - "LAL": Compute waveform by a call to the LAL-library.
             (see https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/)
         - "SXSCatalog": Import waveform by reading a file in the SXS catalog
@@ -175,8 +176,8 @@ def load_waveform(origin="LAL", **kwargs):
         Allowed kwargs depend on origin. Run
         `load_data.get_load_waveform_defaults(origin)` to see
         allowed keys and defaults.
-    Returns:
-    --------
+    Returns
+    -------
     dataDict:
         Dictionary of time, modes etc. For detailed structure of the returned
         dataDict see gw_eccentricity.measure_eccentricity.
@@ -302,48 +303,50 @@ def generate_LAL_waveform(approximant, q, chi1, chi2, deltaTOverM, Momega0,
     """Generate waveform for a given approximant using LALSuite.
 
     Returns dimless time and dimless complex strain.
-    parameters:
+
+    Parameters
     ----------
-    approximant: str
+    approximant : str
         Name of approximant.
-    q: float
+    q : float
         Mass ratio q>=1.
-    chi1: array/list of len=3
+    chi1 : array/list of len=3
         Dimensionless spin vector of larger BH.
-    chi2: array/list of len=3
+    chi2 : array/list of len=3
         Dimensionless spin vector of smaller BH.
-    deltaTOverM: float
+    deltaTOverM : float
         Dimensionless time step size.
-    Momega0: float
+    Momega0 : float
         Dimensionless starting orbital frequency for waveform (rad/s).
-    inclination: float
+    inclination : float
         Inclination angle in radians.
-    phi_ref: float
+    phi_ref : float
         Lalsim stuff.
-    longAscNodes: float
+    longAscNodes : float
         Longiture of Ascending nodes.
-    eccentricity: float
+    eccentricity : float
         Eccentricity.
-    meanPerAno: float
+    meanPerAno : float
         Mean anomaly of periastron.
-    alignedSpin:
+    alignedSpin
         Assume aligned spin approximant.
-    lambda1:
+    lambda1
         Tidal parameter for larger BH.
-    lambda2:
+    lambda2
         Tidal parameter for smaller BH.
-    physicalUnits:
+    physicalUnits
         If True, return in physical units.
-    M:
+    M
         Total mass in units of solar mass. Required when physicalUnits is True.
-    D:
+    D
         Luminosity distance in units of mega parsec. Required when
         physicalUnits is True.
 
-    return:
-    t: array
+    Returns
+    -------
+    t : array
         Dimensionless time.
-    h: complex array
+    h : complex array
         Dimensionless complex strain h_{+} -i*h_{x}.
     """
     chi1 = np.array(chi1)
@@ -525,7 +528,7 @@ def load_lvcnr_waveform(**kwargs):
     and the path can be set using `export
     LAL_DATA_PATH=/path/to/directory/containing/seobnrv4rom_file/`.
 
-    parameters:
+    Parameters
     ----------
     kwargs: Could be the following.
     Run `load_data.get_load_waveform_defaults('LVCNR')` to see allowed
@@ -557,7 +560,7 @@ def load_lvcnr_waveform(**kwargs):
         Number of orbits to throw away as junk from the beginning of the NR
         data.
 
-    returns:
+    Returns
     -------
         Dictionary of time and modes dictionary. Optionally the returned
         dictionary includes a dictionary of binary parameters, dictionary of
@@ -708,7 +711,7 @@ def load_sxs_catalogformat(**kwargs):
     https://data.black-holes.org/waveforms/documentation.html).
     For loading lvcnr format files, see `load_lvcnr_waveform`.
 
-    parameters:
+    Parameters
     ----------
     kwargs: Dictionary with the following keys.
     Run `load_data.get_load_waveform_defaults('SXSCatalog')` to see allowed
@@ -768,7 +771,7 @@ def load_sxs_catalogformat(**kwargs):
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
 
-    returns:
+    Returns
     -------
     Returns a dictionary with the following quantities:
     t:
@@ -988,7 +991,7 @@ def get_zeroecc_dataDict_for_nr(nr_dataDict, params_dict):
 def reomve_junk_from_nr_data(t, modes_dict, num_orbits_to_remove_as_junk):
     """Remove junk from beginning of NR data.
 
-    Parameters:
+    Parameters
     ----------
     t:
         Time array for the NR data.
@@ -997,7 +1000,8 @@ def reomve_junk_from_nr_data(t, modes_dict, num_orbits_to_remove_as_junk):
     num_orbits_to_remove_as_junk:
         Number of orbits to remove as junk from the begining of NR data.
 
-    Returns:
+    Returns
+    -------
     t_clean:
         Time array corresponding to clean NR data.
     modes_dict_clean:
@@ -1125,7 +1129,7 @@ def load_lvcnr_hack(**kwargs):
     This function is mostly for testing measurement of eccentricity
     of NR waveforms.
 
-    parameters:
+    Parameters
     ----------
     kwargs: Could be the followings.
     Run `load_data.get_load_waveform_defaults('LVCNR_hack')` to see allowed
@@ -1148,7 +1152,7 @@ def load_lvcnr_hack(**kwargs):
         Number of orbits to throw away as junk from the begining of the NR
         data.
 
-    returns:
+    Returns
     -------
         Dictionary of modes dict, parameter dict and also zero ecc mode dict if
         include_zero_ecc is True.

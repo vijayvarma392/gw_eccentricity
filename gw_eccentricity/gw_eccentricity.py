@@ -87,13 +87,13 @@ def measure_eccentricity(tref_in=None,
     (described below) lets the user pick which waveform data to use to find
     t_pericenters/t_apocenters.
 
-    Parameters:
+    Parameters
     ----------
-    tref_in:
+    tref_in
         Input reference time at which to measure eccentricity and mean anomaly.
         Can be a single float or an array.
 
-    fref_in:
+    fref_in
         Input reference GW frequency at which to measure the eccentricity and
         mean anomaly. Can be a single float or an array. Only one of
         tref_in/fref_in should be provided.
@@ -112,8 +112,9 @@ def measure_eccentricity(tref_in=None,
         provided in MKS units, t_ref should be in seconds and fref_in should be
         in Hz.
 
-    method: str
+    method : str, default: ``Amplitude``
         Which waveform data to use for finding extrema. Options are:
+
         - "Amplitude": Finds extrema of Amp22(t).
         - "Frequency": Finds extrema of omega22(t).
         - "ResidualAmplitude": Finds extrema of resAmp22(t), the residual
@@ -131,7 +132,7 @@ def measure_eccentricity(tref_in=None,
         - "FrequencyFits": Uses omega22(t) and iteratively subtracts a
           PN-inspired fit of the extrema of omega22(t) from it, and finds
           extrema of the residual.
-        Default is "Amplitude".
+
         The available list of methods can be also obtained from
         gw_eccentricity.get_available_methods().
         Detailed description of these methods can be found in Sec. III of
@@ -151,14 +152,16 @@ def measure_eccentricity(tref_in=None,
         Therefore, the recommended methods are
         ResidualAmplitude/AmplitudeFits/Amplitude
 
-    dataDict:
+    dataDict : dict
         Dictionary containing waveform modes dict, time etc. Should follow the
-        format:
-        dataDict = {"t": time,
-                    "hlm": modeDict,
-                    "t_zeroecc": time,
-                    "hlm_zeroecc": modeDict,
-                   },
+        format::
+
+            dataDict = {"t": time,
+                       "hlm": modeDict,
+                       "t_zeroecc": time,
+                       "hlm_zeroecc": modeDict,
+                       }
+
         "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc" are only
         required for ResidualAmplitude and ResidualFrequency methods, but if
         provided, they are used for additional diagnostic plots, which can be
@@ -166,7 +169,9 @@ def measure_eccentricity(tref_in=None,
         with a warning.
 
         The recognized keys are:
-        - "t": 1d array of times.
+
+        - "t" : 1d array of times.
+
             - Should be uniformly sampled, with a small enough time step so
               that omega22(t) can be accurately computed. We use a 4th-order
               finite difference scheme. In dimensionless units, we recommend a
@@ -178,17 +183,21 @@ def measure_eccentricity(tref_in=None,
             - We do not require the waveform peak amplitude to occur at any
               specific time, but tref_in should follow the same convention for
               peak time as "t".
+
         - "hlm": Dictionary of waveform modes associated with "t".
-            - Should have the format:
+            Should have the format::
+
                 modeDict = {(l1, m1): h_{l1, m1},
                             (l2, m2): h_{l2, m2},
                             ...
-                           },
-                where h_{l, m} is a 1d complex array representing the (l, m)
-                waveform mode. Should contain at least the (2, 2) mode, but
-                more modes can be included, as indicated by the ellipsis '...'
-                above.
+                           }
+
+            where h_{l, m} is a 1d complex array representing the (l, m)
+            waveform mode. Should contain at least the (2, 2) mode, but
+            more modes can be included, as indicated by the ellipsis '...'
+            above.
         - "t_zeroecc" and "hlm_zeroecc":
+
             - Same as above, but for the quasicircular counterpart to the
               eccentric waveform. The quasicircular counterpart can be obtained
               by evaluating a waveform model by keeping the rest of the binary
@@ -262,6 +271,7 @@ def measure_eccentricity(tref_in=None,
         omega22_averaging_method:
             Options for obtaining omega22_average(t) from the instantaneous
             omega22(t).
+
             - "orbit_averaged_omega22": First, orbit averages are obtained at
               each pericenter by averaging omega22(t) over the time from the
               current pericenter to the next one. This average value is
@@ -279,6 +289,7 @@ def measure_eccentricity(tref_in=None,
             - "omega22_zeroecc": omega22(t) of the quasicircular counterpart
               is used as a proxy for the average frequency. This can only be
               used if "t_zeroecc" and "hlm_zeroecc" are provided in dataDict.
+
             See Sec. IID of arXiv:2302.11257 for a more detailed description of
             "omega22_average".
             Default is "orbit_averaged_omega22".
@@ -297,8 +308,8 @@ def measure_eccentricity(tref_in=None,
             eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
             for allowed keys.
 
-    Returns:
-    --------
+    Returns
+    -------
     A dictionary containing the following keys
     tref_out:
         tref_out is the output reference time at which eccentricity and mean
@@ -309,8 +320,11 @@ def measure_eccentricity(tref_in=None,
 
         tref_out is set as
         tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
-        where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
-              tmin = max(t_pericenters[0], t_apocenters[0]),
+        where::
+
+            tmax = min(t_pericenters[-1], t_apocenters[-1])
+            tmin = max(t_pericenters[0], t_apocenters[0])
+
         As eccentricity measurement relies on the interpolants
         omega22_pericenters(t) and omega22_apocenters(t), the above cutoffs
         ensure that we only compute the eccentricity where both

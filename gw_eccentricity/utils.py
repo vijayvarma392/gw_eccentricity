@@ -9,12 +9,13 @@ import warnings
 def amplitude_using_all_modes(mode_dict):
     """Get the amplitude using all the available modes.
 
-    Parameters:
+    Parameters
     ----------
     mode_dict:
         Dictionary containing waveform modes.
 
-    Returns:
+    Returns
+    -------
         Square root of the qudrature sum of the amplitudes of all the
         available modes in mode_dict.
     """
@@ -31,15 +32,15 @@ def peak_time_via_quadratic_fit(t, func):
     Fits the function to a quadratic over the 5 points closest to the argmax
     func.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     t:
         An array of times.
     func:
         Array of function values.
 
-    Returns:
-    --------
+    Returns
+    -------
     tpeak:
         Time at peak of the function func.
     fpeak:
@@ -70,7 +71,7 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
                                   location=None):
     """Sanity check user given dicionary of kwargs and set default values.
 
-    Parameters:
+    Parameters
     ----------
     user_kwargs:
         Dictionary of kwargs by user.
@@ -81,8 +82,8 @@ def check_kwargs_and_set_defaults(user_kwargs=None,
     location:
         string pointing to where the defaults are defined
 
-    Returns:
-    --------
+    Returns
+    -------
     updated user_kwargs
     """
     # make user_kwargs iterable
@@ -131,15 +132,15 @@ def time_deriv_4thOrder(y, dt):
     Assuming constant time step.
     Tested for convergence up to 1e-12 level.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     y:
         1d array to take time derivative of.
     dt:
         Time step.
 
-    Returns:
-    --------
+    Returns
+    -------
     dydt:
         Fourth order time derivative of y.
     """
@@ -177,8 +178,8 @@ def interpolate(newX,
                 check_kwargs=True):
     """Interpolate.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     newX:
         Points where interpolant is to be evaluated.
     oldX:
@@ -199,8 +200,8 @@ def interpolate(newX,
     check_kwargs:
         Check spline_kwargs if check_kwargs is True. Default is True.
 
-    Returns:
-    --------
+    Returns
+    -------
     newY:
         Intepolated values at newX.
     """
@@ -233,8 +234,8 @@ def get_interpolant(oldX,
                     check_kwargs=True):
     """Create Interpolant.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     oldX:
         1d array of monotonically increasing real values.
     oldY:
@@ -258,8 +259,8 @@ def get_interpolant(oldX,
     check_kwargs:
         Check spline_kwargs if check_kwargs is True. Default is True.
 
-    Returns:
-    --------
+    Returns
+    -------
     Intepolatnt.
     """
     if not np.all(np.diff(oldX) > 0):
@@ -312,8 +313,8 @@ def debug_message(message, debug_level, important=True,
                   point_to_verbose_output=False):
     """Show message based on debug_level.
 
-    parameters:
-    -----------
+    parameters
+    ----------
     message: str
         Message to display.
 
