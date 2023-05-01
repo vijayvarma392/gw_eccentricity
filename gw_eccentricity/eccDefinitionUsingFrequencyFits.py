@@ -53,9 +53,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
     def __init__(self, *args, **kwargs):
         """Init for eccDefinitionUsingWithFrequencyFits class.
 
-        parameters:
+        Parameters
         ----------
-        dataDict: Dictionary containing the waveform data.
+        dataDict : dict
+            Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
         self.data_str = "omega22"
@@ -93,7 +94,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
     def get_default_kwargs_for_fits_methods(self):
         """Get default kwargs to be used for Fits methods.
 
-        The kwargs are:
+        The kwargs are
+
         - "nPN": The PN exponent to use in the fit function. It is
           inspired by the functional form of frequency/amplitude in
           the leading Post-Newtonian order ~(t - t_merger)^nPN
@@ -158,13 +160,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the data.
 
-        parameters:
-        -----------
+        Parameters
+        ----------
         extrema_type:
             Either "pericenters" or "apocenters".
 
-        returns:
-        ------
+        Returns
+        -------
         array of positions of extrema.
         """
         # STEP 0 - setup
@@ -478,7 +480,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         #         - old_extrema=extrema
         #         - update fitting_func by fit to extrema
 
-
     def FindExtremaNearIdxRef(self,
                               idx_ref,
                               sign, Nbefore, Nafter, K,
@@ -492,71 +493,86 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         """given a 22-GW mode (t, phase22, data), identify a stretch of data
         [idx_lo, idx_hi] centered roughly around the index idx_ref which
         satisfies the following properties:
+
           - The interval [idx_lo, idx_hi] contains Nbefore+Nafter maxima
             (if sign==+1) or minimia (if sign==-1)
             of trend-subtracted data, where Nbefore exrema are before idx_ref
             and Nafter extrema are after idx_ref
           - The trend-subtraction is specified by the fitting function
-            data_trend = f_fit(t, *p).
-            Its fitting parameters *p are self-consistently fitted to the
+            `data_trend = f_fit(t, *p)`.
+            Its fitting parameters `*p` are self-consistently fitted to the
             N_extrema extrema.
           - if increase_idx_ref_if_needed, idx_ref is allowed to increase in
             order to reach the desired Nbefore.
 
-        INPUT
-          - idx_ref   - the reference index, i.e. the approximate middle of the
-            interval of data to be sought
-          - sign      - if +1, look for maxima, if -1, look for minima
-          - Nbefore   - number of extrema to identify before idx_ref
-          - Nafter    - number of extrema to identify after idx_ref
-                          if Nafter=Nbefore-1, then the Nbefore'th extremum
-                          will be centered
-          - K         - an estimate for the periastron advance of the binary,
-                        i.e. the increase of phase22/4pi between two extrema
-          - f_fit     - fitting function f_fit(t, *p) to use for
-                        trend-subtraction
-          - p_initial - initial guesses for the best-fit parametes
-          - p_bounds  - bounds for the fit-parameters
-          - TOL       - iterate until the maximum change in any one data at an
-                        extremum is less tha this TOL
-          - increase_idx_ref_if_needed -- if true, allows to increase idx_ref
-                                          in order to achieve Nbefore extrema
-                                          between start of dataset and idx_ref
-                                          (idx_ref will never be decreased, in
-                                          order to preserve monotonicity to
-                                          help tracing out an inspiral)
-
-          - pp a PdfPages object for a diagnostic output plot
-          - plot_info -- string placed into the title of the diagnostic plot
-
-        RETURNS:
-              idx_extrema, p, K, idx_ref, extrema_refined
-        where
-          - idx_extrema -- the indices of the identified extrema
-                           USUALLY len(idx_extrema) == Nbefore+Nafter HOWEVER,
-                           if not enough extrema can be identified (e.g.  end
-                           of data), then a shorter or even empty list can be
-                           returned
-
-          - p -- the fitting parameters of the best fit through the extrema
-          - K -- an updated estimate of the periastron advance K (i.e. the
-                 average increase of phase22 between extrema divided by 4pi)
-          - idx_ref -- a (potentially increased) value of idx_ref, so that
-                       Nbefore extrema were found between the start of the data
-                       and idx_ref
-          - extrema_refined=(t_extrema_refined, data_extrema_refined,
-                 phase22_extrema_refined) information about the
-                 parabolic-fit-refined extrema.  If RefineExtrema==True, these
-                 arrays have same length as idx_extrema.  Otherwise, empty.
-
-
         ASSUMPTIONS & POSSIBLE FAILURE MODES
+
           - if increase_idx_ref_if_needed == False, and idx_lo cannot be
             reduced enough to reach Nbefore -> raise Exception
           - if fewer extrema are identified than requested, then the function
             will return normally, but with len(idx_extrema) **SMALLER** than
             Nbefore+Nafter. This signals that the end of the data is reached,
             and that the user should not press to even larger idx_ref.
+
+        Parameters
+        ----------
+        idx_ref
+            the reference index, i.e. the approximate middle of the
+            interval of data to be sought
+        sign
+            if +1, look for maxima, if -1, look for minima
+        Nbefore
+            Number of extrema to identify before idx_ref
+        Nafter
+            Number of extrema to identify after idx_ref
+            if Nafter=Nbefore-1, then the Nbefore'th extremum
+            will be centered
+        K
+            an estimate for the periastron advance of the binary,
+            i.e. the increase of phase22/4pi between two extrema
+        f_fit
+            fitting function :func:`f_fit(t, *p)` to use for trend-subtraction
+        p_initial
+            initial guesses for the best-fit parametes
+        p_bounds
+            bounds for the fit-parameters
+        TOL
+            Iterate until the maximum change in any one data at an
+            extremum is less tha this TOL
+        increase_idx_ref_if_needed
+            if true, allows to increase idx_ref in order to achieve Nbefore
+            extrema between start of dataset and idx_ref (idx_ref will never be
+            decreased, in order to preserve monotonicity to help tracing out an
+            inspiral)
+
+        pp
+            a PdfPages object for a diagnostic output plot
+        plot_info
+            string placed into the title of the diagnostic plot
+
+        Returns
+        -------
+        idx_extrema
+            the indices of the identified extrema USUALLY
+            len(idx_extrema) == Nbefore+Nafter HOWEVER,
+            if not enough extrema can be identified
+            (e.g.  end of data), then a shorter or even empty list can be
+            returned
+
+        p
+            the fitting parameters of the best fit through the extrema
+        K
+            an updated estimate of the periastron advance K (i.e. the
+                 average increase of phase22 between extrema divided by 4pi)
+        idx_ref
+            a (potentially increased) value of idx_ref, so that
+                       Nbefore extrema were found between the start of the data
+                       and idx_ref
+        extrema_refined
+            (t_extrema_refined, data_extrema_refined, phase22_extrema_refined)
+            information about the
+            parabolic-fit-refined extrema.  If RefineExtrema==True, these
+            arrays have same length as idx_extrema.  Otherwise, empty.
         """
         extrema_type = {+1: "pericenters", -1: "apocenters"}[sign]
         if verbose:

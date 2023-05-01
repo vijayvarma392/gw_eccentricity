@@ -270,7 +270,7 @@ class eccDefinition:
                                        extra_kwargs):
         """Truncate dataDict if "num_orbits_to_exclude_before_merger" is not None.
 
-        parameters:
+        parameters
         ----------
         dataDict:
             Dictionary containing modes and times.
@@ -279,8 +279,8 @@ class eccDefinition:
         extra_kwargs:
             Extra kwargs passed to the measure eccentricity.
 
-        returns:
-        --------
+        Returns
+        -------
         dataDict:
             Truncated if num_orbits_to_exclude_before_merger is not None
             else the unchanged dataDict.
@@ -533,10 +533,12 @@ class eccDefinition:
         introduced.
 
         To detect if an extremum has been missed we do the following:
+
         - Compute the phase22 difference between i-th and (i+1)-th extrema:
           delta_phase22_extrema[i] = phase22_extrema[i+1] - phase22_extrema[i]
         - Compute the ratio of delta_phase22: r_delta_phase22_extrema[i] =
           delta_phase22_extrema[i+1]/delta_phase22_extrema[i]
+
         For correctly separated extrema, the ratio r_delta_phase22_extrema
         should be close to 1.
 
@@ -870,10 +872,10 @@ class eccDefinition:
         the apocenter times, t_apocenters.
 
         Using omega22_pericenters(t) and omega22_apocenters(t), we first
-        compute e_omega22(t), as described in Eq.(4) of arXiv:2302.11257. We
+        compute e_omega22(t), as described in Eq.(4) of `arXiv:2302.11257`_. We
         then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-        of arXiv:2302.11257. Mean anomaly is defined using t_pericenters, as
-        described in Eq.(10) of arXiv:2302.11257.
+        of `arXiv:2302.11257`_. Mean anomaly is defined using t_pericenters, as
+        described in Eq.(10) of `arXiv:2302.11257`_.
 
         To find t_pericenters/t_apocenters, one can look for extrema in
         different waveform data, like omega22(t) or Amp22(t), the amplitude of
@@ -882,73 +884,87 @@ class eccDefinition:
         option (described below) lets the user pick which waveform data to use
         to find t_pericenters/t_apocenters.
 
-        parameters:
+        .. _arXiv:2302.11257: https://arxiv.org/abs/2302.11257
+
+        Parameters
         ----------
-        tref_in:
+        tref_in : array or float
             Input reference time at which to measure eccentricity and mean
-            anomaly.  Can be a single float or an array.
+            anomaly.
 
-        fref_in:
+        fref_in : array or float
             Input reference GW frequency at which to measure the eccentricity
-            and mean anomaly. Can be a single float or an array. Only one of
-            tref_in/fref_in should be provided.
+            and mean anomaly. Only one of *tref_in*/*fref_in* should be
+            provided.
 
-            Given an fref_in, we find the corresponding tref_in such that
-            omega22_average(tref_in) = 2 * pi * fref_in. Here,
-            omega22_average(t) is a monotonically increasing average frequency
-            obtained from the instantaneous omega22(t). omega22_average(t)
-            defaults to the orbit averaged omega22, but other options are
-            available (see omega22_averaging_method below).
+            Given an *fref_in*, we find the corresponding tref_in such that::
+
+                omega22_average(tref_in) = 2 * pi * fref_in
+
+            Here, omega22_average(t) is a monotonically increasing average
+            frequency obtained from the instantaneous
+            omega22(t). omega22_average(t) defaults to the orbit averaged
+            omega22, but other options are available (see
+            omega22_averaging_method below).
 
             Eccentricity and mean anomaly measurements are returned on a subset
-            of tref_in/fref_in, called tref_out/fref_out, which are described
-            below.  If dataDict is provided in dimensionless units, tref_in
-            should be in units of M and fref_in should be in units of
-            cycles/M. If dataDict is provided in MKS units, t_ref should be in
-            seconds and fref_in should be in Hz.
+            of *tref_in*/*fref_in*, called *tref_out*/*fref_out*, which are
+            described below.  If *dataDict* is provided in dimensionless units,
+            *tref_in* should be in units of M and *fref_in* should be in units
+            of cycles/M. If dataDict is provided in MKS units, *t_ref* should
+            be in seconds and *fref_in* should be in Hz.
 
-        returns:
-        --------
-        A dictionary containing the following keys
-        tref_out:
-            tref_out is the output reference time at which eccentricity and
-            mean anomaly are measured.
-            tref_out is included in the returned dictionary only when tref_in
-            is provided.
-            Units of tref_out are the same as that of tref_in.
+        Returns
+        -------
+        A dictionary with the following keys
+            tref_out
+                *tref_out* is the output reference time at which eccentricity
+                and mean anomaly are measured.  *tref_out* is included in the
+                returned dictionary only when *tref_in* is provided.  Units of
+                *tref_out* are the same as that of *tref_in*.
 
-            tref_out is set as
-            tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
-            where tmax = min(t_pericenters[-1], t_apocenters[-1]) and
-                  tmin = max(t_pericenters[0], t_apocenters[0]),
-            As eccentricity measurement relies on the interpolants
-            omega22_pericenters(t) and omega22_apocenters(t), the above cutoffs
-            ensure that we only compute the eccentricity where both
-            omega22_pericenters(t) and omega22_apocenters(t) are within their
-            bounds.
+                tref_out is set as::
 
-        fref_out:
-            fref_out is the output reference frequency at which eccentricity
-            and mean anomaly are measured.
-            fref_out is included in the returned dictionary only when fref_in
-            is provided.
-            Units of fref_out are the same as that of fref_in.
+                    tref_out = tref_in[tref_in >= tmin & tref_in <= tmax],
 
-            fref_out is set as
-            fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max],
-            where fref_min/fref_max are minimum/maximum allowed reference
-            frequency, with fref_min = omega22_average(tmin_for_fref)/2/pi
-            and fref_max = omega22_average(tmax_for_fref)/2/pi.
-            tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
-            eccDefinition.get_fref_bounds() for details.
+                where, ::
 
-        eccentricity:
-            Measured eccentricity at tref_out/fref_out. Same type as
-            tref_out/fref_out.
+                    tmax = min(t_pericenters[-1], t_apocenters[-1])
+                    tmin = max(t_pericenters[0], t_apocenters[0])
 
-        mean_anomaly:
-            Measured mean anomaly at tref_out/fref_out. Same type as
-            tref_out/fref_out.
+                As eccentricity measurement relies on the interpolants
+                omega22_pericenters(t) and omega22_apocenters(t), the above
+                cutoffs ensure that we only compute the eccentricity where both
+                omega22_pericenters(t) and omega22_apocenters(t) are within
+                their bounds.
+
+            fref_out
+                *fref_out* is the output reference frequency at which
+                eccentricity and mean anomaly are measured.  *fref_out* is
+                included in the returned dictionary only when *fref_in* is
+                provided.  Units of *fref_out* are the same as that of
+                *fref_in*.
+
+                *fref_out* is set as::
+
+                    fref_out = fref_in[fref_in >= fref_min && fref_in <= fref_max]
+
+                where, fref_min/fref_max are minimum/maximum allowed reference
+                frequency, with::
+
+                    fref_min = omega22_average(tmin_for_fref)/2/pi
+                    fref_max = omega22_average(tmax_for_fref)/2/pi
+
+                tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
+                :meth:`eccDefinition.get_fref_bounds()` for details.
+
+            eccentricity
+                Measured eccentricity at *tref_out*/*fref_out*. Same type as
+                *tref_out*/*fref_out*.
+
+            mean_anomaly
+                Measured mean anomaly at *tref_out*/*fref_out*. Same type as
+                *tref_out*/*fref_out*.
         """
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
@@ -1103,13 +1119,13 @@ class eccDefinition:
     def et_from_ew22_0pn(self, ew22):
         """Get temporal eccentricity at Newtonian order.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         ew22:
             eccentricity measured from the 22-mode frequency.
 
-        Returns:
-        --------
+        Returns
+        -------
         et:
             Temporal eccentricity at Newtonian order.
         """
@@ -1126,13 +1142,13 @@ class eccDefinition:
         omega22_apocenters_interpolant at t using Eq.(4) in arXiv:2302.11257
         and then use Eq.(8) in arXiv:2302.11257 to compute e_gw from e_omega22.
 
-        Paramerers:
-        -----------
+        Paramerers
+        ----------
         t:
             Time to compute the eccentricity at. Could be scalar or an array.
 
-        Returns:
-        --------
+        Returns
+        -------
         Eccentricity at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
@@ -1150,16 +1166,16 @@ class eccDefinition:
     def derivative_of_eccentricity(self, t, n=1):
         """Get time derivative of eccentricity.
 
-        Parameters:
-        -----------
-        t:
+        Parameters
+        ----------
+        t
             Times to get the derivative at.
-        n: int
+        n : int
             Order of derivative. Should be 1 or 2, since it uses
             cubic spine to get the derivatives.
 
-        Returns:
-        --------
+        Returns
+        -------
             nth order time derivative of eccentricity.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
@@ -1192,13 +1208,13 @@ class eccDefinition:
         Finally, we build a linear interpolant for y using these xVals and
         yVals.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         t:
             Time to compute mean anomaly at. Could be scalar or an array.
 
-        Returns:
-        --------
+        Returns
+        -------
         Mean anomaly at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
@@ -1245,13 +1261,13 @@ class eccDefinition:
         un-suppress the warnings. always_return=True is not sufficient to
         un-suppress the warnings.
 
-        parameters:
-        always_return:
+        Parameters
+        ----------
+        always_return : bool, default: False
             The return values of this function are used by some plotting
             functions, so if always_return=True, we execute the body and
             return values regardless of debug_level. However, the warnings
             will still be suppressed for debug_level < 1.
-            Default is False.
         """
 
         # This function only has checks with the flag important=False, which
@@ -1300,10 +1316,11 @@ class eccDefinition:
                                          check_convexity=False):
         """Check if measured eccentricity is a monotonic function of time.
 
-        parameters:
-        check_convexity:
+        Parameters
+        ----------
+        check_convexity : bool, default: False
             In addition to monotonicity, it will check for
-            convexity as well. Default is False.
+            convexity as well.
         """
         if self.decc_dt_for_checks is None:
             self.decc_dt_for_checks = self.derivative_of_eccentricity(
@@ -1480,11 +1497,11 @@ class eccDefinition:
         t_average_pericenters and t_average_apocenters, and sort them to obtain
         t_average.
 
-        Returns:
-        --------
-        t_for_orbit_averaged_omega22:
+        Returns
+        -------
+        t_for_orbit_averaged_omega22
             Times associated with orbit averaged omega22
-        sorted_idx_for_orbit_averaged_omega22:
+        sorted_idx_for_orbit_averaged_omega22
             Indices used to sort the times associated with orbit averaged
             omega22
         """
@@ -1595,9 +1612,11 @@ class eccDefinition:
                                               description="omega22 average"):
         """Check that omega average is monotonically increasing.
 
-        omega22_average:
+        Parameters
+        ----------
+        omega22_average : array-like
             1d array of omega22 averages to check for monotonicity.
-        description:
+        description : str
             String to describe what the the which omega22 average we are
             looking at.
         """
@@ -1705,9 +1724,9 @@ class eccDefinition:
     def get_omega22_average(self, method=None):
         """Get times and corresponding values of omega22 average.
 
-        Parameters:
-        -----------
-        method: str
+        Parameters
+        ----------
+        method : str
             omega22 averaging method. Must be one of the following:
             - "mean_of_extrema_interpolants"
             - "orbit_averaged_omega22"
@@ -1717,11 +1736,11 @@ class eccDefinition:
             Default is None which uses the method provided in
             `self.extra_kwargs["omega22_averaging_method"]`
 
-        Returns:
-        --------
-        t_for_omega22_average:
+        Returns
+        -------
+        t_for_omega22_average : array-like
             Times associated with omega22_average.
-        omega22_average:
+        omega22_average : array-like
             omega22 average using given "method".
             These are data interpolated on the times t_for_omega22_average,
             where t_for_omega22_average is a subset of tref_in passed to the
@@ -1800,6 +1819,7 @@ class eccDefinition:
         and set those to tref_in.
 
         omega22_average(t) could be calculated in the following ways
+
         - Mean of the omega22 given by the spline through the pericenters and
           the spline through the apocenters, we call this
           "mean_of_extrema_interpolants"
@@ -1867,18 +1887,18 @@ class eccDefinition:
         used.  To force recomputation of omega22_average, for example, with a
         new method one need to set it to None first.
 
-        Parameters:
-        -----------
-        method:
+        Parameters
+        ----------
+        method : str
             Omega22 averaging method.  See
             get_available_omega22_averaging_methods for available methods.
             Default is None which will use the default method for omega22
             averaging using `extra_kwargs["omega22_averaging_method"]`
 
-        Returns:
+        Returns
+        -------
             Minimum allowed reference frequency, Maximum allowed reference
             frequency.
-        --------
         """
         if self.omega22_average is None:
             self.t_for_omega22_average, self.omega22_average = self.get_omega22_average(method)
@@ -1888,17 +1908,17 @@ class eccDefinition:
     def get_fref_out(self, fref_in, method):
         """Get fref_out from fref_in that falls within the valid average f22 range.
 
-        Parameters:
+        Parameters
         ----------
-        fref_in:
+        fref_in : array-like
             Input 22 mode reference frequency array.
 
-        method:
+        method : str
             method for getting average omega22
 
-        Returns:
+        Returns
         -------
-        fref_out:
+        fref_out : array-like
             Slice of fref_in that satisfies:
             fref_in >= fref_min && fref_in < fref_max
         """
@@ -1934,6 +1954,7 @@ class eccDefinition:
         to check an implemented method.
 
         We plot the following quantities
+
         - The eccentricity vs vs time
         - decc/dt vs time, this is to test the monotonicity of eccentricity as
           a function of time
@@ -1954,31 +1975,33 @@ class eccDefinition:
 
         Additionally, we plot the following if data for zero eccentricity is
         provided and method is not residual method
+
         - residual amp22 vs time with the location of pericenters and
           apocenters shown.
         - residual omega22 vs time with the location of pericenters and
           apocenters shown.
+
         If the method itself uses residual data, then add one plot for
+
         - data that is not being used for finding extrema.
-        For example, if method is ResidualAmplitude
-        then plot residual omega and vice versa.
-        These two plots further help in understanding any unwanted feature
-        in the measured eccentricity vs time plot. For example, non smoothness
-        in the residual omega22 would indicate that the data in omega22 is not
-        good which might be causing glitches in the measured eccentricity plot.
+          For example, if method is ResidualAmplitude then plot residual omega
+          and vice versa.  These two plots further help in understanding any
+          unwanted feature in the measured eccentricity vs time plot. For
+          example, non smoothness in the residual omega22 would indicate that
+          the data in omega22 is not good which might be causing glitches in
+          the measured eccentricity plot.
 
         Finally, plot
+
         - data that is being used for finding extrema.
 
-        Parameters:
-        -----------
-        add_help_text:
+        Parameters
+        ----------
+        add_help_text : bool, default: True
             If True, add text to describe features in the plot.
-            Default is True.
-        usetex:
+        usetex : bool, default: False
             If True, use TeX to render texts.
-            Default is False.
-        style:
+        style : str
             Set font size, figure size suitable for particular use case. For
             example, to generate plot for "APS" journals, use style="APS".  For
             showing plots in a jupyter notebook, use "Notebook" so that plots
@@ -1986,19 +2009,19 @@ class eccDefinition:
             plot_settings.py for more details.  If None, then uses "Notebook"
             when twocol is False and uses "APS" if twocol is True.
             Default is None.
-        use_fancy_settings:
+        use_fancy_settings : bool, default: True
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
-            Default is True.
-        twocol:
-            Use a two column grid layout. Default is False.
-        **kwargs:
+        twocol : bool, default: False
+            Use a two column grid layout.
+        **kwargs
             kwargs to be passed to plt.subplots()
 
-        Returns:
-        fig:
+        Returns
+        -------
+        fig
             Figure object.
-        axarr:
+        axarr
             Axes object.
         """
         # Make a list of plots we want to add
@@ -2493,34 +2516,31 @@ class eccDefinition:
         This would show if the method is missing any pericenters/apocenters or
         selecting one which is not a pericenter/apocenter.
 
-        Parameters:
-        -----------
-        fig:
+        Parameters
+        ----------
+        fig :
             Figure object to add the plot to. If None, initiates a new figure
-            object.  Default is None.
-        ax:
+            object. Default is None.
+        ax :
             Axis object to add the plot to. If None, initiates a new axis
-            object.  Default is None.
-        add_help_text:
+            object. Default is None.
+        add_help_text : bool, default: True
             If True, add text to describe features in the plot.
-            Default is True.
-        usetex:
+        usetex : bool, default: False
             If True, use TeX to render texts.
-            Default is False.
-        style:
+        style : str, default: ``Notebook``
             Set font size, figure size suitable for particular use case. For
-            example, to generate plot for "APS" journals, use style="APS".  For
-            showing plots in a jupyter notebook, use "Notebook" so that plots
-            are bigger and fonts are appropriately larger and so on.  See
+            example, to generate plot for ``APS`` journals, use ``style='APS'``.
+            For showing plots in a jupyter notebook, use ``Notebook`` so that
+            plots are bigger and fonts are appropriately larger and so on.  See
             plot_settings.py for more details.
-            Default is Notebook.
-        use_fancy_settings:
+        use_fancy_settings : bool, default: True
             Use fancy settings for matplotlib to make the plot look prettier.
-            See plot_settings.py for more details.
-            Default is True.
+            See :py:func:`plot_settings.use_fancy_plotsettings` for more
+            details.
 
-        Returns:
-        --------
+        Returns
+        -------
         fig, ax
         """
         if fig is None or ax is None:
@@ -2797,8 +2817,9 @@ class eccDefinition:
         """Plot the data that is being used.
 
         Also the locations of the apocenters and pericenters.
-        Parameters:
-        -----------
+
+        Parameters
+        ----------
         fig:
             Figure object to add the plot to. If None, initiates a new figure
             object.  Default is None.
@@ -2927,9 +2948,9 @@ class eccDefinition:
         such systems the amp22/omega22 data between the pericenters is almost
         flat and hard to find the local minima.
 
-        returns:
-        ------
-        locations of apocenters
+        Returns
+        -------
+        locations of apocenters : array-like
         """
         # NOTE: Assuming uniform time steps.
         # TODO: Make it work for non
@@ -2960,12 +2981,12 @@ class eccDefinition:
         step is 1M. If using time in seconds, this would depend on the total
         mass.
 
-        Parameters:
+        Parameters
         ----------
-        width_for_unit_timestep:
+        width_for_unit_timestep : int
             Width to use when the time step in the wavefrom data is 1.
 
-        Returns:
+        Returns
         -------
         width:
             Minimal width to separate consecutive peaks.
