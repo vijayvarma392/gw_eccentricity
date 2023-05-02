@@ -66,51 +66,63 @@ def measure_eccentricity(tref_in=None,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
-    Eccentricity is measured using the GW frequency omega22(t) =
-    dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
-    mode. We currently only allow time-domain, nonprecessing waveforms. We
-    evaluate omega22(t) at pericenter times, t_pericenters, and build a
-    spline interpolant omega22_pericenters(t) using those data
-    points. Similarly, we build omega22_apocenters(t) using omega22(t) at
-    the apocenter times, t_apocenters.
+    Eccentricity is measured using the GW frequency :math:`\\omega_{22}(t) =
+    \\frac{d\\phi_{22}(t)}{dt}`, where :math:`\\phi_{22}(t)` is the phase of
+    the :math:`(2, 2)` waveform mode. We currently only allow time-domain,
+    nonprecessing waveforms. We evaluate :math:`\\omega_{22}(t)` at pericenter
+    times, :math:`t^{\\text{pericenters}}`, and build a spline interpolant
+    :math:`\\omega_{22}^{\\text{pericenters}}(t)` using those data
+    points. Similarly, we build :math:`\\omega_{22}^{\\text{apocenters}}(t)`
+    using :math:`\\omega_{22}(t)` at the apocenter times,
+    :math:`t^{\\text{apocenters}}`.
 
-    Using omega22_pericenters(t) and omega22_apocenters(t), we first
-    compute e_omega22(t), as described in Eq.(4) of arXiv:2302.11257. We
-    then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-    of arXiv:2302.11257. Mean anomaly is defined using t_pericenters, as
-    described in Eq.(10) of arXiv:2302.11257.
+    Using :math:`\\omega_{22}^{\\text{pericenters}}(t)` and
+    :math:`\\omega_{22}^{\\text{apocenters}}(t)`, we first compute
+    :math:`e_{\\omega_{22}}(t)`, as described in Eq.(4) of
+    `arXiv:2302.11257`_. We then use :math:`e_{\\omega_{22}}(t)` to compute the
+    eccentricity :math:`e_{\\text{gw}}` using Eq.(8) of
+    `arXiv:2302.11257`_. Mean anomaly :math:`l_{\\text{gw}}` is defined using
+    :math:`t^{\\text{pericenters}}`, as described in Eq.(10) of
+    `arXiv:2302.11257`_.
 
-    To find t_pericenters/t_apocenters, one can look for extrema in different
-    waveform data, like omega22(t) or Amp22(t), the amplitude of the (2, 2)
-    mode. Pericenters correspond to the local maxima, while apocenters
-    correspond to the local minima in the data. The method option
+    To find :math:`t^{\\text{pericenters}}`/:math:`t^{\\text{apocenters}}`, one
+    can look for extrema in different waveform data, like
+    :math:`\\omega_{22}(t)` or :math:`A_{22}(t)`, the amplitude of the
+    :math:`(2, 2)` mode. Pericenters correspond to the local maxima, while
+    apocenters correspond to the local minima in the data. The method option
     (described below) lets the user pick which waveform data to use to find
-    t_pericenters/t_apocenters.
+    :math:`t^{\\text{pericenters}}`/:math:`t^{\\text{apocenters}}`.
+
+    .. _arXiv:2302.11257: https://arxiv.org/abs/2302.11257
 
     Parameters
     ----------
-    tref_in
+    tref_in : float or array_like
         Input reference time at which to measure eccentricity and mean anomaly.
-        Can be a single float or an array.
 
-    fref_in
+    fref_in : float or array_like
         Input reference GW frequency at which to measure the eccentricity and
-        mean anomaly. Can be a single float or an array. Only one of
-        tref_in/fref_in should be provided.
+        mean anomaly. Only one of `tref_in`/`fref_in` should be provided.
 
-        Given an fref_in, we find the corresponding tref_in such that
-        omega22_average(tref_in) = 2 * pi * fref_in. Here, omega22_average(t)
-        is a monotonically increasing average frequency obtained from the
-        instantaneous omega22(t). omega22_average(t) defaults to the orbit
-        averaged omega22, but other options are available (see
-        omega22_averaging_method below).
+        Given an `fref_in`, we find the corresponding `tref_in` such that
+
+        .. math::
+
+            \\omega_{22}^{\\text{average}}(t^{\\text{ref}}_{\\text{in}})
+            = 2 \\pi f^{\\text{ref}}_{\\text{in}}
+
+        Here, :math:`\\omega_{22}^{\\text{average}}(t)` is a monotonically
+        increasing average frequency obtained from the instantaneous
+        :math:`\\omega_{22}(t)`. :math:`\\omega_{22}^{\\text{average}}(t)`
+        defaults to the orbit averaged :math:`\\omega_{22}(t)`, but other
+        options are available (see `omega22_averaging_method` below).
 
         Eccentricity and mean anomaly measurements are returned on a subset of
-        tref_in/fref_in, called tref_out/fref_out, which are described below.
-        If dataDict is provided in dimensionless units, tref_in should be in
-        units of M and fref_in should be in units of cycles/M. If dataDict is
-        provided in MKS units, t_ref should be in seconds and fref_in should be
-        in Hz.
+        `tref_in`/`fref_in`, called `tref_out`/`fref_out`, which are described
+        below.  If `dataDict` is provided in dimensionless units, `tref_in`
+        should be in units of :math:`M` and `fref_in` should be in units of
+        cycles/:math:`M`. If `dataDict` is provided in MKS units, `t_ref`
+        should be in seconds and `fref_in` should be in Hz.
 
     method : str, default: ``Amplitude``
         Which waveform data to use for finding extrema. Options are:
