@@ -1,9 +1,15 @@
 """Fancy settings for plots."""
 from matplotlib import rc
 from cycler import cycler
-from matplotlib import colormaps
 
-dark2 = colormaps["Dark2"].colors
+# Getting colormaps in matplotlib has changed from v3.5.0
+import matplotlib
+if matplotlib.__version__ < "3.5.0":
+    from matplotlib import cm
+    dark2 = cm.get_cmap("Dark2").colors
+else:
+    from matplotlib import colormaps
+    dark2 = colormaps["Dark2"].colors
 
 colorsDict = {
     "default": dark2[1],  # brown
