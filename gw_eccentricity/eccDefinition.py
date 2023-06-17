@@ -1525,8 +1525,12 @@ class eccDefinition:
         return [t_for_orbit_averaged_omega22,
                 sorted_idx_for_orbit_averaged_omega22]
 
-    def get_orbit_averaged_omega22_at_pericenters(self):
+    def get_orbit_averaged_omega22_between_pericenters(self):
         """Get orbital average of omega22 between two consecutive pericenters.
+
+        Given N pericenters at times t[i], i=0...N-1, this function
+        returns a np.array of length N-1, where result[i] is the frequency
+        averaged over [t[i], t[i+1]].
 
         Orbital average of omega22 between two consecutive pericenters
         i-th and (i+1)-th is given by
@@ -1539,17 +1543,17 @@ class eccDefinition:
         return (np.diff(self.phase22[self.pericenters_location]) /
                 np.diff(self.t[self.pericenters_location]))
 
-    def get_orbit_averaged_omega22_at_apocenters(self):
+    def get_orbit_averaged_omega22_between_apocenters(self):
         """Get orbital average of omega22 between two consecutive apocenters.
 
         The procedure to get the orbital average of omega22 at apocenters is
         the same as that at pericenters. See documentation of
-        `get_orbit_averaged_omega22_at_pericenters` for details.
+        `get_orbit_averaged_omega22_between_pericenters` for details.
         """
         return (np.diff(self.phase22[self.apocenters_location]) /
                 np.diff(self.t[self.apocenters_location]))
 
-    def compute_orbit_averaged_omega22_at_extrema(self, t):
+    def compute_orbit_averaged_omega22_between_extrema(self, t):
         """Compute reference frequency by orbital averaging omega22 at extrema.
 
         We compute the orbital average of omega22 at the pericenters
@@ -1562,8 +1566,8 @@ class eccDefinition:
         <t>_i = (t[i] + t[i+1]) / 2
 
         We do this averaging for pericenters and apocenters using the functions
-        `get_orbit_averaged_omega22_at_pericenters` and
-        `get_orbit_averaged_omega22_at_apocenters` and combine the results.
+        `get_orbit_averaged_omega22_between_pericenters` and
+        `get_orbit_averaged_omega22_between_apocenters` and combine the results.
         The combined array is then sorted using the sorting indices from
         `get_t_average_for_orbit_averaged_omega22`.
 
@@ -1573,9 +1577,9 @@ class eccDefinition:
         # get orbit averaged omega22 between consecutive pericenrers
         # and apoceneters
         self.orbit_averaged_omega22_pericenters \
-            = self.get_orbit_averaged_omega22_at_pericenters()
+            = self.get_orbit_averaged_omega22_between_pericenters()
         self.orbit_averaged_omega22_apocenters \
-            = self.get_orbit_averaged_omega22_at_apocenters()
+            = self.get_orbit_averaged_omega22_between_apocenters()
         # check monotonicity of the omega22 average
         self.check_monotonicity_of_omega22_average(
             self.orbit_averaged_omega22_pericenters,
@@ -1716,7 +1720,7 @@ class eccDefinition:
         """Return available omega22 averaging methods."""
         available_methods = {
             "mean_of_extrema_interpolants": self.compute_mean_of_extrema_interpolants,
-            "orbit_averaged_omega22": self.compute_orbit_averaged_omega22_at_extrema,
+            "orbit_averaged_omega22": self.compute_orbit_averaged_omega22_between_extrema,
             "omega22_zeroecc": self.compute_omega22_zeroecc
         }
         return available_methods
@@ -1758,14 +1762,14 @@ class eccDefinition:
             - orbit_averaged_omega22_apocenters: orbit averaged omega22 between
               apocenters This is available when measuring eccentricity at
               reference frequency.  If it is not available, it can be computed
-              using `get_orbit_averaged_omega22_at_apocenters`
+              using `get_orbit_averaged_omega22_between_apocenters`
             - t_average_apocenters: temporal midpoints between
               apocenters. These are associated with
               `orbit_averaged_omega22_apocenters`
             - orbit_averaged_omega22_pericenters: orbit averaged omega22
               between pericenters This is available when measuring eccentricity
               at reference frequency.  If it is not available, it can be
-              computed using `get_orbit_averaged_omega22_at_pericenters`
+              computed using `get_orbit_averaged_omega22_between_pericenters`
             - t_average_pericenters: temporal midpoints between
               pericenters. These are associated with
               `orbit_averaged_omega22_pericenters`
@@ -2408,7 +2412,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             plot_omega22=True,
-            plot_orbit_averaged_omega22_at_extrema=False,
+            plot_orbit_averaged_omega22_between_extrema=False,
             **kwargs):
         """Plot omega22_average.
 
@@ -2439,7 +2443,7 @@ class eccDefinition:
             Default is True.
         plot_omega22: bool
             If True, plot omega22 also. Default is True.
-        plot_orbit_averaged_omega22_at_extrema: bool
+        plot_orbit_averaged_omega22_between_extrema: bool
             If True and method is orbit_averaged_omega22, plot the the orbit
             averaged omega22 at the extrema as well. Default is False.
 
@@ -2467,7 +2471,7 @@ class eccDefinition:
                     lw=0.5,
                     label=labelsDict["omega22"])
         if (self.extra_kwargs["omega22_averaging_method"] == "orbit_averaged_omega22" and
-            plot_orbit_averaged_omega22_at_extrema):
+            plot_orbit_averaged_omega22_between_extrema):
             ax.plot(self.t_average_apocenters,
                     self.orbit_averaged_omega22_apocenters,
                     c=colorsDict["apocenter"],
