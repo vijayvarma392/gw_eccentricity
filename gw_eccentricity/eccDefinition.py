@@ -1528,9 +1528,10 @@ class eccDefinition:
     def get_orbit_averaged_omega22_between_pericenters(self):
         """Get orbital average of omega22 between two consecutive pericenters.
 
-        Given N pericenters at times t[i], i=0...N-1, this function
-        returns a np.array of length N-1, where result[i] is the frequency
-        averaged over [t[i], t[i+1]].
+        Given N pericenters at times t[i], i=0...N-1, this function returns a
+        np.array of length N-1, where result[i] is the frequency averaged over
+        [t[i], t[i+1]]. result[i] is associated with the time at the temporal
+        midpoint between t[i] and t[i+1], i.e (t[i] + t[i+1])/2.
 
         Orbital average of omega22 between two consecutive pericenters
         i-th and (i+1)-th is given by
@@ -1546,18 +1547,18 @@ class eccDefinition:
     def get_orbit_averaged_omega22_between_apocenters(self):
         """Get orbital average of omega22 between two consecutive apocenters.
 
-        The procedure to get the orbital average of omega22 at apocenters is
-        the same as that at pericenters. See documentation of
+        The procedure to get the orbital average of omega22 between apocenters
+        is the same as that between pericenters. See documentation of
         `get_orbit_averaged_omega22_between_pericenters` for details.
         """
         return (np.diff(self.phase22[self.apocenters_location]) /
                 np.diff(self.t[self.apocenters_location]))
 
     def compute_orbit_averaged_omega22_between_extrema(self, t):
-        """Compute reference frequency by orbital averaging omega22 at extrema.
+        """Compute reference frequency by orbital averaging omega22 between extrema.
 
-        We compute the orbital average of omega22 at the pericenters
-        and the apocenters following:
+        We compute the orbital average of omega22 between two consecutive
+        extrema as following:
         <omega22>_i = (int_t[i]^t[i+1] omega22(t) dt) / (t[i+1] - t[i])
         where t[i] is the time of ith extrema and the suffix `i` stands for the
         i-th orbit between i-th and (i+1)-th extrema
@@ -1565,17 +1566,18 @@ class eccDefinition:
         and (i+1)-th extrema,
         <t>_i = (t[i] + t[i+1]) / 2
 
-        We do this averaging for pericenters and apocenters using the functions
+        We do this averaging between consecutive pericenters and consecutive
+        apocenters using the functions
         `get_orbit_averaged_omega22_between_pericenters` and
-        `get_orbit_averaged_omega22_between_apocenters` and combine the results.
-        The combined array is then sorted using the sorting indices from
-        `get_t_average_for_orbit_averaged_omega22`.
+        `get_orbit_averaged_omega22_between_apocenters` and combine the
+        results. The combined array is then sorted using the sorting indices
+        from `get_t_average_for_orbit_averaged_omega22`.
 
         Finally we interpolate the data {<t>_i, <omega22>_i} and evaluate the
         interpolant at the input times `t`.
         """
         # get orbit averaged omega22 between consecutive pericenrers
-        # and apoceneters
+        # and consecutive apoceneters
         self.orbit_averaged_omega22_pericenters \
             = self.get_orbit_averaged_omega22_between_pericenters()
         self.orbit_averaged_omega22_apocenters \
@@ -1587,7 +1589,8 @@ class eccDefinition:
         self.check_monotonicity_of_omega22_average(
             self.orbit_averaged_omega22_apocenters,
             "omega22 averaged [apocenter to apocenter]")
-        # combine the average omega22 at pericenters and apocenters
+        # combine the average omega22 between consecutive pericenters and
+        # consecutive apocenters
         orbit_averaged_omega22 = np.append(
             self.orbit_averaged_omega22_apocenters,
             self.orbit_averaged_omega22_pericenters)
@@ -1760,16 +1763,17 @@ class eccDefinition:
             using the gwecc_object with the following variables
 
             - orbit_averaged_omega22_apocenters: orbit averaged omega22 between
-              apocenters This is available when measuring eccentricity at
-              reference frequency.  If it is not available, it can be computed
+              apocenters. This is available when measuring eccentricity at
+              reference frequency. If it is not available, it can be computed
               using `get_orbit_averaged_omega22_between_apocenters`
             - t_average_apocenters: temporal midpoints between
               apocenters. These are associated with
               `orbit_averaged_omega22_apocenters`
             - orbit_averaged_omega22_pericenters: orbit averaged omega22
-              between pericenters This is available when measuring eccentricity
-              at reference frequency.  If it is not available, it can be
-              computed using `get_orbit_averaged_omega22_between_pericenters`
+              between pericenters. This is available when measuring
+              eccentricity at reference frequency. If it is not available, it
+              can be computed using
+              `get_orbit_averaged_omega22_between_pericenters`
             - t_average_pericenters: temporal midpoints between
               pericenters. These are associated with
               `orbit_averaged_omega22_pericenters`
@@ -1779,7 +1783,8 @@ class eccDefinition:
         if method != "orbit_averaged_omega22":
             # the average frequencies are using interpolants that use omega22
             # values between tmin and tmax, therefore the min and max time for
-            # which omega22 average are the same as tmin and tmax, respectively.
+            # which omega22 average are the same as tmin and tmax,
+            # respectively.
             self.tmin_for_fref = self.tmin
             self.tmax_for_fref = self.tmax
         else:
@@ -2445,7 +2450,7 @@ class eccDefinition:
             If True, plot omega22 also. Default is True.
         plot_orbit_averaged_omega22_between_extrema: bool
             If True and method is orbit_averaged_omega22, plot the the orbit
-            averaged omega22 at the extrema as well. Default is False.
+            averaged omega22 between the extrema as well. Default is False.
 
         Returns:
         --------
