@@ -1531,7 +1531,8 @@ class eccDefinition:
         Given N pericenters at times t[i], i=0...N-1, this function returns a
         np.array of length N-1, where result[i] is the frequency averaged over
         [t[i], t[i+1]]. result[i] is associated with the time at the temporal
-        midpoint between t[i] and t[i+1], i.e (t[i] + t[i+1])/2.
+        midpoint between t[i] and t[i+1], i.e (t[i] + t[i+1])/2. See Eq.(12)
+        and Eq.(13) in arXiv:2302.11257 for details.
 
         Orbital average of omega22 between two consecutive pericenters
         i-th and (i+1)-th is given by
@@ -1565,6 +1566,7 @@ class eccDefinition:
         <omega22>_i is associated with the temporal midpoint between the i-th
         and (i+1)-th extrema,
         <t>_i = (t[i] + t[i+1]) / 2
+        See Eq.(12) and Eq.(13) in arXiv:2302.11257 for more details.
 
         We do this averaging between consecutive pericenters and consecutive
         apocenters using the functions
