@@ -26,6 +26,6 @@ Note: Currently, only Vijay and Arif can do this, as they are the only ones with
 1. Update the version number at the top of gw_eccentricity/gw_eccentricity.py and commit all changes. This version number gets propagated to setup.py.
 2. Do the following to release the new version:
 ```shell
-python setup.py sdist bdist_wheel
+python -m build
 twine upload dist/*
 ```
