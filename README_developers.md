@@ -29,7 +29,9 @@ Note: Currently, only Vijay and Arif can do this, as they are the only ones with
 python -m build
 twine upload dist/*
 ```
-## Conda release
+## Create Conda recipe
+**NOTE:** This is needed to be done only once to add the recipe to conda-forge/staged-recipe.
+To update the conda release follow conda release section below.
 1. Generate `conda` recipe using `grayskull` since we already have the PyPI package.
 ```shell
 conda install -c conda-forge grayskull
