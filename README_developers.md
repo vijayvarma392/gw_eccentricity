@@ -47,11 +47,11 @@ grayskull pypi gw_eccentricity
 ## Conda release
 To release a new conda version follow the instructions [here](
 https://github.com/conda-forge/gw_eccentricity-feedstock#updating-gw_eccentricity-feedstock):
+
+After each PyPI release, update the conda package to the same version by following the steps below:
 1. Fork the feedstock repository https://github.com/conda-forge/gw_eccentricity-feedstock
 2. Create a branch
 3. Update `meta.yaml` under `recipe` at
  https://github.com/conda-forge/gw_eccentricity-feedstock/blob/main/recipe/meta.yaml<br>
- For example, update the version.<br>
- **NOTE** Make sure to update the PyPi release
- first since it uses the tar files from PyPi for the given version.
+ by changing the version to the latest PyPI version.
 4. Commit the changes and make a PR.
