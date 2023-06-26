@@ -7,6 +7,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 """
 
 import numpy as np
+from scipy import integrate
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -192,12 +193,40 @@ class eccDefinition:
         if not np.allclose(self.t_diff, self.t_diff[0]):
             raise Exception("Input time array must have uniform time steps.\n"
                             f"Time steps are {self.t_diff}")
-        self.hlm = self.dataDict["hlm"]
-        self.h22 = self.hlm[(2, 2)]
-        self.amp22 = np.abs(self.h22)
-        self.phase22 = - np.unwrap(np.angle(self.h22))
-        self.omega22 = time_deriv_4thOrder(self.phase22,
-                                           self.t[1] - self.t[0])
+        # get phase22 from dataDict
+        if "phaselm" in self.dataDict:
+            self.phase22 = self.dataDict["phaselm"][(2, 2)]
+        elif "hlm" in self.dataDict:
+            self.h22 = self.dataDict["hlm"][(2, 2)]
+            self.phase22 = self.compute_phase22_from_h22(self.h22)
+        elif "omegalm" in self.dataDict:
+            self.omega22 = self.dataDict["omegalm"][(2, 2)]
+            self.phase22 = self.compute_phase22_from_omega22(
+                self.t, self.omega22)
+        else:
+            raise KeyError("dataDict should contain atleast one of "
+                           "[`phaselm`, `hlm`, `omegalm`] "
+                           "to compute `phase22`.")
+        # get amp22 from dataDict
+        if "amplm" in self.dataDict:
+            self.amp22 = self.dataDict["amplm"][(2, 2)]
+        elif "hlm" in self.dataDict:
+            self.amp22 = np.abs(self.dataDict["hlm"][(2, 2)])
+        else:
+            # set to None. Do not raise exception since amp22 is
+            # not required for methods based on frequency
+            self.amp22 = None
+        # get omega22 from dataDict
+        # check if omega22 has been already computed when getting
+        # phase22.
+        if not hasattr(self, "omega22"):
+            # check if omegalm is in dataDict
+            if "omegalm" in self.dataDict:
+                self.omega22 = self.dataDict["omegalm"][(2, 2)]
+            # otherwise compute from phase22
+            else:
+                self.omega22 = time_deriv_4thOrder(self.phase22,
+                                                   self.t[1] - self.t[0])
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
@@ -251,16 +280,25 @@ class eccDefinition:
         self.t_for_omega22_average = None
         self.omega22_average = None
 
-        if "hlm_zeroecc" in self.dataDict:
-            self.compute_res_amp_and_omega22()
+        # compute residual data
+        if any(["hlm_zeroecc" in self.dataDict,
+                "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict,
+                "amplm_zeroecc" in self.dataDict and "phaselm_zeroecc" in self.dataDict]):
+            self.compute_res_amp22_and_res_omega22()
 
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
         list_of_keys = [
             "t",                # time array of waveform modes
             "hlm",              # Dict of eccentric waveform modes
+            "amplm",            # Dict of amplitude of eccentric waveform modes
+            "phaselm",          # Dict of phase of eccentric waveform modes
+            "omegalm",          # Dict of omega of eccentric waveform modes
             "t_zeroecc",        # time array of quasicircular waveform
             "hlm_zeroecc",      # Dict of quasicircular waveform modes
+            "amplm_zeroecc",    # Dict of amplitude of quasicircular waveform modes
+            "phaselm_zeroecc",  # Dict of phase of quasicircular waveform modes
+            "omegalm_zeroecc",  # Dict of omega of quasicircular waveform modes
         ]
         return list_of_keys
 
@@ -295,7 +333,19 @@ class eccDefinition:
             truncation.
         """
         t = dataDict["t"]
-        phase22 = - np.unwrap(np.angle(dataDict["hlm"][(2, 2)]))
+        # Get phase22 depending on what is provided in dataDict
+        if "phaselm" in dataDict:
+            phase22 = dataDict["phaselm"][(2, 2)]
+        elif "hlm" in dataDict:
+            phase22 = self.compute_phase22_from_h22(
+                dataDict["hlm"][(2, 2)])
+        elif "omegalm" in dataDict:
+            phase22 = self.compute_phase22_from_omega22(
+                t, dataDict["omegalm"][(2, 2)])
+        else:
+            raise KeyError(
+                "dataDict must contain one of [`phaselm`, `hlm`, `omegalm`] to"
+                "compute phase of the 22 mode.")
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
@@ -303,11 +353,22 @@ class eccDefinition:
         # to compute location at certain number orbits earlier than merger
         # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
         # respectively.
+        if "amplm" in dataDict:
+            amp = amplitude_using_all_modes(dataDict["amplm"],
+                                            data_type="amplm")
+            amp22 = dataDict["amplm"][(2, 2)]
+        elif "hlm" in dataDict:
+            amp = amplitude_using_all_modes(dataDict["hlm"],
+                                            data_type="hlm")
+            amp22 = np.abs(dataDict["hlm"][(2, 2)])
+        else:
+            raise KeyError(
+                "dataDict must contain `amplm` or `hlm` to compute amplitude"
+                " using all modes in dataDict.")
         t_merger = peak_time_via_quadratic_fit(
-            t,
-            amplitude_using_all_modes(dataDict["hlm"]))[0]
+            t, amp)[0]
         merger_idx = np.argmin(np.abs(t - t_merger))
-        amp22_merger = np.abs(dataDict["hlm"][(2, 2)])[merger_idx]
+        amp22_merger = amp22[merger_idx]
         phase22_merger = phase22[merger_idx]
         # Minimum width for peak finding function
         min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
@@ -327,12 +388,15 @@ class eccDefinition:
                     phase22, phase22_merger,
                     num_orbits_to_exclude_before_merger)
             dataDict = copy.deepcopy(dataDict)
-            for mode in dataDict["hlm"]:
-                dataDict["hlm"][mode] \
-                    = dataDict["hlm"][mode][
-                        :index_num_orbits_earlier_than_merger]
-            dataDict["t"] \
-                = dataDict["t"][:index_num_orbits_earlier_than_merger]
+            for k in ["amplm", "phaselm", "omegalm", "hlm"]:
+                if k in dataDict:
+                    for mode in dataDict[k]:
+                        dataDict[k][mode] \
+                            = dataDict[k][mode][
+                                :index_num_orbits_earlier_than_merger]
+                        dataDict["t"] \
+                            = dataDict["t"][
+                                :index_num_orbits_earlier_than_merger]
         return dataDict, t_merger, amp22_merger, min_width_for_extrema
 
     def get_width_for_peak_finder_from_phase22(self,
@@ -1430,9 +1494,16 @@ class eccDefinition:
                     "pericenters and apocenters do not appear alternately.",
                     self.debug_level, important=False)
 
-    def compute_res_amp_and_omega22(self):
-        """Compute residual amp22 and omega22."""
-        self.hlm_zeroecc = self.dataDict["hlm_zeroecc"]
+    def compute_phase22_from_omega22(self, t, omega22):
+        """Compute phase of 22 mode by integrating omega22."""
+        return integrate.cumtrapz(omega22, t, initial=0)
+
+    def compute_phase22_from_h22(self, h22):
+        """Compute phase of 22 mode from h22."""
+        return - np.unwrap(np.angle(h22))
+
+    def compute_res_amp22_and_res_omega22(self):
+        """Compute residual amp22 and residual omega22."""
         self.t_zeroecc = self.dataDict["t_zeroecc"]
         # check that the time steps are equal
         self.t_zeroecc_diff = np.diff(self.t_zeroecc)
@@ -1440,13 +1511,44 @@ class eccDefinition:
             raise Exception(
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
-        self.h22_zeroecc = self.hlm_zeroecc[(2, 2)]
+        # get res_amp22 from dataDict
+        if "amplm_zeroecc" in self.dataDict:
+            self.amp22_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
+            # also calculate total amplitude which is need to align the waveforms
+            amp = amplitude_using_all_modes(self.dataDict["amplm_zeroecc"],
+                                            data_type="amplm")
+        elif "hlm_zeroecc" in self.dataDict:
+            self.amp22_zeroecc = np.abs(self.dataDict["hlm_zeroecc"][(2, 2)])
+            amp = amplitude_using_all_modes(self.dataDict["hlm_zeroecc"],
+                                            data_type="hlm")
+        else:
+            raise KeyError("`dataDict` should contain at least one of "
+                           "[`amplm_zeroecc`, `hlm_zeroecc`] to get "
+                           "`amp22_zeroecc`.")
+        # get omega22_zeroecc from dataDict
+        if "omegalm_zeroecc" in self.dataDict:
+            self.omega22_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
+        # otherwise compute from phase22
+        elif "phaselm_zeroecc" in self.dataDict:
+            self.omega22_zeroecc = time_deriv_4thOrder(
+                self.dataDict["phaselm_zeroecc"][(2, 2)],
+                self.t_zeroecc[1] - self.t_zeroecc[0])
+        elif "hlm_zeroecc" in self.dataDict:
+            self.omega22_zeroecc = time_deriv_4thOrder(
+                self.compute_phase22_from_h22(
+                    self.dataDict["hlm_zeroecc"][(2, 2)]),
+                self.t_zeroecc[1] - self.t_zeroecc[0])
+        else:
+            raise KeyError(
+                "`dataDict` should contain at least one of "
+                "[`omegalm_zeroecc`, `phaselm_zeroecc`, `hlm_zeroecc`] "
+                "to compute `omega22_zeroecc`.")
+
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
         self.t_merger_zeroecc = peak_time_via_quadratic_fit(
-            self.t_zeroecc,
-            amplitude_using_all_modes(self.dataDict["hlm_zeroecc"]))[0]
+            self.t_zeroecc, amp)[0]
         self.t_zeroecc_shifted = (self.t_zeroecc
                                   - self.t_merger_zeroecc
                                   + self.t_merger)
@@ -1473,13 +1575,9 @@ class eccDefinition:
         # extrapolation does not happen before t_merger, which is where
         # eccentricity is normally measured.
         self.amp22_zeroecc_interp = self.interp(
-            self.t, self.t_zeroecc_shifted, np.abs(self.h22_zeroecc),
+            self.t, self.t_zeroecc_shifted, self.amp22_zeroecc,
             allowExtrapolation=True)
         self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
-
-        self.phase22_zeroecc = - np.unwrap(np.angle(self.h22_zeroecc))
-        self.omega22_zeroecc = time_deriv_4thOrder(
-            self.phase22_zeroecc, self.t_zeroecc[1] - self.t_zeroecc[0])
         self.omega22_zeroecc_interp = self.interp(
             self.t, self.t_zeroecc_shifted, self.omega22_zeroecc,
             allowExtrapolation=True)

@@ -6,13 +6,16 @@ from scipy.interpolate import PchipInterpolator
 import warnings
 
 
-def amplitude_using_all_modes(mode_dict):
+def amplitude_using_all_modes(mode_dict, data_type="hlm"):
     """Get the amplitude using all the available modes.
 
     Parameters
     ----------
-    mode_dict:
+    mode_dict: dict
         Dictionary containing waveform modes.
+    data_type: str
+        Indicate whether the dictionary contains hlm or amplm.
+        Default is "hlm".
 
     Returns
     -------
@@ -21,7 +24,12 @@ def amplitude_using_all_modes(mode_dict):
     """
     amp = 0
     for mode in mode_dict.keys():
-        amp += np.abs(mode_dict[mode])**2
+        if data_type == "hlm":
+            amp += np.abs(mode_dict[mode])**2
+        elif data_type == "amplm":
+            amp += mode_dict[mode]**2
+        else:
+            raise KeyError("data_type must be either `hlm` or `amplm`.")
     return np.sqrt(amp)
 
 
