@@ -39,7 +39,7 @@ pip install gw_eccentricity
 ## Conda
 **gw_eccentricity** can be installed using `conda` also:
 ```shell
- conda install -c conda-forge gw_eccentricity
+conda install -c conda-forge gw_eccentricity
 ```
 
 ## From source

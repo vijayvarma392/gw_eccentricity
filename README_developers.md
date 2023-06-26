@@ -50,7 +50,8 @@ https://github.com/conda-forge/gw_eccentricity-feedstock#updating-gw_eccentricit
 1. Fork the feedstock repository https://github.com/conda-forge/gw_eccentricity-feedstock
 2. Create a branch
 3. Update `meta.yaml` under `recipe` at
- https://github.com/conda-forge/gw_eccentricity-feedstock/blob/main/recipe/meta.yaml
- For example, update the version. **NOTE** Make sure to update the PyPi release
+ https://github.com/conda-forge/gw_eccentricity-feedstock/blob/main/recipe/meta.yaml<br>
+ For example, update the version.<br>
+ **NOTE** Make sure to update the PyPi release
  first since it uses the tar files from PyPi for the given version.
 4. Commit the changes and make a PR.
