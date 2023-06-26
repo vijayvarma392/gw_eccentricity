@@ -43,3 +43,7 @@ grayskull pypi gw_eccentricity
    directory under `recipe`.
 4. Fix the `python` version under requirements, e.g., `python >=3.6`
 5. Update recipe-maintainers.
+
+## Conda release
+To release a conda version follow the instructions here [here](
+https://github.com/conda-forge/gw_eccentricity-feedstock#updating-gw_eccentricity-feedstock).

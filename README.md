@@ -6,6 +6,7 @@
 
 [![github](https://img.shields.io/badge/GitHub-gw_eccentricity-blue.svg)](https://github.com/vijayvarma392/gw_eccentricity)
 [![PyPI version](https://badge.fury.io/py/gw_eccentricity.svg?kill_cache=1)](https://pypi.org/project/gw_eccentricity)
+[![Conda (channel only)](https://img.shields.io/conda/vn/conda-forge/gw_eccentricity)](https://anaconda.org/conda-forge/gw_eccentricity)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vijayvarma392/gw_eccentricity/blob/main/LICENSE)
 [![Build Status](https://github.com/vijayvarma392/gw_eccentricity/actions/workflows/test.yml/badge.svg?kill_cache=1)](https://github.com/vijayvarma392/gw_eccentricity/actions/workflows/test.yml)
 
@@ -33,6 +34,12 @@ the main branch at the top of this page.
 
 ```shell
 pip install gw_eccentricity
+```
+
+## Conda
+**gw_eccentricity** can be installed using `conda` also:
+```shell
+ conda install -c conda-forge gw_eccentricity
 ```
 
 ## From source
