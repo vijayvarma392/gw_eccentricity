@@ -168,23 +168,23 @@ def measure_eccentricity(tref_in=None,
                         omegalm_zeroecc": omegaDict,
                       }
 
-            "t" and at least one of the followings are mandatory:
+        "t" and at least one of the followings are mandatory:
 
-            - "hlm"
-            - "amplm" and "phaselm"
-            - "amplm" and "omegalm".
+        - "hlm"
+        - "amplm" and "phaselm"
+        - "amplm" and "omegalm".
 
-            The keys with suffix "zeroecc" are only required for
-            `ResidualAmplitude` and `ResidualFrequency` methods, where
-            "t_zeroecc" and at least one of the followings are to be provided:
+        The keys with suffix "zeroecc" are only required for
+        `ResidualAmplitude` and `ResidualFrequency` methods, where
+        "t_zeroecc" and at least one of the followings are to be provided:
 
-            - "hlm_zeroecc"
-            - "amplm_zeroecc" and "phaselm_zeroecc"
-            - "amplm_zeroecc" and "omegalm_zeroecc".
+        - "hlm_zeroecc"
+        - "amplm_zeroecc" and "phaselm_zeroecc"
+        - "amplm_zeroecc" and "omegalm_zeroecc".
 
-            If provided for other methods, they are used for additional
-            diagnostic plots, which can be helpful for all methods. Any other
-            keys in dataDict will be ignored, with a warning.
+        If provided for other methods, they are used for additional
+        diagnostic plots, which can be helpful for all methods. Any other
+        keys in dataDict will be ignored, with a warning.
 
         The recognized keys are:
 
