@@ -194,39 +194,14 @@ class eccDefinition:
             raise Exception("Input time array must have uniform time steps.\n"
                             f"Time steps are {self.t_diff}")
         # get phase22 from dataDict
-        if "phaselm" in self.dataDict:
-            self.phase22 = self.dataDict["phaselm"][(2, 2)]
-        elif "hlm" in self.dataDict:
-            self.h22 = self.dataDict["hlm"][(2, 2)]
-            self.phase22 = self.compute_phase22_from_h22(self.h22)
-        elif "omegalm" in self.dataDict:
-            self.omega22 = self.dataDict["omegalm"][(2, 2)]
-            self.phase22 = self.compute_phase22_from_omega22(
-                self.t, self.omega22)
-        else:
-            raise KeyError("dataDict should contain atleast one of "
-                           "[`phaselm`, `hlm`, `omegalm`] "
-                           "to compute `phase22`.")
+        self.phase22, self.omega22, self.h22 = self.compute_phase22(self.dataDict)
         # get amp22 from dataDict
-        if "amplm" in self.dataDict:
-            self.amp22 = self.dataDict["amplm"][(2, 2)]
-        elif "hlm" in self.dataDict:
-            self.amp22 = np.abs(self.dataDict["hlm"][(2, 2)])
-        else:
-            # set to None. Do not raise exception since amp22 is
-            # not required for methods based on frequency
-            self.amp22 = None
+        self.amp22, _ = self.compute_amp22(self.dataDict)
         # get omega22 from dataDict
         # check if omega22 has been already computed when getting
         # phase22.
-        if not hasattr(self, "omega22"):
-            # check if omegalm is in dataDict
-            if "omegalm" in self.dataDict:
-                self.omega22 = self.dataDict["omegalm"][(2, 2)]
-            # otherwise compute from phase22
-            else:
-                self.omega22 = time_deriv_4thOrder(self.phase22,
-                                                   self.t[1] - self.t[0])
+        if self.omega22 is None:
+            self.omega22 = self.compute_omega22(self.dataDict)
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
@@ -334,18 +309,7 @@ class eccDefinition:
         """
         t = dataDict["t"]
         # Get phase22 depending on what is provided in dataDict
-        if "phaselm" in dataDict:
-            phase22 = dataDict["phaselm"][(2, 2)]
-        elif "hlm" in dataDict:
-            phase22 = self.compute_phase22_from_h22(
-                dataDict["hlm"][(2, 2)])
-        elif "omegalm" in dataDict:
-            phase22 = self.compute_phase22_from_omega22(
-                t, dataDict["omegalm"][(2, 2)])
-        else:
-            raise KeyError(
-                "dataDict must contain one of [`phaselm`, `hlm`, `omegalm`] to"
-                "compute phase of the 22 mode.")
+        phase22, omega22, h22 = self.compute_phase22(dataDict)
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
@@ -353,18 +317,7 @@ class eccDefinition:
         # to compute location at certain number orbits earlier than merger
         # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
         # respectively.
-        if "amplm" in dataDict:
-            amp = amplitude_using_all_modes(dataDict["amplm"],
-                                            data_type="amplm")
-            amp22 = dataDict["amplm"][(2, 2)]
-        elif "hlm" in dataDict:
-            amp = amplitude_using_all_modes(dataDict["hlm"],
-                                            data_type="hlm")
-            amp22 = np.abs(dataDict["hlm"][(2, 2)])
-        else:
-            raise KeyError(
-                "dataDict must contain `amplm` or `hlm` to compute amplitude"
-                " using all modes in dataDict.")
+        amp22, amp = self.compute_amp22(dataDict)
         t_merger = peak_time_via_quadratic_fit(
             t, amp)[0]
         merger_idx = np.argmin(np.abs(t - t_merger))
@@ -1494,6 +1447,68 @@ class eccDefinition:
                     "pericenters and apocenters do not appear alternately.",
                     self.debug_level, important=False)
 
+    def compute_phase22(self, dataDict, keys=["phaselm", "hlm", "omegalm"]):
+        """Compute phase of 22 mode.
+
+        Get the phase of the 22 mode from the given dataDict. To compute the
+        phase of the 22 mode, it uses one of the dictionaries provided via
+        `keys`. The list of keys provided via `keys` can be used to prioritize
+        which data to use for computing phase22. For example, if all the keys
+        are present in dataDict, the data provided by the first key is used.
+
+        Parameters:
+        -----------
+        dataDict: dict
+            Dictionary of data to use for computing phase22.
+        keys: 1d array-like
+            1d array of keys. The order of keys in `keys` is used to prioritize
+            which data to be used for computing phase22. The first available
+            key is used to compute the phase22.
+            Default is `["phaselm", "hlm", "omegalm"]` which implies that
+            `phaselm` will be used over other data if all of these are
+            available in the `dataDict`.
+
+        Returns:
+        --------
+        phase22:
+            Phase of the 22 mode.
+        omega22:
+            omega of the 22 mode. It is computed when phase is computed using
+            `omegalm`.  Otherwise it is set to None.
+        h22:
+            22 mode complex data. It is computed when phase is computed using
+            `hlm`. Otherwise it is set to None.
+        """
+        # select data to be used for computing phase22
+        selected_key = None
+        for k in keys:
+            if k in dataDict:
+                selected_key = k
+                break
+        # raise exception of none of keys is in dataDict
+        if selected_key is None:
+            raise Exception(f"At least one of {keys} should be in dataDict "
+                            "to compute phase22.")
+        # compute phase22 based on selected key
+        # Set h22, omega22 to None and update if these are computed
+        h22 = None
+        omega22 = None
+        if selected_key == "phaselm":
+            phase22 = dataDict[selected_key][(2, 2)]
+        elif selected_key == "hlm":
+            h22 = dataDict[selected_key][(2, 2)]
+            phase22 = self.compute_phase22_from_h22(h22)
+        elif "omegalm" in selected_key:
+            t_key = "t_zeroecc" if "zeroecc" in selected_key else "t"
+            omega22 = dataDict[selected_key][(2, 2)]
+            phase22 = self.compute_phase22_from_omega22(
+                dataDict[t_key], omega22)
+        else:
+            raise KeyError(f"key {selected_key} not found. dataDict should "
+                           f"contain atleast one of {keys} "
+                           "to compute `phase22`.")
+        return phase22, omega22, h22
+
     def compute_phase22_from_omega22(self, t, omega22):
         """Compute phase of 22 mode by integrating omega22."""
         return integrate.cumtrapz(omega22, t, initial=0)
@@ -1501,6 +1516,106 @@ class eccDefinition:
     def compute_phase22_from_h22(self, h22):
         """Compute phase of 22 mode from h22."""
         return - np.unwrap(np.angle(h22))
+
+    def compute_amp22(self, dataDict, keys=["amplm", "hlm"]):
+        """Compute amplitude of 22 mode.
+
+        Compute the amplitude of the 22 mode using data in `dataDict` provided
+        via key in `keys`. key is `keys` can be used to prioritize which data
+        to be used for computing the amplitude. For example, If all of the keys
+        are available in `dataDict`, then the first key is used.
+
+        Parameters:
+        -----------
+        dataDict: dict
+            Dictionary of data to use for computing amp22.
+        keys: 1d array-like
+            1d array of keys. The order of keys in `keys` is used to prioritize
+            which data to be used for computing amp22. The first available
+            key is used to compute the amp22.
+            Default is `["amplm", "hlm"]` which implies that
+            `amplm` will be used over other data if all of these are
+            available in the `dataDict`.
+
+        Returns:
+        --------
+        amp22:
+            Amplitude of the 22 mode.
+        amp:
+            Amplitude using all modes.
+        """
+        selected_key = None
+        for k in keys:
+            if k in dataDict:
+                selected_key = k
+                break
+        if selected_key is None:
+            raise Exception(f"At least one of {keys} should be in `dataDict` "
+                            "to compute amp22.")
+        if "amplm" in selected_key:
+            amp22 = dataDict[selected_key][(2, 2)]
+            # also calculate total amplitude which is need to align the
+            # waveforms
+            amp = amplitude_using_all_modes(dataDict[selected_key],
+                                            data_type="amplm")
+        elif "hlm" in selected_key:
+            amp22 = np.abs(dataDict[selected_key][(2, 2)])
+            amp = amplitude_using_all_modes(dataDict[selected_key],
+                                            data_type="hlm")
+        else:
+            raise Exception(f"At least one of {keys} should be in `dataDict` "
+                            "to compute amp22.")
+        return amp22, amp
+
+    def compute_omega22(self, dataDict, keys=["omegalm", "phaselm", "hlm"]):
+        """Compute frequency of the 22 mode.
+
+        Compute the frequency of the 22 mode using data in `dataDict` provided
+        via key in `keys`. key is `keys` can be used to prioritize which data
+        to be used for computing the omega. For example, If all of the keys
+        are available in `dataDict`, then the first key is used.
+
+        Parameters:
+        -----------
+        dataDict: dict
+            Dictionary of data to use for computing omega22.
+        keys: 1d array-like
+            1d array of keys. The order of keys in `keys` is used to prioritize
+            which data to be used for computing omega22. The first available
+            key is used to compute the omega22.
+            Default is `["omegalm", "phaselm", "hlm"]` which implies that
+            `omegalm` will be used over other data if all of these are
+            available in the `dataDict`.
+
+        Returns:
+        --------
+        omega22:
+            Frequency of the 22 mode.
+        """
+        selected_key = None
+        for k in keys:
+            if k in dataDict:
+                selected_key = k
+                break
+        if selected_key is None:
+            raise Exception(f"At least one of {keys} should be in `dataDict` "
+                            "to compute omega22.")
+        if selected_key == "omegalm":
+            omega22 = dataDict[selected_key][(2, 2)]
+        elif "phaselm" in selected_key:
+            t_key = "t_zeroecc" if "zeroecc" in selected_key else "t"
+            omega22 = time_deriv_4thOrder(
+                dataDict[selected_key][(2, 2)],
+                dataDict[t_key][1] - dataDict[t_key][0])
+        elif "hlm" in selected_key:
+            t_key = "t_zeroecc" if "zeroecc" in selected_key else "t"
+            omega22 = time_deriv_4thOrder(
+                self.compute_phase22_from_h22(dataDict[selected_key][(2, 2)]),
+                dataDict[t_key][1] - dataDict[t_key][0])
+        else:
+            raise Exception(f"At least one of {keys} should be in `dataDict` "
+                            "to compute omega22.")
+        return omega22
 
     def compute_res_amp22_and_res_omega22(self):
         """Compute residual amp22 and residual omega22."""
@@ -1512,37 +1627,13 @@ class eccDefinition:
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
         # get res_amp22 from dataDict
-        if "amplm_zeroecc" in self.dataDict:
-            self.amp22_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
-            # also calculate total amplitude which is need to align the waveforms
-            amp = amplitude_using_all_modes(self.dataDict["amplm_zeroecc"],
-                                            data_type="amplm")
-        elif "hlm_zeroecc" in self.dataDict:
-            self.amp22_zeroecc = np.abs(self.dataDict["hlm_zeroecc"][(2, 2)])
-            amp = amplitude_using_all_modes(self.dataDict["hlm_zeroecc"],
-                                            data_type="hlm")
-        else:
-            raise KeyError("`dataDict` should contain at least one of "
-                           "[`amplm_zeroecc`, `hlm_zeroecc`] to get "
-                           "`amp22_zeroecc`.")
+        self.amp22_zeroecc, amp = self.compute_amp22(
+            self.dataDict,
+            keys=["amplm_zeroecc", "hlm_zeroecc"])
         # get omega22_zeroecc from dataDict
-        if "omegalm_zeroecc" in self.dataDict:
-            self.omega22_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
-        # otherwise compute from phase22
-        elif "phaselm_zeroecc" in self.dataDict:
-            self.omega22_zeroecc = time_deriv_4thOrder(
-                self.dataDict["phaselm_zeroecc"][(2, 2)],
-                self.t_zeroecc[1] - self.t_zeroecc[0])
-        elif "hlm_zeroecc" in self.dataDict:
-            self.omega22_zeroecc = time_deriv_4thOrder(
-                self.compute_phase22_from_h22(
-                    self.dataDict["hlm_zeroecc"][(2, 2)]),
-                self.t_zeroecc[1] - self.t_zeroecc[0])
-        else:
-            raise KeyError(
-                "`dataDict` should contain at least one of "
-                "[`omegalm_zeroecc`, `phaselm_zeroecc`, `hlm_zeroecc`] "
-                "to compute `omega22_zeroecc`.")
+        self.omega22_zeroecc = self.compute_omega22(
+            self.dataDict,
+            keys=["omegalm_zeroecc", "phaselm_zeroecc", "hlm_zeroecc"])
 
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
