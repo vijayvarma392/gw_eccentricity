@@ -32,7 +32,8 @@ class eccDefinition:
         ---------
         dataDict: dict
             Dictionary containing waveform modes dict, time etc. Should follow
-            the format:
+            the format::
+
             dataDict = {"t": time,
                         "hlm": modeDict,
                         "amplm": ampDict,
@@ -43,8 +44,10 @@ class eccDefinition:
                         "amplm_zeroecc": ampDict,
                         "phaselm_zeroecc": phaseDict,
                         "omegalm_zeroecc": omegaDict,
-                       },
+                       }
+
             "t" and at least one of the followings are mandatory:
+
             - "hlm"
             - "amplm" and "phaselm"
             - "amplm" and "omegalm".
@@ -53,16 +56,20 @@ class eccDefinition:
             are only required for `ResidualAmplitude` and
             `ResidualFrequency` methods, where "t_zeroecc" and
             at least one of the followings are to be provided:
+
             - "hlm_zeroecc"
             - "amplm_zeroecc" and "phaselm_zeroecc"
             - "amplm_zeroecc" and "omegalm_zeroecc".
+
             If provided for other methods, they are
             used for additional diagnostic plots, which can be helpful
             for all methods. Any other keys in dataDict will be
             ignored, with a warning.
 
             The recognized keys are:
+
             - "t": 1d array of times.
+
                 - Should be uniformly sampled, with a small enough time step
                   so that omega22(t) can be accurately computed. We use a
                   4th-order finite difference scheme. In dimensionless units,
@@ -74,8 +81,10 @@ class eccDefinition:
                 - We do not require the waveform peak amplitude to occur at any
                   specific time, but tref_in should follow the same convention
                   for peak time as "t".
+
             - "hlm": Dictionary of waveform modes associated with "t".
-                - Should have the format:
+                Should have the format::
+
                     modeDict = {(l1, m1): h_{l1, m1},
                                 (l2, m2): h_{l2, m2},
                                 ...
@@ -84,13 +93,18 @@ class eccDefinition:
                     m) waveform mode. Should contain at least the (2, 2) mode,
                     but more modes can be included, as indicated by the
                     ellipsis '...'  above.
+
             - "amplm": Dictionary of amplitudes of waveform modes associated
               with "t". Should have the same format as "hlm".
+
             - "phaselm": Dictionary of phases of waveform modes associated
               with "t". Should have the same format as "hlm".
+
             - "omegalm": Dictionary of the frequencies of the waveform modes
               associated with "t". Should have the same format as "hlm".
+
             - "t_zeroecc" and "hlm_zeroecc":
+
                 - Same as above, but for the quasicircular counterpart to the
                   eccentric waveform. The quasicircular counterpart can be
                   obtained by evaluating a waveform model by keeping the rest
@@ -105,6 +119,7 @@ class eccDefinition:
                   peak time does not have to match that of "t".
                 - We require that "hlm_zeroecc" be at least as long as "hlm" so
                   that residual amplitude/frequency can be computed.
+
             - "amplm_zeroecc", "phaselm_zeroecc" and "omegalm_zeroecc":
                 Same as "amplm", "phaselm" and "omegalm", respectively, but
                 for the quasicircular counterpart to the eccentric waveform.

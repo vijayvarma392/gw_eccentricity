@@ -165,7 +165,7 @@ def measure_eccentricity(tref_in=None,
                         "hlm_zeroecc": modeDict,
                         "amplm_zeroecc": ampDict,
                         "phaselm_zeroecc": phaseDict,
-                        omegalm_zeroecc": omegaDict,
+                        "omegalm_zeroecc": omegaDict,
                       }
 
         "t" and at least one of the followings are mandatory:
@@ -212,12 +212,16 @@ def measure_eccentricity(tref_in=None,
             where h_{l, m} is a 1d complex array representing the (l, m)
             waveform mode. Should contain at least the (2, 2) mode, but more
             modes can be included, as indicated by the ellipsis '...'  above.
+
         - "amplm": Dictionary of amplitudes of waveform modes associated
           with "t". Should have the same format as "hlm".
+
         - "phaselm": Dictionary of phases of waveform modes associated
           with "t". Should have the same format as "hlm".
+
         - "omegalm": Dictionary of the frequencies of the waveform modes
           associated with "t". Should have the same format as "hlm".
+
         - "t_zeroecc" and "hlm_zeroecc":
 
             - Same as above, but for the quasicircular counterpart to the
@@ -234,6 +238,7 @@ def measure_eccentricity(tref_in=None,
               time does not have to match that of "t".
             - We require that "hlm_zeroecc" be at least as long as "hlm" so
               that residual amplitude/frequency can be computed.
+
         - "amplm_zeroecc", "phaselm_zeroecc" and "omegalm_zeroecc":
             Same as "amplm", "phaselm" and "omegalm", respectively, but for the
             quasicircular counterpart to the eccentric waveform.  Should have
