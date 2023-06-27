@@ -35,12 +35,28 @@ class eccDefinition:
             the format:
             dataDict = {"t": time,
                         "hlm": modeDict,
+                        "amplm": ampDict,
+                        "phaselm": phaseDict,
+                        "omegalm": omegaDict,
                         "t_zeroecc": time,
                         "hlm_zeroecc": modeDict,
+                        "amplm_zeroecc": ampDict,
+                        "phaselm_zeroecc": phaseDict,
+                        "omegalm_zeroecc": omegaDict,
                        },
-            "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc"
+            "t" and at least one of the followings are mandatory:
+            - "hlm"
+            - "amplm" and "phaselm"
+            - "amplm" and "omegalm".
+
+            The keys with suffix "zeroecc"
             are only required for `ResidualAmplitude` and
-            `ResidualFrequency` methods, but if provided, they are
+            `ResidualFrequency` methods, where "t_zeroecc" and
+            at least one of the followings are to be provided:
+            - "hlm_zeroecc"
+            - "amplm_zeroecc" and "phaselm_zeroecc"
+            - "amplm_zeroecc" and "omegalm_zeroecc".
+            If provided for other methods, they are
             used for additional diagnostic plots, which can be helpful
             for all methods. Any other keys in dataDict will be
             ignored, with a warning.
@@ -68,6 +84,12 @@ class eccDefinition:
                     m) waveform mode. Should contain at least the (2, 2) mode,
                     but more modes can be included, as indicated by the
                     ellipsis '...'  above.
+            - "amplm": Dictionary of amplitudes of waveform modes associated
+              with "t". Should have the same format as "hlm".
+            - "phaselm": Dictionary of phases of waveform modes associated
+              with "t". Should have the same format as "hlm".
+            - "omegalm": Dictionary of the frequencies of the waveform modes
+              associated with "t". Should have the same format as "hlm".
             - "t_zeroecc" and "hlm_zeroecc":
                 - Same as above, but for the quasicircular counterpart to the
                   eccentric waveform. The quasicircular counterpart can be
@@ -83,6 +105,10 @@ class eccDefinition:
                   peak time does not have to match that of "t".
                 - We require that "hlm_zeroecc" be at least as long as "hlm" so
                   that residual amplitude/frequency can be computed.
+            - "amplm_zeroecc", "phaselm_zeroecc" and "omegalm_zeroecc":
+                Same as "amplm", "phaselm" and "omegalm", respectively, but
+                for the quasicircular counterpart to the eccentric waveform.
+                Should have same format as "hlm_zeroecc".
 
         num_orbits_to_exclude_before_merger:
                 Can be None or a non negative number.  If None, the full

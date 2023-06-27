@@ -157,32 +157,49 @@ def measure_eccentricity(tref_in=None,
         format::
 
             dataDict = {"t": time,
-                       "hlm": modeDict,
-                       "t_zeroecc": time,
-                       "hlm_zeroecc": modeDict,
-                       }
+                        "hlm": modeDict,
+                        "amplm": ampDict,
+                        "phaselm": phaseDict,
+                        "omegalm": omegaDict,
+                        "t_zeroecc": time,
+                        "hlm_zeroecc": modeDict,
+                        "amplm_zeroecc": ampDict,
+                        "phaselm_zeroecc": phaseDict,
+                        omegalm_zeroecc": omegaDict,
+                      }
 
-        "t" and "hlm" are mandatory. "t_zeroecc" and "hlm_zeroecc" are only
-        required for ResidualAmplitude and ResidualFrequency methods, but if
-        provided, they are used for additional diagnostic plots, which can be
-        helpful for all methods. Any other keys in dataDict will be ignored,
-        with a warning.
+            "t" and at least one of the followings are mandatory:
+
+            - "hlm"
+            - "amplm" and "phaselm"
+            - "amplm" and "omegalm".
+
+            The keys with suffix "zeroecc" are only required for
+            `ResidualAmplitude` and `ResidualFrequency` methods, where
+            "t_zeroecc" and at least one of the followings are to be provided:
+
+            - "hlm_zeroecc"
+            - "amplm_zeroecc" and "phaselm_zeroecc"
+            - "amplm_zeroecc" and "omegalm_zeroecc".
+
+            If provided for other methods, they are used for additional
+            diagnostic plots, which can be helpful for all methods. Any other
+            keys in dataDict will be ignored, with a warning.
 
         The recognized keys are:
 
-        - "t" : 1d array of times.
+        - "t": 1d array of times.
 
             - Should be uniformly sampled, with a small enough time step so
               that omega22(t) can be accurately computed. We use a 4th-order
               finite difference scheme. In dimensionless units, we recommend a
-              time step of dtM = 0.1M to be conservative, but you may be able
+              time step of dtM = 0.1M to be conservative, but one may be able
               to get away with larger time steps like dtM = 1M. The
-              corresponding time step in seconds would be
-              dtM * M * lal.MTSUN_SI, where M is the total mass in Solar
-              masses.
+              corresponding time step in seconds would be dtM * M *
+              lal.MTSUN_SI, where M is the total mass in Solar masses.
             - We do not require the waveform peak amplitude to occur at any
-              specific time, but tref_in should follow the same convention for
-              peak time as "t".
+              specific time, but tref_in should follow the same convention
+              for peak time as "t".
 
         - "hlm": Dictionary of waveform modes associated with "t".
             Should have the format::
@@ -193,9 +210,14 @@ def measure_eccentricity(tref_in=None,
                            }
 
             where h_{l, m} is a 1d complex array representing the (l, m)
-            waveform mode. Should contain at least the (2, 2) mode, but
-            more modes can be included, as indicated by the ellipsis '...'
-            above.
+            waveform mode. Should contain at least the (2, 2) mode, but more
+            modes can be included, as indicated by the ellipsis '...'  above.
+        - "amplm": Dictionary of amplitudes of waveform modes associated
+          with "t". Should have the same format as "hlm".
+        - "phaselm": Dictionary of phases of waveform modes associated
+          with "t". Should have the same format as "hlm".
+        - "omegalm": Dictionary of the frequencies of the waveform modes
+          associated with "t". Should have the same format as "hlm".
         - "t_zeroecc" and "hlm_zeroecc":
 
             - Same as above, but for the quasicircular counterpart to the
@@ -212,6 +234,11 @@ def measure_eccentricity(tref_in=None,
               time does not have to match that of "t".
             - We require that "hlm_zeroecc" be at least as long as "hlm" so
               that residual amplitude/frequency can be computed.
+        - "amplm_zeroecc", "phaselm_zeroecc" and "omegalm_zeroecc":
+            Same as "amplm", "phaselm" and "omegalm", respectively, but for the
+            quasicircular counterpart to the eccentric waveform.  Should have
+            same format as "hlm_zeroecc".
+
 
     num_orbits_to_exclude_before_merger:
         Can be None or a non negative number.
