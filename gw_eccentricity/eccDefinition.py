@@ -95,13 +95,20 @@ class eccDefinition:
                     ellipsis '...'  above.
 
             - "amplm": Dictionary of amplitudes of waveform modes associated
-              with "t". Should have the same format as "hlm".
+              with "t". Should have the same format as "hlm", except that the
+              amplitude is real.
 
             - "phaselm": Dictionary of phases of waveform modes associated
-              with "t". Should have the same format as "hlm".
+              with "t". Should have the same format as "hlm", except that the
+              phase is real. The phaselm is related to hlm as hlm = amplm *
+              exp(- i phaselm) ensuring that the phaselm is monotonically
+              increasing.
 
             - "omegalm": Dictionary of the frequencies of the waveform modes
-              associated with "t". Should have the same format as "hlm".
+              associated with "t". Should have the same format as "hlm", except
+              that the omegalm is real. omegalm is obtained from the phaselm
+              (see above) as omegalm = d/dt phaselm, which means that the
+              omegalm is positive.
 
             - "t_zeroecc" and "hlm_zeroecc":
 
