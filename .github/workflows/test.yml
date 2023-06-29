@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "0 12 * * 1"
   push:
+    branch:
+      - main
+  pull_requests:
+    branch:
+      - main
 
 jobs:
   build:
