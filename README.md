@@ -9,6 +9,7 @@
 [![Conda (channel only)](https://img.shields.io/conda/vn/conda-forge/gw_eccentricity)](https://anaconda.org/conda-forge/gw_eccentricity)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/vijayvarma392/gw_eccentricity/blob/main/LICENSE)
 [![Build Status](https://github.com/vijayvarma392/gw_eccentricity/actions/workflows/test.yml/badge.svg?kill_cache=1)](https://github.com/vijayvarma392/gw_eccentricity/actions/workflows/test.yml)
+[![Documentation Status](https://readthedocs.org/projects/gw-eccentricity/badge/?version=latest)](https://gw-eccentricity.readthedocs.io/en/latest/?badge=latest)
 
 </div>
 
