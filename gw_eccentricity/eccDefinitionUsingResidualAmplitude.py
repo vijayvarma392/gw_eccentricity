@@ -40,10 +40,18 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         For more details on the format of the dataDict, see documentation
         of gw_eccentricity.measure_eccentricity.
         """
-        for k in ["t_zeroecc", "hlm_zeroecc"]:
+        # suggest what data to provide when zeroecc amplitude/omega is missing
+        # for Residual methods
+        suggested_keys = {
+            "t_zeroecc": ["t_zeroecc"],
+            "amplm_zeroecc": ["amplm_zeroecc", "hlm_zeroecc"],
+            "omegalm_zeroecc": ["omegalm_zeroecc", "hlm_zeroecc", "phaselm_zeroecc"]}
+        for k in suggested_keys:
             if k not in self.dataDict:
                 raise Exception(f"Method {method} must have zeroecc data in "
-                                f"dataDict. {k} data not found.")
+                                f"dataDict. {k} data not found. "
+                                "At least one of the following data should be "
+                                f"provided: {suggested_keys[k]}")
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""

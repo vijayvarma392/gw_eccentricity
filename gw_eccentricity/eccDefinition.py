@@ -241,15 +241,10 @@ class eccDefinition:
         if not np.allclose(self.t_diff, self.t_diff[0]):
             raise Exception("Input time array must have uniform time steps.\n"
                             f"Time steps are {self.t_diff}")
-        # get phase22 from dataDict
-        self.phase22, self.omega22, self.h22 = self.compute_phase22(self.dataDict)
-        # get amp22 from dataDict
-        self.amp22, _ = self.compute_amp22(self.dataDict)
-        # get omega22 from dataDict
-        # check if omega22 has been already computed when getting
-        # phase22.
-        if self.omega22 is None:
-            self.omega22 = self.compute_omega22(self.dataDict)
+        # get amplitude, phase and omega of 22 mode
+        self.amp22 = self.dataDict["amplm"][(2, 2)]
+        self.phase22 = self.dataDict["phaselm"][(2, 2)]
+        self.omega22 = self.dataDict["omegalm"][(2, 2)]
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
@@ -304,9 +299,7 @@ class eccDefinition:
         self.omega22_average = None
 
         # compute residual data
-        if any(["hlm_zeroecc" in self.dataDict,
-                "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict,
-                "amplm_zeroecc" in self.dataDict and "phaselm_zeroecc" in self.dataDict]):
+        if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp22_and_res_omega22()
 
     def get_recognized_dataDict_keys(self):
@@ -324,6 +317,131 @@ class eccDefinition:
             "omegalm_zeroecc",  # Dict of omega of quasicircular waveform modes
         ]
         return list_of_keys
+
+    def get_required_dataDict_from_user_dataDict(self, userDict):
+        """Get the dictionary of amplitude, omega and phase from user dataDict.
+
+        The `userDict` provided by the user can contain any of the data
+        corresponding to the keys in `get_recognized_dataDict_keys`. To compute
+        eccentricity and mean anomaly, we need amplitude, phase and omega. In
+        this function we get these data from `userDict` and create a new
+        dictionary that contains only the amplitude, phase and omega of the
+        available modes.
+
+        For example, if `userDict` has only the complex hlm modes, this
+        functions uses the hlm modes to create a dictionary containing the
+        amplitude, phase and omega by decomposing the hlm modes. Afterwards
+        only this new dataDict is used for all the futher computations.
+        """
+        required_Dict = {"t": userDict["t"]}
+        # add amplm
+        required_Dict.update(
+            {"amplm": self.get_amplm_from_userDict(userDict)})
+        # add phaselm
+        required_Dict.update(
+            {"phaselm": self.get_phaselm_from_userDict(userDict)})
+        # add omegalm
+        if "omegalm" in userDict:
+            required_Dict.update({"omegalm": userDict["omegalm"]})
+        else:
+            # compute it from phaselm that is already in required_Dict
+            required_Dict.update({"omegalm": self.get_omegalm_from_phaselm(
+                required_Dict["t"], required_Dict["phaselm"])})
+
+        # add zeroecc data
+        if "t_zeroecc" in userDict:
+            required_Dict.update({"t_zeroecc": userDict["t_zeroecc"]})
+
+        # add zeroecc amplitude
+        amplm_zeroecc = self.get_amplm_from_userDict(userDict, is_zeroecc=True)
+        if amplm_zeroecc:
+            required_Dict.update({"amplm_zeroecc": amplm_zeroecc})
+        # add zeroecc omega
+        if "omegalm_zeroecc" in userDict:
+            required_Dict.update(
+                {"omegalm_zeroecc": userDict["omegalm_zeroecc"]})
+        else:
+            # compute it from phase
+            phaselm_zeroecc = self.get_phaselm_from_userDict(
+                userDict, is_zeroecc=True)
+            if phaselm_zeroecc and "t_zeroecc" in required_Dict:
+                required_Dict.update(
+                    {"omegalm_zeroecc": self.get_omegalm_from_phaselm(
+                        required_Dict["t_zeroecc"], phaselm_zeroecc)})
+            else:
+                pass
+        return required_Dict
+
+    def get_amplm_from_userDict(self, userDict, is_zeroecc=False):
+        """Get amplm dict from userDict.
+
+        Returns the dictionary of amplitudes of waveform modes.
+        If `is_zeroecc` is True, then it returns the same but for the zeroecc
+        waveform modes.
+        """
+        amplm = {}
+        key_suffix = "_zeroecc" if is_zeroecc else ""
+        amplm_key = "amplm" + key_suffix
+        hlm_key = "hlm" + key_suffix
+        if amplm_key in userDict:
+            # Add the amplitude dictionary from userDict to amplm
+            amplm.update(userDict[amplm_key])
+        elif hlm_key in userDict:
+            # compute amplitude of each hlm mode and add to amplm
+            for k in userDict[hlm_key]:
+                amplm.update({k: np.abs(userDict[hlm_key][k])})
+        else:
+            if "zeroecc" in amplm_key:
+                # zeroecc amplitude is required only for Residual methods.
+                pass
+            else:
+                raise Exception("dataDict should contain at least one of"
+                                f" `{amplm_key}` or `{hlm_key}` dict.")
+        return amplm
+
+    def get_phaselm_from_userDict(self, userDict, is_zeroecc=False):
+        """Get phaselm dict from userDict.
+
+        Returns the dictionary of phases of waveform modes.
+        If `is_zeroecc` is True, then it returns the same but for the zeroecc
+        waveform modes.
+        """
+        key_suffix = "_zeroecc" if is_zeroecc else ""
+        phaselm_key = "phaselm" + key_suffix
+        hlm_key = "hlm" + key_suffix
+        omegalm_key = "omegalm" + key_suffix
+        t_key = "t" + key_suffix
+        phaselm = {}
+        if phaselm_key in userDict:
+            # Add the phase dictionary from userDict to phaselm
+            phaselm.update(userDict[phaselm_key])
+        elif hlm_key in userDict:
+            # Compute phase of each mode in hlm and add to phaselm
+            for k in userDict[hlm_key]:
+                phaselm.update(
+                    {k: - np.unwrap(np.angle(userDict[hlm_key][k]))})
+        elif omegalm_key in userDict:
+            # Compute phase of each mode from omega and add to phaselm
+            for k in userDict[omegalm_key]:
+                phaselm.update(
+                    {k: integrate.cumtrapz(userDict[omegalm_key][k],
+                                           userDict[t_key], initial=0)})
+        else:
+            if "zeroecc" in phaselm_key:
+                # zeroecc phase is not a required data.
+                pass
+            else:
+                raise Exception("dataDict should contain at least one of"
+                                f" `{phaselm_key}`, `{hlm_key}` or "
+                                f"`{omegalm_key}` dict.")
+        return phaselm
+
+    def get_omegalm_from_phaselm(self, t, phaselm):
+        """Get omegalm dict from phaselm dict."""
+        omegalm = phaselm.copy()
+        for mode in phaselm:
+            omegalm[mode] = time_deriv_4thOrder(phaselm[mode], t[1] - t[0])
+        return omegalm
 
     def truncate_dataDict_if_necessary(self,
                                        dataDict,
@@ -355,9 +473,12 @@ class eccDefinition:
             Minimum width for find_peaks function. This is computed before the
             truncation.
         """
-        t = dataDict["t"]
-        # Get phase22 depending on what is provided in dataDict
-        phase22, omega22, h22 = self.compute_phase22(dataDict)
+        # From the user dataDict get a dictionary containing the amplitude
+        # phase and omega
+        newDataDict = self.get_required_dataDict_from_user_dataDict(dataDict)
+        t = newDataDict["t"]
+        # Get phase of the 22 mode.
+        phase22 = newDataDict["phaselm"][(2, 2)]
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
@@ -365,7 +486,9 @@ class eccDefinition:
         # to compute location at certain number orbits earlier than merger
         # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
         # respectively.
-        amp22, amp = self.compute_amp22(dataDict)
+        amplm = newDataDict["amplm"]  # amplitude dictionary
+        amp22 = amplm[(2, 2)]
+        amp = amplitude_using_all_modes(amplm, "amplm")  # total amplitude
         t_merger = peak_time_via_quadratic_fit(
             t, amp)[0]
         merger_idx = np.argmin(np.abs(t - t_merger))
@@ -388,8 +511,8 @@ class eccDefinition:
                 = self.get_index_at_num_orbits_earlier_than_merger(
                     phase22, phase22_merger,
                     num_orbits_to_exclude_before_merger)
-            dataDict = copy.deepcopy(dataDict)
-            for k in ["amplm", "phaselm", "omegalm", "hlm"]:
+            dataDict = copy.deepcopy(newDataDict)
+            for k in ["amplm", "phaselm", "omegalm"]:
                 if k in dataDict:
                     for mode in dataDict[k]:
                         dataDict[k][mode] \
@@ -1495,176 +1618,6 @@ class eccDefinition:
                     "pericenters and apocenters do not appear alternately.",
                     self.debug_level, important=False)
 
-    def compute_phase22(self, dataDict, keys=["phaselm", "hlm", "omegalm"]):
-        """Compute phase of 22 mode.
-
-        Get the phase of the 22 mode from the given dataDict. To compute the
-        phase of the 22 mode, it uses one of the dictionaries provided via
-        `keys`. The list of keys provided via `keys` can be used to prioritize
-        which data to use for computing phase22. For example, if all the keys
-        are present in dataDict, the data provided by the first key is used.
-
-        Parameters:
-        -----------
-        dataDict: dict
-            Dictionary of data to use for computing phase22.
-        keys: 1d array-like
-            1d array of keys. The order of keys in `keys` is used to prioritize
-            which data to be used for computing phase22. The first available
-            key is used to compute the phase22.
-            Default is `["phaselm", "hlm", "omegalm"]` which implies that
-            `phaselm` will be used over other data if all of these are
-            available in the `dataDict`.
-
-        Returns:
-        --------
-        phase22:
-            Phase of the 22 mode.
-        omega22:
-            omega of the 22 mode. It is computed when phase is computed using
-            `omegalm`.  Otherwise it is set to None.
-        h22:
-            22 mode complex data. It is computed when phase is computed using
-            `hlm`. Otherwise it is set to None.
-        """
-        # select data to be used for computing phase22
-        selected_key = None
-        for k in keys:
-            if k in dataDict:
-                selected_key = k
-                break
-        # raise exception of none of keys is in dataDict
-        if selected_key is None:
-            raise Exception(f"At least one of {keys} should be in dataDict "
-                            "to compute phase22.")
-        # compute phase22 based on selected key
-        # Set h22, omega22 to None and update if these are computed
-        h22 = None
-        omega22 = None
-        if selected_key == "phaselm":
-            phase22 = dataDict[selected_key][(2, 2)]
-        elif selected_key == "hlm":
-            h22 = dataDict[selected_key][(2, 2)]
-            phase22 = self.compute_phase22_from_h22(h22)
-        elif "omegalm" in selected_key:
-            t_key = "t_zeroecc" if "zeroecc" in selected_key else "t"
-            omega22 = dataDict[selected_key][(2, 2)]
-            phase22 = self.compute_phase22_from_omega22(
-                dataDict[t_key], omega22)
-        else:
-            raise KeyError(f"key {selected_key} not found. dataDict should "
-                           f"contain atleast one of {keys} "
-                           "to compute `phase22`.")
-        return phase22, omega22, h22
-
-    def compute_phase22_from_omega22(self, t, omega22):
-        """Compute phase of 22 mode by integrating omega22."""
-        return integrate.cumtrapz(omega22, t, initial=0)
-
-    def compute_phase22_from_h22(self, h22):
-        """Compute phase of 22 mode from h22."""
-        return - np.unwrap(np.angle(h22))
-
-    def compute_amp22(self, dataDict, keys=["amplm", "hlm"]):
-        """Compute amplitude of 22 mode.
-
-        Compute the amplitude of the 22 mode using data in `dataDict` provided
-        via key in `keys`. key is `keys` can be used to prioritize which data
-        to be used for computing the amplitude. For example, If all of the keys
-        are available in `dataDict`, then the first key is used.
-
-        Parameters:
-        -----------
-        dataDict: dict
-            Dictionary of data to use for computing amp22.
-        keys: 1d array-like
-            1d array of keys. The order of keys in `keys` is used to prioritize
-            which data to be used for computing amp22. The first available
-            key is used to compute the amp22.
-            Default is `["amplm", "hlm"]` which implies that
-            `amplm` will be used over other data if all of these are
-            available in the `dataDict`.
-
-        Returns:
-        --------
-        amp22:
-            Amplitude of the 22 mode.
-        amp:
-            Amplitude using all modes.
-        """
-        selected_key = None
-        for k in keys:
-            if k in dataDict:
-                selected_key = k
-                break
-        if selected_key is None:
-            raise Exception(f"At least one of {keys} should be in `dataDict` "
-                            "to compute amp22.")
-        if "amplm" in selected_key:
-            amp22 = dataDict[selected_key][(2, 2)]
-            # also calculate total amplitude which is need to align the
-            # waveforms
-            amp = amplitude_using_all_modes(dataDict[selected_key],
-                                            data_type="amplm")
-        elif "hlm" in selected_key:
-            amp22 = np.abs(dataDict[selected_key][(2, 2)])
-            amp = amplitude_using_all_modes(dataDict[selected_key],
-                                            data_type="hlm")
-        else:
-            raise Exception(f"At least one of {keys} should be in `dataDict` "
-                            "to compute amp22.")
-        return amp22, amp
-
-    def compute_omega22(self, dataDict, keys=["omegalm", "phaselm", "hlm"]):
-        """Compute frequency of the 22 mode.
-
-        Compute the frequency of the 22 mode using data in `dataDict` provided
-        via key in `keys`. key is `keys` can be used to prioritize which data
-        to be used for computing the omega. For example, If all of the keys
-        are available in `dataDict`, then the first key is used.
-
-        Parameters:
-        -----------
-        dataDict: dict
-            Dictionary of data to use for computing omega22.
-        keys: 1d array-like
-            1d array of keys. The order of keys in `keys` is used to prioritize
-            which data to be used for computing omega22. The first available
-            key is used to compute the omega22.
-            Default is `["omegalm", "phaselm", "hlm"]` which implies that
-            `omegalm` will be used over other data if all of these are
-            available in the `dataDict`.
-
-        Returns:
-        --------
-        omega22:
-            Frequency of the 22 mode.
-        """
-        selected_key = None
-        for k in keys:
-            if k in dataDict:
-                selected_key = k
-                break
-        if selected_key is None:
-            raise Exception(f"At least one of {keys} should be in `dataDict` "
-                            "to compute omega22.")
-        if selected_key == "omegalm":
-            omega22 = dataDict[selected_key][(2, 2)]
-        elif "phaselm" in selected_key:
-            t_key = "t_zeroecc" if "zeroecc" in selected_key else "t"
-            omega22 = time_deriv_4thOrder(
-                dataDict[selected_key][(2, 2)],
-                dataDict[t_key][1] - dataDict[t_key][0])
-        elif "hlm" in selected_key:
-            t_key = "t_zeroecc" if "zeroecc" in selected_key else "t"
-            omega22 = time_deriv_4thOrder(
-                self.compute_phase22_from_h22(dataDict[selected_key][(2, 2)]),
-                dataDict[t_key][1] - dataDict[t_key][0])
-        else:
-            raise Exception(f"At least one of {keys} should be in `dataDict` "
-                            "to compute omega22.")
-        return omega22
-
     def compute_res_amp22_and_res_omega22(self):
         """Compute residual amp22 and residual omega22."""
         self.t_zeroecc = self.dataDict["t_zeroecc"]
@@ -1674,18 +1627,14 @@ class eccDefinition:
             raise Exception(
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
-        # get res_amp22 from dataDict
-        self.amp22_zeroecc, amp = self.compute_amp22(
-            self.dataDict,
-            keys=["amplm_zeroecc", "hlm_zeroecc"])
-        # get omega22_zeroecc from dataDict
-        self.omega22_zeroecc = self.compute_omega22(
-            self.dataDict,
-            keys=["omegalm_zeroecc", "phaselm_zeroecc", "hlm_zeroecc"])
-
+        # get amplitude and omega of 22 mode
+        self.amp22_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
+        self.omega22_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
+        amp = amplitude_using_all_modes(
+            self.dataDict["amplm_zeroecc"], "amplm")  # total amplitude
         self.t_merger_zeroecc = peak_time_via_quadratic_fit(
             self.t_zeroecc, amp)[0]
         self.t_zeroecc_shifted = (self.t_zeroecc
