@@ -520,17 +520,17 @@ class eccDefinition:
                     phase22,
                     phase22_merger,
                     num_orbits_to_exclude_before_merger)
-            dataDict = copy.deepcopy(newDataDict)
+            # Truncate amp, phase, omega in eccentric waveform data.
             for k in ["amplm", "phaselm", "omegalm"]:
-                if k in dataDict:
-                    for mode in dataDict[k]:
-                        dataDict[k][mode] \
-                            = dataDict[k][mode][
+                if k in newDataDict:
+                    for mode in newDataDict[k]:
+                        newDataDict[k][mode] \
+                            = newDataDict[k][mode][
                                 :index_num_orbits_earlier_than_merger]
-                        dataDict["t"] \
-                            = dataDict["t"][
+                        newDataDict["t"] \
+                            = newDataDict["t"][
                                 :index_num_orbits_earlier_than_merger]
-        return dataDict, t_merger, amp22_merger, min_width_for_extrema
+        return newDataDict, t_merger, amp22_merger, min_width_for_extrema
 
     def get_width_for_peak_finder_from_phase22(self,
                                                t,
