@@ -484,10 +484,8 @@ class eccDefinition:
         # to newDataDict
         newDataDict.update(self.get_amp_phase_omega_data(dataDict))
 
-        # Now compute data using newDataDict and then truncate it if required
-        t = newDataDict["t"]
-        # Get phase of the 22 mode.
-        phase22 = newDataDict["phaselm"][(2, 2)]
+        # Now we compute data using newDataDict and then truncate it if
+        # required.
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
@@ -495,17 +493,18 @@ class eccDefinition:
         # to compute location at certain number orbits earlier than merger
         # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
         # respectively.
-        amplm = newDataDict["amplm"]  # amplitude dictionary
-        amp22 = amplm[(2, 2)]
-        amp = amplitude_using_all_modes(amplm, "amplm")  # total amplitude
         t_merger = peak_time_via_quadratic_fit(
-            t, amp)[0]
-        merger_idx = np.argmin(np.abs(t - t_merger))
-        amp22_merger = amp22[merger_idx]
+            newDataDict["t"],
+            amplitude_using_all_modes(newDataDict["amplm"], "amplm"))[0]
+        merger_idx = np.argmin(np.abs(newDataDict["t"] - t_merger))
+        amp22_merger = newDataDict["amplm"][(2, 2)][merger_idx]
+        phase22 = newDataDict["phaselm"][(2, 2)]
         phase22_merger = phase22[merger_idx]
         # Minimum width for peak finding function
         min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
-            t, phase22, phase22_merger)
+            newDataDict["t"],
+            phase22,
+            phase22_merger)
         if num_orbits_to_exclude_before_merger is not None:
             # Truncate the last num_orbits_to_exclude_before_merger number of
             # orbits before merger.
@@ -518,7 +517,8 @@ class eccDefinition:
                     " Given value was {num_orbits}")
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
-                    phase22, phase22_merger,
+                    phase22,
+                    phase22_merger,
                     num_orbits_to_exclude_before_merger)
             dataDict = copy.deepcopy(newDataDict)
             for k in ["amplm", "phaselm", "omegalm"]:
