@@ -318,62 +318,64 @@ class eccDefinition:
         ]
         return list_of_keys
 
-    def get_required_dataDict_from_user_dataDict(self, userDict):
+    def get_amp_phase_omega_data(self, dataDict):
         """Get the dictionary of amplitude, omega and phase from user dataDict.
 
-        The `userDict` provided by the user can contain any of the data
+        The `dataDict` provided by the user can contain any of the data
         corresponding to the keys in `get_recognized_dataDict_keys`. To compute
         eccentricity and mean anomaly, we need amplitude, phase and omega. In
-        this function we get these data from `userDict` and create a new
+        this function, we get these data from `dataDict` and create a new
         dictionary that contains only the amplitude, phase and omega of the
         available modes.
 
-        For example, if `userDict` has only the complex hlm modes, this
+        For example, if `dataDict` has only the complex hlm modes, this
         functions uses the hlm modes to create a dictionary containing the
-        amplitude, phase and omega by decomposing the hlm modes. Afterwards
-        only this new dataDict is used for all the futher computations.
+        amplitude, phase and omega by decomposing the hlm modes. Afterwards,
+        only this new dataDict is used for all the further computations.
         """
-        required_Dict = {"t": userDict["t"]}
+        amp_phase_omega_dict = {"t": dataDict["t"]}
         # add amplm
-        required_Dict.update(
-            {"amplm": self.get_amplm_from_userDict(userDict)})
+        amp_phase_omega_dict.update(
+            {"amplm": self.get_amplm_from_dataDict(dataDict)})
         # add phaselm
-        required_Dict.update(
-            {"phaselm": self.get_phaselm_from_userDict(userDict)})
+        amp_phase_omega_dict.update(
+            {"phaselm": self.get_phaselm_from_dataDict(dataDict)})
         # add omegalm
-        if "omegalm" in userDict:
-            required_Dict.update({"omegalm": userDict["omegalm"]})
+        if "omegalm" in dataDict:
+            amp_phase_omega_dict.update({"omegalm": dataDict["omegalm"]})
         else:
-            # compute it from phaselm that is already in required_Dict
-            required_Dict.update({"omegalm": self.get_omegalm_from_phaselm(
-                required_Dict["t"], required_Dict["phaselm"])})
+            # compute it from phaselm that is already in amp_phase_omega_dict
+            amp_phase_omega_dict.update(
+                {"omegalm": self.get_omegalm_from_phaselm(
+                    amp_phase_omega_dict["t"],
+                    amp_phase_omega_dict["phaselm"])})
 
         # add zeroecc data
-        if "t_zeroecc" in userDict:
-            required_Dict.update({"t_zeroecc": userDict["t_zeroecc"]})
+        if "t_zeroecc" in dataDict:
+            amp_phase_omega_dict.update({"t_zeroecc": dataDict["t_zeroecc"]})
 
         # add zeroecc amplitude
-        amplm_zeroecc = self.get_amplm_from_userDict(userDict, is_zeroecc=True)
+        amplm_zeroecc = self.get_amplm_from_dataDict(dataDict, is_zeroecc=True)
         if amplm_zeroecc:
-            required_Dict.update({"amplm_zeroecc": amplm_zeroecc})
+            amp_phase_omega_dict.update({"amplm_zeroecc": amplm_zeroecc})
         # add zeroecc omega
-        if "omegalm_zeroecc" in userDict:
-            required_Dict.update(
-                {"omegalm_zeroecc": userDict["omegalm_zeroecc"]})
+        if "omegalm_zeroecc" in dataDict:
+            amp_phase_omega_dict.update(
+                {"omegalm_zeroecc": dataDict["omegalm_zeroecc"]})
         else:
             # compute it from phase
-            phaselm_zeroecc = self.get_phaselm_from_userDict(
-                userDict, is_zeroecc=True)
-            if phaselm_zeroecc and "t_zeroecc" in required_Dict:
-                required_Dict.update(
+            phaselm_zeroecc = self.get_phaselm_from_dataDict(
+                dataDict, is_zeroecc=True)
+            if phaselm_zeroecc and "t_zeroecc" in amp_phase_omega_dict:
+                amp_phase_omega_dict.update(
                     {"omegalm_zeroecc": self.get_omegalm_from_phaselm(
-                        required_Dict["t_zeroecc"], phaselm_zeroecc)})
+                        amp_phase_omega_dict["t_zeroecc"], phaselm_zeroecc)})
             else:
                 pass
-        return required_Dict
+        return amp_phase_omega_dict
 
-    def get_amplm_from_userDict(self, userDict, is_zeroecc=False):
-        """Get amplm dict from userDict.
+    def get_amplm_from_dataDict(self, dataDict, is_zeroecc=False):
+        """Get amplm dict from dataDict.
 
         Returns the dictionary of amplitudes of waveform modes.
         If `is_zeroecc` is True, then it returns the same but for the zeroecc
@@ -383,13 +385,13 @@ class eccDefinition:
         key_suffix = "_zeroecc" if is_zeroecc else ""
         amplm_key = "amplm" + key_suffix
         hlm_key = "hlm" + key_suffix
-        if amplm_key in userDict:
-            # Add the amplitude dictionary from userDict to amplm
-            amplm.update(userDict[amplm_key])
-        elif hlm_key in userDict:
+        if amplm_key in dataDict:
+            # Add the amplitude dictionary from dataDict to amplm
+            amplm.update(dataDict[amplm_key])
+        elif hlm_key in dataDict:
             # compute amplitude of each hlm mode and add to amplm
-            for k in userDict[hlm_key]:
-                amplm.update({k: np.abs(userDict[hlm_key][k])})
+            for k in dataDict[hlm_key]:
+                amplm.update({k: np.abs(dataDict[hlm_key][k])})
         else:
             if "zeroecc" in amplm_key:
                 # zeroecc amplitude is required only for Residual methods.
@@ -399,8 +401,8 @@ class eccDefinition:
                                 f" `{amplm_key}` or `{hlm_key}` dict.")
         return amplm
 
-    def get_phaselm_from_userDict(self, userDict, is_zeroecc=False):
-        """Get phaselm dict from userDict.
+    def get_phaselm_from_dataDict(self, dataDict, is_zeroecc=False):
+        """Get phaselm dict from dataDict.
 
         Returns the dictionary of phases of waveform modes.
         If `is_zeroecc` is True, then it returns the same but for the zeroecc
@@ -412,20 +414,20 @@ class eccDefinition:
         omegalm_key = "omegalm" + key_suffix
         t_key = "t" + key_suffix
         phaselm = {}
-        if phaselm_key in userDict:
-            # Add the phase dictionary from userDict to phaselm
-            phaselm.update(userDict[phaselm_key])
-        elif hlm_key in userDict:
+        if phaselm_key in dataDict:
+            # Add the phase dictionary from dataDict to phaselm
+            phaselm.update(dataDict[phaselm_key])
+        elif hlm_key in dataDict:
             # Compute phase of each mode in hlm and add to phaselm
-            for k in userDict[hlm_key]:
+            for k in dataDict[hlm_key]:
                 phaselm.update(
-                    {k: - np.unwrap(np.angle(userDict[hlm_key][k]))})
-        elif omegalm_key in userDict:
+                    {k: - np.unwrap(np.angle(dataDict[hlm_key][k]))})
+        elif omegalm_key in dataDict:
             # Compute phase of each mode from omega and add to phaselm
-            for k in userDict[omegalm_key]:
+            for k in dataDict[omegalm_key]:
                 phaselm.update(
-                    {k: integrate.cumtrapz(userDict[omegalm_key][k],
-                                           userDict[t_key], initial=0)})
+                    {k: integrate.cumtrapz(dataDict[omegalm_key][k],
+                                           dataDict[t_key], initial=0)})
         else:
             if "zeroecc" in phaselm_key:
                 # zeroecc phase is not a required data.
@@ -475,7 +477,7 @@ class eccDefinition:
         """
         # From the user dataDict get a dictionary containing the amplitude
         # phase and omega
-        newDataDict = self.get_required_dataDict_from_user_dataDict(dataDict)
+        newDataDict = self.get_amp_phase_omega_data(dataDict)
         t = newDataDict["t"]
         # Get phase of the 22 mode.
         phase22 = newDataDict["phaselm"][(2, 2)]
