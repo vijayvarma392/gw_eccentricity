@@ -335,9 +335,9 @@ class eccDefinition:
         further computations.
         """
         amp_phase_omega_dict = {}
-        # add amplm
+        # add amplm and amplm_zeroecc if zeroecc data provided
         amp_phase_omega_dict.update(self.get_amplm_from_dataDict(dataDict))
-        # add phaselm
+        # add phaselm and phaselm_zeroecc if zeroecc data provided
         amp_phase_omega_dict.update(self.get_phaselm_from_dataDict(dataDict))
         # add omegalm
         if "omegalm" in dataDict:
@@ -349,7 +349,7 @@ class eccDefinition:
                     dataDict["t"],
                     amp_phase_omega_dict["phaselm"])})
 
-        # add zeroecc omega
+        # add omegalm_zeroecc if zeroecc data is provided
         if "omegalm_zeroecc" in dataDict:
             amp_phase_omega_dict.update(
                 {"omegalm_zeroecc": dataDict["omegalm_zeroecc"]})
