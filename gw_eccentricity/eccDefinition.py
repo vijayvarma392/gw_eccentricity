@@ -331,7 +331,8 @@ class eccDefinition:
         For example, if `dataDict` has only the complex hlm modes, this
         functions uses the hlm modes to create a dictionary containing the
         amplitude, phase and omega by decomposing the hlm modes. Afterwards,
-        only this new dataDict is used for all the further computations.
+        only these waveform data in the new dataDict is used for all the
+        further computations.
         """
         amp_phase_omega_dict = {}
         # add amplm
@@ -373,10 +374,10 @@ class eccDefinition:
         amplm_zeroecc = {}
         for suffix, ampDict in zip(["", "_zeroecc"], [amplm, amplm_zeroecc]):
             if "amplm" + suffix in dataDict:
-                # Add the amplitude dictionary from dataDict to amplm
+                # Add the amplitude dictionary from dataDict to ampDict
                 ampDict.update(dataDict["amplm" + suffix])
             elif "hlm" + suffix in dataDict:
-                # compute amplitude of each hlm mode and add to amplm
+                # compute amplitude of each hlm mode and add to ampDict
                 for k in dataDict["hlm" + suffix]:
                     ampDict.update({k: np.abs(dataDict["hlm" + suffix][k])})
             else:
@@ -402,15 +403,16 @@ class eccDefinition:
         for suffix, phaseDict in zip(["", "_zeroecc"],
                                      [phaselm, phaselm_zeroecc]):
             if "phaselm" + suffix in dataDict:
-                # Add the phase dictionary from dataDict to phaselm
+                # Add the phase dictionary from dataDict to phaseDict
                 phaseDict.update(dataDict["phaselm" + suffix])
             elif "hlm" + suffix in dataDict:
                 # Compute phase of each mode in hlm and add to phaselm
                 for k in dataDict["hlm" + suffix]:
                     phaseDict.update(
-                        {k: - np.unwrap(np.angle(dataDict["hlm" + suffix][k]))})
+                        {k: - np.unwrap(
+                            np.angle(dataDict["hlm" + suffix][k]))})
             elif "omegalm" + suffix in dataDict:
-                # Compute phase of each mode from omega and add to phaselm
+                # Compute phase of each mode from omega and add to phaseDict
                 for k in dataDict["omegalm" + suffix]:
                     phaseDict.update(
                         {k: integrate.cumtrapz(
