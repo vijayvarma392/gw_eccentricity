@@ -18,7 +18,6 @@ from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 import matplotlib.pyplot as plt
-import copy
 
 
 class eccDefinition:
@@ -230,9 +229,9 @@ class eccDefinition:
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
                 for allowed keys.
         """
-        # Truncate dataDict if num_orbits_to_exclude_before_merger is not None
-        self.dataDict, self.t_merger, self.amp22_merger, min_width_for_extrema \
-            = self.truncate_dataDict_if_necessary(
+        # Get data necessary for eccentricity measurement
+        self.dataDict, self.t_merger, self.amp22_merger, \
+            min_width_for_extrema = self.get_necessary_data(
                 dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
@@ -439,11 +438,37 @@ class eccDefinition:
             omegalm[mode] = time_deriv_4thOrder(phaselm[mode], t[1] - t[0])
         return omegalm
 
-    def truncate_dataDict_if_necessary(self,
-                                       dataDict,
-                                       num_orbits_to_exclude_before_merger,
-                                       extra_kwargs):
-        """Truncate dataDict if `num_orbits_to_exclude_before_merger` is not None.
+    def get_necessary_data(self,
+                           dataDict,
+                           num_orbits_to_exclude_before_merger,
+                           extra_kwargs):
+        """Get necessary data for eccentricity measurement from `dataDict`.
+
+        To measure the eccentricity we need a few different data which
+        includes:
+
+        - amplitude: To locate the merger time from its global maxima. It may
+          also be used to locate the pericenters/apocenters depending on the
+          method.
+        - phase: To estimate the time at a given number of orbits before the
+          merger
+        - omega: To compute the frequency at the pericenters/apocenters which
+          are required to build the interpolant through the
+          pericenters/apocenters. It may also be used to find the
+          pericenters/apocenters depending on the method.
+
+        These are also used to make different checks and diagnostic plots, for
+        example.
+
+        The user-provided `dataDict` may contain any of the data mentioned in
+        `get_recognized_dataDict_keys`. From `dataDict`, amplitude, phase and
+        omega data are obtained. If `num_orbits_to_exclude_before_merger` is
+        not None, then these data (but only corresponding to the eccentric
+        waveform) are truncated before returning.
+
+        In addition to the above data, this function returns a few more
+        variables -- `t_merger`, `amp22_merger` and `min_width_for_extrema` for
+        future usage. See the docs below for more details.
 
         parameters
         ----------
