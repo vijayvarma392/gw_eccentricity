@@ -443,7 +443,7 @@ class eccDefinition:
                                        dataDict,
                                        num_orbits_to_exclude_before_merger,
                                        extra_kwargs):
-        """Truncate dataDict if "num_orbits_to_exclude_before_merger" is not None.
+        """Truncate dataDict if `num_orbits_to_exclude_before_merger` is not None.
 
         parameters
         ----------
@@ -456,9 +456,14 @@ class eccDefinition:
 
         Returns
         -------
-        dataDict:
-            Truncated if num_orbits_to_exclude_before_merger is not None
-            else the unchanged dataDict.
+        newDataDict:
+            Dictionary containing the amplitude, phase and omega of the
+            eccentric waveform modes. Includes the same of the zeroecc waveform
+            modes when present in the input `dataDict`.
+
+            If `num_orbits_to_exclude_before_merger` is not None, then the
+            eccentric data, i.e., amplitude, phase, omega of the available
+            modes, are truncated before newDataDict is returned.
         t_merger:
             Merger time evaluated as the time of the global maximum of
             amplitude_using_all_modes. This is computed before the truncation.
@@ -522,14 +527,11 @@ class eccDefinition:
                     num_orbits_to_exclude_before_merger)
             # Truncate amp, phase, omega in eccentric waveform data.
             for k in ["amplm", "phaselm", "omegalm"]:
-                if k in newDataDict:
-                    for mode in newDataDict[k]:
-                        newDataDict[k][mode] \
-                            = newDataDict[k][mode][
-                                :index_num_orbits_earlier_than_merger]
-                        newDataDict["t"] \
-                            = newDataDict["t"][
-                                :index_num_orbits_earlier_than_merger]
+                for mode in newDataDict[k]:
+                    newDataDict[k][mode] = newDataDict[k][mode][
+                        :index_num_orbits_earlier_than_merger]
+                    newDataDict["t"] = newDataDict["t"][
+                        :index_num_orbits_earlier_than_merger]
         return newDataDict, t_merger, amp22_merger, min_width_for_extrema
 
     def get_width_for_peak_finder_from_phase22(self,
