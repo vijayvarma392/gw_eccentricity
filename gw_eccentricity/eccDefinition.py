@@ -49,7 +49,6 @@ class eccDefinition:
 
             - "hlm"
             - "amplm" and "phaselm"
-            - "amplm" and "omegalm".
 
             The keys with suffix "zeroecc"
             are only required for `ResidualAmplitude` and
@@ -58,7 +57,6 @@ class eccDefinition:
 
             - "hlm_zeroecc"
             - "amplm_zeroecc" and "phaselm_zeroecc"
-            - "amplm_zeroecc" and "omegalm_zeroecc".
 
             If provided for other methods, they are
             used for additional diagnostic plots, which can be helpful
@@ -69,14 +67,14 @@ class eccDefinition:
 
             - "t": 1d array of times.
 
-                - Should be uniformly sampled, with a small enough time step
-                  so that omega22(t) can be accurately computed. We use a
-                  4th-order finite difference scheme. In dimensionless units,
-                  we recommend a time step of dtM = 0.1M to be conservative,
-                  but one may be able to get away with larger time steps like
-                  dtM = 1M. The corresponding time step in seconds would be dtM
-                  * M * lal.MTSUN_SI, where M is the total mass in Solar
-                  masses.
+                - Should be uniformly sampled, with a small enough time step so
+                  that omega22(t) can be accurately computed, if necessary. We
+                  use a 4th-order finite difference scheme. In dimensionless
+                  units, we recommend a time step of dtM = 0.1M to be
+                  conservative, but one may be able to get away with larger
+                  time steps like dtM = 1M. The corresponding time step in
+                  seconds would be dtM * M * lal.MTSUN_SI, where M is the total
+                  mass in Solar masses.
                 - We do not require the waveform peak amplitude to occur at any
                   specific time, but tref_in should follow the same convention
                   for peak time as "t".
@@ -101,13 +99,13 @@ class eccDefinition:
               with "t". Should have the same format as "hlm", except that the
               phase is real. The phaselm is related to hlm as hlm = amplm *
               exp(- i phaselm) ensuring that the phaselm is monotonically
-              increasing.
+              increasing for m > 0 modes.
 
             - "omegalm": Dictionary of the frequencies of the waveform modes
               associated with "t". Should have the same format as "hlm", except
               that the omegalm is real. omegalm is obtained from the phaselm
               (see above) as omegalm = d/dt phaselm, which means that the
-              omegalm is positive.
+              omegalm is positive for m > 0 modes.
 
             - "t_zeroecc" and "hlm_zeroecc":
 
@@ -129,7 +127,6 @@ class eccDefinition:
             - "amplm_zeroecc", "phaselm_zeroecc" and "omegalm_zeroecc":
                 Same as "amplm", "phaselm" and "omegalm", respectively, but
                 for the quasicircular counterpart to the eccentric waveform.
-                Should have same format as "hlm_zeroecc".
 
         num_orbits_to_exclude_before_merger:
                 Can be None or a non negative number.  If None, the full
@@ -231,7 +228,7 @@ class eccDefinition:
         """
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp22_merger, \
-            min_width_for_extrema = self.get_necessary_data(
+            min_width_for_extrema = self.process_data_dict(
                 dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
         self.t = self.dataDict["t"]
         # check if the time steps are equal, the derivative function
@@ -330,7 +327,7 @@ class eccDefinition:
         For example, if `dataDict` has only the complex hlm modes, this
         functions uses the hlm modes to create a dictionary containing the
         amplitude, phase and omega by decomposing the hlm modes. Afterwards,
-        only these waveform data in the new dataDict is used for all the
+        only these waveform data in the new dataDict is used for all
         further computations.
         """
         amp_phase_omega_dict = {}
@@ -360,8 +357,6 @@ class eccDefinition:
                 {"omegalm_zeroecc": self.get_omegalm_from_phaselm(
                     dataDict["t_zeroecc"],
                     amp_phase_omega_dict["phaselm_zeroecc"])})
-        else:
-            pass
         return amp_phase_omega_dict
 
     def get_amplm_from_dataDict(self, dataDict):
@@ -379,13 +374,10 @@ class eccDefinition:
                 # compute amplitude of each hlm mode and add to ampDict
                 for k in dataDict["hlm" + suffix]:
                     ampDict.update({k: np.abs(dataDict["hlm" + suffix][k])})
-            else:
-                if suffix == "_zeroecc":
-                    # zeroecc amplitude is required only for Residual methods.
-                    pass
-                else:
-                    raise Exception("dataDict should contain at least one of"
-                                    " `'amplm'` or `hlm` dict.")
+            elif suffix == "":
+                raise Exception("dataDict should contain at least one of "
+                                "['amplm' 'hlm'] for computing amplitude of "
+                                "the waveform modes.")
         amplmDict = {"amplm": amplm}
         if amplm_zeroecc:
             amplmDict.update({"amplm_zeroecc": amplm_zeroecc})
@@ -410,19 +402,10 @@ class eccDefinition:
                     phaseDict.update(
                         {k: - np.unwrap(
                             np.angle(dataDict["hlm" + suffix][k]))})
-            elif "omegalm" + suffix in dataDict:
-                # Compute phase of each mode from omega and add to phaseDict
-                for k in dataDict["omegalm" + suffix]:
-                    phaseDict.update(
-                        {k: integrate.cumtrapz(
-                            dataDict["omegalm" + suffix][k],
-                            dataDict["t" + suffix], initial=0)})
-            else:
-                if suffix == "_zeroecc":
-                    pass
-                else:
-                    raise Exception("dataDict should contain at least one of "
-                                    "['phaselm', 'hlm', 'omegalm'] ")
+            elif suffix == "":
+                raise Exception("dataDict should contain at least one of "
+                                "['phaselm', 'hlm'] for computing phase of "
+                                "the waveform modes.")
         phaselmDict = {"phaselm": phaselm}
         if phaselm_zeroecc:
             phaselmDict.update({"phaselm_zeroecc": phaselm_zeroecc})
@@ -438,10 +421,10 @@ class eccDefinition:
             omegalm[mode] = time_deriv_4thOrder(phaselm[mode], t[1] - t[0])
         return omegalm
 
-    def get_necessary_data(self,
-                           dataDict,
-                           num_orbits_to_exclude_before_merger,
-                           extra_kwargs):
+    def process_data_dict(self,
+                          dataDict,
+                          num_orbits_to_exclude_before_merger,
+                          extra_kwargs):
         """Get necessary data for eccentricity measurement from `dataDict`.
 
         To measure the eccentricity we need a few different data which
