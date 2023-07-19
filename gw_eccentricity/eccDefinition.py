@@ -315,20 +315,30 @@ class eccDefinition:
         return list_of_keys
 
     def get_amp_phase_omega_data(self, dataDict):
-        """Get the dictionary of amplitude, omega and phase from user dataDict.
+        """
+        Extract the dictionary of amplitude, omega, and phase from `dataDict`.
 
         The `dataDict` provided by the user can contain any of the data
         corresponding to the keys in `get_recognized_dataDict_keys`. To compute
-        eccentricity and mean anomaly, we need amplitude, phase and omega. In
-        this function, we get these data from `dataDict` and create a new
-        dictionary that contains only the amplitude, phase and omega of the
+        eccentricity and mean anomaly, we need amplitude, phase, and
+        omega. This function extracts these data from `dataDict` and creates a
+        new dictionary containing only the amplitude, phase, and omega of the
         available modes.
 
-        For example, if `dataDict` has only the complex hlm modes, this
-        functions uses the hlm modes to create a dictionary containing the
-        amplitude, phase and omega by decomposing the hlm modes. Afterwards,
-        only these waveform data in the new dataDict is used for all
+        For example, if `dataDict` contains only the complex hlm modes, this
+        function uses the hlm modes to create a new dictionary containing the
+        amplitude, phase, and omega by decomposing the hlm modes.  Afterwards,
+        only these waveform data in the new dataDict will be used for all
         further computations.
+
+        Parameters:
+            dataDict: dict
+                A dictionary containing waveform data.
+
+        Returns:
+            amp_phase_omega_dict: dict
+                A new dictionary containing only the amplitude, phase, and
+                omega dict of available modes.
         """
         amp_phase_omega_dict = {}
         # add amplm and amplm_zeroecc if zeroecc data provided
@@ -427,60 +437,60 @@ class eccDefinition:
                           extra_kwargs):
         """Get necessary data for eccentricity measurement from `dataDict`.
 
-        To measure the eccentricity we need a few different data which
-        includes:
+        To measure the eccentricity, several waveform data are required,
+        including:
 
-        - amplitude: To locate the merger time from its global maxima. It may
-          also be used to locate the pericenters/apocenters depending on the
-          method.
-        - phase: To estimate the time at a given number of orbits before the
-          merger
-        - omega: To compute the frequency at the pericenters/apocenters which
-          are required to build the interpolant through the
-          pericenters/apocenters. It may also be used to find the
+        - amplitude: Used to locate the merger time from its global maxima and
+          may also be utilized to find the pericenters/apocenters depending on
+          the method.
+        - phase: Helps estimate the time at a given number of orbits before the
+          merger.
+        - omega: Required to compute the frequency at the
+          pericenters/apocenters, which are essential for building the
+          interpolant through them. It may also be used to find the
           pericenters/apocenters depending on the method.
 
-        These are also used to make different checks and diagnostic plots, for
-        example.
+        These waveform data are also used for various checks and diagnostic
+        plots.
 
-        The user-provided `dataDict` may contain any of the data mentioned in
-        `get_recognized_dataDict_keys`. From `dataDict`, amplitude, phase and
-        omega data are obtained. If `num_orbits_to_exclude_before_merger` is
-        not None, then these data (but only corresponding to the eccentric
-        waveform) are truncated before returning.
+        The `dataDict` provided by the user may contain any of the data
+        mentioned in `get_recognized_dataDict_keys`. From `dataDict`, the
+        amplitude, phase, and omega data are obtained. If
+        `num_orbits_to_exclude_before_merger` is not None, then these data
+        (corresponding to the eccentric waveform) are truncated before
+        returning.
 
         In addition to the above data, this function returns a few more
-        variables -- `t_merger`, `amp22_merger` and `min_width_for_extrema` for
-        future usage. See the docs below for more details.
+        variables -- `t_merger`, `amp22_merger`, and `min_width_for_extrema`
+        for future usage. See the details below.
 
-        parameters
-        ----------
-        dataDict:
-            Dictionary containing modes and times.
-        num_orbits_to_exclude_before_merger: Number of orbits to exclude before
-            merger to get the truncated dataDict.
-        extra_kwargs:
-            Extra kwargs passed to the measure eccentricity.
+        Parameters:
+            dataDict: dict
+                Dictionary containing modes and times.
+            num_orbits_to_exclude_before_merger: int or None
+                Number of orbits to exclude before the merger to get the
+                truncated dataDict. If None, no truncation is performed.
+            extra_kwargs:
+                Extra keyword arguments passed to the measure eccentricity.
 
-        Returns
-        -------
-        newDataDict:
-            Dictionary containing the amplitude, phase and omega of the
-            eccentric waveform modes. Includes the same of the zeroecc waveform
-            modes when present in the input `dataDict`.
-
-            If `num_orbits_to_exclude_before_merger` is not None, then the
-            eccentric data, i.e., amplitude, phase, omega of the available
-            modes, are truncated before newDataDict is returned.
-        t_merger:
-            Merger time evaluated as the time of the global maximum of
-            amplitude_using_all_modes. This is computed before the truncation.
-        amp22_merger:
-            Amplitude of the (2, 2) mode at t_merger. This is computed before
-            the truncation.
-        min_width_for_extrema:
-            Minimum width for find_peaks function. This is computed before the
-            truncation.
+        Returns:
+            newDataDict: dict
+                Dictionary containing the amplitude, phase, and omega of the
+                eccentric waveform modes. Includes the same of the zeroecc
+                waveform modes when present in the input `dataDict`. If
+                `num_orbits_to_exclude_before_merger` is not None, then the
+                eccentric data, i.e., amplitude, phase, and omega of the
+                available modes, are truncated before newDataDict is returned.
+            t_merger: float
+                Merger time evaluated as the time of the global maximum of
+                `amplitude_using_all_modes`. This is computed before the
+                truncation.
+            amp22_merger: float
+                Amplitude of the (2, 2) mode at t_merger. This is computed
+                before the truncation.
+            min_width_for_extrema: float
+                Minimum width for the `find_peaks` function. This is computed
+                before the truncation.
         """
         # Create a new dictionary that will contain the data necessary for
         # eccentricity measurement.
