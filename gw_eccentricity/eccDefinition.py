@@ -7,7 +7,6 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 """
 
 import numpy as np
-from scipy import integrate
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -50,17 +49,28 @@ class eccDefinition:
             - "hlm"
             - "amplm" and "phaselm"
 
-            The keys with suffix "zeroecc"
-            are only required for `ResidualAmplitude` and
-            `ResidualFrequency` methods, where "t_zeroecc" and
-            at least one of the followings are to be provided:
+            Apart from specifying "hlm" or "amplm" and "phaselm", the user can
+            also provide "omegalm". If the "omegalm" key is not explicitly
+            provided, it is computed from the given "hlm" or "phaselm" using
+            finite difference method.
+
+            The keys with suffix "zeroecc" are only required for
+            `ResidualAmplitude` and `ResidualFrequency` methods, where
+            "t_zeroecc" and at least one of the followings are to be provided:
 
             - "hlm_zeroecc"
             - "amplm_zeroecc" and "phaselm_zeroecc"
 
-            If provided for other methods, they are
-            used for additional diagnostic plots, which can be helpful
-            for all methods. Any other keys in dataDict will be
+            Similar to "omegalm", the user can also provide "omegalm_zeroecc".
+            If it is not provided in `dataDict`, it is computed from the given
+            "hlm_zeroecc" or "phaselm_zeroecc" using finite difference method.
+
+            If zeroecc data are provided for methods other than
+            `ResidualAmplitude` and `ResidualFrequency`, they are used for
+            additional diagnostic plots, which can be helpful for all
+            methods.
+
+            Any keys in `dataDict` other than the recognized ones will be
             ignored, with a warning.
 
             The recognized keys are:
@@ -103,7 +113,7 @@ class eccDefinition:
 
             - "omegalm": Dictionary of the frequencies of the waveform modes
               associated with "t". Should have the same format as "hlm", except
-              that the omegalm is real. omegalm is obtained from the phaselm
+              that the omegalm is real. omegalm is related to the phaselm
               (see above) as omegalm = d/dt phaselm, which means that the
               omegalm is positive for m > 0 modes.
 
@@ -331,14 +341,16 @@ class eccDefinition:
         only these waveform data in the new dataDict will be used for all
         further computations.
 
-        Parameters:
-            dataDict: dict
-                A dictionary containing waveform data.
+        Parameters
+        ----------
+        dataDict : dict
+            A dictionary containing waveform data.
 
-        Returns:
-            amp_phase_omega_dict: dict
-                A new dictionary containing only the amplitude, phase, and
-                omega dict of available modes.
+        Returns
+        -------
+        amp_phase_omega_dict : dict
+            A new dictionary containing only the amplitude, phase, and omega
+            dict of available modes.
         """
         amp_phase_omega_dict = {}
         # add amplm and amplm_zeroecc if zeroecc data provided
@@ -464,33 +476,35 @@ class eccDefinition:
         variables -- `t_merger`, `amp22_merger`, and `min_width_for_extrema`
         for future usage. See the details below.
 
-        Parameters:
-            dataDict: dict
-                Dictionary containing modes and times.
-            num_orbits_to_exclude_before_merger: int or None
-                Number of orbits to exclude before the merger to get the
-                truncated dataDict. If None, no truncation is performed.
-            extra_kwargs:
-                Extra keyword arguments passed to the measure eccentricity.
+        Parameters
+        ----------
+        dataDict : dict
+            Dictionary containing modes and times.
+        num_orbits_to_exclude_before_merger : int or None
+            Number of orbits to exclude before the merger to get the truncated
+            dataDict. If None, no truncation is performed.
+        extra_kwargs:
+            Extra keyword arguments passed to the measure eccentricity.
 
-        Returns:
-            newDataDict: dict
-                Dictionary containing the amplitude, phase, and omega of the
-                eccentric waveform modes. Includes the same of the zeroecc
-                waveform modes when present in the input `dataDict`. If
-                `num_orbits_to_exclude_before_merger` is not None, then the
-                eccentric data, i.e., amplitude, phase, and omega of the
-                available modes, are truncated before newDataDict is returned.
-            t_merger: float
-                Merger time evaluated as the time of the global maximum of
-                `amplitude_using_all_modes`. This is computed before the
-                truncation.
-            amp22_merger: float
-                Amplitude of the (2, 2) mode at t_merger. This is computed
-                before the truncation.
-            min_width_for_extrema: float
-                Minimum width for the `find_peaks` function. This is computed
-                before the truncation.
+        Returns
+        -------
+        newDataDict : dict
+            Dictionary containing the amplitude, phase, and omega of the
+            eccentric waveform modes. Includes the same of the zeroecc waveform
+            modes when present in the input `dataDict`. If
+            `num_orbits_to_exclude_before_merger` is not None, then the
+            eccentric data, i.e., amplitude, phase, and omega of the available
+            modes, are truncated before newDataDict is returned.
+        t_merger : float
+            Merger time evaluated as the time of the global maximum of
+            `amplitude_using_all_modes`. This is computed before the
+            truncation.
+        amp22_merger : float
+            Amplitude of the (2, 2) mode at t_merger. This is computed before
+            the truncation.
+        min_width_for_extrema : float
+            Minimum width for the `find_peaks` function. This is computed
+            before the truncation.
         """
         # Create a new dictionary that will contain the data necessary for
         # eccentricity measurement.

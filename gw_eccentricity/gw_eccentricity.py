@@ -173,6 +173,11 @@ def measure_eccentricity(tref_in=None,
         - "hlm"
         - "amplm" and "phaselm".
 
+        Apart from specifying "hlm" or "amplm" and "phaselm", the user can also
+        provide "omegalm". If the "omegalm" key is not explicitly provided, it
+        is computed from the given "hlm" or "phaselm" using finite difference
+        method.
+
         The keys with suffix "zeroecc" are only required for
         `ResidualAmplitude` and `ResidualFrequency` methods, where
         "t_zeroecc" and at least one of the followings are to be provided:
@@ -180,9 +185,16 @@ def measure_eccentricity(tref_in=None,
         - "hlm_zeroecc"
         - "amplm_zeroecc" and "phaselm_zeroecc".
 
-        If provided for other methods, they are used for additional
-        diagnostic plots, which can be helpful for all methods. Any other
-        keys in dataDict will be ignored, with a warning.
+        Similar to "omegalm", the user can also provide "omegalm_zeroecc". If
+        it is not provided in `dataDict`, it is computed from the given
+        "hlm_zeroecc" or "phaselm_zeroecc" using finite difference method.
+
+        If zeroecc data are provided for methods other than `ResidualAmplitude`
+        and `ResidualFrequency`, they are used for additional diagnostic plots,
+        which can be helpful for all methods.
+
+        Any keys in `dataDict` other than the recognized ones will be ignored,
+        with a warning.
 
         The recognized keys are:
 
@@ -223,9 +235,9 @@ def measure_eccentricity(tref_in=None,
 
         - "omegalm": Dictionary of the frequencies of the waveform modes
           associated with "t". Should have the same format as "hlm", except
-          that the omegalm is real. omegalm is obtained from the phaselm (see
-          above) as omegalm = d/dt phaselm, which means that the omegalm is
-          positive for m > 0 modes.
+          that the omegalm is real. omegalm is related the phaselm (see above)
+          as omegalm = d/dt phaselm, which means that the omegalm is positive
+          for m > 0 modes.
 
         - "t_zeroecc" and "hlm_zeroecc":
 
