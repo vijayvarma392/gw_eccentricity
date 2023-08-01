@@ -31,9 +31,10 @@ def test_dataDict():
     ids = np.where(np.abs(np.diff(dataDict["t"]) - dt) > 1e-7)[0]
     if len(ids) > 0:
         dt_ = np.diff(dataDict["t"])[ids[0]]
-        raise Exception("t_zeroecc is not uniform. dt at the start of the "
-                        f"time array is {dt}. dt={dt_} between {ids[0]} and "
-                        f"{ids[0]+1}. The difference is {dt - dt_}")
+        raise Exception("t is not uniform. dt at the start of the "
+                        f"time array is {dt}. dt={dt_} between index "
+                        f"{ids[0]} and {ids[0]+1}. The difference is "
+                        f"{dt - dt_}")
     for k in dataDict["hlm"]:
         phaselm[k] = -np.unwrap(np.angle(dataDict["hlm"][k]))
         amplm[k] = np.abs(dataDict["hlm"][k])
@@ -51,8 +52,8 @@ def test_dataDict():
         dt_zeroecc_ = np.diff(dataDict["t_zeroecc"])[ids[0]]
         raise Exception("t_zeroecc is not uniform. dt at the start of the "
                         f"time array is {dt_zeroecc}. dt={dt_zeroecc_} "
-                        f"between {ids[0]} and {ids[0]+1}. The difference is "
-                        f"{dt_zeroecc - dt_zeroecc_}")
+                        f"between index {ids[0]} and {ids[0]+1}. The "
+                        f"difference is {dt_zeroecc - dt_zeroecc_}")
     for k in dataDict["hlm_zeroecc"]:
         phaselm_zeroecc[k] = -np.unwrap(np.angle(dataDict["hlm_zeroecc"][k]))
         amplm_zeroecc[k] = np.abs(dataDict["hlm_zeroecc"][k])
