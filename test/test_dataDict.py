@@ -42,7 +42,7 @@ def compare_eccentricity_measurement(dataDict1, dataDict2, method):
     eccentricity2 = gwecc_object2.eccentricity
     mean_anomaly2 = gwecc_object2.mean_anomaly
 
-    # Compare the eccenrtcity and mean anaomaly
+    # Compare the eccentricity and mean anomaly
     np.testing.assert_allclose(eccentricity1,
                                eccentricity2)
     np.testing.assert_allclose(mean_anomaly1,
@@ -114,8 +114,8 @@ def test_dataDict():
         dataDict2_w_amplm_phaselm)
     dataDict2_w_amplm_phaselm_and_omegalm.update({"omegalm": omegalm})
 
-    # We loop over different data dict and compare the eccenrtcity measurement
-    # It checks that the eccenrtcity measurement is the same when we provide
+    # We loop over different data dict and compare the eccentricity measurement
+    # It checks that the eccentricity measurement is the same when we provide
     # any of the following combinations:
     # - only hlm
     # - hlm and omegalm
@@ -142,12 +142,12 @@ def test_dataDict():
     dataDict1_w_hlm_zeroecc.update(
         {"t_zeroecc": dataDict["t_zeroecc"],
          "hlm_zeroecc": dataDict["hlm_zeroecc"]})
-    # The following checks that the eccenrtcity measurement is the same
+    # The following checks that the eccentricity measurement is the same
     # when we provide:
-    # - hlm and hlm_zeroecc with or without omega_zeroecc
-    # - hlm, omegalm and hlm_zeroecc with or without omega_zeroecc
-    # - amplm, phaselm and hlm_zeroecc with or without omega_zeroecc
-    # - amplm, phaselm, omegalm and hlm_zeroecc with or without omega_zeroecc
+    # - hlm and hlm_zeroecc with or without omegalm_zeroecc
+    # - hlm, omegalm and hlm_zeroecc with or without omegalm_zeroecc
+    # - amplm, phaselm and hlm_zeroecc with or without omegalm_zeroecc
+    # - amplm, phaselm, omegalm and hlm_zeroecc with or without omegalm_zeroecc
     for dataDict2 in [dataDict2_w_hlm_and_omega,
                       dataDict2_w_amplm_phaselm,
                       dataDict2_w_amplm_phaselm_and_omegalm]:
@@ -172,12 +172,12 @@ def test_dataDict():
                 method=method)
     # This time instead of adding hlm_zeroecc, we add amplm_zeroecc and
     # phaselm_zeroecc to dataDict2, dataDict1 is the same as above.
-    # The following checks that the eccenrtcity measurement is the same
+    # The following checks that the eccentricity measurement is the same
     # when we provide:
-    # - hlm and hlm_zeroecc with or without omega_zeroecc
-    # - hlm, omegalm, amplm_zeroecc and phaselm_zeroecc with or without omega_zeroecc
-    # - amplm, phaselm, amplm_zeroecc and phaselm_zeroecc with or without omega_zeroecc
-    # - amplm, phaselm, omegalm, amplm_zeroecc and phaselm_zeroecc with or without omega_zeroecc
+    # - hlm and hlm_zeroecc with or without omegalm_zeroecc
+    # - hlm, omegalm, amplm_zeroecc and phaselm_zeroecc with or without omegalm_zeroecc
+    # - amplm, phaselm, amplm_zeroecc and phaselm_zeroecc with or without omegalm_zeroecc
+    # - amplm, phaselm, omegalm, amplm_zeroecc and phaselm_zeroecc with or without omegalm_zeroecc
     for dataDict2 in [dataDict2_w_hlm_and_omega,
                       dataDict2_w_amplm_phaselm,
                       dataDict2_w_amplm_phaselm_and_omegalm]:
