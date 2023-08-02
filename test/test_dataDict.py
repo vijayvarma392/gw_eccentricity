@@ -25,40 +25,30 @@ def test_dataDict():
     phaselm = {}
     amplm = {}
     omegalm = {}
-    dt = dataDict["t"][1] - dataDict["t"][0]
     # check that the time array is uniform. This is required to obtain omega by
     # taking derivative of phase applying time_deriv_4thorder.
-    ids = np.where(np.abs(np.diff(dataDict["t"]) - dt) > 1e-7)[0]
-    if len(ids) > 0:
-        dt_ = np.diff(dataDict["t"])[ids[0]]
-        raise Exception("t is not uniform. dt at the start of the "
-                        f"time array is {dt}. dt={dt_} between index "
-                        f"{ids[0]} and {ids[0]+1}. The difference is "
-                        f"{dt - dt_}")
+    t_diff = np.diff(dataDict["t"])
+    if not np.allclose(t_diff, t_diff[0]):
+        raise Exception("Input time array must have uniform time steps.\n"
+                        f"Time steps are {t_diff}")
     for k in dataDict["hlm"]:
         phaselm[k] = -np.unwrap(np.angle(dataDict["hlm"][k]))
         amplm[k] = np.abs(dataDict["hlm"][k])
-        omegalm[k] = time_deriv_4thOrder(phaselm[k], dt)
+        omegalm[k] = time_deriv_4thOrder(phaselm[k], t_diff[0])
 
     # get amplm_zeroecc, phaselm_zeroecc, omegalm_zeroecc
     phaselm_zeroecc = {}
     amplm_zeroecc = {}
     omegalm_zeroecc = {}
-    dt_zeroecc = dataDict["t_zeroecc"][1] - dataDict["t_zeroecc"][0]
-    # check that t_zeroecc is uniform
-    ids = np.where(np.abs(np.diff(dataDict["t_zeroecc"]) - dt_zeroecc)
-                   > 1e-7)[0]
-    if len(ids) > 0:
-        dt_zeroecc_ = np.diff(dataDict["t_zeroecc"])[ids[0]]
-        raise Exception("t_zeroecc is not uniform. dt at the start of the "
-                        f"time array is {dt_zeroecc}. dt={dt_zeroecc_} "
-                        f"between index {ids[0]} and {ids[0]+1}. The "
-                        f"difference is {dt_zeroecc - dt_zeroecc_}")
+    t_zeroecc_diff = np.diff(dataDict["t_zeroecc"])
+    if not np.allclose(t_zeroecc_diff, t_zeroecc_diff[0]):
+        raise Exception("Input time array must have uniform time steps.\n"
+                        f"Time steps are {t_zeroecc_diff}")
     for k in dataDict["hlm_zeroecc"]:
         phaselm_zeroecc[k] = -np.unwrap(np.angle(dataDict["hlm_zeroecc"][k]))
         amplm_zeroecc[k] = np.abs(dataDict["hlm_zeroecc"][k])
         omegalm_zeroecc[k] = time_deriv_4thOrder(phaselm_zeroecc[k],
-                                                 dt_zeroecc)
+                                                 t_zeroecc_diff[0])
 
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
