@@ -44,11 +44,13 @@ class eccDefinition:
                         "omegalm_zeroecc": omegaDict,
                        }
 
-            "t" and at least one of the followings are mandatory:
+            "t" and one of the followings are mandatory:
 
             - "hlm"
             - "amplm" and "phaselm"
 
+            Note that providing "hlm", "amplm" and "phaselm" all at the same
+            time will raise error.
             Apart from specifying "hlm" or "amplm" and "phaselm", the user can
             also provide "omegalm". If the "omegalm" key is not explicitly
             provided, it is computed from the given "hlm" or "phaselm" using
@@ -56,11 +58,13 @@ class eccDefinition:
 
             The keys with suffix "zeroecc" are only required for
             `ResidualAmplitude` and `ResidualFrequency` methods, where
-            "t_zeroecc" and at least one of the followings are to be provided:
+            "t_zeroecc" and one of the followings are to be provided:
 
             - "hlm_zeroecc"
             - "amplm_zeroecc" and "phaselm_zeroecc"
 
+            Note that providing "hlm_zeroecc", "amplm_zeroecc" and
+            "phaselm_zeroecc" all at the same time will raise error.
             Similar to "omegalm", the user can also provide "omegalm_zeroecc".
             If it is not provided in `dataDict`, it is computed from the given
             "hlm_zeroecc" or "phaselm_zeroecc" using finite difference method.
@@ -506,6 +510,15 @@ class eccDefinition:
             Minimum width for the `find_peaks` function. This is computed
             before the truncation.
         """
+        # Check that the dataDict contains either the hlms or the amplm/phaselm
+        # and not both of these.
+        for suffix in ["", "_zeroecc"]:
+            if all(key+suffix in dataDict for key in
+                   ["hlm", "amplm", "phaselm"]):
+                raise Exception(
+                    f"Provide either `hlm{suffix}` or both of `amplm{suffix}` "
+                    f"and `phaselm{suffix}`. `dataDict` should not contain "
+                    "all of the three at the same time.")
         # Create a new dictionary that will contain the data necessary for
         # eccentricity measurement.
         newDataDict = {}

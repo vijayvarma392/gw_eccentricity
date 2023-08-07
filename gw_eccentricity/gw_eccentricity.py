@@ -168,11 +168,13 @@ def measure_eccentricity(tref_in=None,
                         "omegalm_zeroecc": omegaDict,
                       }
 
-        "t" and at least one of the followings are mandatory:
+        "t" and one of the followings are mandatory:
 
         - "hlm"
         - "amplm" and "phaselm".
 
+        Note that providing "hlm", "amplm" and "phaselm" all at the same time
+        will raise error.
         Apart from specifying "hlm" or "amplm" and "phaselm", the user can also
         provide "omegalm". If the "omegalm" key is not explicitly provided, it
         is computed from the given "hlm" or "phaselm" using finite difference
@@ -180,11 +182,13 @@ def measure_eccentricity(tref_in=None,
 
         The keys with suffix "zeroecc" are only required for
         `ResidualAmplitude` and `ResidualFrequency` methods, where
-        "t_zeroecc" and at least one of the followings are to be provided:
+        "t_zeroecc" and one of the followings are to be provided:
 
         - "hlm_zeroecc"
         - "amplm_zeroecc" and "phaselm_zeroecc".
 
+        Note that providing "hlm_zeroecc", "amplm_zeroecc" and
+        "phaselm_zeroecc" all at the same time will raise error.
         Similar to "omegalm", the user can also provide "omegalm_zeroecc". If
         it is not provided in `dataDict`, it is computed from the given
         "hlm_zeroecc" or "phaselm_zeroecc" using finite difference method.
