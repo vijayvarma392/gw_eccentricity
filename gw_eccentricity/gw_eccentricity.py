@@ -173,7 +173,7 @@ def measure_eccentricity(tref_in=None,
         - "hlm"
         - "amplm" and "phaselm".
 
-        Note that providing "hlm", "amplm" and "phaselm" all at the same time
+        Note that providing "hlm" and "amplm" or "phaselm" at the same time
         will raise error.
         Apart from specifying "hlm" or "amplm" and "phaselm", the user can also
         provide "omegalm". If the "omegalm" key is not explicitly provided, it
@@ -187,8 +187,8 @@ def measure_eccentricity(tref_in=None,
         - "hlm_zeroecc"
         - "amplm_zeroecc" and "phaselm_zeroecc".
 
-        Note that providing "hlm_zeroecc", "amplm_zeroecc" and
-        "phaselm_zeroecc" all at the same time will raise error.
+        Note that providing "hlm_zeroecc" and "amplm_zeroecc" or
+        "phaselm_zeroecc" at the same time will raise error.
         Similar to "omegalm", the user can also provide "omegalm_zeroecc". If
         it is not provided in `dataDict`, it is computed from the given
         "hlm_zeroecc" or "phaselm_zeroecc" using finite difference method.
