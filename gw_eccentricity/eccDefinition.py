@@ -44,13 +44,12 @@ class eccDefinition:
                         "omegalm_zeroecc": omegaDict,
                        }
 
-            "t" and one of the followings are mandatory:
+            "t" and one of the following is mandatory:
 
-            - "hlm"
-            - "amplm" and "phaselm"
+            1. "hlm" OR
+            2. "amplm" and "phaselm"
+                but not both 1 and 2 at the same time.
 
-            Note that providing "hlm" and "amplm" or "phaselm" at the same
-            time will raise error.
             Apart from specifying "hlm" or "amplm" and "phaselm", the user can
             also provide "omegalm". If the "omegalm" key is not explicitly
             provided, it is computed from the given "hlm" or "phaselm" using
@@ -58,13 +57,12 @@ class eccDefinition:
 
             The keys with suffix "zeroecc" are only required for
             `ResidualAmplitude` and `ResidualFrequency` methods, where
-            "t_zeroecc" and one of the followings are to be provided:
+            "t_zeroecc" and one of the following is to be provided:
 
-            - "hlm_zeroecc"
-            - "amplm_zeroecc" and "phaselm_zeroecc"
+            1. "hlm_zeroecc" OR
+            2. "amplm_zeroecc" and "phaselm_zeroecc"
+               but not both 1 and 2 at the same time.
 
-            Note that providing "hlm_zeroecc" and "amplm_zeroecc" or
-            "phaselm_zeroecc" at the same time will raise error.
             Similar to "omegalm", the user can also provide "omegalm_zeroecc".
             If it is not provided in `dataDict`, it is computed from the given
             "hlm_zeroecc" or "phaselm_zeroecc" using finite difference method.
@@ -401,9 +399,9 @@ class eccDefinition:
                 for k in dataDict["hlm" + suffix]:
                     ampDict.update({k: np.abs(dataDict["hlm" + suffix][k])})
             elif suffix == "":
-                raise Exception("dataDict should contain at least one of "
-                                "['amplm' 'hlm'] for computing amplitude of "
-                                "the waveform modes.")
+                raise Exception("`dataDict` should contain either 'amplm' or "
+                                " 'hlm' for computing amplitude of the "
+                                "waveform modes.")
         amplmDict = {"amplm": amplm}
         if amplm_zeroecc:
             amplmDict.update({"amplm_zeroecc": amplm_zeroecc})
@@ -429,9 +427,9 @@ class eccDefinition:
                         {k: - np.unwrap(
                             np.angle(dataDict["hlm" + suffix][k]))})
             elif suffix == "":
-                raise Exception("dataDict should contain at least one of "
-                                "['phaselm', 'hlm'] for computing phase of "
-                                "the waveform modes.")
+                raise Exception("`dataDict` should contain either 'phaselm' "
+                                "or 'hlm' for computing phase of the waveform "
+                                "modes.")
         phaselmDict = {"phaselm": phaselm}
         if phaselm_zeroecc:
             phaselmDict.update({"phaselm_zeroecc": phaselm_zeroecc})
