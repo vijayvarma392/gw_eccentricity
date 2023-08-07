@@ -508,9 +508,10 @@ class eccDefinition:
             Minimum width for the `find_peaks` function. This is computed
             before the truncation.
         """
+        # Test that exactly one of either hlm or (amplm and phaselm) is
+        # provided.
         # Raise exception if hlm is provided and amplm and/or phaselm is also
-        # provided. It tests that exactly one of either hlm or (amplm and
-        # phaselm) is provided.
+        # provided.
         for suffix in ["", "_zeroecc"]:
             if ("hlm"+suffix in dataDict) and any(
                     ["amplm"+suffix in dataDict,
