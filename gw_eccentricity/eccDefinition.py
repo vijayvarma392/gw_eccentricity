@@ -508,16 +508,28 @@ class eccDefinition:
             Minimum width for the `find_peaks` function. This is computed
             before the truncation.
         """
-        # Check that the dataDict contains either the hlms or the amplm/phaselm
-        # and not both of these.
+        # Raise exception if hlm is provided and amplm and/or phaselm is also
+        # provided. It tests that exactly one of either hlm or (amplm and
+        # phaselm) is provided.
         for suffix in ["", "_zeroecc"]:
-            if "hlm"+suffix in dataDict and ("amplm"+suffix in dataDict
-                                             or "phaselm"+suffix in dataDict):
+            if ("hlm"+suffix in dataDict) and any(
+                    ["amplm"+suffix in dataDict,
+                     "phaselm"+suffix in dataDict]):
                 raise Exception(
-                    f"Provide either `hlm{suffix}` or both of `amplm{suffix}` "
-                    f"and `phaselm{suffix}`. `dataDict` should not contain "
-                    f"`hlm{suffix}` and `amplm{suffix}` or `phaselm{suffix}` "
-                    "at the same time.")
+                    f"`dataDict` {'should' if suffix == '' else 'may'} "
+                    "contain one of the following: \n"
+                    f"1. 'hlm{suffix}' OR \n"
+                    f"2. 'amplm{suffix}' and 'phaselm{suffix}'\n"
+                    "But not both 1. and 2. at the same time.")
+        # Raise exception if hlm is not provided but either amplm and/or
+        # phaselm is also not provided
+        if ("hlm" not in dataDict) and any(["amplm" not in dataDict,
+                                            "phaselm" not in dataDict]):
+            raise Exception((
+                "`dataDict` should contain one of the following: \n"
+                "1. 'hlm' OR \n"
+                "2. 'amplm' and 'phaselm'\n"
+                "But not both 1. and 2. at the same time."))
         # Create a new dictionary that will contain the data necessary for
         # eccentricity measurement.
         newDataDict = {}
