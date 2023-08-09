@@ -53,5 +53,7 @@ After each PyPI release, update the conda package to the same version by followi
 2. Create a branch
 3. Update `meta.yaml` under `recipe` at
  https://github.com/conda-forge/gw_eccentricity-feedstock/blob/main/recipe/meta.yaml<br>
- by changing the version to the latest PyPI version.
+ by changing the
+ - version to the latest PyPI version.
+ - sha256 hash number corresponding to the tar.gz file of this version. This can be found by clicking the `Download files` button in `gw_eccentricity` page on PyPi.
 4. Commit the changes and make a PR.
