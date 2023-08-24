@@ -360,6 +360,11 @@ def measure_eccentricity(tref_in=None,
             eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
             for allowed keys.
 
+        set_failures_to_zero : bool, default=False If True and the waveform is
+            sufficiently long then instead of raising exception when number of
+            extrema is insufficient to build frequency interpolant through the
+            extrema, eccentricity and mean anomaly are set to zero.
+
     Returns
     -------
     A dictionary containing the following keys

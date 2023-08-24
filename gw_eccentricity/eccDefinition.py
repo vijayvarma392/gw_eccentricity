@@ -7,6 +7,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -16,7 +17,7 @@ from .utils import get_default_spline_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
-import matplotlib.pyplot as plt
+from .exceptions import InsufficientExtrema, NotInRange
 
 
 class eccDefinition:
@@ -237,6 +238,12 @@ class eccDefinition:
                 methods. See
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
                 for allowed keys.
+
+            set_failures_to_zero : bool, default=False
+                If True and the waveform is sufficiently long then instead of
+                raising exception when number of extrema is insufficient to
+                build frequency interpolant through the extrema, eccentricity
+                and mean anomaly are set to zero.
         """
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp22_merger, \
@@ -272,6 +279,7 @@ class eccDefinition:
             = self.get_available_omega22_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
         self.debug_plots = self.extra_kwargs["debug_plots"]
+        self.set_failures_to_zero = self.extra_kwargs["set_failures_to_zero"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -305,6 +313,13 @@ class eccDefinition:
         # called, these get set in that function.
         self.t_for_omega22_average = None
         self.omega22_average = None
+        # Approximate number of orbits derived using the phase of 22 mode
+        # assuming that a phase change 4pi occurs over an orbit.
+        self.approximate_num_orbits = ((self.phase22[-1] - self.phase22[0])
+                                       / (4 * np.pi))
+        # The following is updated to True when the waveform has enough number
+        # of orbits but a method can not find sufficient number of extrema.
+        self.probably_quasicircular = False
 
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
@@ -716,6 +731,7 @@ class eccDefinition:
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
+            "set_failures_to_zero": False,
         }
         return default_extra_kwargs
 
@@ -1055,26 +1071,41 @@ class eccDefinition:
             return self.get_interp(self.t[extrema],
                                    self.omega22[extrema])
         else:
-            raise Exception(
-                f"Sufficient number of {extrema_type} are not found."
-                " Can not create an interpolant.")
+            raise InsufficientExtrema(extrema_type, len(extrema))
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
         """Check number of extrema."""
         num_extrema = len(extrema)
         if num_extrema < 2:
-            recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
-            if self.method not in recommended_methods:
-                method_message = ("It's possible that the eccentricity is too "
-                                  f"low for the {self.method} method to detect"
-                                  f" the {extrema_type}. Try one of "
-                                  f"{recommended_methods}.")
+            # check if the waveform is sufficiently long
+            if self.approximate_num_orbits > 5:
+                # The waveform is long but the method fails to find the extrema
+                # This may happen because the eccentricity too small for the
+                # method to detect it.
+                self.probably_quasicircular = True
+            if self.probably_quasicircular and self.set_failures_to_zero:
+                debug_message(
+                    "The waveform has approximately "
+                    f"{self.approximate_num_orbits:.2f}"
+                    f" orbits but number of {extrema_type} found is "
+                    f"{num_extrema}. Since `set_failures_to_zero` is set to "
+                    f"{self.set_failures_to_zero}, no exception is raised. "
+                    "Instead the eccentricity and mean anomaly will be set to "
+                    "zero.",
+                    important=True,
+                    debug_level=0)
             else:
-                method_message = ""
-            raise Exception(
-                f"Number of {extrema_type} found = {num_extrema}.\n"
-                f"Can not build frequency interpolant through the {extrema_type}.\n"
-                f"{method_message}")
+                recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
+                if self.method not in recommended_methods:
+                    method_message = (
+                        "It's possible that the eccentricity is too "
+                        f"low for the {self.method} method to detect"
+                        f" the {extrema_type}. Try one of "
+                        f"{recommended_methods}.")
+                else:
+                    method_message = ""
+                    raise InsufficientExtrema(extrema_type, num_extrema,
+                                              method_message)
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
@@ -1222,6 +1253,17 @@ class eccDefinition:
                 Measured mean anomaly at *tref_out*/*fref_out*. Same type as
                 *tref_out*/*fref_out*.
         """
+        # check that only one of tref_in or fref_in is provided
+        if (tref_in is not None) + (fref_in is not None) != 1:
+            raise KeyError("Exactly one of tref_in and fref_in"
+                           " should be specified.")
+        elif tref_in is not None:
+            tref_in_ndim = np.ndim(tref_in)
+            self.tref_in = np.atleast_1d(tref_in)
+        else:
+            fref_in_ndim = np.ndim(fref_in)
+            tref_in_ndim = fref_in_ndim
+            fref_in = np.atleast_1d(fref_in)
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
@@ -1237,6 +1279,17 @@ class eccDefinition:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
         self.check_num_extrema(apocenters, "apocenters")
+
+        # If the eccentricity is too small for a method to find the extrema and
+        # set_failures_to_zero is set to true, then we set the eccentricity and
+        # mean anomaly to zero and return it.
+        # In this case, the rest of the code in this function is not executed and
+        # therefore, many variables which are used in diagnostic tests are never
+        # computed thus making diagnostics irrelevant.
+        if self.probably_quasicircular and self.set_failures_to_zero:
+            return self.set_eccentricity_and_mean_anomaly_to_zero(
+                tref_in, fref_in)
+
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
             = self.get_good_extrema(pericenters, apocenters)
@@ -1268,17 +1321,7 @@ class eccDefinition:
         self.t_apocenters = self.t[self.apocenters_location]
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
-        # check that only one of tref_in or fref_in is provided
-        if (tref_in is not None) + (fref_in is not None) != 1:
-            raise KeyError("Exactly one of tref_in and fref_in"
-                           " should be specified.")
-        elif tref_in is not None:
-            tref_in_ndim = np.ndim(tref_in)
-            self.tref_in = np.atleast_1d(tref_in)
-        else:
-            fref_in_ndim = np.ndim(fref_in)
-            tref_in_ndim = fref_in_ndim
-            fref_in = np.atleast_1d(fref_in)
+        if tref_in is None:
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
                 = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
@@ -1370,6 +1413,39 @@ class eccDefinition:
             return_dict.update({"fref_out": self.fref_out})
         else:
             return_dict.update({"tref_out": self.tref_out})
+        return return_dict
+
+    def set_eccentricity_and_mean_anomaly_to_zero(
+            self, tref_in, fref_in):
+        """Set eccentricity and mean_anomaly to zero."""
+        return_dict = {}
+        if tref_in is not None:
+            # check that tref_in is in the allowed range
+            ndim = np.ndim(tref_in)
+            tref_in = np.atleast_1d(tref_in)
+            if min(tref_in) < min(self.t) or max(tref_in) > max(self.t):
+                raise NotInRange("tref_in", min(self.t), max(self.t))
+            ref_arr = tref_in
+            self.tref_out = ref_arr[0] if ndim == 0 else ref_arr
+            return_dict.update(
+                {"tref_out": self.tref_out})
+        else:
+            # check that fref_in is in the allowed range
+            ndim = np.ndim(fref_in)
+            fref_in = np.atleast_1d(fref_in)
+            f22_min = min(self.omega22) / (2 * np.pi)
+            f22_max = max(self.omega22) / (2 * np.pi)
+            if min(fref_in) < f22_min or max(fref_in) > f22_max:
+                raise NotInRange("fref_in", f22_min, f22_max)
+            ref_arr = fref_in
+            self.fref_out = ref_arr[0] if ndim == 0 else ref_arr
+            return_dict.update({"fref_out": ref_arr})
+        self.eccentricity = 0 if ndim == 0 else np.zeros(len(ref_arr))
+        self.mean_anomaly = 0 if ndim == 0 else np.zeros(len(ref_arr))
+        return_dict.update({
+            "eccentricity": self.eccentricity,
+            "mean_anomaly": self.mean_anomaly
+        })
         return return_dict
 
     def et_from_ew22_0pn(self, ew22):
