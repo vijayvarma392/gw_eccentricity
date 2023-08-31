@@ -1,13 +1,16 @@
 """Utility to load waveform of different origins."""
+import os
+import re
 import numpy as np
-from .utils import peak_time_via_quadratic_fit
-from .utils import amplitude_using_all_modes
-from .utils import check_kwargs_and_set_defaults
-from .utils import raise_exception_if_none
+import sxs
 import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
+from .utils import peak_time_via_quadratic_fit
+from .utils import amplitude_using_all_modes
+from .utils import check_kwargs_and_set_defaults
+from .utils import raise_exception_if_none
 from .utils import interpolate
 
 
@@ -718,11 +721,18 @@ def load_sxs_catalogformat(**kwargs):
     keys and defaults.
 
     filepath: str
-        Path to waveform file in sxs catalog format. The file should
-        be named "rhOverM_Asymptotic_GeometricUnits_CoM.h5", and
-        contains the waveform extrapolated to future null-infinity and
-        corrected for initial center-of-mass drift.
-        This must be provided to load waveform modes.
+        Path to waveform file in sxs catalog format.
+        Currently, sxs waveforms use two different formats.
+        In the old format, prior to 2023, the waveform file is named as
+        "rhOverM_Asymptotic_GeometricUnits_CoM.h5", whereas the newer waveform
+        file is named as `Strain_N{extrap_order}.h5` where `extrap_order` is
+        the extrapolation order. This could will check if the provided file is
+        in the new format or not and try to load the waveform modes
+        accordingly.
+
+        These waveform files contain the waveform extrapolated to future
+        null-infinity and corrected for initial center-of-mass drift.  This
+        must be provided to load waveform modes.
 
     deltaTOverM: float
         Time step to use for interpolating the waveform modes.  The
@@ -809,13 +819,10 @@ def load_sxs_catalogformat(**kwargs):
         get_load_waveform_defaults("SXSCatalog"),
         "SXSCatalog kwargs",
         "`load_data.get_defaults_for_nr`")
-    filepath = kwargs["filepath"]
     metadata_path = kwargs["metadata_path"]
-    dt = kwargs["deltaTOverM"]
-    mode_array = kwargs["mode_array"]
-    extrap_order = kwargs["extrap_order"]
+
     # check filepath
-    if filepath is None:
+    if kwargs["filepath"] is None:
         raise Exception("Must provide path to the waveform file. `filepath` "
                         "can not be None.")
     # check metadata_path
@@ -827,22 +834,24 @@ def load_sxs_catalogformat(**kwargs):
                 "This is required to get the binary parameters which are "
                 "used to eavaluate the zero ecc waveform.")
 
-    # load modes
-    modes_dict = {}
-    data = h5py.File(filepath, "r")
-    waveform_data = data[f"Extrapolated_N{extrap_order}.dir"]
-    for idx, mode in enumerate(mode_array):
-        ell, m = mode
-        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"]
-        # create the time array only once
-        if idx == 0:
-            time = mode_data[:, 0]
-            t = np.arange(time[0], time[-1], dt)
-        hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
-        amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
-        modes_dict.update({(ell, m): hlm_interp})
+    # Check file format
+    if "Strain_N" in kwargs["filepath"]:
+        # find the extrapolation order from file name and check if
+        # it is consistent with the value provided via kwargs.
+        # If they are not consistent, raise warnings and ignore
+        # the value provided in the kwargs.
+        base_name = os.path.basename(kwargs["filepath"])
+        extrap_order_from_filename = int(
+            re.findall(r"\d", base_name)[0])
+        if kwargs["extrap_order"] != extrap_order_from_filename:
+            warnings.warn("Exrapolation order in `kwargs` is "
+                          f"{kwargs['extrap_order']} but waveform file seems "
+                          "to have extrapolation order "
+                          f"{extrap_order_from_filename}. "
+                          "Ignoring the `kwargs` value.")
+        t, modes_dict = load_sxs_catalog_new_format(**kwargs)
+    else:
+        t, modes_dict = load_sxs_catalog_old_format(**kwargs)
 
     # remove junk from the begining of the data
     t, modes_dict = reomve_junk_from_nr_data(
@@ -872,6 +881,56 @@ def load_sxs_catalogformat(**kwargs):
     if kwargs["include_params_dict"]:
         dataDict.update({"params_dict": params_dict})
     return dataDict
+
+
+def load_sxs_catalog_old_format(**kwargs):
+    """Load sxs modes from old format files.
+
+    See documentation of `load_sxs_catalogformat` for allowed kwargs and
+    default values.
+    """
+    # load modes
+    modes_dict = {}
+    data = h5py.File(kwargs["filepath"], "r")
+    waveform_data = data[f"Extrapolated_N{kwargs['extrap_order']}.dir"]
+    for idx, mode in enumerate(kwargs["mode_array"]):
+        ell, m = mode
+        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"]
+        # create the time array only once
+        if idx == 0:
+            time = mode_data[:, 0]
+            t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
+        hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
+        amp_interp = interpolate(t, time, np.abs(hlm))
+        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
+        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        modes_dict.update({(ell, m): hlm_interp})
+    return t, modes_dict
+
+
+def load_sxs_catalog_new_format(**kwargs):
+    """Load sxs modes from new format files.
+
+    See documentation of `load_sxs_catalogformat` for allowed kwargs and
+    default values.
+    """
+    # file_name_new_format = f"Strain_N{kwargs['extrap_order']}.h5"
+    # get the waveform object
+    waveform = sxs.rpdmb.load(kwargs["filepath"])
+    # get the time
+    time = waveform.t
+    # Create a time array with step = dt, to interpolate the waveform
+    # modes on this uniform time array.
+    t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
+    modes_dict = {}
+    for mode in kwargs["mode_array"]:
+        ell, m = mode
+        hlm = waveform[:, waveform.index(ell, m)].data
+        amp_interp = interpolate(t, time, np.abs(hlm))
+        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
+        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        modes_dict.update({(ell, m): hlm_interp})
+    return t, modes_dict
 
 
 def get_params_dict_from_sxs_metadata(metadata_path):
