@@ -726,8 +726,8 @@ def load_sxs_catalogformat(**kwargs):
         In the old format, prior to 2023, the waveform file is named as
         "rhOverM_Asymptotic_GeometricUnits_CoM.h5", whereas the newer waveform
         file is named as `Strain_N{extrap_order}.h5` where `extrap_order` is
-        the extrapolation order. This could will check if the provided file is
-        in the new format or not and try to load the waveform modes
+        the extrapolation order. This code checks if the provided file is
+        in the new format or not and then loads the waveform modes
         accordingly.
 
         These waveform files contain the waveform extrapolated to future
