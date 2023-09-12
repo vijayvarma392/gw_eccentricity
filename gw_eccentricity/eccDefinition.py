@@ -17,7 +17,7 @@ from .utils import get_default_spline_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
-from .exceptions import InsufficientExtrema, NotInRange
+from .exceptions import InsufficientExtrema, NotInAllowedInputRange
 
 
 class eccDefinition:
@@ -240,10 +240,14 @@ class eccDefinition:
                 for allowed keys.
 
             set_failures_to_zero : bool, default=False
-                If True and the waveform is sufficiently long then instead of
-                raising exception when number of extrema is insufficient to
-                build frequency interpolant through the extrema, eccentricity
-                and mean anomaly are set to zero.
+                The code normally raises an exception if sufficient number of
+                extrema are not found. This can happen for various reasons
+                including when the eccentricity is too small for some methods
+                (like the Amplitude method) to measure. See e.g. Fig.4 of
+                arxiv.2302.11257. If `set_failures_to_zero` is set to True, we
+                assume that small eccentricity is the cause, and set the
+                returned eccentricity and mean anomaly to zero when sufficient
+                extrema are not found. USE THIS WITH CAUTION!
         """
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp22_merger, \
@@ -317,10 +321,6 @@ class eccDefinition:
         # assuming that a phase change 4pi occurs over an orbit.
         self.approximate_num_orbits = ((self.phase22[-1] - self.phase22[0])
                                        / (4 * np.pi))
-        # The following is updated to True when the waveform has enough number
-        # of orbits but a method can not find sufficient number of extrema.
-        self.probably_quasicircular = False
-
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp22_and_res_omega22()
@@ -1082,8 +1082,10 @@ class eccDefinition:
                 # The waveform is long but the method fails to find the extrema
                 # This may happen because the eccentricity too small for the
                 # method to detect it.
-                self.probably_quasicircular = True
-            if self.probably_quasicircular and self.set_failures_to_zero:
+                probably_quasicircular = True
+            else:
+                probably_quasicircular = False
+            if probably_quasicircular and self.set_failures_to_zero:
                 debug_message(
                     "The waveform has approximately "
                     f"{self.approximate_num_orbits:.2f}"
@@ -1104,8 +1106,9 @@ class eccDefinition:
                         f"{recommended_methods}.")
                 else:
                     method_message = ""
-                    raise InsufficientExtrema(extrema_type, num_extrema,
-                                              method_message)
+                raise InsufficientExtrema(extrema_type, num_extrema,
+                                          method_message)
+            return probably_quasicircular
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
@@ -1267,7 +1270,13 @@ class eccDefinition:
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
-        self.check_num_extrema(pericenters, "pericenters")
+        # Check if there are sufficient number of extrema. In case the waveform
+        # is long enough but do not have any extrema detected, it might be that
+        # the eccentricity is too small for the current method to detect
+        # it. See Fig.4 in arxiv.2302.11257. In such case we assume that the
+        # waveform is probably quasicircular.
+        probably_quasicircular_pericenter = self.check_num_extrema(
+            pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
@@ -1278,7 +1287,8 @@ class eccDefinition:
         else:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
-        self.check_num_extrema(apocenters, "apocenters")
+        probably_quasicircular_apocenter = self.check_num_extrema(
+            apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema and
         # set_failures_to_zero is set to true, then we set the eccentricity and
@@ -1286,7 +1296,9 @@ class eccDefinition:
         # In this case, the rest of the code in this function is not executed and
         # therefore, many variables which are used in diagnostic tests are never
         # computed thus making diagnostics irrelevant.
-        if self.probably_quasicircular and self.set_failures_to_zero:
+        if any([probably_quasicircular_pericenter,
+                probably_quasicircular_apocenter]) \
+                and self.set_failures_to_zero:
             return self.set_eccentricity_and_mean_anomaly_to_zero(
                 tref_in, fref_in)
 
@@ -1424,7 +1436,7 @@ class eccDefinition:
             ndim = np.ndim(tref_in)
             tref_in = np.atleast_1d(tref_in)
             if min(tref_in) < min(self.t) or max(tref_in) > max(self.t):
-                raise NotInRange("tref_in", min(self.t), max(self.t))
+                raise NotInAllowedInputRange("tref_in", min(self.t), max(self.t))
             ref_arr = tref_in
             self.tref_out = ref_arr[0] if ndim == 0 else ref_arr
             return_dict.update(
@@ -1436,7 +1448,7 @@ class eccDefinition:
             f22_min = min(self.omega22) / (2 * np.pi)
             f22_max = max(self.omega22) / (2 * np.pi)
             if min(fref_in) < f22_min or max(fref_in) > f22_max:
-                raise NotInRange("fref_in", f22_min, f22_max)
+                raise NotInAllowedInputRange("fref_in", f22_min, f22_max)
             ref_arr = fref_in
             self.fref_out = ref_arr[0] if ndim == 0 else ref_arr
             return_dict.update({"fref_out": ref_arr})

@@ -360,10 +360,15 @@ def measure_eccentricity(tref_in=None,
             eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
             for allowed keys.
 
-        set_failures_to_zero : bool, default=False If True and the waveform is
-            sufficiently long then instead of raising exception when number of
-            extrema is insufficient to build frequency interpolant through the
-            extrema, eccentricity and mean anomaly are set to zero.
+        set_failures_to_zero : bool, default=False
+            The code normally raises an exception if sufficient number of
+            extrema are not found. This can happen for various reasons
+            including when the eccentricity is too small for some methods (like
+            the Amplitude method) to measure. See e.g. Fig.4 of
+            arxiv.2302.11257. If `set_failures_to_zero` is set to True, we
+            assume that small eccentricity is the cause, and set the returned
+            eccentricity and mean anomaly to zero when sufficient extrema are
+            not found. USE THIS WITH CAUTION!
 
     Returns
     -------

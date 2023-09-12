@@ -4,6 +4,14 @@
 class InsufficientExtrema(Exception):
     """Exception raised when number of extrema is not enough.
 
+    While measuring eccentricity, one common failure that may occur is due to
+    insufficient number of extrema. Applying gw_eccentricity on a large number
+    of waveforms, for example, when reconstructing PE posterior by measuring
+    the eccentricity at the samples, one may need to loop over all the
+    samples. In such cases, one may want to avoid failures that are due to
+    insufficient extrema. Having a specific exception class helps in such
+    scenario instead of using generic exceptions.
+
     Parameters
     ----------
     extrema_type : str
@@ -28,8 +36,13 @@ class InsufficientExtrema(Exception):
         super().__init__(self.message)
 
 
-class NotInRange(Exception):
+class NotInAllowedInputRange(Exception):
     """Exception raised when the reference point is outside allowed range.
+
+    Due to the nature of the eccentricity definition, one can measure the
+    eccentricity only in an allowed range of time/frequency. If the failure
+    during eccentricity measurement is due to an input time/frequency that lies
+    outside the allowed range this exception helps in identifying that.
 
     Parameters
     ----------
@@ -46,7 +59,7 @@ class NotInRange(Exception):
 
     def __init__(self, reference_point_type, lower, upper,
                  additional_message=None):
-        """Init for NotInRange Class."""
+        """Init for NotInAllowedRange Class."""
         self.reference_point_type = reference_point_type
         self.lower = lower
         self.upper = upper

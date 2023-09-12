@@ -261,6 +261,9 @@ def load_LAL_waveform(**kwargs):
             zero_ecc_kwargs['ecc'] = 0
         zero_ecc_kwargs['include_zero_ecc'] = False   # to avoid infinite loops
         dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
+        # To make sure that we can compute the residual amplitude/frequency, we
+        # need the zeroecc data to be longer than the ecc data so that we can
+        # intepolate the zeroecc data on the same times as the ecc data.
         while dataDict_zero_ecc['t'][0] > dataDict["t"][0]:
             zero_ecc_kwargs["Momega0"] *= 0.5
             dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
