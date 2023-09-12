@@ -835,7 +835,8 @@ def load_sxs_catalogformat(**kwargs):
                 "used to eavaluate the zero ecc waveform.")
 
     # Check file format
-    if "Strain_N" in kwargs["filepath"]:
+    matches = re.findall(r"Strain_N\d.h5", kwargs["filepath"])
+    if len(matches) == 1:
         # find the extrapolation order from file name and check if
         # it is consistent with the value provided via kwargs.
         # If they are not consistent, raise warnings and ignore
