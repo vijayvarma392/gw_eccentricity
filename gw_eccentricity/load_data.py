@@ -780,6 +780,10 @@ def load_sxs_catalogformat(**kwargs):
 
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
+        NOTE: In the new format, a separate waveform file exists for each
+        `extrap_order` and the file name has the format
+        `Strain_N{extrap_order}.h5`. Therefore, `extrap_order` will be ignored
+        for waveform files in the new format.
 
     Returns
     -------
@@ -833,27 +837,24 @@ def load_sxs_catalogformat(**kwargs):
                 "when `include_zero_ecc` or `include_params_dict` is True.\n"
                 "This is required to get the binary parameters which are "
                 "used to eavaluate the zero ecc waveform.")
-
+    # check if the file exists
+    if not os.path.exists(kwargs["filepath"]):
+        raise FileNotFoundError(
+            f"File not found. Please check the filepath {kwargs['filepath']}")
     # Check file format
     matches = re.findall(r"Strain_N\d.h5", kwargs["filepath"])
-    if len(matches) == 1:
-        # find the extrapolation order from file name and check if
-        # it is consistent with the value provided via kwargs.
-        # If they are not consistent, raise warnings and ignore
-        # the value provided in the kwargs.
-        base_name = os.path.basename(kwargs["filepath"])
-        extrap_order_from_filename = int(
-            re.findall(r"\d", base_name)[0])
-        if kwargs["extrap_order"] != extrap_order_from_filename:
-            warnings.warn("Exrapolation order in `kwargs` is "
-                          f"{kwargs['extrap_order']} but waveform file seems "
-                          "to have extrapolation order "
-                          f"{extrap_order_from_filename}. "
-                          "Ignoring the `kwargs` value.")
+    if len(matches) == 0:
+        # If the file is not in the new format, assume it to be in the old
+        # format
+        t, modes_dict = load_sxs_catalog_old_format(**kwargs)
+    elif len(matches) == 1:
         t, modes_dict = load_sxs_catalog_new_format(**kwargs)
     else:
-        t, modes_dict = load_sxs_catalog_old_format(**kwargs)
-
+        raise Exception(
+            "SXS catalog waveform files may be either in the old "
+            "or the new format. In the new format, the `filepath` should "
+            "contain exactly one match for the file name in the format "
+            "`Strain_N{extrap_order}.h5`.")
     # remove junk from the begining of the data
     t, modes_dict = reomve_junk_from_nr_data(
         t,
