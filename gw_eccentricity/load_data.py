@@ -838,23 +838,32 @@ def load_sxs_catalogformat(**kwargs):
                 "This is required to get the binary parameters which are "
                 "used to eavaluate the zero ecc waveform.")
     # check if the file exists
-    if not os.path.exists(kwargs["filepath"]):
-        raise FileNotFoundError(
-            f"File not found. Please check the filepath {kwargs['filepath']}")
+    # if not os.path.exists(kwargs["filepath"]):
+    #     raise FileNotFoundError(
+    #         f"File not found. Please check the filepath {kwargs['filepath']}")
     # Check file format
-    matches = re.findall(r"Strain_N\d.h5", kwargs["filepath"])
+    base_name = os.path.basename(kwargs["filepath"]).split(".")[0]
+    matches = re.findall(r"Strain_N\d", base_name)
     if len(matches) == 0:
         # If the file is not in the new format, assume it to be in the old
         # format
         t, modes_dict = load_sxs_catalog_old_format(**kwargs)
-    elif len(matches) == 1:
-        t, modes_dict = load_sxs_catalog_new_format(**kwargs)
     else:
-        raise Exception(
-            "SXS catalog waveform files may be either in the old "
-            "or the new format. In the new format, the `filepath` should "
-            "contain exactly one match for the file name in the format "
-            "`Strain_N{extrap_order}.h5`.")
+        dir_name = os.path.dirname(kwargs["filepath"])
+        data_file = os.path.join(dir_name, base_name + ".h5")
+        json_file = os.path.join(dir_name, base_name + ".json")
+        # Check if both of these files exist
+        for file_name in [data_file, json_file]:
+            if not os.path.exists(file_name):
+                if file_name == data_file:
+                    raise FileNotFoundError(
+                        f"Waveform data file {file_name} is not found.")
+                else:
+                    raise FileNotFoundError(
+                        f"Json file {file_name} corresponding to {data_file} "
+                        "is not found."
+                    )
+        t, modes_dict = load_sxs_catalog_new_format(**kwargs)
     # remove junk from the begining of the data
     t, modes_dict = reomve_junk_from_nr_data(
         t,
