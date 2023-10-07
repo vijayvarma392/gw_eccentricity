@@ -1261,12 +1261,12 @@ class eccDefinition:
             raise KeyError("Exactly one of tref_in and fref_in"
                            " should be specified.")
         elif tref_in is not None:
-            tref_in_ndim = np.ndim(tref_in)
+            self.tref_in_ndim = np.ndim(tref_in)
             self.tref_in = np.atleast_1d(tref_in)
         else:
-            fref_in_ndim = np.ndim(fref_in)
-            tref_in_ndim = fref_in_ndim
-            fref_in = np.atleast_1d(fref_in)
+            self.fref_in_ndim = np.ndim(fref_in)
+            self.tref_in_ndim = self.fref_in_ndim
+            self.fref_in = np.atleast_1d(fref_in)
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
@@ -1275,7 +1275,7 @@ class eccDefinition:
         # the eccentricity is too small for the current method to detect
         # it. See Fig.4 in arxiv.2302.11257. In such case we assume that the
         # waveform is probably quasicircular.
-        probably_quasicircular_pericenter = self.check_num_extrema(
+        self.probably_quasicircular_pericenter = self.check_num_extrema(
             pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
@@ -1287,20 +1287,20 @@ class eccDefinition:
         else:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
-        probably_quasicircular_apocenter = self.check_num_extrema(
+        self.probably_quasicircular_apocenter = self.check_num_extrema(
             apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema and
         # set_failures_to_zero is set to true, then we set the eccentricity and
-        # mean anomaly to zero and return it.
-        # In this case, the rest of the code in this function is not executed and
-        # therefore, many variables which are used in diagnostic tests are never
-        # computed thus making diagnostics irrelevant.
-        if any([probably_quasicircular_pericenter,
-                probably_quasicircular_apocenter]) \
+        # mean anomaly to zero and return it.  In this case, the rest of the
+        # code in this function is not executed and therefore, many variables
+        # which are used in diagnostic tests are never computed thus making
+        # diagnostics irrelevant.
+        if any([self.probably_quasicircular_pericenter,
+                self.probably_quasicircular_apocenter]) \
                 and self.set_failures_to_zero:
             return self.set_eccentricity_and_mean_anomaly_to_zero(
-                tref_in, fref_in)
+                tref_in)
 
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
@@ -1336,7 +1336,7 @@ class eccDefinition:
         if tref_in is None:
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
-                = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
+                = self.compute_tref_in_and_fref_out_from_fref_in(self.fref_in)
         # We measure eccentricity and mean anomaly from tmin to tmax.
         self.tref_out = self.tref_in[
             np.logical_and(self.tref_in <= self.tmax,
@@ -1357,18 +1357,7 @@ class eccDefinition:
 
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
-            if self.tref_in[-1] > self.tmax:
-                raise Exception(
-                    f"tref_in {self.tref_in} is later than tmax="
-                    f"{self.tmax}, "
-                    "which corresponds to min(last pericenter "
-                    "time, last apocenter time).")
-            if self.tref_in[0] < self.tmin:
-                raise Exception(
-                    f"tref_in {self.tref_in} is earlier than tmin="
-                    f"{self.tmin}, "
-                    "which corresponds to max(first pericenter "
-                    "time, first apocenter time).")
+            self.check_input_limits(self.tref_in, self.tmin, self.tmax, "time")
             raise Exception(
                 "tref_out is empty. This can happen if the "
                 "waveform has insufficient identifiable "
@@ -1406,12 +1395,12 @@ class eccDefinition:
         self.check_monotonicity_and_convexity()
 
         # If tref_in is a scalar, return a scalar
-        if tref_in_ndim == 0:
+        if self.tref_in_ndim == 0:
             self.mean_anomaly = self.mean_anomaly[0]
             self.eccentricity = self.eccentricity[0]
             self.tref_out = self.tref_out[0]
 
-        if fref_in is not None and fref_in_ndim == 0:
+        if fref_in is not None and self.fref_in_ndim == 0:
             self.fref_out = self.fref_out[0]
 
         if self.debug_plots:
@@ -1427,38 +1416,53 @@ class eccDefinition:
             return_dict.update({"tref_out": self.tref_out})
         return return_dict
 
-    def set_eccentricity_and_mean_anomaly_to_zero(
-            self, tref_in, fref_in):
+    def set_eccentricity_and_mean_anomaly_to_zero(self, tref_in):
         """Set eccentricity and mean_anomaly to zero."""
-        return_dict = {}
         if tref_in is not None:
-            # check that tref_in is in the allowed range
-            ndim = np.ndim(tref_in)
-            tref_in = np.atleast_1d(tref_in)
-            if min(tref_in) < min(self.t) or max(tref_in) > max(self.t):
-                raise NotInAllowedInputRange("tref_in", min(self.t), max(self.t))
-            ref_arr = tref_in
-            self.tref_out = ref_arr[0] if ndim == 0 else ref_arr
-            return_dict.update(
-                {"tref_out": self.tref_out})
+            # This function sets eccentricity and mean anomaly to zero
+            # when a method fails to detect any apoceneters or pericenrers,
+            # and therefore in such cases, we can set the tref_out to be
+            # the times that falls within the range of self.t.
+            ref_arr = self.tref_in[
+                np.logical_and(self.tref_in >= min(self.t),
+                               self.tref_in <= max(self.t))]
+            if len(ref_arr) == 0:
+                # check that tref_in is in the allowed range
+                self.check_input_limits(
+                    self.tref_in, min(self.t), max(self.t), "time")
+            # To match the type of tref_in
+            ref_arr = ref_arr[0] if self.tref_in_ndim == 0 else ref_arr
+            # Finally make tref_out available to self
+            self.tref_out = ref_arr
         else:
-            # check that fref_in is in the allowed range
-            ndim = np.ndim(fref_in)
-            fref_in = np.atleast_1d(fref_in)
+            # Since we don't have the maximum and minimum allowed reference
+            # frequencies computed from the frequencies at the pericenetrs and
+            # apoceneters, we simply set the maximum and minimum value to be
+            # the maximum and minimum of instantaneous f22, respectively.
             f22_min = min(self.omega22) / (2 * np.pi)
             f22_max = max(self.omega22) / (2 * np.pi)
-            if min(fref_in) < f22_min or max(fref_in) > f22_max:
-                raise NotInAllowedInputRange("fref_in", f22_min, f22_max)
-            ref_arr = fref_in
-            self.fref_out = ref_arr[0] if ndim == 0 else ref_arr
-            return_dict.update({"fref_out": ref_arr})
-        self.eccentricity = 0 if ndim == 0 else np.zeros(len(ref_arr))
-        self.mean_anomaly = 0 if ndim == 0 else np.zeros(len(ref_arr))
-        return_dict.update({
+            ref_arr = self.fref_in[
+                np.logical_and(self.fref_in >= f22_min,
+                               self.fref_in <= f22_max)]
+            # check that fref_in is in the allowed range
+            if len(ref_arr) == 0:
+                self.check_input_limits(
+                    self.fref_in, f22_min, f22_max, "frequency")
+            # To match the type of the fref_in.
+            ref_arr = ref_arr[0] if self.fref_in_ndim == 0 else ref_arr
+            self.fref_out = ref_arr
+        # At the top of measure_ecc we set tref_in_ndim and fref_in_ndim, and
+        # even in case of fref_in, we set tref_in_ndim to the same as
+        # fref_in_ndim, therefore, below we can just use tref_in_ndim.
+        self.eccentricity \
+            = 0 if self.tref_in_ndim == 0 else np.zeros(len(ref_arr))
+        self.mean_anomaly \
+            = 0 if self.tref_in_ndim == 0 else np.zeros(len(ref_arr))
+        return {
+            "tref_out" if tref_in is not None else "fref_out": ref_arr,
             "eccentricity": self.eccentricity,
             "mean_anomaly": self.mean_anomaly
-        })
-        return return_dict
+        }
 
     def et_from_ew22_0pn(self, ew22):
         """Get temporal eccentricity at Newtonian order.
@@ -1496,7 +1500,7 @@ class eccDefinition:
         Eccentricity at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        self.check_input_limits(t, self.tmin, self.tmax, "time")
 
         omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
         omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
@@ -1523,7 +1527,7 @@ class eccDefinition:
             nth order time derivative of eccentricity.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        self.check_input_limits(t, self.tmin, self.tmax, "time")
 
         if self.ecc_for_checks is None:
             self.ecc_for_checks = self.compute_eccentricity(
@@ -1562,7 +1566,7 @@ class eccDefinition:
         Mean anomaly at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        self.check_input_limits(t, self.tmin, self.tmax, "time")
 
         # Get the mean anomaly at the pericenters
         mean_ano_pericenters = np.arange(len(self.t_pericenters)) * 2 * np.pi
@@ -1572,21 +1576,55 @@ class eccDefinition:
         # Modulo 2pi to make the mean anomaly vary between 0 and 2pi
         return mean_ano % (2 * np.pi)
 
-    def check_time_limits(self, t):
-        """Check that time t is within tmin and tmax.
+    def check_input_limits(self, input_vals, min_allowed_val, max_allowed_val,
+                           input_type):
+        """Check that the input time/frequency is within allowed range.
 
-        To avoid any extrapolation, check that the times t are
-        always greater than or equal to tmin and always less than tmax.
+        To avoid any extrapolation, check that the times or frequencies are
+        always greater than or equal to the minimum allowed value and always
+        less than the maximum allowed value.
+
+        Parameters
+        ----------
+        input_vals: float or array-like
+            Input times or frequencies where eccentricity/mean anomaly are to
+            be measured.
+
+        min_allowed_val: float
+            Minimum allowed time or frequency where eccentricity/mean anomaly
+            can be measured.
+
+        max_allowed_val: float
+            Maximum allowed time or frequency where eccentricity/mean anomaly
+            can be measured.
+
+        input_type: str
+            Description of the input. Can be tref_in or fref_in
         """
-        t = np.atleast_1d(t)
-        if any(t > self.tmax):
-            raise Exception(f"Found times later than tmax={self.tmax}, "
-                            "which corresponds to min(last pericenter "
+        if input_type not in ["time", "frequency"]:
+            raise ValueError("Input type must be `time` or `frequency`.")
+        input_vals = np.atleast_1d(input_vals)
+        add_extra_info = (input_type == "time" and
+                          not any([self.probably_quasicircular_apocenter,
+                                   self.probably_quasicircular_pericenter]))
+        if any(input_vals > max_allowed_val):
+            message = (f"Found reference {input_type} later than maximum "
+                       f"allowed {input_type}={max_allowed_val}")
+            if add_extra_info:
+                message += (" which corresponds to min(last pericenter "
                             "time, last apocenter time).")
-        if any(t < self.tmin):
-            raise Exception(f"Found times earlier than tmin= {self.tmin}, "
-                            "which corresponds to max(first pericenter "
+            raise NotInAllowedInputRange(
+                "Reference " + input_type, min_allowed_val, max_allowed_val,
+                message)
+        if any(input_vals < min_allowed_val):
+            message = (f"Found reference {input_type} earlier than minimum "
+                       f"allowed {input_type}={min_allowed_val}")
+            if add_extra_info:
+                message += (" which corresponds to max(first pericenter "
                             "time, first apocenter time).")
+            raise NotInAllowedInputRange(
+                "Reference " + input_type, min_allowed_val, max_allowed_val,
+                message)
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",

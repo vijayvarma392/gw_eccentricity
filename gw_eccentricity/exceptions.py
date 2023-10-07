@@ -64,7 +64,8 @@ class NotInAllowedInputRange(Exception):
         self.lower = lower
         self.upper = upper
         self.additional_message = additional_message
-        self.message = (f"{self.reference_point_type} is outside the allowed "
+        self.message = (f"{self.reference_point_type} is outside "
+                        "the allowed "
                         f"range [{self.lower}, {self.upper}].")
         if self.additional_message is not None:
             self.message += "\n" + self.additional_message
