@@ -4,6 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Path setup --------------------------------------------------------------
+import sphinx_rtd_theme
 import pathlib
 import sys
 import os
