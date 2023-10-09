@@ -2,15 +2,15 @@
 
 
 class InsufficientExtrema(Exception):
-    """Exception raised when number of extrema is not enough.
+    """Exception raised when the number of extrema is not enough.
 
     While measuring eccentricity, one common failure that may occur is due to
-    insufficient number of extrema. Applying gw_eccentricity on a large number
-    of waveforms, for example, when reconstructing PE posterior by measuring
-    the eccentricity at the samples, one may need to loop over all the
-    samples. In such cases, one may want to avoid failures that are due to
-    insufficient extrema. Having a specific exception class helps in such
-    scenario instead of using generic exceptions.
+    an insufficient number of extrema. Applying gw_eccentricity to a large
+    number of waveforms, for example, when reconstructing the PE posterior by
+    measuring eccentricity at the samples, one may need to loop over all the
+    samples. In such cases, one may want to avoid failures that are due to an
+    insufficient number of extrema. Having a specific exception class helps in
+    such scenarios instead of using a generic exception.
 
     Parameters
     ----------
@@ -20,7 +20,7 @@ class InsufficientExtrema(Exception):
         Number of extrema.
     additional_message : str
         Any additional message to append to the exception message.
-        Default is None which adds no additional message.
+        Default is None, which adds no additional message.
     """
 
     def __init__(self, extrema_type, num_extrema, additional_message=None):
@@ -37,24 +37,24 @@ class InsufficientExtrema(Exception):
 
 
 class NotInAllowedInputRange(Exception):
-    """Exception raised when the reference point is outside allowed range.
+    """Exception raised when the reference point is outside the allowed range.
 
     Due to the nature of the eccentricity definition, one can measure the
-    eccentricity only in an allowed range of time/frequency. If the failure
+    eccentricity only within an allowed range of time/frequency. If the failure
     during eccentricity measurement is due to an input time/frequency that lies
-    outside the allowed range this exception helps in identifying that.
+    outside the allowed range, this exception helps in identifying that.
 
     Parameters
     ----------
     reference_point_type : str
-        Type of reference point. Can be "tref_in" or "fref_in".
+        Type of reference point. Can be "time" or "frequency".
     lower : float
-        Minium allowed value, i. e., the lower boundary of allowed range.
+        Minimum allowed value, i.e., the lower boundary of the allowed range.
     upper : float
-        Maximum allowed value, i. e., the upper boundary of allowed range.
+        Maximum allowed value, i.e., the upper boundary of the allowed range.
     additional_message : str
         Any additional message to append to the exception message.
-        Default is None which adds no additional message.
+        Default is None, which adds no additional message.
     """
 
     def __init__(self, reference_point_type, lower, upper,

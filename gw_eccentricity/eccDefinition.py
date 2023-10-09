@@ -1079,9 +1079,12 @@ class eccDefinition:
         if num_extrema < 2:
             # check if the waveform is sufficiently long
             if self.approximate_num_orbits > 5:
-                # The waveform is long but the method fails to find the extrema
-                # This may happen because the eccentricity too small for the
-                # method to detect it.
+                # The waveform is sufficiently long but the extrema finding
+                # method fails to find enough number of extrema. This may
+                # happen if the eccentricity is too small and, therefore, the
+                # modulations in the amplitude/frequency is too small for the
+                # method to detect them. In such cases, the waveform can be
+                # assumed to be quasicircular.
                 probably_quasicircular = True
             else:
                 probably_quasicircular = False
@@ -1100,10 +1103,11 @@ class eccDefinition:
                 recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
                 if self.method not in recommended_methods:
                     method_message = (
-                        "It's possible that the eccentricity is too "
-                        f"low for the {self.method} method to detect"
-                        f" the {extrema_type}. Try one of "
-                        f"{recommended_methods}.")
+                        "It's possible that the eccentricity is too small for "
+                        f"the {self.method} method to detect the "
+                        f"{extrema_type}. Try one of {recommended_methods} "
+                        "which should work even for a very small eccentricity."
+                    )
                 else:
                     method_message = ""
                 raise InsufficientExtrema(extrema_type, num_extrema,
@@ -1261,7 +1265,9 @@ class eccDefinition:
             raise KeyError("Exactly one of tref_in and fref_in"
                            " should be specified.")
         elif tref_in is not None:
+            # Identify whether the reference point is in time or frequency
             self.domain = "time"
+            # Identify whether the reference point is scalar or array-like
             self.ref_ndim = np.ndim(tref_in)
             self.tref_in = np.atleast_1d(tref_in)
         else:
@@ -1271,11 +1277,11 @@ class eccDefinition:
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
-        # Check if there are sufficient number of extrema. In case the waveform
-        # is long enough but do not have any extrema detected, it might be that
-        # the eccentricity is too small for the current method to detect
-        # it. See Fig.4 in arxiv.2302.11257. In such case we assume that the
-        # waveform is probably quasicircular.
+        # Check if there are a sufficient number of extrema. In cases where the
+        # waveform is long enough but the method fails to detect any extrema,
+        # it might be that the eccentricity is too small for the current method
+        # to detect it. See Fig.4 in arxiv.2302.11257. In such cases, we assume
+        # that the waveform is probably quasicircular.
         self.probably_quasicircular_pericenter = self.check_num_extrema(
             pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
@@ -1291,11 +1297,11 @@ class eccDefinition:
         self.probably_quasicircular_apocenter = self.check_num_extrema(
             apocenters, "apocenters")
 
-        # If the eccentricity is too small for a method to find the extrema and
-        # set_failures_to_zero is set to true, then we set the eccentricity and
-        # mean anomaly to zero and return it.  In this case, the rest of the
-        # code in this function is not executed and therefore, many variables
-        # which are used in diagnostic tests are never computed thus making
+        # If the eccentricity is too small for a method to find the extrema,
+        # and `set_failures_to_zero` is set to true, then we set the
+        # eccentricity and mean anomaly to zero and return them. In this case,
+        # the rest of the code in this function is not executed, and therefore,
+        # many variables used in diagnostic tests are never computed, making
         # diagnostics irrelevant.
         if any([self.probably_quasicircular_pericenter,
                 self.probably_quasicircular_apocenter]) \
@@ -1406,10 +1412,10 @@ class eccDefinition:
     def set_eccentricity_and_mean_anomaly_to_zero(self):
         """Set eccentricity and mean_anomaly to zero."""
         if self.domain == "time":
-            # This function sets eccentricity and mean anomaly to zero
-            # when a method fails to detect any apoceneters or pericenrers,
-            # and therefore in such cases, we can set the tref_out to be
-            # the times that falls within the range of self.t.
+            # This function sets eccentricity and mean anomaly to zero when a
+            # method fails to detect any extrema, and therefore, in such cases,
+            # we can set tref_out to be the times that fall within the range of
+            # self.t.
             self.tref_out = self.tref_in[
                 np.logical_and(self.tref_in >= min(self.t),
                                self.tref_in <= max(self.t))]
@@ -1420,8 +1426,8 @@ class eccDefinition:
                     self.tref_in, min(self.t), max(self.t))
         else:
             # Since we don't have the maximum and minimum allowed reference
-            # frequencies computed from the frequencies at the pericenetrs and
-            # apoceneters, we simply set the maximum and minimum value to be
+            # frequencies computed from the frequencies at the pericenters and
+            # apocenters, we simply set the maximum and minimum values to be
             # the maximum and minimum of instantaneous f22, respectively.
             f22_min = min(self.omega22) / (2 * np.pi)
             f22_max = max(self.omega22) / (2 * np.pi)
@@ -1438,18 +1444,21 @@ class eccDefinition:
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
 
     def make_return_dict_for_eccentricity_and_mean_anomaly(self):
-        """Prepare a dictionary with reference time/freq, ecc and mean ano.
+        """Prepare a dictionary with reference time/freq, ecc, and mean anomaly.
 
         In this function, we prepare a dictionary containing the measured
-        eccentricity, mean anomaly and the reference time or frequency where
-        these are measured at.
+        eccentricity, mean anomaly, and the reference time or frequency where
+        these are measured.
 
-        We also make sure that if the input reference time/frequency is scalar
-        then the returned eccentricity and mean anomaly is also a scalar. To do
-        this, we use the information about the tref_in/fref_in that is provided
-        by the user. At the top of measure_ecc we set ref_ndim to identify
-        whether the original input was scalar or array-like and use that here.
+        We also make sure that if the input reference time/frequency is scalar,
+        then the returned eccentricity and mean anomaly are also scalars. To do
+        this, we use the information about tref_in/fref_in that is provided by
+        the user. At the top of the measure_ecc function, we set ref_ndim to
+        identify whether the original input was scalar or array-like and use
+        that here.
         """
+        # If the original input was scalar, convert the measured eccentricity,
+        # mean anomaly, etc., to scalar.
         if self.ref_ndim == 0:
             self.eccentricity = self.eccentricity[0]
             self.mean_anomaly = self.mean_anomaly[0]
@@ -1462,14 +1471,14 @@ class eccDefinition:
             "eccentricity": self.eccentricity,
             "mean_anomaly": self.mean_anomaly
         }
+        # Return either tref_out or fref_out, depending on whether the input
+        # reference point was in time or frequency, respectively.
         if self.domain == "time":
             return_dict.update({
-              "tref_out": self.tref_out
-            })
+              "tref_out": self.tref_out})
         else:
             return_dict.update({
-              "fref_out": self.fref_out
-            })
+              "fref_out": self.fref_out})
         return return_dict
 
     def et_from_ew22_0pn(self, ew22):
@@ -1585,7 +1594,7 @@ class eccDefinition:
         return mean_ano % (2 * np.pi)
 
     def check_input_limits(self, input_vals, min_allowed_val, max_allowed_val):
-        """Check that the input time/frequency is within allowed range.
+        """Check that the input time/frequency is within the allowed range.
 
         To avoid any extrapolation, check that the times or frequencies are
         always greater than or equal to the minimum allowed value and always
@@ -1594,7 +1603,7 @@ class eccDefinition:
         Parameters
         ----------
         input_vals: float or array-like
-            Input times or frequencies where eccentricity/mean anomaly are to
+            Input times or frequencies where eccentricity/mean anomaly is to
             be measured.
 
         min_allowed_val: float
