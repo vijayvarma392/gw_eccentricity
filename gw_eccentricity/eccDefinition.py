@@ -1315,8 +1315,8 @@ class eccDefinition:
         # it might be that the eccentricity is too small for the current method
         # to detect it. See Fig.4 in arxiv.2302.11257. In such cases, we assume
         # that the waveform is probably quasicircular.
-        self.probably_quasicircular_pericenter = self.check_num_extrema(
-            pericenters, "pericenters")
+        self.insufficient_extrema_but_long_waveform_pericenter \
+            = self.check_num_extrema(pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
@@ -1327,8 +1327,8 @@ class eccDefinition:
         else:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
-        self.probably_quasicircular_apocenter = self.check_num_extrema(
-            apocenters, "apocenters")
+        self.insufficient_extrema_but_long_waveform_apocenter \
+            = self.check_num_extrema(apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema,
         # and `set_failures_to_zero` is set to true, then we set the
@@ -1336,8 +1336,8 @@ class eccDefinition:
         # the rest of the code in this function is not executed, and therefore,
         # many variables used in diagnostic tests are never computed, making
         # diagnostics irrelevant.
-        if any([self.probably_quasicircular_pericenter,
-                self.probably_quasicircular_apocenter]) \
+        if any([self.insufficient_extrema_but_long_waveform_pericenter,
+                self.insufficient_extrema_but_long_waveform_apocenter]) \
                 and self.set_failures_to_zero:
             return self.set_eccentricity_and_mean_anomaly_to_zero()
 
@@ -1387,7 +1387,7 @@ class eccDefinition:
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
-        if fref_in is not None:
+        if self.domain == "frequency":
             if len(self.fref_out) != len(self.tref_out):
                 raise Exception(
                     "length of fref_out and tref_out do not match."
@@ -1648,9 +1648,10 @@ class eccDefinition:
             can be measured.
         """
         input_vals = np.atleast_1d(input_vals)
-        add_extra_info = (self.domain == "time" and
-                          not any([self.probably_quasicircular_apocenter,
-                                   self.probably_quasicircular_pericenter]))
+        add_extra_info = (
+            self.domain == "time" and
+            not any([self.insufficient_extrema_but_long_waveform_apocenter,
+                     self.insufficient_extrema_but_long_waveform_pericenter]))
         if any(input_vals > max_allowed_val):
             message = (f"Found reference {self.domain} later than maximum "
                        f"allowed {self.domain}={max_allowed_val}")
