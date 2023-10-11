@@ -265,7 +265,7 @@ def load_LAL_waveform(**kwargs):
         # need the zeroecc data to be longer than the ecc data so that we can
         # intepolate the zeroecc data on the same times as the ecc data.
         while dataDict_zero_ecc['t'][0] > dataDict["t"][0]:
-            zero_ecc_kwargs["Momega0"] *= 0.5
+            zero_ecc_kwargs["Momega0"] *= 0.9
             dataDict_zero_ecc = load_waveform(**zero_ecc_kwargs)
         t_zeroecc = dataDict_zero_ecc['t']
         hlm_zeroecc = dataDict_zero_ecc['hlm']

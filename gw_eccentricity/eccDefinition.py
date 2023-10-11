@@ -317,10 +317,6 @@ class eccDefinition:
         # called, these get set in that function.
         self.t_for_omega22_average = None
         self.omega22_average = None
-        # Approximate number of orbits derived using the phase of 22 mode
-        # assuming that a phase change 4pi occurs over an orbit.
-        self.approximate_num_orbits = ((self.phase22[-1] - self.phase22[0])
-                                       / (4 * np.pi))
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp22_and_res_omega22()
@@ -1074,24 +1070,61 @@ class eccDefinition:
             raise InsufficientExtrema(extrema_type, len(extrema))
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
-        """Check number of extrema."""
+        """Check number of extrema.
+
+        Check the number of extrema to determine if there are enough for
+        building the interpolants through the pericenters and apocenters. In
+        cases where the number of extrema is insufficient, i.e., less than 2,
+        we further verify if the provided waveform is long enough to have a
+        sufficient number of extrema.
+
+        If the waveform is long enough, but the chosen method fails to detect
+        any extrema, it is possible that the eccentricity is too small. If
+        `set_failures_to_zero` is set to True, then we set
+        `insufficient_extrema_but_long_waveform` to True and return it.
+
+        Parameters
+        ----------
+        extrema : array-like
+            1d array of extrema to determine if the length is sufficient for
+            building interpolants of omega22 values at these extrema. We
+            require the length to be greater than or equal to two.
+        extrema_type: str, default="extrema"
+            String to indicate whether the extrema corresponds to pericenters
+            or the apocenters.
+
+        Returns
+        -------
+        insufficient_extrema_but_long_waveform : bool
+            True if the waveform has more than approximately 5 orbits but the
+            number of extrema is less than two. False otherwise.
+        """
         num_extrema = len(extrema)
         if num_extrema < 2:
-            # check if the waveform is sufficiently long
-            if self.approximate_num_orbits > 5:
+            # Check if the waveform is sufficiently long by estimating the
+            # approximate number of orbits contained in the waveform data using
+            # the phase of the (2, 2) mode, assuming that a phase change of
+            # 4*pi occurs over one orbit.
+            # NOTE: Since we truncate the waveform data by removing
+            # `num_orbits_to_remove_before_merger` orbits before the merger,
+            # phase22[-1] corresponds to the phase of the (2, 2) mode
+            # `num_orbits_to_remove_before_merger` orbits before the merger.
+            approximate_num_orbits = ((self.phase22[-1] - self.phase22[0])
+                                      / (4 * np.pi))
+            if approximate_num_orbits > 5:
                 # The waveform is sufficiently long but the extrema finding
                 # method fails to find enough number of extrema. This may
                 # happen if the eccentricity is too small and, therefore, the
                 # modulations in the amplitude/frequency is too small for the
-                # method to detect them. In such cases, the waveform can be
-                # assumed to be quasicircular.
-                probably_quasicircular = True
+                # method to detect them.
+                insufficient_extrema_but_long_waveform = True
             else:
-                probably_quasicircular = False
-            if probably_quasicircular and self.set_failures_to_zero:
+                insufficient_extrema_but_long_waveform = False
+            if insufficient_extrema_but_long_waveform \
+               and self.set_failures_to_zero:
                 debug_message(
                     "The waveform has approximately "
-                    f"{self.approximate_num_orbits:.2f}"
+                    f"{approximate_num_orbits:.2f}"
                     f" orbits but number of {extrema_type} found is "
                     f"{num_extrema}. Since `set_failures_to_zero` is set to "
                     f"{self.set_failures_to_zero}, no exception is raised. "
@@ -1112,7 +1145,7 @@ class eccDefinition:
                     method_message = ""
                 raise InsufficientExtrema(extrema_type, num_extrema,
                                           method_message)
-            return probably_quasicircular
+            return insufficient_extrema_but_long_waveform
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
