@@ -1315,7 +1315,7 @@ class eccDefinition:
         # it might be that the eccentricity is too small for the current method
         # to detect it. See Fig.4 in arxiv.2302.11257. In such cases, we assume
         # that the waveform is probably quasicircular.
-        self.insufficient_extrema_but_long_waveform_pericenter \
+        self.insufficient_pericenters_but_long_waveform \
             = self.check_num_extrema(pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
@@ -1327,7 +1327,7 @@ class eccDefinition:
         else:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
-        self.insufficient_extrema_but_long_waveform_apocenter \
+        self.insufficient_apocenters_but_long_waveform \
             = self.check_num_extrema(apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema,
@@ -1336,8 +1336,8 @@ class eccDefinition:
         # the rest of the code in this function is not executed, and therefore,
         # many variables used in diagnostic tests are never computed, making
         # diagnostics irrelevant.
-        if any([self.insufficient_extrema_but_long_waveform_pericenter,
-                self.insufficient_extrema_but_long_waveform_apocenter]) \
+        if any([self.insufficient_pericenters_but_long_waveform,
+                self.insufficient_apocenters_but_long_waveform]) \
                 and self.set_failures_to_zero:
             return self.set_eccentricity_and_mean_anomaly_to_zero()
 
@@ -1650,8 +1650,8 @@ class eccDefinition:
         input_vals = np.atleast_1d(input_vals)
         add_extra_info = (
             self.domain == "time" and
-            not any([self.insufficient_extrema_but_long_waveform_apocenter,
-                     self.insufficient_extrema_but_long_waveform_pericenter]))
+            not any([self.insufficient_apocenters_but_long_waveform,
+                     self.insufficient_pericenters_but_long_waveform]))
         if any(input_vals > max_allowed_val):
             message = (f"Found reference {self.domain} later than maximum "
                        f"allowed {self.domain}={max_allowed_val}")
