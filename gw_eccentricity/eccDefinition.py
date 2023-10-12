@@ -1343,12 +1343,12 @@ class eccDefinition:
         if any([insufficient_pericenters_but_long_waveform,
                 insufficient_apocenters_but_long_waveform]) \
                 and self.set_failures_to_zero:
-            # store this information that ecc and mean have been set to zero
-            # to use it in other places
-            self.eccentricity_and_mean_anomaly_have_been_set_to_zero = True
+            # Store this information that we are setting ecc and mean anomaly
+            # to zero to use it in other places
+            self.setting_ecc_to_zero = True
             return self.set_eccentricity_and_mean_anomaly_to_zero()
         else:
-            self.eccentricity_and_mean_anomaly_have_been_set_to_zero = False
+            self.setting_ecc_to_zero = False
 
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
@@ -1663,7 +1663,7 @@ class eccDefinition:
             if self.domain == "time":
                 # Add information about the maximum allowed time
                 message += " which corresponds to "
-                if self.eccentricity_and_mean_anomaly_have_been_set_to_zero:
+                if self.setting_ecc_to_zero:
                     message += ("time at `num_orbits_to_exclude_before_merger`"
                                 " orbits before the merger.")
                 else:
@@ -1678,7 +1678,7 @@ class eccDefinition:
             if self.domain == "time":
                 # Add information about the minimum allowed time
                 message += " which corresponds to "
-                if self.eccentricity_and_mean_anomaly_have_been_set_to_zero:
+                if self.setting_ecc_to_zero:
                     message += "the starting time in the time array."
                 else:
                     message += "max(first pericenter time, first apocenter time)."
