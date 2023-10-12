@@ -5,21 +5,21 @@ import numpy as np
 
 
 def test_set_failures_to_zero():
-    """Tests handling of failures due to insufficient extrema.
+    """Test handling of failures due to insufficient extrema.
 
     In certain situations, the waveform may have zero eccentricity or a very
     small eccentricity, making it difficult for the given method to identify
     any extrema. In cases where such a situation occurs, and if the user has
-    configured the 'set_failures_to_zero' to `True` in the 'extra_kwargs'
-    parameter, both the eccentricity and mean anomaly will be set to zero.
+    set 'set_failures_to_zero' to `True` in the 'extra_kwargs' parameter, both
+    the eccentricity and mean anomaly will be set to zero.
     """
     # The Amplitude and Frequency methods usually fail to detect any extrema
     # for eccentricities less than about 1e-3. Therefore, to test whether we
     # are setting eccentricity to zero when using these two methods, we use an
     # EccentricTD waveform with an initial eccentricity of 1e-4. However, since
     # the Residual and the Fits methods can detect extrema for the same
-    # eccentricity, we use a quasicircular waveform to test them with these
-    # methods.
+    # eccentricity, we instead use a quasicircular waveform to test the
+    # handling of failures due to insufficient extrema for these methods.
     lal_kwargs_ecc = {"approximant": "EccentricTD",
                       "q": 3.0,
                       "chi1": [0.0, 0.0, 0.0],
