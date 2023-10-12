@@ -17,7 +17,6 @@ from .utils import get_default_spline_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
-from .exceptions import InsufficientExtrema, NotInAllowedInputRange
 
 
 class eccDefinition:
@@ -1067,7 +1066,9 @@ class eccDefinition:
             return self.get_interp(self.t[extrema],
                                    self.omega22[extrema])
         else:
-            raise InsufficientExtrema(extrema_type, len(extrema))
+            raise Exception(
+                f"Sufficient number of {extrema_type} are not found."
+                " Can not create an interpolant.")
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
         """Check number of extrema.
@@ -1143,8 +1144,11 @@ class eccDefinition:
                     )
                 else:
                     method_message = ""
-                raise InsufficientExtrema(extrema_type, num_extrema,
-                                          method_message)
+                raise Exception(
+                    f"Number of {extrema_type} found = {num_extrema}.\n"
+                    "Can not build frequency interpolant through the "
+                    f"{extrema_type}.\n"
+                    f"{method_message}")
             return insufficient_extrema_but_long_waveform
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
@@ -1315,7 +1319,7 @@ class eccDefinition:
         # it might be that the eccentricity is too small for the current method
         # to detect it. See Fig.4 in arxiv.2302.11257. In such cases, we assume
         # that the waveform is probably quasicircular.
-        self.insufficient_pericenters_but_long_waveform \
+        insufficient_pericenters_but_long_waveform \
             = self.check_num_extrema(pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
@@ -1327,19 +1331,24 @@ class eccDefinition:
         else:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
-        self.insufficient_apocenters_but_long_waveform \
+        insufficient_apocenters_but_long_waveform \
             = self.check_num_extrema(apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema,
-        # and `set_failures_to_zero` is set to true, then we set the
-        # eccentricity and mean anomaly to zero and return them. In this case,
-        # the rest of the code in this function is not executed, and therefore,
-        # many variables used in diagnostic tests are never computed, making
-        # diagnostics irrelevant.
-        if any([self.insufficient_pericenters_but_long_waveform,
-                self.insufficient_apocenters_but_long_waveform]) \
+        # and `set_failures_to_zero` is true, then we set the eccentricity and
+        # mean anomaly to zero and return them. In this case, the rest of the
+        # code in this function is not executed, and therefore, many variables
+        # that are needed for making diagnostic plots are not computed. Thus,
+        # in such cases, the diagnostic plots may not work.
+        if any([insufficient_pericenters_but_long_waveform,
+                insufficient_apocenters_but_long_waveform]) \
                 and self.set_failures_to_zero:
+            # store this information that ecc and mean have been set to zero
+            # to use it in other places
+            self.eccentricity_and_mean_anomaly_have_been_set_to_zero = True
             return self.set_eccentricity_and_mean_anomaly_to_zero()
+        else:
+            self.eccentricity_and_mean_anomaly_have_been_set_to_zero = False
 
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
@@ -1372,7 +1381,7 @@ class eccDefinition:
         self.t_apocenters = self.t[self.apocenters_location]
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
-        if tref_in is None:
+        if self.domain == "frequency":
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
                 = self.compute_tref_in_and_fref_out_from_fref_in(self.fref_in)
@@ -1648,28 +1657,35 @@ class eccDefinition:
             can be measured.
         """
         input_vals = np.atleast_1d(input_vals)
-        add_extra_info = (
-            self.domain == "time" and
-            not any([self.insufficient_apocenters_but_long_waveform,
-                     self.insufficient_pericenters_but_long_waveform]))
         if any(input_vals > max_allowed_val):
             message = (f"Found reference {self.domain} later than maximum "
                        f"allowed {self.domain}={max_allowed_val}")
-            if add_extra_info:
-                message += (" which corresponds to min(last pericenter "
-                            "time, last apocenter time).")
-            raise NotInAllowedInputRange(
-                f"Reference {self.domain}", min_allowed_val, max_allowed_val,
-                message)
+            if self.domain == "time":
+                # Add information about the maximum allowed time
+                message += " which corresponds to "
+                if self.eccentricity_and_mean_anomaly_have_been_set_to_zero:
+                    message += ("time at `num_orbits_to_exclude_before_merger`"
+                                " orbits before the merger.")
+                else:
+                    message += "min(last pericenter time, last apocenter time)."
+            raise Exception(
+                f"Reference {self.domain} is outside the allowed "
+                f"range [{min_allowed_val}, {max_allowed_val}]."
+                f"\n{message}")
         if any(input_vals < min_allowed_val):
             message = (f"Found reference {self.domain} earlier than minimum "
                        f"allowed {self.domain}={min_allowed_val}")
-            if add_extra_info:
-                message += (" which corresponds to max(first pericenter "
-                            "time, first apocenter time).")
-            raise NotInAllowedInputRange(
-                f"Reference {self.domain}", min_allowed_val, max_allowed_val,
-                message)
+            if self.domain == "time":
+                # Add information about the minimum allowed time
+                message += " which corresponds to "
+                if self.eccentricity_and_mean_anomaly_have_been_set_to_zero:
+                    message += "the starting time in the time array."
+                else:
+                    message += "max(first pericenter time, first apocenter time)."
+            raise Exception(
+                f"Reference {self.domain} is outside the allowed "
+                f"range [{min_allowed_val}, {max_allowed_val}]."
+                f"\n{message}")
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
@@ -1696,7 +1712,6 @@ class eccDefinition:
             return values regardless of debug_level. However, the warnings
             will still be suppressed for debug_level < 1.
         """
-
         # This function only has checks with the flag important=False, which
         # means that warnings are suppressed when debug_level < 1.
         # We return without running the rest of the body to avoid unnecessary
