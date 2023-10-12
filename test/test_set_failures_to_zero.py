@@ -5,7 +5,7 @@ import numpy as np
 
 
 def test_set_failures_to_zero():
-    """ Tests that failures handling due to insufficient extrema.
+    """Tests handling of failures due to insufficient extrema.
 
     In certain situations, the waveform may have zero eccentricity or a very
     small eccentricity, making it difficult for the given method to identify
