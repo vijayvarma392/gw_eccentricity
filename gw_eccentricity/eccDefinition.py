@@ -243,10 +243,21 @@ class eccDefinition:
                 extrema are not found. This can happen for various reasons
                 including when the eccentricity is too small for some methods
                 (like the Amplitude method) to measure. See e.g. Fig.4 of
-                arxiv.2302.11257. If `set_failures_to_zero` is set to True, we
-                assume that small eccentricity is the cause, and set the
-                returned eccentricity and mean anomaly to zero when sufficient
-                extrema are not found. USE THIS WITH CAUTION!
+                arxiv.2302.11257. If no extrema are found but the following two
+                conditions are met:
+
+                1. `set_failures_to_zero` is set to `True`.
+                2. The length of the waveform is required to be at least (5 +
+                `num_obrits_to_exclude_before_merger`) orbits long. By default,
+                `num_obrits_to_exclude_before_merger` is set to 2, meaning that
+                2 orbits are removed from the waveform before it is used by the
+                extrema finding routine. Consequently, in the default
+                configuration, the original waveform in the input `dataDict`
+                must have a minimum length of 7 orbits.
+
+                we assume that small eccentricity is the cause, and set the
+                returned eccentricity and mean anomaly to zero.
+                USE THIS WITH CAUTION!
         """
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp22_merger, \
@@ -1076,11 +1087,19 @@ class eccDefinition:
         Check the number of extrema to determine if there are enough for
         building the interpolants through the pericenters and apocenters. In
         cases where the number of extrema is insufficient, i.e., less than 2,
-        we further verify if the provided waveform is long enough to have a
-        sufficient number of extrema.
+        we further verify if the waveform is long enough to have a sufficient
+        number of extrema.
 
-        If the waveform is long enough, but the chosen method fails to detect
-        any extrema, it is possible that the eccentricity is too small. If
+        We verify that the waveform sent to the peak finding routine is a
+        minimum of 5 orbits long. By default,
+        `num_orbits_to_exclude_before_merger` is set to 2, which means that 2
+        orbits are subtracted from the original waveform within the input
+        dataDict. Consequently, in the default configuration, the original
+        waveform must be at least 7 orbits in length to be considered as
+        sufficiently long.
+
+        If it is sufficiently long, but the chosen method fails to detect any
+        extrema, it is possible that the eccentricity is too small. If
         `set_failures_to_zero` is set to True, then we set
         `insufficient_extrema_but_long_waveform` to True and return it.
 
@@ -1315,10 +1334,12 @@ class eccDefinition:
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
         # Check if there are a sufficient number of extrema. In cases where the
-        # waveform is long enough but the method fails to detect any extrema,
-        # it might be that the eccentricity is too small for the current method
-        # to detect it. See Fig.4 in arxiv.2302.11257. In such cases, we assume
-        # that the waveform is probably quasicircular.
+        # waveform is long enough (at least 5 +
+        # `num_orbits_to_exclude_before_merger`, i.e., 7 orbits long with
+        # default settings) but the method fails to detect any extrema, it
+        # might be that the eccentricity is too small for the current method to
+        # detect it. See Fig.4 in arxiv.2302.11257. In such cases, the
+        # following variable will be true.
         insufficient_pericenters_but_long_waveform \
             = self.check_num_extrema(pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
@@ -1456,31 +1477,13 @@ class eccDefinition:
         if self.domain == "time":
             # This function sets eccentricity and mean anomaly to zero when a
             # method fails to detect any extrema, and therefore, in such cases,
-            # we can set tref_out to be the times that fall within the range of
-            # self.t.
-            self.tref_out = self.tref_in[
-                np.logical_and(self.tref_in >= min(self.t),
-                               self.tref_in <= max(self.t))]
+            # we can set tref_out to be the same as tref_in.
+            self.tref_out = self.tref_in
             out_len = len(self.tref_out)
-            if out_len == 0:
-                # check that tref_in is in the allowed range
-                self.check_input_limits(
-                    self.tref_in, min(self.t), max(self.t))
         else:
-            # Since we don't have the maximum and minimum allowed reference
-            # frequencies computed from the frequencies at the pericenters and
-            # apocenters, we simply set the maximum and minimum values to be
-            # the maximum and minimum of instantaneous f22, respectively.
-            f22_min = min(self.omega22) / (2 * np.pi)
-            f22_max = max(self.omega22) / (2 * np.pi)
-            self.fref_out = self.fref_in[
-                np.logical_and(self.fref_in >= f22_min,
-                               self.fref_in <= f22_max)]
+            # similarly we can set fref_out to be the same as fref_in
+            self.fref_out = self.fref_in
             out_len = len(self.fref_out)
-            if out_len == 0:
-                # check that fref_in is in the allowed range
-                self.check_input_limits(
-                    self.fref_in, f22_min, f22_max)
         self.eccentricity = np.zeros(out_len)
         self.mean_anomaly = np.zeros(out_len)
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
@@ -1502,6 +1505,13 @@ class eccDefinition:
         # If the original input was scalar, convert the measured eccentricity,
         # mean anomaly, etc., to scalar.
         if self.ref_ndim == 0:
+            # check if ecc, mean ano have more than one elements
+            for var, arr in zip(["eccentricity", "mean_anomaly"],
+                                [self.eccentricity, self.mean_anomaly]):
+                if len(arr) != 1:
+                    raise Exception(f"The reference {self.domain} is scalar "
+                                    f"but measured {var} does not have "
+                                    "exactly one element.")
             self.eccentricity = self.eccentricity[0]
             self.mean_anomaly = self.mean_anomaly[0]
             if self.domain == "time":

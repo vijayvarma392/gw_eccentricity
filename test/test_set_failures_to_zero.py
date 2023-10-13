@@ -5,7 +5,8 @@ import numpy as np
 
 
 def test_set_failures_to_zero():
-    """Test handling of failures due to insufficient extrema.
+    """Test that the interface works with set_failures_to_zero for waveforms
+    with small or zero ecc.
 
     In certain situations, the waveform may have zero eccentricity or a very
     small eccentricity, making it difficult for the given method to identify
@@ -36,34 +37,50 @@ def test_set_failures_to_zero():
     # Create the dataDict for Residual and Fits method
     dataDict_qc = load_data.load_waveform(**lal_kwargs_qc)
     available_methods = gw_eccentricity.get_available_methods()
-    tref_in = -8000
-    fref_in = 0.005
     # The following will set ecc and mean ano to zero
     # if no extrema are found.
     extra_kwargs = {"set_failures_to_zero": True}
+
+    # We want to test it with both a single reference point
+    # as well as an array of reference points
+    tref_in = {"scalar": -8000.0,
+               "array": np.arange(-8000.0, 0.)}
+    fref_in = {"scalar": 0.05,
+               "array": np.arange(0.02, 0.05, 0.005)}
     for method in available_methods:
         if method in ["Amplitude", "Frequency"]:
             dataDict = dataDict_ecc
         else:
             dataDict = dataDict_qc
-        gwecc_dict = measure_eccentricity(
-            tref_in=tref_in,
-            method=method,
-            dataDict=dataDict,
-            extra_kwargs=extra_kwargs)
-        tref_out = gwecc_dict["tref_out"]
-        ecc_ref = gwecc_dict["eccentricity"]
-        meanano_ref = gwecc_dict["mean_anomaly"]
-        np.testing.assert_allclose(ecc_ref, 0.0)
-        np.testing.assert_allclose(meanano_ref, 0.0)
-
-        gwecc_dict = measure_eccentricity(
-            fref_in=fref_in,
-            method=method,
-            dataDict=dataDict,
-            extra_kwargs=extra_kwargs)
-        fref_out = gwecc_dict["fref_out"]
-        ecc_ref = gwecc_dict["eccentricity"]
-        meanano_ref = gwecc_dict["mean_anomaly"]
-        np.testing.assert_allclose(ecc_ref, 0.0)
-        np.testing.assert_allclose(meanano_ref, 0.0)
+        # test for reference time
+        for ref in tref_in:
+            gwecc_dict = measure_eccentricity(
+                tref_in=tref_in[ref],
+                method=method,
+                dataDict=dataDict,
+                extra_kwargs=extra_kwargs)
+            tref_out = gwecc_dict["tref_out"]
+            ecc_ref = gwecc_dict["eccentricity"]
+            meanano_ref = gwecc_dict["mean_anomaly"]
+            np.testing.assert_allclose(
+                ecc_ref, 0.0 if ref == "scalar"
+                else np.zeros(len(tref_in[ref])))
+            np.testing.assert_allclose(
+                meanano_ref, 0.0 if ref == "scalar"
+                else np.zeros(len(tref_in[ref])))
+        # test for reference frequency
+        for ref in fref_in:
+            gwecc_dict = measure_eccentricity(
+                fref_in=fref_in[ref],
+                method=method,
+                dataDict=dataDict,
+                extra_kwargs=extra_kwargs)
+            fref_out = gwecc_dict["fref_out"]
+            ecc_ref = gwecc_dict["eccentricity"]
+            meanano_ref = gwecc_dict["mean_anomaly"]
+            np.testing.assert_allclose(
+                ecc_ref, 0.0 if ref == "scalar"
+                else np.zeros(len(fref_in[ref])))
+            np.testing.assert_allclose(
+                meanano_ref, 0.0 if ref == "scalar"
+                else np.zeros(len(fref_in[ref])))

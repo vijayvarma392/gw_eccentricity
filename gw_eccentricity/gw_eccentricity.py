@@ -365,10 +365,21 @@ def measure_eccentricity(tref_in=None,
             extrema are not found. This can happen for various reasons
             including when the eccentricity is too small for some methods (like
             the Amplitude method) to measure. See e.g. Fig.4 of
-            arxiv.2302.11257. If `set_failures_to_zero` is set to True, we
-            assume that small eccentricity is the cause, and set the returned
-            eccentricity and mean anomaly to zero when sufficient extrema are
-            not found. USE THIS WITH CAUTION!
+            arxiv.2302.11257. If no extrema are found but the following two
+            conditions are met:
+
+            1. `set_failures_to_zero` is set to `True`.
+            2. The length of the waveform is required to be at least (5 +
+            `num_obrits_to_exclude_before_merger`) orbits long. By default,
+            `num_obrits_to_exclude_before_merger` is set to 2, meaning that 2
+            orbits are removed from the waveform before it is used by the
+            extrema finding routine. Consequently, in the default
+            configuration, the original waveform in the input `dataDict` must
+            have a minimum length of 7 orbits.
+
+            we assume that small eccentricity is the cause, and set the
+            returned eccentricity and mean anomaly to zero.  USE THIS WITH
+            CAUTION!
 
     Returns
     -------
