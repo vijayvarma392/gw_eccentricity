@@ -740,16 +740,20 @@ def load_sxs_catalogformat(**kwargs):
         format. This function looks for three files in the `data_dir` based on
         the `extrap_order`:
 
-        1. The strain file named as `Strain_N{extrap_order}.h5`
-        2. The corresponding json file named as `Strain_N{extrap_order}.json`
-        3. The horizon file named as `Horizons.h5`
-
-        1. and 2. are required whereas 3. is optional.
+        1. The strain file `Strain_N{extrap_order}.h5` (required)
+        2. The corresponding json file `Strain_N{extrap_order}.json` (required)
+        3. The metadata file `metadata.txt` (required when `include_zero_ecc`
+          or `include_params_dict` is True)
+        4. The horizon file `Horizons.h5` (optional)
 
         `Strain_N{extrap_order}.h5` contains the waveform extrapolated to
         future null-infinity and corrected for initial center-of-mass
         drift. This and `Strain_N{extrap_order}.json` must be provided to load
         waveform modes.
+
+        When `include_zero_ecc` or `include_params_dict` is True, it is
+        required to obtain the parameters used in the NR simulation. See more
+        under `get_params_dict_from_sxs_metadata`.
 
         If `Horizons.h5` is provided, it is used to get a better estimate of
         the duration of an orbit from phase data to use it for removing junk
@@ -882,12 +886,11 @@ def load_sxs_catalogformat_old(**kwargs):
     following two files are looked for in the `data_dir` directory:
 
     1. `rhOverM_Asymptotic_GeometricUnits_CoM.h5` (mandatory).
-    2. `Horizons.h5` (optional).
-      If this file exists in `data_dir`, it is used to estimate the duration of
-      an orbit from the phase data. For detailed information on how this file
-      is utilized, please refer to the documentation under the
-      `num_orbits_to_remove_as_junk` parameter in the docstring of
-      `load_sxs_catalogformat`.
+    2. `metadata.txt` (required when `include_zero_ecc`
+          or `include_params_dict` is True). For more details, see `data_dir`
+      under `load_sxs_catalogformat`.
+    3. `Horizons.h5` (optional). For more details, see `data_dir`
+      under `load_sxs_catalogformat`.
     """
     kwargs = check_kwargs_and_set_defaults(
         kwargs,
