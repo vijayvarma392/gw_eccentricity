@@ -7,6 +7,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -16,7 +17,6 @@ from .utils import get_default_spline_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
-import matplotlib.pyplot as plt
 
 
 class eccDefinition:
@@ -237,6 +237,28 @@ class eccDefinition:
                 methods. See
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
                 for allowed keys.
+
+            set_failures_to_zero : bool, default=False
+                The code normally raises an exception if sufficient number of
+                extrema are not found. This can happen for various reasons
+                including when the eccentricity is too small for some methods
+                (like the Amplitude method) to measure. See e.g. Fig.4 of
+                arxiv.2302.11257. If no extrema are found, we check whether the
+                following two conditions are satisfied.
+
+                1. `set_failures_to_zero` is set to `True`.
+                2. The waveform is at least
+                  (5 + `num_obrits_to_exclude_before_merger`) orbits long. By
+                  default, `num_obrits_to_exclude_before_merger` is set to 2,
+                  meaning that 2 orbits are removed from the waveform before it
+                  is used by the extrema finding routine. Consequently, in the
+                  default configuration, the original waveform in the input
+                  `dataDict` must have a minimum length of 7 orbits.
+
+                If both of these conditions are met, we assume that small
+                eccentricity is the cause, and set the returned eccentricity
+                and mean anomaly to zero.
+                USE THIS WITH CAUTION!
         """
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp22_merger, \
@@ -272,6 +294,7 @@ class eccDefinition:
             = self.get_available_omega22_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
         self.debug_plots = self.extra_kwargs["debug_plots"]
+        self.set_failures_to_zero = self.extra_kwargs["set_failures_to_zero"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -305,7 +328,6 @@ class eccDefinition:
         # called, these get set in that function.
         self.t_for_omega22_average = None
         self.omega22_average = None
-
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp22_and_res_omega22()
@@ -716,6 +738,7 @@ class eccDefinition:
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
+            "set_failures_to_zero": False,
         }
         return default_extra_kwargs
 
@@ -1060,21 +1083,93 @@ class eccDefinition:
                 " Can not create an interpolant.")
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
-        """Check number of extrema."""
+        """Check number of extrema.
+
+        Check the number of extrema to determine if there are enough for
+        building the interpolants through the pericenters and apocenters. In
+        cases where the number of extrema is insufficient, i.e., less than 2,
+        we further verify if the waveform is long enough to have a sufficient
+        number of extrema.
+
+        We verify that the waveform sent to the peak finding routine is a
+        minimum of 5 orbits long. By default,
+        `num_orbits_to_exclude_before_merger` is set to 2, which means that 2
+        orbits are subtracted from the original waveform within the input
+        dataDict. Consequently, in the default configuration, the original
+        waveform must be at least 7 orbits in length to be considered as
+        sufficiently long.
+
+        If it is sufficiently long, but the chosen method fails to detect any
+        extrema, it is possible that the eccentricity is too small. If
+        `set_failures_to_zero` is set to True, then we set
+        `insufficient_extrema_but_long_waveform` to True and return it.
+
+        Parameters
+        ----------
+        extrema : array-like
+            1d array of extrema to determine if the length is sufficient for
+            building interpolants of omega22 values at these extrema. We
+            require the length to be greater than or equal to two.
+        extrema_type: str, default="extrema"
+            String to indicate whether the extrema corresponds to pericenters
+            or the apocenters.
+
+        Returns
+        -------
+        insufficient_extrema_but_long_waveform : bool
+            True if the waveform has more than approximately 5 orbits but the
+            number of extrema is less than two. False otherwise.
+        """
         num_extrema = len(extrema)
         if num_extrema < 2:
-            recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
-            if self.method not in recommended_methods:
-                method_message = ("It's possible that the eccentricity is too "
-                                  f"low for the {self.method} method to detect"
-                                  f" the {extrema_type}. Try one of "
-                                  f"{recommended_methods}.")
+            # Check if the waveform is sufficiently long by estimating the
+            # approximate number of orbits contained in the waveform data using
+            # the phase of the (2, 2) mode, assuming that a phase change of
+            # 4*pi occurs over one orbit.
+            # NOTE: Since we truncate the waveform data by removing
+            # `num_orbits_to_remove_before_merger` orbits before the merger,
+            # phase22[-1] corresponds to the phase of the (2, 2) mode
+            # `num_orbits_to_remove_before_merger` orbits before the merger.
+            approximate_num_orbits = ((self.phase22[-1] - self.phase22[0])
+                                      / (4 * np.pi))
+            if approximate_num_orbits > 5:
+                # The waveform is sufficiently long but the extrema finding
+                # method fails to find enough number of extrema. This may
+                # happen if the eccentricity is too small and, therefore, the
+                # modulations in the amplitude/frequency is too small for the
+                # method to detect them.
+                insufficient_extrema_but_long_waveform = True
             else:
-                method_message = ""
-            raise Exception(
-                f"Number of {extrema_type} found = {num_extrema}.\n"
-                f"Can not build frequency interpolant through the {extrema_type}.\n"
-                f"{method_message}")
+                insufficient_extrema_but_long_waveform = False
+            if insufficient_extrema_but_long_waveform \
+               and self.set_failures_to_zero:
+                debug_message(
+                    "The waveform has approximately "
+                    f"{approximate_num_orbits:.2f}"
+                    f" orbits but number of {extrema_type} found is "
+                    f"{num_extrema}. Since `set_failures_to_zero` is set to "
+                    f"{self.set_failures_to_zero}, no exception is raised. "
+                    "Instead the eccentricity and mean anomaly will be set to "
+                    "zero.",
+                    important=True,
+                    debug_level=0)
+            else:
+                recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
+                if self.method not in recommended_methods:
+                    method_message = (
+                        "It's possible that the eccentricity is too small for "
+                        f"the {self.method} method to detect the "
+                        f"{extrema_type}. Try one of {recommended_methods} "
+                        "which should work even for a very small eccentricity."
+                    )
+                else:
+                    method_message = ""
+                raise Exception(
+                    f"Number of {extrema_type} found = {num_extrema}.\n"
+                    "Can not build frequency interpolant through the "
+                    f"{extrema_type}.\n"
+                    f"{method_message}")
+            return insufficient_extrema_but_long_waveform
 
     def check_if_dropped_too_many_extrema(self, original_extrema, new_extrema,
                                           extrema_type="extrema",
@@ -1222,10 +1317,32 @@ class eccDefinition:
                 Measured mean anomaly at *tref_out*/*fref_out*. Same type as
                 *tref_out*/*fref_out*.
         """
+        # check that only one of tref_in or fref_in is provided
+        if (tref_in is not None) + (fref_in is not None) != 1:
+            raise KeyError("Exactly one of tref_in and fref_in"
+                           " should be specified.")
+        elif tref_in is not None:
+            # Identify whether the reference point is in time or frequency
+            self.domain = "time"
+            # Identify whether the reference point is scalar or array-like
+            self.ref_ndim = np.ndim(tref_in)
+            self.tref_in = np.atleast_1d(tref_in)
+        else:
+            self.domain = "frequency"
+            self.ref_ndim = np.ndim(fref_in)
+            self.fref_in = np.atleast_1d(fref_in)
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
-        self.check_num_extrema(pericenters, "pericenters")
+        # Check if there are a sufficient number of extrema. In cases where the
+        # waveform is long enough (at least 5 +
+        # `num_orbits_to_exclude_before_merger`, i.e., 7 orbits long with
+        # default settings) but the method fails to detect any extrema, it
+        # might be that the eccentricity is too small for the current method to
+        # detect it. See Fig.4 in arxiv.2302.11257. In such cases, the
+        # following variable will be true.
+        insufficient_pericenters_but_long_waveform \
+            = self.check_num_extrema(pericenters, "pericenters")
         # In some cases it is easier to find the pericenters than finding the
         # apocenters. For such cases, one can only find the pericenters and use
         # the mid points between two consecutive pericenters as the location of
@@ -1236,7 +1353,25 @@ class eccDefinition:
         else:
             apocenters = self.find_extrema("apocenters")
         original_apocenters = apocenters.copy()
-        self.check_num_extrema(apocenters, "apocenters")
+        insufficient_apocenters_but_long_waveform \
+            = self.check_num_extrema(apocenters, "apocenters")
+
+        # If the eccentricity is too small for a method to find the extrema,
+        # and `set_failures_to_zero` is true, then we set the eccentricity and
+        # mean anomaly to zero and return them. In this case, the rest of the
+        # code in this function is not executed, and therefore, many variables
+        # that are needed for making diagnostic plots are not computed. Thus,
+        # in such cases, the diagnostic plots may not work.
+        if any([insufficient_pericenters_but_long_waveform,
+                insufficient_apocenters_but_long_waveform]) \
+                and self.set_failures_to_zero:
+            # Store this information that we are setting ecc and mean anomaly
+            # to zero to use it in other places
+            self.setting_ecc_to_zero = True
+            return self.set_eccentricity_and_mean_anomaly_to_zero()
+        else:
+            self.setting_ecc_to_zero = False
+
         # Choose good extrema
         self.pericenters_location, self.apocenters_location \
             = self.get_good_extrema(pericenters, apocenters)
@@ -1268,20 +1403,10 @@ class eccDefinition:
         self.t_apocenters = self.t[self.apocenters_location]
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
-        # check that only one of tref_in or fref_in is provided
-        if (tref_in is not None) + (fref_in is not None) != 1:
-            raise KeyError("Exactly one of tref_in and fref_in"
-                           " should be specified.")
-        elif tref_in is not None:
-            tref_in_ndim = np.ndim(tref_in)
-            self.tref_in = np.atleast_1d(tref_in)
-        else:
-            fref_in_ndim = np.ndim(fref_in)
-            tref_in_ndim = fref_in_ndim
-            fref_in = np.atleast_1d(fref_in)
+        if self.domain == "frequency":
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
-                = self.compute_tref_in_and_fref_out_from_fref_in(fref_in)
+                = self.compute_tref_in_and_fref_out_from_fref_in(self.fref_in)
         # We measure eccentricity and mean anomaly from tmin to tmax.
         self.tref_out = self.tref_in[
             np.logical_and(self.tref_in <= self.tmax,
@@ -1293,7 +1418,7 @@ class eccDefinition:
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
-        if fref_in is not None:
+        if self.domain == "frequency":
             if len(self.fref_out) != len(self.tref_out):
                 raise Exception(
                     "length of fref_out and tref_out do not match."
@@ -1302,18 +1427,7 @@ class eccDefinition:
 
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
-            if self.tref_in[-1] > self.tmax:
-                raise Exception(
-                    f"tref_in {self.tref_in} is later than tmax="
-                    f"{self.tmax}, "
-                    "which corresponds to min(last pericenter "
-                    "time, last apocenter time).")
-            if self.tref_in[0] < self.tmin:
-                raise Exception(
-                    f"tref_in {self.tref_in} is earlier than tmin="
-                    f"{self.tmin}, "
-                    "which corresponds to max(first pericenter "
-                    "time, first apocenter time).")
+            self.check_input_limits(self.tref_in, self.tmin, self.tmax)
             raise Exception(
                 "tref_out is empty. This can happen if the "
                 "waveform has insufficient identifiable "
@@ -1350,26 +1464,74 @@ class eccDefinition:
         # check if eccentricity is monotonic and convex
         self.check_monotonicity_and_convexity()
 
-        # If tref_in is a scalar, return a scalar
-        if tref_in_ndim == 0:
-            self.mean_anomaly = self.mean_anomaly[0]
-            self.eccentricity = self.eccentricity[0]
-            self.tref_out = self.tref_out[0]
-
-        if fref_in is not None and fref_in_ndim == 0:
-            self.fref_out = self.fref_out[0]
-
         if self.debug_plots:
             # make a plot for diagnostics
             fig, axes = self.make_diagnostic_plots()
             self.save_debug_fig(fig, f"gwecc_{self.method}_diagnostics.pdf")
             plt.close(fig)
-        return_dict = {"eccentricity": self.eccentricity,
-                       "mean_anomaly": self.mean_anomaly}
-        if fref_in is not None:
-            return_dict.update({"fref_out": self.fref_out})
+        # return measured eccentricity, mean anomaly and reference time or
+        # frequency where these are measured.
+        return self.make_return_dict_for_eccentricity_and_mean_anomaly()
+
+    def set_eccentricity_and_mean_anomaly_to_zero(self):
+        """Set eccentricity and mean_anomaly to zero."""
+        if self.domain == "time":
+            # This function sets eccentricity and mean anomaly to zero when a
+            # method fails to detect any extrema, and therefore, in such cases,
+            # we can set tref_out to be the same as tref_in.
+            self.tref_out = self.tref_in
+            out_len = len(self.tref_out)
         else:
-            return_dict.update({"tref_out": self.tref_out})
+            # similarly we can set fref_out to be the same as fref_in
+            self.fref_out = self.fref_in
+            out_len = len(self.fref_out)
+        self.eccentricity = np.zeros(out_len)
+        self.mean_anomaly = np.zeros(out_len)
+        return self.make_return_dict_for_eccentricity_and_mean_anomaly()
+
+    def make_return_dict_for_eccentricity_and_mean_anomaly(self):
+        """Prepare a dictionary with reference time/freq, ecc, and mean anomaly.
+
+        In this function, we prepare a dictionary containing the measured
+        eccentricity, mean anomaly, and the reference time or frequency where
+        these are measured.
+
+        We also make sure that if the input reference time/frequency is scalar,
+        then the returned eccentricity and mean anomaly are also scalars. To do
+        this, we use the information about tref_in/fref_in that is provided by
+        the user. At the top of the measure_ecc function, we set ref_ndim to
+        identify whether the original input was scalar or array-like and use
+        that here.
+        """
+        # If the original input was scalar, convert the measured eccentricity,
+        # mean anomaly, etc., to scalar.
+        if self.ref_ndim == 0:
+            # check if ecc, mean ano have more than one elements
+            for var, arr in zip(["eccentricity", "mean_anomaly"],
+                                [self.eccentricity, self.mean_anomaly]):
+                if len(arr) != 1:
+                    raise Exception(f"The reference {self.domain} is scalar "
+                                    f"but measured {var} does not have "
+                                    "exactly one element.")
+            self.eccentricity = self.eccentricity[0]
+            self.mean_anomaly = self.mean_anomaly[0]
+            if self.domain == "time":
+                self.tref_out = self.tref_out[0]
+            else:
+                self.fref_out = self.fref_out[0]
+
+        return_dict = {
+            "eccentricity": self.eccentricity,
+            "mean_anomaly": self.mean_anomaly
+        }
+        # Return either tref_out or fref_out, depending on whether the input
+        # reference point was in time or frequency, respectively.
+        if self.domain == "time":
+            return_dict.update({
+              "tref_out": self.tref_out})
+        else:
+            return_dict.update({
+              "fref_out": self.fref_out})
         return return_dict
 
     def et_from_ew22_0pn(self, ew22):
@@ -1408,7 +1570,7 @@ class eccDefinition:
         Eccentricity at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        self.check_input_limits(t, self.tmin, self.tmax)
 
         omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
         omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
@@ -1435,7 +1597,7 @@ class eccDefinition:
             nth order time derivative of eccentricity.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        self.check_input_limits(t, self.tmin, self.tmax)
 
         if self.ecc_for_checks is None:
             self.ecc_for_checks = self.compute_eccentricity(
@@ -1474,7 +1636,7 @@ class eccDefinition:
         Mean anomaly at t.
         """
         # Check that t is within tmin and tmax to avoid extrapolation
-        self.check_time_limits(t)
+        self.check_input_limits(t, self.tmin, self.tmax)
 
         # Get the mean anomaly at the pericenters
         mean_ano_pericenters = np.arange(len(self.t_pericenters)) * 2 * np.pi
@@ -1484,21 +1646,57 @@ class eccDefinition:
         # Modulo 2pi to make the mean anomaly vary between 0 and 2pi
         return mean_ano % (2 * np.pi)
 
-    def check_time_limits(self, t):
-        """Check that time t is within tmin and tmax.
+    def check_input_limits(self, input_vals, min_allowed_val, max_allowed_val):
+        """Check that the input time/frequency is within the allowed range.
 
-        To avoid any extrapolation, check that the times t are
-        always greater than or equal to tmin and always less than tmax.
+        To avoid any extrapolation, check that the times or frequencies are
+        always greater than or equal to the minimum allowed value and always
+        less than the maximum allowed value.
+
+        Parameters
+        ----------
+        input_vals: float or array-like
+            Input times or frequencies where eccentricity/mean anomaly is to
+            be measured.
+
+        min_allowed_val: float
+            Minimum allowed time or frequency where eccentricity/mean anomaly
+            can be measured.
+
+        max_allowed_val: float
+            Maximum allowed time or frequency where eccentricity/mean anomaly
+            can be measured.
         """
-        t = np.atleast_1d(t)
-        if any(t > self.tmax):
-            raise Exception(f"Found times later than tmax={self.tmax}, "
-                            "which corresponds to min(last pericenter "
-                            "time, last apocenter time).")
-        if any(t < self.tmin):
-            raise Exception(f"Found times earlier than tmin= {self.tmin}, "
-                            "which corresponds to max(first pericenter "
-                            "time, first apocenter time).")
+        input_vals = np.atleast_1d(input_vals)
+        if any(input_vals > max_allowed_val):
+            message = (f"Found reference {self.domain} later than maximum "
+                       f"allowed {self.domain}={max_allowed_val}")
+            if self.domain == "time":
+                # Add information about the maximum allowed time
+                message += " which corresponds to "
+                if self.setting_ecc_to_zero:
+                    message += ("time at `num_orbits_to_exclude_before_merger`"
+                                " orbits before the merger.")
+                else:
+                    message += "min(last pericenter time, last apocenter time)."
+            raise Exception(
+                f"Reference {self.domain} is outside the allowed "
+                f"range [{min_allowed_val}, {max_allowed_val}]."
+                f"\n{message}")
+        if any(input_vals < min_allowed_val):
+            message = (f"Found reference {self.domain} earlier than minimum "
+                       f"allowed {self.domain}={min_allowed_val}")
+            if self.domain == "time":
+                # Add information about the minimum allowed time
+                message += " which corresponds to "
+                if self.setting_ecc_to_zero:
+                    message += "the starting time in the time array."
+                else:
+                    message += "max(first pericenter time, first apocenter time)."
+            raise Exception(
+                f"Reference {self.domain} is outside the allowed "
+                f"range [{min_allowed_val}, {max_allowed_val}]."
+                f"\n{message}")
 
     def check_extrema_separation(self, extrema_location,
                                  extrema_type="extrema",
@@ -1525,7 +1723,6 @@ class eccDefinition:
             return values regardless of debug_level. However, the warnings
             will still be suppressed for debug_level < 1.
         """
-
         # This function only has checks with the flag important=False, which
         # means that warnings are suppressed when debug_level < 1.
         # We return without running the rest of the body to avoid unnecessary
@@ -2192,16 +2389,10 @@ class eccDefinition:
             np.logical_and(fref_in >= fref_min,
                            fref_in < fref_max)]
         if len(fref_out) == 0:
-            if fref_in[0] < fref_min:
-                raise Exception("fref_in is earlier than minimum available "
-                                f"frequency {fref_min}")
-            if fref_in[-1] > fref_max:
-                raise Exception("fref_in is later than maximum available "
-                                f"frequency {fref_max}")
-            else:
-                raise Exception("fref_out is empty. This can happen if the "
-                                "waveform has insufficient identifiable "
-                                "pericenters/apocenters.")
+            self.check_input_limits(fref_in, fref_min, fref_max)
+            raise Exception("fref_out is empty. This can happen if the "
+                            "waveform has insufficient identifiable "
+                            "pericenters/apocenters.")
         return fref_out
 
     def make_diagnostic_plots(
