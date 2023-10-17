@@ -885,7 +885,7 @@ def load_sxs_catalogformat_old(**kwargs):
     `rhOverM_Asymptotic_GeometricUnits_CoM.h5` contains all the extrapolated
     waveform modes and given an `extrap_order`, the corresponding waveform
     modes are retrieved from this file. Therefore, in the old format, the
-    following two files are looked for in the `data_dir` directory:
+    following files are looked for in the `data_dir` directory:
 
     1. `rhOverM_Asymptotic_GeometricUnits_CoM.h5` (mandatory).
     2. `metadata.txt` (required when `include_zero_ecc`
@@ -1016,8 +1016,8 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     """Make dictionary to return for sxs catalog format.
 
     This function takes the modes data extracted from the sxs catalog format
-    files and the following list of things and returns the final processed
-    data.
+    files and performs the following list of actions and returns the final
+    processed data.
 
     - Remove junk from the begining of the data
     - Shift the time axis to align the global peak amplitude to t = 0
@@ -1343,9 +1343,9 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits,
     xA_data = horizons_data["AhA.dir"]["CoordCenterInertial.dat"]
     xB_data = horizons_data["AhB.dir"]["CoordCenterInertial.dat"]
     time = xA_data[:, 0]
-    separion_vec = xA_data[:, 1:4] - xB_data[:, 1:4]
+    separion_vec = xA_data[:, 1:] - xB_data[:, 1:]
     # We will assume the system to be non-precessing so that the motion
-    # are restricted in the x-y plane and the z-coordinate is effectively zero.
+    # is restricted in the x-y plane and the z-coordinate is effectively zero.
     # Check if it is true, i.e., z-coordinate remains very small
     if any(np.abs(separion_vec[:, 2]) > 1e-5):
         raise Exception(
@@ -1356,11 +1356,12 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits,
     # Interpolate phase
     time_interp = np.arange(min(time), max(time), deltaTOverM)
     phase_interp = InterpolatedUnivariateSpline(time, phase_orb)(time_interp)
-    # Find the duration of first num_orbits assuming that the orbital phase changes
-    # by 2pi over one orbit 
+    # Find the duration of first num_orbits assuming that the orbital phase
+    # changes by 2pi over one orbit
     idx_at_num_obits_from_start = np.argmin(
         np.abs(phase_interp - (phase_interp[0] + num_orbits * 2 * np.pi)))
-    num_obits_duration = time_interp[idx_at_num_obits_from_start] - time_interp[0]
+    num_obits_duration = (time_interp[idx_at_num_obits_from_start]
+                          - time_interp[0])
     return num_obits_duration
 
 
