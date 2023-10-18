@@ -729,8 +729,8 @@ def load_sxs_catalogformat(**kwargs):
     https://data.black-holes.org/waveforms/documentation.html).
 
     For loading sxs catalog waveforms in old format see
-    `load_sxs_catalogformat_old`.  For loading lvcnr format files, see
-    `load_lvcnr_waveform`.
+    `load_sxs_catalogformat_old`.
+    For loading lvcnr format files, see `load_lvcnr_waveform`.
 
     Parameters
     ----------
