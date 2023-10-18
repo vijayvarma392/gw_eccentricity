@@ -726,9 +726,11 @@ def load_sxs_catalogformat(**kwargs):
 
     This function is intended for loading waveform modes from files in the sxs
     catalog in the new format, i.e., from 2023 onward (see
-    https://data.black-holes.org/waveforms/documentation.html).  For loading
-    sxs catalog waveforms in old format see `load_sxs_catalogformat_old` For
-    loading lvcnr format files, see `load_lvcnr_waveform`.
+    https://data.black-holes.org/waveforms/documentation.html).
+
+    For loading sxs catalog waveforms in old format see
+    `load_sxs_catalogformat_old`.  For loading lvcnr format files, see
+    `load_lvcnr_waveform`.
 
     Parameters
     ----------
@@ -859,9 +861,9 @@ def load_sxs_catalogformat(**kwargs):
     # get the modes
     t, modes_dict = get_modes_dict_from_sxs_catalog_format(**kwargs)
     # make dataDict and return
-    # Inside it the following are done:
+    # The following actions are performed and the resulting dict is returned:
     # - the original modes are cleaned by removing junk radiation
-    # - shift time axis such that peak occurs at t = 0
+    # - shift time axis such that the global amplitude peak occurs at t = 0
     # - add zeroecc data if `include_zero_ecc` is True
     # - add params dict if `include_params_dict` is True
     # see `make_return_dict_for_sxs_catalog_format` for more details.
@@ -872,18 +874,20 @@ def load_sxs_catalogformat(**kwargs):
 def load_sxs_catalogformat_old(**kwargs):
     """Load waveform modes from sxs catalog in old format.
 
-    This function can be used to load waveform modes from sxs catalog
-    in old format (prior to 2023).
+    This function can be used to load waveform modes from sxs catalog in old
+    format (prior to 2023). For loading sxs catalog waveforms in the new
+    format, see `load_sxs_catalogformat`.
 
     The allowed kwargs and defaults are the same as in `load_sxs_catalogformat`
     except that the waveform file that is to be provided in the `data_dir`
-    directory is different. See below for more details on `data_dir`. All other
-    args in `kwargs` are the same as in `load_sxs_catalogformat`. For detailed
-    description of the kwargs see the docstring under `load_sxs_catalogformat`.
+    directory is different. See below for more details on the files that should
+    exist inside `data_dir`. All other args in `kwargs` are the same as in
+    `load_sxs_catalogformat`. For detailed description of the kwargs see the
+    docstring under `load_sxs_catalogformat`.
 
     In the old catalog format, a single waveform file named
     `rhOverM_Asymptotic_GeometricUnits_CoM.h5` contains all the extrapolated
-    waveform modes and given an `extrap_order`, the corresponding waveform
+    waveform modes and for a given `extrap_order`, the corresponding waveform
     modes are retrieved from this file. Therefore, in the old format, the
     following files are looked for in the `data_dir` directory:
 
@@ -905,7 +909,7 @@ def load_sxs_catalogformat_old(**kwargs):
     # get the modes
     t, modes_dict = get_modes_dict_from_sxs_catalog_old_format(**kwargs)
     # make dataDict and return
-    # Inside it the following are done:
+    # The following actions are performed and the resulting dict is returned:
     # - the original modes are cleaned by removing junk radiation
     # - shift time axis such that peak occurs at t = 0
     # - add zeroecc data if `include_zero_ecc` is True
@@ -918,7 +922,7 @@ def load_sxs_catalogformat_old(**kwargs):
 def check_sxs_data_dir(origin, **kwargs):
     """Check if the necessary files exist for loading sxs catalog format.
 
-    Depending on the origin, we look for a set of files needed to extract
+    Depending on the origin, it looks for a set of files needed to extract
     the waveform modes, get the parameters of the NR simulation and to
     clean the modes by removing junk radiation before returning the modes.
     These files are
