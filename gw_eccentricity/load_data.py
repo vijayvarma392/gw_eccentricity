@@ -6,7 +6,6 @@ import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
-from scipy.interpolate import InterpolatedUnivariateSpline
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
 from .utils import check_kwargs_and_set_defaults
@@ -1284,8 +1283,7 @@ def reomve_junk_from_nr_data(t, modes_dict, num_orbits_to_remove_as_junk):
 
 
 def remove_junk_from_sxs_catalogformat_using_horizons_data(
-        t, modes_dict, num_orbits_to_remove_as_junk, horizon_filepath,
-        deltaTOverM):
+        t, modes_dict, num_orbits_to_remove_as_junk, horizon_filepath):
     """Remove first `num_orbits_to_remove_as_junk` orbits as junk.
 
     Paramters
@@ -1302,10 +1300,6 @@ def remove_junk_from_sxs_catalogformat_using_horizons_data(
     horizon_filepath: str
         Path to the `Horizons.h5` file. This file typically can be found in the
         same directory where the waveform files are located in the SXS catalog.
-
-    deltaTOverM: float, default=1
-        Time step in dimensionless units. It is used to interpolate the data
-        since the NR data in `Horizons.h5` are not stored at uniform time grid.
 
     Returns
     -------
@@ -1327,8 +1321,7 @@ def remove_junk_from_sxs_catalogformat_using_horizons_data(
     return t_clean, modes_dict_clean
 
 
-def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits,
-                                              deltaTOverM=1):
+def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
     """Get the duration of `num_orbits` from phase data in `Horizons.h5`.
 
     Parameters
@@ -1341,10 +1334,6 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits,
         Number orbits from the start of the simulation. This function estimates
         the duration of `num_orbits` from orbital phase which is obtained from
         the coordinates of the black holes stored in the `Horizons.h5` file.
-
-    deltaTOverM: float, default=1
-        Time step in dimensionless units. It is used to interpolate the data
-        since the NR data in `Horizons.h5` are not stored at uniform time grid.
 
     Returns
     -------
@@ -1365,15 +1354,12 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits,
             "phase by assuming the motion is restricted in the x-y plane.")
     # Get the orbital phase
     phase_orb = np.unwrap(np.arctan2(separion_vec[:, 1], separion_vec[:, 0]))
-    # Interpolate phase
-    time_interp = np.arange(min(time), max(time), deltaTOverM)
-    phase_interp = InterpolatedUnivariateSpline(time, phase_orb)(time_interp)
     # Find the duration of first num_orbits assuming that the orbital phase
     # changes by 2pi over one orbit
     idx_at_num_obits_from_start = np.argmin(
-        np.abs(phase_interp - (phase_interp[0] + num_orbits * 2 * np.pi)))
-    num_obits_duration = (time_interp[idx_at_num_obits_from_start]
-                          - time_interp[0])
+        np.abs(phase_orb - (phase_orb[0] + num_orbits * 2 * np.pi)))
+    num_obits_duration = (time[idx_at_num_obits_from_start]
+                          - time[0])
     return num_obits_duration
 
 
