@@ -165,10 +165,13 @@ def load_waveform(origin="LAL", **kwargs):
         - "LAL": Compute waveform by a call to the LAL-library.
             (see https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/)
         - "SXSCatalog": Import waveform by reading a file in the SXS catalog
-            in the new format (from 2023 onward).
+            in the new format (from 2023 onward) where the waveform files are
+            named as `Strain_N{extrap_order}.h5` for a given extrapolation
+            order `extrap_order`.
             (see https://data.black-holes.org/waveforms/documentation.html)
         - "SXSCatalog_old": Import waveform by reading a file in the SXS
-            catalog in the old format (prior to 2023).
+            catalog in the old format (prior to 2023) where the waveform file
+            is named as `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
             (see https://data.black-holes.org/waveforms/documentation.html)
         - "LVCNR": Import waveform by reading a file in the LVCNR-data format.
             (see https://arxiv.org/abs/1703.01076)
@@ -725,10 +728,13 @@ def load_sxs_catalogformat(**kwargs):
     """Load modes from sxs waveform files in sxs catalog format.
 
     This function is intended for loading waveform modes from files in the sxs
-    catalog in the new format, i.e., from 2023 onward (see
-    https://data.black-holes.org/waveforms/documentation.html).
+    catalog in the new format, i.e., from 2023 onward. In the new format, the
+    waveform files are named as `Strain_N{extrap_order}.h5`. See under
+    `data_dir` below for more details.
+    (Also see https://data.black-holes.org/waveforms/documentation.html).
 
-    For loading sxs catalog waveforms in old format see
+    For loading sxs catalog waveforms in old format where the waveform file is
+    named as `rhOverM_Asymptotic_GeometricUnits_CoM.h5`, see
     `load_sxs_catalogformat_old`.
     For loading lvcnr format files, see `load_lvcnr_waveform`.
 
@@ -875,8 +881,10 @@ def load_sxs_catalogformat_old(**kwargs):
     """Load waveform modes from sxs catalog in old format.
 
     This function can be used to load waveform modes from sxs catalog in old
-    format (prior to 2023). For loading sxs catalog waveforms in the new
-    format, see `load_sxs_catalogformat`.
+    format (prior to 2023) where the waveform file is named as
+    `rhOverM_Asymptotic_GeometricUnits_CoM.h5`. For loading sxs catalog
+    waveforms in the new format where the waveform files are named as
+    `Strain_N{extrap_order}.h5`, see `load_sxs_catalogformat`.
 
     The allowed kwargs and defaults are the same as in `load_sxs_catalogformat`
     except that the waveform file that is to be provided in the `data_dir`
