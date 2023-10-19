@@ -1143,18 +1143,23 @@ def get_params_dict_from_sxs_metadata(metadata_path):
             m1 = float(line.split("=")[-1].strip())
         if "reference-mass2" in line:
             m2 = float(line.split("=")[-1].strip())
-    # numerical noise can make m1 slightly lesser than m2. Catch this
-    # whenver it happens
+    # numerical noise can make m1 slightly lesser than m2. Catch this whenver
+    # it happens. Typically dq = (1 - q) is very small (dq <~ 1e-7) but for few
+    # cases it can be dq ~ 1e-4. Therefore, if dq < 5e-4, we treat it as 1,
+    # otherwise raise exception.
     q = m1/m2
-    if q < 1:
-        # if q > 0.99, treat it as 1.
-        if q > 0.99:
-            warnings.warn(f"SXS metadata gives m1 = {m1} < m2 = {m2} but "
-                          f"m1/m2 = {m1/m2} > 0.99. Setting q = m1/m2 = 1.")
+    dq = 1 - q
+    dq_tol = 5e-4
+    if dq > 0:
+        # if dq < dq_tol, treat it q as 1.
+        if dq < dq_tol:
+            warnings.warn(
+                f"SXS metadata gives m1 = {m1} < m2 = {m2} but "
+                f"1 - (m1/m2) = {dq} < {dq_tol}. Setting q = m1/m2 = 1.")
             q = 1.0
         else:
             raise Exception(f"SXS metadata gives m1 = {m1} < m2 = {m2} -> "
-                            "q = m1/m2 < 0.99")
+                            f"1 - (m1/m2) = {dq} > {dq_tol}.")
     params_dict = {"q": q,
                    "chi1": chi1,
                    "chi2": chi2}
