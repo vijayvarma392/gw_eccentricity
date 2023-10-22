@@ -1,13 +1,15 @@
 """Utility to load waveform of different origins."""
+import os
 import numpy as np
-from .utils import peak_time_via_quadratic_fit
-from .utils import amplitude_using_all_modes
-from .utils import check_kwargs_and_set_defaults
-from .utils import raise_exception_if_none
+import sxs
 import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
+from .utils import peak_time_via_quadratic_fit
+from .utils import amplitude_using_all_modes
+from .utils import check_kwargs_and_set_defaults
+from .utils import raise_exception_if_none
 from .utils import interpolate
 
 
@@ -24,6 +26,7 @@ def get_available_waveform_origins(return_dict=False):
     origin_dict = {
         "LAL": load_LAL_waveform,
         "SXSCatalog": load_sxs_catalogformat,
+        "SXSCatalog_old": load_sxs_catalogformat_old,
         "LVCNR": load_lvcnr_waveform,
         "LVCNR_hack": load_lvcnr_hack,
         "EOB": load_EOB_waveform,
@@ -75,8 +78,8 @@ def get_load_waveform_defaults(origin="LAL"):
             "include_zero_ecc": False
         }
     # for loading waveform file in SXS catalog format
-    elif origin == "SXSCatalog":
-        kwargs_list = ["filepath",
+    elif origin in ["SXSCatalog", "SXSCatalog_old"]:
+        kwargs_list = ["data_dir",
                        "metadata_path",
                        "deltaTOverM",
                        "include_zero_ecc",
@@ -161,7 +164,13 @@ def load_waveform(origin="LAL", **kwargs):
         - "LAL": Compute waveform by a call to the LAL-library.
             (see https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/)
         - "SXSCatalog": Import waveform by reading a file in the SXS catalog
-            format.
+            in the new format (from 2023 onward) where the waveform files are
+            named as `Strain_N{extrap_order}.h5` for a given extrapolation
+            order `extrap_order`.
+            (see https://data.black-holes.org/waveforms/documentation.html)
+        - "SXSCatalog_old": Import waveform by reading a file in the SXS
+            catalog in the old format (prior to 2023) where the waveform file
+            is named as `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
             (see https://data.black-holes.org/waveforms/documentation.html)
         - "LVCNR": Import waveform by reading a file in the LVCNR-data format.
             (see https://arxiv.org/abs/1703.01076)
@@ -461,8 +470,12 @@ def get_defaults_for_nr():
     function.
 
     The keys are the following:
-        filepath: str
+    filepath: str
         Path to the nr file. Default value is None.
+
+    data_dir: str
+        Directory to look for the files necessary to load the NR waveform.
+        Default is None.
 
     deltaTOverM: float
         Time step in dimensionless unit. Default is 0.1
@@ -513,6 +526,7 @@ def get_defaults_for_nr():
         NOTE: This is used only for sxs catalog formatted waveforms.
     """
     return {"filepath": None,
+            "data_dir": None,
             "deltaTOverM": 0.1,
             "Momega0": 0.0,
             "include_zero_ecc": False,
@@ -712,9 +726,15 @@ def load_lvcnr_waveform(**kwargs):
 def load_sxs_catalogformat(**kwargs):
     """Load modes from sxs waveform files in sxs catalog format.
 
-    This function is intended for loading waveform modes from files in
-    the sxs catalog format (see
-    https://data.black-holes.org/waveforms/documentation.html).
+    This function is intended for loading waveform modes from files in the sxs
+    catalog in the new format, i.e., from 2023 onward. In the new format, the
+    waveform files are named as `Strain_N{extrap_order}.h5`. See under
+    `data_dir` below for more details.
+    (Also see https://data.black-holes.org/waveforms/documentation.html).
+
+    For loading sxs catalog waveforms in old format where the waveform file is
+    named as `rhOverM_Asymptotic_GeometricUnits_CoM.h5`, see
+    `load_sxs_catalogformat_old`.
     For loading lvcnr format files, see `load_lvcnr_waveform`.
 
     Parameters
@@ -723,12 +743,29 @@ def load_sxs_catalogformat(**kwargs):
     Run `load_data.get_load_waveform_defaults('SXSCatalog')` to see allowed
     keys and defaults.
 
-    filepath: str
-        Path to waveform file in sxs catalog format. The file should
-        be named "rhOverM_Asymptotic_GeometricUnits_CoM.h5", and
-        contains the waveform extrapolated to future null-infinity and
-        corrected for initial center-of-mass drift.
-        This must be provided to load waveform modes.
+    data_dir: str
+        Path to the directory to look for the waveform files in sxs catalog
+        format. This function looks for three files in the `data_dir` based on
+        the `extrap_order`:
+
+        1. The strain file `Strain_N{extrap_order}.h5` (required)
+        2. The corresponding json file `Strain_N{extrap_order}.json` (required)
+        3. The metadata file `metadata.txt` (required when `include_zero_ecc`
+          or `include_params_dict` is True)
+        4. The horizon file `Horizons.h5` (optional)
+
+        `Strain_N{extrap_order}.h5` contains the waveform extrapolated to
+        future null-infinity and corrected for initial center-of-mass
+        drift. This and `Strain_N{extrap_order}.json` must be provided to load
+        waveform modes.
+
+        When `include_zero_ecc` or `include_params_dict` is True,
+        `metadata.txt` is required to obtain the parameters used in the NR
+        simulation. See more under `get_params_dict_from_sxs_metadata`.
+
+        If `Horizons.h5` is provided, it is used to get a better estimate of
+        the duration of an orbit from phase data to use it for removing junk
+        radiation. See more about it under `num_orbits_to_remove_as_junk`.
 
     deltaTOverM: float
         Time step to use for interpolating the waveform modes.  The
@@ -738,8 +775,16 @@ def load_sxs_catalogformat(**kwargs):
     include_zero_ecc: bool
         If True, returns waveform mode (only (2, 2) mode)
         for the same set of parameters except with eccentricity set to
-        zero.  Requires metadata file (which is provided using
-        `metadata_path`, see below) to get the binary parameters.
+        zero.
+
+        When set to True, the function will search for the `metadata.txt` file
+        in the `data_dir` directory. Typically, the `metadata.txt` file is
+        located in the same directory as the waveform file within the sxs
+        catalog. The `metadata.txt` file is essential for extracting binary
+        parameters and related metadata, as it typically contains crucial
+        information about the binary parameters and the NR simulation used to
+        generate the waveform modes.
+
         The zero eccentricity waveform is generated using an approximant
         provided via `zero_ecc_approximant` (see below).
 
@@ -758,24 +803,24 @@ def load_sxs_catalogformat(**kwargs):
         Waveform model to generate zero eccentricity waveform when
         `include_zero_ecc` is True.
 
-    metadata_path: str
-        Path to the sxs metadata file. This file generally can be
-        found in the same directory as the waveform file and has the
-        name "metadata.txt". It contains the metadata including binary
-        parameters along with other information related to the NR
-        simulation performed to obtain the waveform modes.
-        Required when `include_zero_ecc` or `include_params_dict` is True.
-
     num_orbits_to_remove_as_junk: float
         Number of orbits to throw away as junk from the beginning of the NR
-        data.
+        data. If the file `Horizons.h5` is located within the `data_dir`, the
+        orbital phase data contained in it is utilized to estimate the duration
+        of a single orbit. In cases where this file is not present, the
+        duration of one orbit is instead derived from the phase of the (2, 2)
+        mode. It's important to note that the accuracy of this estimate is
+        compromised due to contamination of the waveform data by junk
+        radiation.
 
     mode_array: 1d array
         1d array of modes to load. Should have the format `[(l1, m1), (l2,
         m2),..]`
 
     extrap_order: int
-        Extrapolation order to use for loading the waveform data.
+        The extrapolation order determines the filename to search for in order
+        to locate the strain file. This function will seek a file named
+        `Strain_N{extrap_order}.h5` in the `data_dir`.
 
     Returns
     -------
@@ -815,46 +860,191 @@ def load_sxs_catalogformat(**kwargs):
         get_load_waveform_defaults("SXSCatalog"),
         "SXSCatalog kwargs",
         "`load_data.get_defaults_for_nr`")
-    filepath = kwargs["filepath"]
-    metadata_path = kwargs["metadata_path"]
-    dt = kwargs["deltaTOverM"]
-    mode_array = kwargs["mode_array"]
-    extrap_order = kwargs["extrap_order"]
-    # check filepath
-    if filepath is None:
-        raise Exception("Must provide path to the waveform file. `filepath` "
-                        "can not be None.")
-    # check metadata_path
+
+    # check data directory
+    horizon_file_exists = check_sxs_data_dir("SXSCatalog", **kwargs)
+    # get the modes
+    t, modes_dict = get_modes_dict_from_sxs_catalog_format(**kwargs)
+    # make dataDict and return
+    # The following actions are performed and the resulting dict is returned:
+    # - the original modes are cleaned by removing junk radiation
+    # - shift time axis such that the global amplitude peak occurs at t = 0
+    # - add zeroecc data if `include_zero_ecc` is True
+    # - add params dict if `include_params_dict` is True
+    # see `make_return_dict_for_sxs_catalog_format` for more details.
+    return make_return_dict_for_sxs_catalog_format(
+        t, modes_dict, horizon_file_exists, **kwargs)
+
+
+def load_sxs_catalogformat_old(**kwargs):
+    """Load waveform modes from sxs catalog in old format.
+
+    This function can be used to load waveform modes from sxs catalog in old
+    format (prior to 2023) where the waveform file is named as
+    `rhOverM_Asymptotic_GeometricUnits_CoM.h5`. For loading sxs catalog
+    waveforms in the new format where the waveform files are named as
+    `Strain_N{extrap_order}.h5`, see `load_sxs_catalogformat`.
+
+    The allowed kwargs and defaults are the same as in `load_sxs_catalogformat`
+    except that the waveform file that is to be provided in the `data_dir`
+    directory is different. See below for more details on the files that should
+    exist inside `data_dir`. All other args in `kwargs` are the same as in
+    `load_sxs_catalogformat`. For detailed description of the kwargs see the
+    docstring under `load_sxs_catalogformat`.
+
+    In the old catalog format, a single waveform file named
+    `rhOverM_Asymptotic_GeometricUnits_CoM.h5` contains all the extrapolated
+    waveform modes and for a given `extrap_order`, the corresponding waveform
+    modes are retrieved from this file. Therefore, in the old format, the
+    following files are looked for in the `data_dir` directory:
+
+    1. `rhOverM_Asymptotic_GeometricUnits_CoM.h5` (mandatory).
+    2. `metadata.txt` (required when `include_zero_ecc`
+          or `include_params_dict` is True). For more details, see `data_dir`
+      under `load_sxs_catalogformat`.
+    3. `Horizons.h5` (optional). For more details, see `data_dir`
+      under `load_sxs_catalogformat`.
+    """
+    kwargs = check_kwargs_and_set_defaults(
+        kwargs,
+        get_load_waveform_defaults("SXSCatalog_old"),
+        "SXSCatalog_old kwargs",
+        "`load_data.get_defaults_for_nr`")
+
+    # check data directory
+    horizon_file_exists = check_sxs_data_dir("SXSCatalog_old", **kwargs)
+    # get the modes
+    t, modes_dict = get_modes_dict_from_sxs_catalog_old_format(**kwargs)
+    # make dataDict and return
+    # The following actions are performed and the resulting dict is returned:
+    # - the original modes are cleaned by removing junk radiation
+    # - shift time axis such that peak occurs at t = 0
+    # - add zeroecc data if `include_zero_ecc` is True
+    # - add params dict if `include_params_dict` is True
+    # see `make_return_dict_for_sxs_catalog_format` for more details.
+    return make_return_dict_for_sxs_catalog_format(
+        t, modes_dict, horizon_file_exists, **kwargs)
+
+
+def check_sxs_data_dir(origin, **kwargs):
+    """Check if the necessary files exist for loading sxs catalog format.
+
+    Depending on the origin, it looks for a set of files needed to extract
+    the waveform modes, get the parameters of the NR simulation and to
+    clean the modes by removing junk radiation before returning the modes.
+    These files are
+
+    - Files to extract the modes
+       - If origin = "SXSCatalog", i.e., for the format from 2023 onwards,
+         - `Strain_N{extrap_order}.h5`
+         - `Strain_N{extrap_order}.json` where `extrap_order` is the
+           extrapolation order provided in the `kwargs`
+       - If origin = "SXSCatalog_old", i.e., for the format before 2023,
+         - `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
+
+        These files are required to extract the waveform modes successfully.
+    - `metadata.txt` file to get the parameters of the NR Simulation.
+        This file is required when `include_zero_ecc` or `include_params_dict`
+        is True.
+    - `Horizons.h5` file to estimate the duration of an orbit using the orbital
+        phase data. This file is optional. If it is not found, we use the phase
+        of the (2, 2) mode to get the duration of an orbit assuming a phase
+        change of 4pi occurs over an orbit. However, since the waveform data is
+        affected by the junk radiation, this estimate may not be very accurate.
+
+    Parameters
+    ----------
+    original : str
+        Either "SXSCatalog" or "SXSCatalog_old".
+    kwargs : dict
+        kwargs for loading the sxs catalog format files.
+
+    Returns
+    -------
+    True if `Horizons.h5` file exists else False.
+    """
+    # check data_dir
+    if kwargs["data_dir"] is None:
+        raise Exception(
+            "Must provide path to the directory containing waveform files. "
+            "`data_dir` can not be None.")
+    # Check if the data directory exists
+    if not os.path.exists(kwargs["data_dir"]):
+        raise FileNotFoundError(
+            f"Can not find the directory {kwargs['data_dir']}.")
+    required_files_dict = {
+        "SXSCatalog": [f"Strain_N{kwargs['extrap_order']}.h5",
+                       f"Strain_N{kwargs['extrap_order']}.json"],
+        "SXSCatalog_old": ["rhOverM_Asymptotic_GeometricUnits_CoM.h5"]}
+    message_dict = {
+        "SXSCatalog": " You should provide the h5 and json file named "
+        f"`Strain_N{kwargs['extrap_order']}` since `extrap_order` is "
+        f"{kwargs['extrap_order']}. If you are using the old format, "
+        "you should provide the `rhOverM_Asymptotic_GeometricUnits_CoM.h5` "
+        "file.",
+        "SXSCatalog_old": " You should provide the "
+        "`rhOverM_Asymptotic_GeometricUnits_CoM.h5` file. "
+        "If you are using the new format, You should provide the h5 and json "
+        f"file named `Strain_N{kwargs['extrap_order']}` since `extrap_order` "
+        f"is {kwargs['extrap_order']}."}
+    # metadata.txt is required if include_zero_ecc or include_params_dict is
+    # True
     if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
-        if metadata_path is None:
-            raise Exception(
-                "Must provide path to metadata file `metadata_path` "
-                "when `include_zero_ecc` or `include_params_dict` is True.\n"
-                "This is required to get the binary parameters which are "
-                "used to eavaluate the zero ecc waveform.")
+        for k in required_files_dict:
+            required_files_dict.update(
+                {k: np.append(required_files_dict[k], ["metadata.txt"])})
+    # Check if all the required files exist
+    for filename in required_files_dict[origin]:
+        if not os.path.exists(
+                os.path.join(kwargs["data_dir"], filename)):
+            if filename == "metadata.txt":
+                message = (
+                    " `metadata.txt` file is required when "
+                    "`include_zero_ecc` or `include_params_dict` "
+                    "is set to True to get the binary parameters of "
+                    "the NR simulation.")
+            else:
+                message = message_dict[origin]
+            raise FileNotFoundError(
+                f"Can not find `{filename}` in `{kwargs['data_dir']}`."
+                + message)
+    # Check if the Horizons.h5 file exists. If it exists we return True, else
+    # False.
+    if os.path.exists(os.path.join(kwargs['data_dir'], "Horizons.h5")):
+        return True
+    else:
+        warnings.warn(
+            f"Can not find `Horizons.h5` in {kwargs['data_dir']}. "
+            "Phase of the (2, 2) mode will be used to estimate the duration "
+            "of `num_orbits_to_remove_as_junk` orbits which may not be "
+            "accurate since the (2, 2) mode phase contains junk radiation "
+            "in the initial part.")
+        return False
 
-    # load modes
-    modes_dict = {}
-    data = h5py.File(filepath, "r")
-    waveform_data = data[f"Extrapolated_N{extrap_order}.dir"]
-    for idx, mode in enumerate(mode_array):
-        ell, m = mode
-        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"]
-        # create the time array only once
-        if idx == 0:
-            time = mode_data[:, 0]
-            t = np.arange(time[0], time[-1], dt)
-        hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
-        amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
-        modes_dict.update({(ell, m): hlm_interp})
 
+def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
+                                            **kwargs):
+    """Make dictionary to return for sxs catalog format.
+
+    This function takes the modes data extracted from the sxs catalog format
+    files and performs the following list of actions and returns the final
+    processed data.
+
+    - Remove junk from the begining of the data
+    - Shift the time axis to align the global peak amplitude to t = 0
+    - Add zeroecc data if `include_zero_ecc` is True
+    - Add params dict if `include_params_dict` is True
+    """
     # remove junk from the begining of the data
-    t, modes_dict = reomve_junk_from_nr_data(
-        t,
-        modes_dict,
-        kwargs["num_orbits_to_remove_as_junk"])
+    if horizon_file_exits:
+        t, modes_dict = remove_junk_from_sxs_catalogformat_using_horizons_data(
+            t, modes_dict, kwargs["num_orbits_to_remove_as_junk"],
+            os.path.join(kwargs["data_dir"], "Horizons.h5"))
+    else:
+        t, modes_dict = reomve_junk_from_nr_data(
+            t,
+            modes_dict,
+            kwargs["num_orbits_to_remove_as_junk"])
     # get time at peak amplitude to shift the time axis
     tpeak = peak_time_via_quadratic_fit(
         t, amplitude_using_all_modes(modes_dict))[0]
@@ -862,7 +1052,8 @@ def load_sxs_catalogformat(**kwargs):
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
     if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
-        params_dict = get_params_dict_from_sxs_metadata(metadata_path)
+        params_dict = get_params_dict_from_sxs_metadata(
+            os.path.join(kwargs["data_dir"], "metadata.txt"))
     # if include_zero_ecc is True, load zeroecc dataDict
     if kwargs["include_zero_ecc"]:
         params_dict_zero_ecc = params_dict.copy()
@@ -878,6 +1069,58 @@ def load_sxs_catalogformat(**kwargs):
     if kwargs["include_params_dict"]:
         dataDict.update({"params_dict": params_dict})
     return dataDict
+
+
+def get_modes_dict_from_sxs_catalog_old_format(**kwargs):
+    """Get modes from sxs catalog old format files.
+
+    See documentation of `load_sxs_catalogformat` for allowed kwargs and
+    default values.
+    """
+    # load modes
+    modes_dict = {}
+    data = h5py.File(os.path.join(
+        kwargs["data_dir"],
+        "rhOverM_Asymptotic_GeometricUnits_CoM.h5"), "r")
+    waveform_data = data[f"Extrapolated_N{kwargs['extrap_order']}.dir"]
+    for idx, mode in enumerate(kwargs["mode_array"]):
+        ell, m = mode
+        mode_data = waveform_data[f"Y_l{ell}_m{m}.dat"]
+        # create the time array only once
+        if idx == 0:
+            time = mode_data[:, 0]
+            t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
+        hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
+        amp_interp = interpolate(t, time, np.abs(hlm))
+        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
+        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        modes_dict.update({(ell, m): hlm_interp})
+    return t, modes_dict
+
+
+def get_modes_dict_from_sxs_catalog_format(**kwargs):
+    """Get modes from sxs catalog format files.
+
+    See documentation of `load_sxs_catalogformat` for allowed kwargs and
+    default values.
+    """
+    # get the waveform object
+    waveform = sxs.rpdmb.load(
+        os.path.join(kwargs["data_dir"], f"Strain_N{kwargs['extrap_order']}"))
+    # get the time
+    time = waveform.t
+    # Create a time array with step = dt, to interpolate the waveform
+    # modes on this uniform time array.
+    t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
+    modes_dict = {}
+    for mode in kwargs["mode_array"]:
+        ell, m = mode
+        hlm = waveform[:, waveform.index(ell, m)].data
+        amp_interp = interpolate(t, time, np.abs(hlm))
+        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
+        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        modes_dict.update({(ell, m): hlm_interp})
+    return t, modes_dict
 
 
 def get_params_dict_from_sxs_metadata(metadata_path):
@@ -899,11 +1142,24 @@ def get_params_dict_from_sxs_metadata(metadata_path):
             m1 = float(line.split("=")[-1].strip())
         if "reference-mass2" in line:
             m2 = float(line.split("=")[-1].strip())
-    # numerical noise can make m1 slightly lesser than m2. Catch this
-    # whenver it happens
-    if m1 < m2:
-        raise Exception(f"SXS metadata gives m1 = {m1} < m2 = {m2}")
-    params_dict = {"q": m1/m2,
+    # numerical noise can make m1 slightly lesser than m2. Catch this whenver
+    # it happens. Typically dq = (1 - q) is very small (dq <~ 1e-7) but for few
+    # cases it can be dq ~ 1e-4. Therefore, if dq < 5e-4, we treat it as 1,
+    # otherwise raise exception.
+    q = m1/m2
+    dq = 1 - q
+    dq_tol = 5e-4
+    if dq > 0:
+        # if dq < dq_tol, treat it q as 1.
+        if dq < dq_tol:
+            warnings.warn(
+                f"SXS metadata gives m1 = {m1} < m2 = {m2} but "
+                f"1 - (m1/m2) = {dq} < {dq_tol}. Setting q = m1/m2 = 1.")
+            q = 1.0
+        else:
+            raise Exception(f"SXS metadata gives m1 = {m1} < m2 = {m2} -> "
+                            f"1 - (m1/m2) = {dq} > {dq_tol}.")
+    params_dict = {"q": q,
                    "chi1": chi1,
                    "chi2": chi2}
     return params_dict
@@ -1028,6 +1284,104 @@ def reomve_junk_from_nr_data(t, modes_dict, num_orbits_to_remove_as_junk):
         modes_dict_clean[key] = modes_dict[key][idx_junk:]
 
     return t_clean, modes_dict_clean
+
+
+def remove_junk_from_sxs_catalogformat_using_horizons_data(
+        t, modes_dict, num_orbits_to_remove_as_junk, horizon_filepath):
+    """Remove first `num_orbits_to_remove_as_junk` orbits as junk.
+
+    Paramters
+    ---------
+    t: array-like
+        1d array of times associated with the waveform modes.
+
+    modes_dict: dict
+        Dictionary containing waveform modes.
+
+    num_orbits_to_remove_as_junk: float
+        Number of orbits to remove from the start of the waveform modes.
+
+    horizon_filepath: str
+        Path to the `Horizons.h5` file. This file typically can be found in the
+        same directory where the waveform files are located in the SXS catalog.
+
+    Returns
+    -------
+    t_clean: array-like
+        Time array corresponding to clean NR data.
+
+    modes_dict_clean: dict
+        modes_dict with `num_orbits_to_remove_as_junk` orbits removed from the
+        begining of modes array.
+    """
+    num_orbits_duration = get_num_orbits_duration_from_horizon_data(
+        horizon_filepath, num_orbits_to_remove_as_junk)
+
+    # The time array in the `Horizons.h5` file is the time coordinate of the NR
+    # simulation, which starts at t = 0.  In contrast, the time array in the
+    # waveform file is related to retarded time, shifted back to the origin,
+    # and begins at t < 0, typically around -100M or so. Although they have
+    # different starting points, we can roughly associate the t = 0 point in
+    # both files.
+
+    # Therefore, after obtaining the duration `delta_t` for
+    # `num_orbits_to_remove_as_junk` number of orbits, when we truncate the
+    # waveform, we retain only the part corresponding to t > delta_t, not t >
+    # t[0] + delta_t.  This is because t[0] is located at around -100M, and
+    # starting the truncation there would be closer to the unwanted junk than
+    # desired.
+
+    # NOTE: The following line assumes that the time array has not been shifted
+    # in anyway and is the original time array contained in the waveform file.
+    idx_junk = np.argmin(np.abs(t - num_orbits_duration))
+    t_clean = t[idx_junk:]
+    modes_dict_clean = {}
+    for key in modes_dict:
+        modes_dict_clean[key] = modes_dict[key][idx_junk:]
+
+    return t_clean, modes_dict_clean
+
+
+def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
+    """Get the duration of `num_orbits` from phase data in `Horizons.h5`.
+
+    Parameters
+    ----------
+    horizon_filepath: str
+        Path to the `Horizons.h5` file. This file typically can be found in the
+        same directory where the waveform files are located.
+
+    num_orbits: float
+        Number orbits from the start of the simulation. This function estimates
+        the duration of `num_orbits` from orbital phase which is obtained from
+        the coordinates of the black holes stored in the `Horizons.h5` file.
+
+    Returns
+    -------
+    num_obits_duration : float
+        Duration of first `num_orbits`.
+    """
+    horizons_data = h5py.File(horizon_filepath, "r")
+    xA_data = horizons_data["AhA.dir"]["CoordCenterInertial.dat"]
+    xB_data = horizons_data["AhB.dir"]["CoordCenterInertial.dat"]
+    time = xA_data[:, 0]
+    separion_vec = xA_data[:, 1:] - xB_data[:, 1:]
+    # We will assume the system to be non-precessing so that the motion
+    # is restricted in the x-y plane and the z-coordinate is effectively zero.
+    # Check if it is true, i.e., z-coordinate remains very small
+    if any(np.abs(separion_vec[:, 2]) > 1e-5):
+        raise Exception(
+            "The system seems to be precessing. Cannot get the orbital "
+            "phase by assuming the motion is restricted in the x-y plane.")
+    # Get the orbital phase
+    phase_orb = np.unwrap(np.arctan2(separion_vec[:, 1], separion_vec[:, 0]))
+    # Find the duration of first num_orbits assuming that the orbital phase
+    # changes by 2pi over one orbit
+    idx_at_num_obits_from_start = np.argmin(
+        np.abs(phase_orb - (phase_orb[0] + num_orbits * 2 * np.pi)))
+    num_obits_duration = (time[idx_at_num_obits_from_start]
+                          - time[0])
+    return num_obits_duration
 
 
 def load_h22_from_EOBfile(EOB_file):
