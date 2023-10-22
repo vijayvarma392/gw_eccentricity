@@ -1039,8 +1039,7 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     if horizon_file_exits:
         t, modes_dict = remove_junk_from_sxs_catalogformat_using_horizons_data(
             t, modes_dict, kwargs["num_orbits_to_remove_as_junk"],
-            os.path.join(kwargs["data_dir"], "Horizons.h5"),
-            kwargs["deltaTOverM"])
+            os.path.join(kwargs["data_dir"], "Horizons.h5"))
     else:
         t, modes_dict = reomve_junk_from_nr_data(
             t,
@@ -1317,7 +1316,24 @@ def remove_junk_from_sxs_catalogformat_using_horizons_data(
     """
     num_orbits_duration = get_num_orbits_duration_from_horizon_data(
         horizon_filepath, num_orbits_to_remove_as_junk)
-    idx_junk = np.argmin(np.abs(t - (t[0] + num_orbits_duration)))
+
+    # The time array in the `Horizons.h5` file is the time coordinate of the NR
+    # simulation, which starts at t = 0.  In contrast, the time array in the
+    # waveform file is related to retarded time, shifted back to the origin,
+    # and begins at t < 0, typically around -100M or so. Although they have
+    # different starting points, we can roughly associate the t = 0 point in
+    # both files.
+
+    # Therefore, after obtaining the duration `delta_t` for
+    # `num_orbits_to_remove_as_junk` number of orbits, when we truncate the
+    # waveform, we retain only the part corresponding to t > delta_t, not t >
+    # t[0] + delta_t.  This is because t[0] is located at around -100M, and
+    # starting the truncation there would be closer to the unwanted junk than
+    # desired.
+
+    # NOTE: The following line assumes that the time array has not been shifted
+    # in anyway and is the original time array contained in the waveform file.
+    idx_junk = np.argmin(np.abs(t - num_orbits_duration))
     t_clean = t[idx_junk:]
     modes_dict_clean = {}
     for key in modes_dict:
