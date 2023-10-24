@@ -8,7 +8,6 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 
 import numpy as np
 import matplotlib.pyplot as plt
-import warnings
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -240,6 +239,11 @@ class eccDefinition:
                 for allowed keys.
 
             set_failures_to_zero : bool, default=False
+                This can be used to handle failures that may occur in the
+                following two scenarios:
+
+                # When no extrema are found
+                ===========================
                 The code normally raises an exception if sufficient number of
                 extrema are not found. This can happen for various reasons
                 including when the eccentricity is too small for some methods
@@ -259,6 +263,34 @@ class eccDefinition:
                 If both of these conditions are met, we assume that small
                 eccentricity is the cause, and set the returned eccentricity
                 and mean anomaly to zero.
+
+                # When all the reference time/frequency are later than the
+                ==========================================================
+                maximum allowed time/frequency
+                ==============================
+                The code normally can calculate eccentricity within the ranges
+                of `tmin` and `tmax` for `tref_in` and within `fref_min` and
+                `fref_max` for `fref_in`. These minimum and maximum allowable
+                time or frequency values are determined based on the times of
+                the first pair of (pericenters, apocenters) and the last pair
+                of (pericenters, apocenters), respectively.
+
+                However, due to the natural decay of eccentricity over time,
+                if the initial eccentricity is not sufficiently large, it
+                will decay to very small values in the later stages of the
+                inspiral.  This decay results in oscillations that become too
+                subtle to be detected by methods like 'Amplitude' and
+                'Frequency.'  In such cases, `tmax` and `fref_max` may become
+                significantly smaller than the time or frequency near the
+                merger.
+
+                Consequently, eccentricity measurement becomes unsuccessful
+                for any time or frequency in the late stages of the inspiral
+                (as illustrated in Figure 4 of arxiv.2302.11257). If the
+                `set_failures_to_zero` parameter is set to True, the code
+                will set both eccentricity and mean anomaly to zero in these
+                instances.
+
                 USE THIS WITH CAUTION!
         """
         # Get data necessary for eccentricity measurement
@@ -1153,7 +1185,7 @@ class eccDefinition:
                     "Instead the eccentricity and mean anomaly will be set to "
                     "zero.",
                     important=True,
-                    debug_level=0)
+                    debug_level=self.debug_level)
             else:
                 recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
                 if self.method not in recommended_methods:
@@ -1525,11 +1557,11 @@ class eccDefinition:
         decay.
         """
         max_val = self.tmax if self.domain == "time" else self.fref_max
-        warnings.warn(
+        debug_message(
             f"The reference {self.domain} is/are greater than the maximum "
             f"allowed {self.domain} = {max_val}. Since `set_failures_to_zero` "
             f"is {self.set_failures_to_zero}, eccentricity and mean anomaly "
-            "are set to zero.")
+            "are set to zero.", debug_level=self.debug_level, important=True)
 
     def make_return_dict_for_eccentricity_and_mean_anomaly(self):
         """Prepare a dictionary with reference time/freq, ecc, and mean anomaly.
