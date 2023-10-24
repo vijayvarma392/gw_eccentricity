@@ -8,6 +8,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 
 import numpy as np
 import matplotlib.pyplot as plt
+import warnings
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -1407,6 +1408,24 @@ class eccDefinition:
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
                 = self.compute_tref_in_and_fref_out_from_fref_in(self.fref_in)
+            # As eccentricity naturally decays over time, some methods may
+            # encounter challenges when attempting to identify
+            # pericenters/apocenters at later times, i.e., at higher
+            # frequencies. This is because the oscillations induced by
+            # eccentricity become progressively smaller and may be difficult to
+            # detect. Depending on the initial eccentricity, the 'fref_max'
+            # (the maximum allowed frequency where eccentricity can be
+            # measured) could be considerably smaller than the frequency at the
+            # time of merger, making it impractical to measure eccentricity
+            # using these methods for frequencies greater than 'fref_max.' In
+            # such scenarios, if all values in 'fref_in' are greater than
+            # 'fref_max,' the 'fref_out' list will be empty. If the
+            # 'set_failures_to_zero' flag is set to True, eccentricity and mean
+            # anomaly will be set to zero in these cases.
+            if len(self.fref_out) == 0 and self.set_failures_to_zero:
+                self.raise_eccentricity_decay_warning()
+                return self.set_eccentricity_and_mean_anomaly_to_zero()
+
         # We measure eccentricity and mean anomaly from tmin to tmax.
         self.tref_out = self.tref_in[
             np.logical_and(self.tref_in <= self.tmax,
@@ -1427,6 +1446,18 @@ class eccDefinition:
 
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
+            # Because eccentricity decays with time, certain methods may
+            # struggle to identify pericenters/apocenters for later times,
+            # where the oscillations caused by eccentricity become too small to
+            # detect. Depending on the initial eccentricity, `tmax` may be
+            # significantly distant from the merger, rendering it impossible to
+            # measure eccentricity with these methods for times greater than
+            # `tmax`. In such scenarios, if all values in 'tref_in' >
+            # `tmax`, `tref_out` will be empty. If the `set_failures_to_zero`
+            # flag is True, eccentricity will be set to zero for such cases.
+            if all(self.tref_in > self.tmax) and self.set_failures_to_zero:
+                self.raise_eccentricity_decay_warning()
+                return self.set_eccentricity_and_mean_anomaly_to_zero()
             self.check_input_limits(self.tref_in, self.tmin, self.tmax)
             raise Exception(
                 "tref_out is empty. This can happen if the "
@@ -1488,6 +1519,17 @@ class eccDefinition:
         self.eccentricity = np.zeros(out_len)
         self.mean_anomaly = np.zeros(out_len)
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
+
+    def raise_eccentricity_decay_warning(self):
+        """Raise warning about setting eccentricity to zero due to eccentricity
+        decay.
+        """
+        max_val = self.tmax if self.domain == "time" else self.fref_max
+        warnings.warn(
+            f"The reference {self.domain} is/are greater than the maximum "
+            f"allowed {self.domain} = {max_val}. Since `set_failures_to_zero` "
+            f"is {self.set_failures_to_zero}, eccentricity and mean anomaly "
+            "are set to zero.")
 
     def make_return_dict_for_eccentricity_and_mean_anomaly(self):
         """Prepare a dictionary with reference time/freq, ecc, and mean anomaly.
@@ -2308,6 +2350,12 @@ class eccDefinition:
             # fref_out
             fref_out = self.get_fref_out(fref_in, method)
 
+            # In some cases when `set_failures_to_zero` is True, `fref_out`
+            # could be empty. Just return it without doing any of the steps
+            # below
+            if len(fref_out) == 0:
+                return fref_out, fref_out
+
             # Now that we have fref_out, we want to know the corresponding
             # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
             # This is done by first creating an interpolant of time as function
@@ -2389,6 +2437,13 @@ class eccDefinition:
             np.logical_and(fref_in >= fref_min,
                            fref_in < fref_max)]
         if len(fref_out) == 0:
+            # If all `fref_in` are greater than `fref_max` and
+            # `set_failures_to_zero` is `True` then just return the empty
+            # `fref_out` and we set eccentricity to zero for these `fref_in`
+            if all(fref_in > fref_max) and self.set_failures_to_zero:
+                # need fref_max for warnings
+                self.fref_max = fref_max
+                return fref_out
             self.check_input_limits(fref_in, fref_min, fref_max)
             raise Exception("fref_out is empty. This can happen if the "
                             "waveform has insufficient identifiable "
