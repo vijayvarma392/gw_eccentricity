@@ -19,8 +19,10 @@
 from gravitational waveforms.
 
 These methods are described in the following paper: <br/>
-- [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and Maarten van de Meent,
-"Defining eccentricity for gravitational wave astronomy", (2023). [arXiv:2302.11257](https://arxiv.org/abs/2302.11257)
+- [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and
+Maarten van de Meent, "Defining eccentricity for gravitational wave astronomy",
+[Phys. Rev. D 108, 104007 (2023)](https://doi.org/10.1103/PhysRevD.108.104007),
+[arXiv:2302.11257](https://arxiv.org/abs/2302.11257)
 
 Please see [Credits](#credits) below for citing this work.
 This package lives on [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
@@ -87,7 +89,11 @@ this package. You can use the following bibtex keys:
     eprint = "2302.11257",
     archivePrefix = "arXiv",
     primaryClass = "gr-qc",
-    month = "2",
+    doi = "10.1103/PhysRevD.108.104007",
+    journal = "Phys. Rev. D",
+    volume = "108",
+    number = "10",
+    pages = "104007",
     year = "2023",
     Note = "{\href{https://pypi.org/project/gw_eccentricity}{pypi.org/project/gw\_eccentricity}}",
 }
