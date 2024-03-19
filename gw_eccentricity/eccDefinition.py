@@ -584,6 +584,17 @@ class eccDefinition:
         amp22_merger = newDataDict["amplm"][(2, 2)][merger_idx]
         phase22 = newDataDict["phaselm"][(2, 2)]
         phase22_merger = phase22[merger_idx]
+        # check if phase22 is increasing. phase22 at merger should be greater
+        # than the phase22 at the start of the waveform
+        if phase22_merger < phase22[0]:
+            raise Exception(
+                f"Phase22 = {phase22_merger} at the merger is < "
+                f"phase22 = {phase22[0]} at the start. The "
+                "phaselm should be related to hlm as "
+                "hlm = amplm * exp(- i phaselm) ensuring that "
+                "the phaselm is monotonically increasing for m > 0 modes."
+                "This might be fixed by changing the overall sign of "
+                "phase in the input `dataDict`")
         # Minimum width for peak finding function
         min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
             newDataDict["t"],
