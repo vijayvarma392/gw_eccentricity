@@ -130,9 +130,10 @@ def test_dataDict():
                 # To avoid exception for residual method since the data does
                 # not contain zeroecc data
                 continue
+            second_data_dict = copy.deepcopy(dataDict2)
             # use data_w_hlm as dataDict1
             compare_eccentricity_measurement(dataDict1=dataDict1_w_hlm,
-                                             dataDict2=dataDict2,
+                                             dataDict2=second_data_dict,
                                              method=method)
     # Now we repeat the same as above but adding hlm_zeroecc to both the data
     # dict.
@@ -162,13 +163,15 @@ def test_dataDict():
             {"omegalm_zeroecc": omegalm_zeroecc})
         # Loop over the different methods
         for method in available_methods:
+            second_data_dict = copy.deepcopy(dataDict2_w_hlm_zeroecc)
             compare_eccentricity_measurement(
                 dataDict1=dataDict1_w_hlm_zeroecc,
-                dataDict2=dataDict2_w_hlm_zeroecc,
+                dataDict2=second_data_dict,
                 method=method)
+            second_data_dict = copy.deepcopy(dataDict2_w_hlm_zeroecc_and_omegalm_zeroecc)
             compare_eccentricity_measurement(
                 dataDict1=dataDict1_w_hlm_zeroecc,
-                dataDict2=dataDict2_w_hlm_zeroecc_and_omegalm_zeroecc,
+                dataDict2=second_data_dict,
                 method=method)
     # This time instead of adding hlm_zeroecc, we add amplm_zeroecc and
     # phaselm_zeroecc to dataDict2, dataDict1 is the same as above.
@@ -193,11 +196,13 @@ def test_dataDict():
             {"omegalm_zeroecc": omegalm_zeroecc})
         # Loop over the different methods
         for method in available_methods:
+            second_data_dict = copy.deepcopy(dataDict2_w_amplm_and_phaselm_zeroecc)
             compare_eccentricity_measurement(
                 dataDict1=dataDict1_w_hlm_zeroecc,
-                dataDict2=dataDict2_w_amplm_and_phaselm_zeroecc,
+                dataDict2=second_data_dict,
                 method=method)
+            second_data_dict = copy.deepcopy(dataDict2_w_amplm_and_phaselm_and_omegalm_zeroecc)
             compare_eccentricity_measurement(
                 dataDict1=dataDict1_w_hlm_zeroecc,
-                dataDict2=dataDict2_w_amplm_and_phaselm_and_omegalm_zeroecc,
+                dataDict2=second_data_dict,
                 method=method)
