@@ -1366,19 +1366,18 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
     xB_data = horizons_data["AhB.dir"]["CoordCenterInertial.dat"]
     time = xA_data[:, 0]
     separion_vec = xA_data[:, 1:] - xB_data[:, 1:]
-    # We will assume the system to be non-precessing so that the motion
-    # is restricted in the x-y plane and the z-coordinate is effectively zero.
-    # Check if it is true, i.e., z-coordinate remains very small
-    if any(np.abs(separion_vec[:, 2]) > 1e-5):
-        raise Exception(
-            "The system seems to be precessing. Cannot get the orbital "
-            "phase by assuming the motion is restricted in the x-y plane.")
+    # We will use the x-y coordinates, i.e., the motion projected
+    # onto the x-y plane to compute the phase and then the number of
+    # orbits using that phase.
+    # NOTE: This assumption breaks down when the orbital plane itself contains
+    # the z-axis, which can happen if there is extreme precession, or in the
+    # case of EMRIs.
     # Get the orbital phase
-    phase_orb = np.unwrap(np.arctan2(separion_vec[:, 1], separion_vec[:, 0]))
+    phase_orb_projected = np.unwrap(np.arctan2(separion_vec[:, 1], separion_vec[:, 0]))
     # Find the duration of first num_orbits assuming that the orbital phase
     # changes by 2pi over one orbit
     idx_at_num_obits_from_start = np.argmin(
-        np.abs(phase_orb - (phase_orb[0] + num_orbits * 2 * np.pi)))
+        np.abs(phase_orb_projected - (phase_orb_projected[0] + num_orbits * 2 * np.pi)))
     num_obits_duration = (time[idx_at_num_obits_from_start]
                           - time[0])
     return num_obits_duration
