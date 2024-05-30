@@ -239,6 +239,11 @@ class eccDefinition:
                 for allowed keys.
 
             set_failures_to_zero : bool, default=False
+                This can be used to handle failures that may occur in the
+                following two scenarios:
+
+                # When no extrema are found
+                ===========================
                 The code normally raises an exception if sufficient number of
                 extrema are not found. This can happen for various reasons
                 including when the eccentricity is too small for some methods
@@ -258,6 +263,34 @@ class eccDefinition:
                 If both of these conditions are met, we assume that small
                 eccentricity is the cause, and set the returned eccentricity
                 and mean anomaly to zero.
+
+                # When all the reference time/frequency are later than the
+                ==========================================================
+                maximum allowed time/frequency
+                ==============================
+                The code normally can calculate eccentricity within the ranges
+                of `tmin` and `tmax` for `tref_in` and within `fref_min` and
+                `fref_max` for `fref_in`. These minimum and maximum allowable
+                time or frequency values are determined based on the times of
+                the first pair of (pericenters, apocenters) and the last pair
+                of (pericenters, apocenters), respectively.
+
+                However, due to the natural decay of eccentricity over time,
+                if the initial eccentricity is not sufficiently large, it
+                will decay to very small values in the later stages of the
+                inspiral.  This decay results in oscillations that become too
+                subtle to be detected by methods like 'Amplitude' and
+                'Frequency.'  In such cases, `tmax` and `fref_max` may become
+                significantly smaller than the time or frequency near the
+                merger.
+
+                Consequently, eccentricity measurement becomes unsuccessful
+                for any time or frequency in the late stages of the inspiral
+                (as illustrated in Figure 4 of arxiv.2302.11257). If the
+                `set_failures_to_zero` parameter is set to True, the code
+                will set both eccentricity and mean anomaly to zero in these
+                instances.
+
                 USE THIS WITH CAUTION!
         """
         # Get data necessary for eccentricity measurement
@@ -1168,7 +1201,7 @@ class eccDefinition:
                     "Instead the eccentricity and mean anomaly will be set to "
                     "zero.",
                     important=True,
-                    debug_level=0)
+                    debug_level=self.debug_level)
             else:
                 recommended_methods = ["ResidualAmplitude", "AmplitudeFits"]
                 if self.method not in recommended_methods:
@@ -1423,6 +1456,24 @@ class eccDefinition:
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
                 = self.compute_tref_in_and_fref_out_from_fref_in(self.fref_in)
+            # As eccentricity naturally decays over time, some methods may
+            # encounter challenges when attempting to identify
+            # pericenters/apocenters at later times, i.e., at higher
+            # frequencies. This is because the oscillations induced by
+            # eccentricity become progressively smaller and may be difficult to
+            # detect. Depending on the initial eccentricity, the 'fref_max'
+            # (the maximum allowed frequency where eccentricity can be
+            # measured) could be considerably smaller than the frequency at the
+            # time of merger, making it impractical to measure eccentricity
+            # using these methods for frequencies greater than 'fref_max.' In
+            # such scenarios, if all values in 'fref_in' are greater than
+            # 'fref_max,' the 'fref_out' list will be empty. If the
+            # 'set_failures_to_zero' flag is set to True, eccentricity and mean
+            # anomaly will be set to zero in these cases.
+            if len(self.fref_out) == 0 and self.set_failures_to_zero:
+                self.raise_eccentricity_decay_warning()
+                return self.set_eccentricity_and_mean_anomaly_to_zero()
+
         # We measure eccentricity and mean anomaly from tmin to tmax.
         self.tref_out = self.tref_in[
             np.logical_and(self.tref_in <= self.tmax,
@@ -1443,6 +1494,18 @@ class eccDefinition:
 
         # Check if tref_out is reasonable
         if len(self.tref_out) == 0:
+            # Because eccentricity decays with time, certain methods may
+            # struggle to identify pericenters/apocenters for later times,
+            # where the oscillations caused by eccentricity become too small to
+            # detect. Depending on the initial eccentricity, `tmax` may be
+            # significantly distant from the merger, rendering it impossible to
+            # measure eccentricity with these methods for times greater than
+            # `tmax`. In such scenarios, if all values in 'tref_in' >
+            # `tmax`, `tref_out` will be empty. If the `set_failures_to_zero`
+            # flag is True, eccentricity will be set to zero for such cases.
+            if all(self.tref_in > self.tmax) and self.set_failures_to_zero:
+                self.raise_eccentricity_decay_warning()
+                return self.set_eccentricity_and_mean_anomaly_to_zero()
             self.check_input_limits(self.tref_in, self.tmin, self.tmax)
             raise Exception(
                 "tref_out is empty. This can happen if the "
@@ -1504,6 +1567,17 @@ class eccDefinition:
         self.eccentricity = np.zeros(out_len)
         self.mean_anomaly = np.zeros(out_len)
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
+
+    def raise_eccentricity_decay_warning(self):
+        """Raise warning about setting eccentricity to zero due to eccentricity
+        decay.
+        """
+        max_val = self.tmax if self.domain == "time" else self.fref_max
+        debug_message(
+            f"The reference {self.domain} is/are greater than the maximum "
+            f"allowed {self.domain} = {max_val}. Since `set_failures_to_zero` "
+            f"is {self.set_failures_to_zero}, eccentricity and mean anomaly "
+            "are set to zero.", debug_level=self.debug_level, important=True)
 
     def make_return_dict_for_eccentricity_and_mean_anomaly(self):
         """Prepare a dictionary with reference time/freq, ecc, and mean anomaly.
@@ -2324,6 +2398,12 @@ class eccDefinition:
             # fref_out
             fref_out = self.get_fref_out(fref_in, method)
 
+            # In some cases when `set_failures_to_zero` is True, `fref_out`
+            # could be empty. Just return it without doing any of the steps
+            # below
+            if len(fref_out) == 0:
+                return fref_out, fref_out
+
             # Now that we have fref_out, we want to know the corresponding
             # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
             # This is done by first creating an interpolant of time as function
@@ -2405,6 +2485,13 @@ class eccDefinition:
             np.logical_and(fref_in >= fref_min,
                            fref_in < fref_max)]
         if len(fref_out) == 0:
+            # If all `fref_in` are greater than `fref_max` and
+            # `set_failures_to_zero` is `True` then just return the empty
+            # `fref_out` and we set eccentricity to zero for these `fref_in`
+            if all(fref_in > fref_max) and self.set_failures_to_zero:
+                # need fref_max for warnings
+                self.fref_max = fref_max
+                return fref_out
             self.check_input_limits(fref_in, fref_min, fref_max)
             raise Exception("fref_out is empty. This can happen if the "
                             "waveform has insufficient identifiable "
