@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          pip install pytest nbconvert ipykernel
+          pip install pytest nbconvert ipykernel pyfftw
 
       - name: Install pipenv
         shell: bash -l {0}
