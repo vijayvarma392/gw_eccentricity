@@ -25,9 +25,9 @@ class eccDefinitionUsingResidualFrequency(eccDefinitionUsingResidualAmplitude):
         """
         super().__init__(*args, **kwargs)
         self.method = "ResidualFrequency"
-        self.label_for_data_for_finding_extrema = r"$\Delta\omega_{22}$"
+        self.label_for_data_for_finding_extrema = r"$\Delta\omega_{\mathrm{gw}}$"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
         self.check_and_raise_zeroecc_data_not_found("ResidualFrequency")
-        return self.res_omega22
+        return self.res_omega_gw

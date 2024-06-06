@@ -18,9 +18,9 @@ class eccDefinitionUsingFrequency(eccDefinitionUsingAmplitude):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
-        self.label_for_data_for_finding_extrema = r"$\omega_{22}$"
+        self.label_for_data_for_finding_extrema = r"$\omega_{\mathrm{gw}}$"
         self.method = "Frequency"
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
-        return self.omega22
+        return self.omega_gw

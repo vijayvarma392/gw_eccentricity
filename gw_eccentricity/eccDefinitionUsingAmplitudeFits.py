@@ -19,7 +19,7 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
-        self.data_str = "amp22"
+        self.data_str = "amp_gw"
         self.label_for_data_for_finding_extrema = labelsDict[self.data_str]
         self.label_for_fit_to_data_for_finding_extrema \
             = labelsDict[f"{self.data_str}_fit"]
@@ -30,16 +30,16 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
             "kwargs_for_fits_methods",
             "eccDefinitionUsingAmplitudeFits.get_default_kwargs_for_fits_methods()")
         self.set_fit_variables()
-        # Make a copy of amp22 and use it to set data_for_finding_extrema.
+        # Make a copy of amp_gw and use it to set data_for_finding_extrema.
         # This would ensure that any modification of data_for_finding_extrema
-        # does not modify amp22.
-        self.data_for_finding_extrema = self.amp22.copy()
+        # does not modify amp_gw.
+        self.data_for_finding_extrema = self.amp_gw.copy()
         # FIXME: Find a better solution
         # It turns out that since in MKS units amplitude is very small
         # The envelope fitting does not work properly. Maybe there is a better
-        # way to do this but scaling the amp22 data by its value at the global
+        # way to do this but scaling the amp_gw data by its value at the global
         # peak (the merger time) solves this issue.
-        self.data_for_finding_extrema /= self.amp22_merger
+        self.data_for_finding_extrema /= self.amp_gw_merger
 
     def get_default_kwargs_for_fits_methods(self):
         """Get default fits kwargs.
