@@ -285,6 +285,17 @@ def measure_eccentricity(tref_in=None,
         https://github.com/vijayvarma392/gw_eccentricity/wiki/NR-investigation-to-set-default-number-of-orbits-to-exclude-before-merger
         Default: 2.
 
+    precessing: bool, default=False
+        Whether the system is precessing or not. For precessing systems, the
+        dataDict should contain modes computed in the intertial frame which
+        needs are transformed internally to co-precessing frame before using it
+        for measuring eccentricity.
+
+        For nonprecessing systems, there is no distiction between the inertial
+        and co-precessing frame since they are the same.
+
+        Default is False which implies the system to be nonprecessing.
+
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         spline_kwargs:
             Dictionary of arguments to be passed to the spline interpolation
