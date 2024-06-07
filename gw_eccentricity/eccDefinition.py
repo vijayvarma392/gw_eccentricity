@@ -288,8 +288,8 @@ class eccDefinition:
         if not np.allclose(self.t_diff, self.t_diff[0]):
             raise Exception("Input time array must have uniform time steps.\n"
                             f"Time steps are {self.t_diff}")
-        # get amplitude, phase, omega to be used for eccentricity measurement
-        # For precessing systems, even in the co-precessing frame, the 22 mode
+        # get amplitude, phase, omega to be used for eccentricity measurement.
+        # For precessing systems, even in the co-precessing frame, the (2, 2) mode
         # quantities shows oscillations. To reduce the oscillations further,
         # we use a combination of (2, 2) and (2, -2) mode to define new quantities
         # amp_gw, phase_gw and omega_gw. For nonprecessing systems, these quantities
@@ -618,7 +618,13 @@ class eccDefinition:
                 "This might be fixed by changing the overall sign of "
                 "phase in the input `dataDict`")
         # check that omega_gw is positive by checking its value at the merger
-        omega_gw_merger = newDataDict["omegalm"][(2, 2)][merger_idx]
+        if not self.precessing:
+            # TODO: we may need to change this in the future.
+            # For example, omega_gw could be the invariant angular velocity even
+            # for nonprecessing case.
+            omega_gw_merger = newDataDict["omegalm"][(2, 2)][merger_idx]
+        else:
+            raise Exception("Precessing system is not supported yet!")
         if omega_gw_merger < 0:
             raise Exception(f"omega_gw at merger is {omega_gw_merger} < 0. "
                             "omega_gw must be positive.")
@@ -652,28 +658,33 @@ class eccDefinition:
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
     def get_amp_phase_omega_gw(self):
-        """Get the gw quanitities from dictionary of waveform modes.
+        """Get the gw quanitities from modes dict in the coprecessing frame.
 
-        For nonprecessing systems, we will the (2, 2) mode to get these
-        quantities.
+        For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
+        as those obtained using the (2, 2) mode.
         
-        For precessing systems, we use the symmetric amplitude and
-        antisymmetric phase following eq. 48 and 49 from
-        https://arxiv.org/pdf/1701.00550v2, where these are defined using
-        symmetric and antisymmetric combination of the same from (2, 2) and (2,
-        -2) modes.
+        For precessing systems, the amplitude and omega of the (2, 2) are not
+        the best quantities to use for eccentricity measurement even in the
+        coprecessing frame.  Ideally we want to use quantities that have the
+        least imprint of precession in the coprecessing frame. The symmetric
+        amplitude and antisymmetric phase defined in eq. 48 and 49 of
+        https://arxiv.org/pdf/1701.00550v2 which are the symmetric and
+        antisymmetric combination of the same from (2, 2) and (2, -2) modes
+        could be used for eccentricity measurement.
         
-        amp_gw = (1/2) * (amp22 + amp2-2)
-        phase_gw = (1/2) * (phase22 - phase2-2)
+        amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
+        phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
+        omega_gw = d(phase_gw)/dt
 
-        These quantities reduce to the (2, 2) data when the system is non
-        precessing
+        These quantities reduce to the corresponding (2, 2) mode data when the
+        system is nonprecessing.
         """
         if not self.precessing:
             amp_gw, phase_gw, omega_gw = (self.dataDict["amplm"][(2, 2)],
                                           self.dataDict["phaselm"][(2, 2)],
                                           self.dataDict["omegalm"][(2, 2)])
         else:
+            # TODO: implement process to obtain copr_data_dict from dataDict in the inertial frame
             amp_gw = 0.5 * (self.copr_data_dict[(2, 2)] + self.copr_data_dict[(2, -2)])
             phase_gw = 0.5 * (np.unwrap(np.angle(self.copr_data_dict[(2, 2)]))
                               - np.unwrap(np.angle(self.copr_data_dict[(2, -2)])))
@@ -705,24 +716,30 @@ class eccDefinition:
         the signal might be mistaken for extrema and on the other hand if the
         `width` is too large then we might miss an extremum.
 
-        This function uses phase_gw (phase of the (2, 2) mode) to get a
-        reasonable value of `width` by looking at the time scale over which the
-        phase_gw changes by about 4pi because the change in phase_gw over one
-        orbit would be approximately twice the change in the orbital phase
-        which is about 2pi.  Finally, we divide this by 4 so that the `width`
-        is always smaller than the separation between the two troughs
-        surrounding the current peak. Otherwise, we risk missing a
-        few extrema very close to the merger.
+        This function uses phase_gw (phase of the (2, 2) mode for nonprecessing
+        case or phase from an antisymmetric combination of (2, 2) and (2, -2)
+        mode phases in the coprecessing frame for precessing case, see
+        `get_amp_phase_omega_gw` for more details) to get a reasonable value of
+        `width` by looking at the time scale over which the phase_gw changes by
+        about 4pi because the change in phase_gw over one orbit would be
+        approximately twice the change in the orbital phase which is about 2pi.
+        Finally, we divide this by 4 so that the `width` is always smaller than
+        the separation between the two troughs surrounding the current
+        peak. Otherwise, we risk missing a few extrema very close to the
+        merger.
 
         Parameters:
         -----------
-        t:
+        t: array-like
             Time array.
-        phase_gw:
-            Phase of the (2, 2) mode.
-        phase_gw_merger:
-            Phase of the (2, 2) mode at the merger.
-        num_orbits_before_merger:
+        phase_gw: array-like
+            phase of the (2, 2) mode for nonprecessing systems. For precessing
+            systems, phase_gw is obtained using an antisymmetric combination of
+            (2, 2) and (2, -2) mode phases in the coprecessing frame. see
+            `get_amp_phase_omega_gw` for more details.
+        phase_gw_merger: float
+            Value of phase_gw at the merger.
+        num_orbits_before_merger: float, default=2
             Number of orbits before merger to get the time at which the `width`
             parameter is determined. We want to do this near the merger as this
             is where the time between extrema is the smallest, and the `width`
@@ -735,7 +752,7 @@ class eccDefinition:
             Minimal `width` to filter out noisy extrema.
         """
         # get the time for getting width at num orbits before merger.
-        # for 22 mode phase changes about 2 * 2pi for each orbit.
+        # phase_gw changes about 2 * 2pi for each orbit.
         t_at_num_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
                 phase_gw, phase_gw_merger, num_orbits_before_merger)]
@@ -761,16 +778,19 @@ class eccDefinition:
 
         parameters:
         -----------
-        phase_gw:
-            1d array of phase of (2, 2) mode of the full waveform.
-        phase_gw_merger:
-            Phase of (2, 2) mode at the merger.
-        num_orbits:
+        phase_gw: array-like
+            phase of the (2, 2) mode for nonprecessing systems. For precessing
+            systems, phase_gw is obtained using an antisymmetric combination of
+            (2, 2) and (2, -2) mode phases in the coprecessing frame. see
+            `get_amp_phase_omega_gw` for more details.
+        phase_gw_merger: float
+            Value of phase_gw at the merger.
+        num_orbits: float
             Number of orbits earlier than merger to use for computing
             the index of time.
         """
-        # one orbit changes the 22 mode phase by 4 pi since
-        # omega_gw = 2 omega_orb
+        # one orbit changes the phase_gw by 4 pi since
+        # omega_gw = 2 * omega_orb
         phase_gw_num_orbits_earlier_than_merger = (phase_gw_merger
                                                   - 4 * np.pi
                                                   * num_orbits)
@@ -1283,13 +1303,19 @@ class eccDefinition:
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
 
+        #TODO: We may decide to use invariant angular velocity as omega in the future
+        
         Eccentricity is measured using the GW frequency omega_gw(t) =
-        dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
-        mode. We currently only allow time-domain, nonprecessing waveforms. We
-        evaluate omega_gw(t) at pericenter times, t_pericenters, and build a
-        spline interpolant omega_gw_pericenters(t) using those data
-        points. Similarly, we build omega_gw_apocenters(t) using omega_gw(t) at
-        the apocenter times, t_apocenters.
+        d(phase_gw)/dt, where phase_gw(t) is the phase of the (2, 2) waveform
+        mode for nonprecessing systems. For precessing systems, phase_gw is
+        obtained using an antisymmetric combination of (2, 2) and (2, -2) mode
+        phases in the coprecessing frame. See
+        `eccDefinition.get_amp_phase_omega_gw` for more details. We currently
+        only allow time-domain, nonprecessing waveforms. We evaluate
+        omega_gw(t) at pericenter times, t_pericenters, and build a spline
+        interpolant omega_gw_pericenters(t) using those data points. Similarly,
+        we build omega_gw_apocenters(t) using omega_gw(t) at the apocenter
+        times, t_apocenters.
 
         Using omega_gw_pericenters(t) and omega_gw_apocenters(t), we first
         compute e_omega_gw(t), as described in Eq.(4) of `arXiv:2302.11257`_. We
@@ -1298,11 +1324,14 @@ class eccDefinition:
         described in Eq.(10) of `arXiv:2302.11257`_.
 
         To find t_pericenters/t_apocenters, one can look for extrema in
-        different waveform data, like omega_gw(t) or Amp_Gw(t), the amplitude of
-        the (2, 2) mode. Pericenters correspond to the local maxima, while
-        apocenters correspond to the local minima in the data. The method
-        option (described below) lets the user pick which waveform data to use
-        to find t_pericenters/t_apocenters.
+        different waveform data, like omega_gw(t) or amp_gw(t), the amplitude
+        of the (2, 2) mode for nonprecessing systems or a symmetric combination
+        of amplitude of (2, 2) and (2, -2) modes in the coprecessing frame for
+        precessing systems, see `get_amp_phase_omega_gw` for more
+        details. Pericenters correspond to the local maxima, while apocenters
+        correspond to the local minima in the data. The method option
+        (described below) lets the user pick which waveform data to use to find
+        t_pericenters/t_apocenters.
 
         .. _arXiv:2302.11257: https://arxiv.org/abs/2302.11257
 
@@ -2405,10 +2434,10 @@ class eccDefinition:
                            f"{list(self.available_averaging_methods.keys())}")
 
     def get_fref_bounds(self, method=None):
-        """Get the allowed min and max reference frequency of 22 mode.
+        """Get the allowed min and max reference frequency of f_gw = omega_gw/2pi.
 
         Depending on the omega_gw averaging method, this function returns the
-        minimum and maximum allowed reference frequency of 22 mode.
+        minimum and maximum allowed reference frequency of f_gw = omega_gw/2pi.
 
         Note: If omega_gw_average is already computed using a `method` and
         therefore is not None, then it returns the minimum and maximum of that
@@ -2417,7 +2446,6 @@ class eccDefinition:
         then input `method` is ignored and the existing omega_gw_average is
         used.  To force recomputation of omega_gw_average, for example, with a
         new method one need to set it to None first.
-
         Parameters
         ----------
         method : str
@@ -2437,12 +2465,14 @@ class eccDefinition:
                 max(self.omega_gw_average)/2/np.pi]
 
     def get_fref_out(self, fref_in, method):
-        """Get fref_out from fref_in that falls within the valid average f22 range.
+        """Get fref_out from fref_in that falls within the valid average f_gw range.
+
+        f_gw = omega_gw / 2pi
 
         Parameters
         ----------
         fref_in : array-like
-            Input 22 mode reference frequency array.
+            Input reference frequency array, i.e., f_gw = omega_gw / 2pi.
 
         method : str
             method for getting average omega_gw
@@ -2484,7 +2514,7 @@ class eccDefinition:
         - decc/dt vs time, this is to test the monotonicity of eccentricity as
           a function of time
         - mean anomaly vs time
-        - omega_22 vs time with the pericenters and apocenters shown. This
+        - omega_gw vs time with the pericenters and apocenters shown. This
           would show if the method is missing any pericenters/apocenters or
           selecting one which is not a pericenter/apocenter
         - deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the

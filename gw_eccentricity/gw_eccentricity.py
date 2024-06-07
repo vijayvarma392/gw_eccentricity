@@ -69,12 +69,14 @@ def measure_eccentricity(tref_in=None,
 
     Eccentricity is measured using the GW frequency omega_gw(t) =
     d(phase_gw)/dt, where phase_gw(t) is the phase of the (2, 2) waveform mode
-    for nonprecessing systems. See `eccDefinition.get_amp_phase_omega_gw` for
-    more details. We currently only allow time-domain, nonprecessing
-    waveforms. We evaluate omega_gw(t) at pericenter times, t_pericenters, and
-    build a spline interpolant omega_gw_pericenters(t) using those data
-    points. Similarly, we build omega_gw_apocenters(t) using omega_gw(t) at the
-    apocenter times, t_apocenters.
+    for nonprecessing systems. For precessing systems, phase_gw is obtained
+    using an antisymmetric combination of (2, 2) and (2, -2) mode phases in the
+    coprecessing frame. See `eccDefinition.get_amp_phase_omega_gw` for more
+    details. We currently only allow time-domain, nonprecessing waveforms. We
+    evaluate omega_gw(t) at pericenter times, t_pericenters, and build a spline
+    interpolant omega_gw_pericenters(t) using those data points. Similarly, we
+    build omega_gw_apocenters(t) using omega_gw(t) at the apocenter times,
+    t_apocenters.
 
     Using omega_gw_pericenters(t) and omega_gw_apocenters(t), we first
     compute e_omega_gw(t), as described in Eq.(4) of arXiv:2302.11257. We
@@ -84,11 +86,12 @@ def measure_eccentricity(tref_in=None,
 
     To find t_pericenters/t_apocenters, one can look for extrema in different
     waveform data, like omega_gw(t) or amp_gw(t), the amplitude of the (2, 2)
-    mode for nonprecessing systems. See `eccDefinition.get_amp_phase_omega_gw`
-    for more details on amp_gw. Pericenters correspond to the local maxima,
-    while apocenters correspond to the local minima in the data. The method
-    option (described below) lets the user pick which waveform data to use to
-    find t_pericenters/t_apocenters.
+    mode for nonprecessing systems or a symmetric combination of amplitude of
+    (2, 2) and (2, -2) modes in the coprecessing frame for precessing systems,
+    see `get_amp_phase_omega_gw` for more details. Pericenters correspond to
+    the local maxima, while apocenters correspond to the local minima in the
+    data. The method option (described below) lets the user pick which waveform
+    data to use to find t_pericenters/t_apocenters.
 
     Parameters
     ----------
