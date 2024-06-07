@@ -5,6 +5,7 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
 """
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
+from .plot_settings import labelsDict
 
 
 class eccDefinitionUsingFrequency(eccDefinitionUsingAmplitude):
@@ -18,7 +19,7 @@ class eccDefinitionUsingFrequency(eccDefinitionUsingAmplitude):
         dataDict: Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
-        self.label_for_data_for_finding_extrema = r"$\omega_{\mathrm{gw}}$"
+        self.label_for_data_for_finding_extrema = labelsDict["omega_gw"]
         self.method = "Frequency"
 
     def get_data_for_finding_extrema(self):

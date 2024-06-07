@@ -5,7 +5,7 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, May 14, 2022
 """
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
-
+from .plot_settings import labelsDict
 
 class eccDefinitionUsingResidualFrequency(eccDefinitionUsingResidualAmplitude):
     """Measure eccentricity by finding extrema from residual frequency."""
@@ -25,7 +25,7 @@ class eccDefinitionUsingResidualFrequency(eccDefinitionUsingResidualAmplitude):
         """
         super().__init__(*args, **kwargs)
         self.method = "ResidualFrequency"
-        self.label_for_data_for_finding_extrema = r"$\Delta\omega_{\mathrm{gw}}$"
+        self.label_for_data_for_finding_extrema = labelsDict["res_omega_gw"]
 
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""

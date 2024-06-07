@@ -5,6 +5,7 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
+from .plot_settings import labelsDict
 
 
 class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
@@ -25,7 +26,7 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         """
         super().__init__(*args, **kwargs)
         self.method = "ResidualAmplitude"
-        self.label_for_data_for_finding_extrema = r"$\Delta A_{\mathrm{gw}}$"
+        self.label_for_data_for_finding_extrema = labelsDict["res_amp_gw"]
 
     def check_and_raise_zeroecc_data_not_found(self, method):
         """Raise exception if zeroecc data not found for Residual method.

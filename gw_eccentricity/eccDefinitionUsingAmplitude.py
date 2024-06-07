@@ -4,8 +4,9 @@ Find pericenters and apocenters using Amplitude.
 Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 28, 2022
 """
-from .eccDefinition import eccDefinition
 from scipy.signal import find_peaks
+from .eccDefinition import eccDefinition
+from .plot_settings import labelsDict
 
 
 class eccDefinitionUsingAmplitude(eccDefinition):
@@ -20,7 +21,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         super().__init__(*args, **kwargs)
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
-        self.label_for_data_for_finding_extrema = r"$A_{\mathrm{gw}}$"
+        self.label_for_data_for_finding_extrema = labelsDict["amp_gw"]
         self.method = "Amplitude"
 
     def get_data_for_finding_extrema(self):

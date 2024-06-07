@@ -546,8 +546,14 @@ class eccDefinition:
             `amplitude_using_all_modes`. This is computed before the
             truncation.
         amp_gw_merger : float
-            Amplitude of the (2, 2) mode at t_merger. This is computed before
-            the truncation.
+            Value of amp_gw at the merger. For nonprecessing systems, amp_gw is
+            the amplitude of the (2, 2) mode. For precessing systems, amp_gw is
+            obtained using a symmetric combination of the amplitude of (2, 2)
+            and (2, -2) mode in the coprecessing frame. See `get_amp_phase_omega_gw`
+            for more details.
+            This needs to be computed before the modes are truncated.
+            # TODO: Maybe we should use the ampitude from al modes and use the
+            # it's max value.
         min_width_for_extrema : float
             Minimum width for the `find_peaks` function. This is computed
             before the truncation.
@@ -603,9 +609,16 @@ class eccDefinition:
             newDataDict["t"],
             amplitude_using_all_modes(newDataDict["amplm"], "amplm"))[0]
         merger_idx = np.argmin(np.abs(newDataDict["t"] - t_merger))
-        amp_gw_merger = newDataDict["amplm"][(2, 2)][merger_idx]
-        phase_gw = newDataDict["phaselm"][(2, 2)]
-        phase_gw_merger = phase_gw[merger_idx]
+        if not self.precessing:
+            amp_gw_merger = newDataDict["amplm"][(2, 2)][merger_idx]
+            phase_gw = newDataDict["phaselm"][(2, 2)]
+            phase_gw_merger = phase_gw[merger_idx]
+            # TODO: we may need to change this in the future.
+            # For example, omega_gw could be the invariant angular velocity even
+            # for nonprecessing case.
+            omega_gw_merger = newDataDict["omegalm"][(2, 2)][merger_idx]
+        else:
+            raise NotImplementedError("Precessing system is not supported yet.")
         # check if phase_gw is increasing. phase_gw at merger should be greater
         # than the phase_gw at the start of the waveform
         if phase_gw_merger < phase_gw[0]:
@@ -618,13 +631,6 @@ class eccDefinition:
                 "This might be fixed by changing the overall sign of "
                 "phase in the input `dataDict`")
         # check that omega_gw is positive by checking its value at the merger
-        if not self.precessing:
-            # TODO: we may need to change this in the future.
-            # For example, omega_gw could be the invariant angular velocity even
-            # for nonprecessing case.
-            omega_gw_merger = newDataDict["omegalm"][(2, 2)][merger_idx]
-        else:
-            raise Exception("Precessing system is not supported yet!")
         if omega_gw_merger < 0:
             raise Exception(f"omega_gw at merger is {omega_gw_merger} < 0. "
                             "omega_gw must be positive.")
