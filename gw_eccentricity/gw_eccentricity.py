@@ -287,9 +287,10 @@ def measure_eccentricity(tref_in=None,
 
     precessing: bool, default=False
         Whether the system is precessing or not. For precessing systems, the
-        dataDict should contain modes computed in the intertial frame which
-        needs are transformed internally to co-precessing frame before using it
-        for measuring eccentricity.
+        `dataDict` should contain modes computed in the intertial frame which
+        are rotated internally to obtain the same in the coprecessing
+        frame. Finally the modes in the coprecessing frame are used for
+        measuring eccentricity.
 
         For nonprecessing systems, there is no distiction between the inertial
         and co-precessing frame since they are the same.

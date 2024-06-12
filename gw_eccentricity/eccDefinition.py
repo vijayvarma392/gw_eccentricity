@@ -157,9 +157,10 @@ class eccDefinition:
 
         precessing: bool, default=False
             Whether the system is precessing or not. For precessing systems,
-            the dataDict should contain modes computed in the intertial frame
-            which needs are transformed internally to co-precessing frame
-            before using it for measuring eccentricity.
+            the `dataDict` should contain modes computed in the intertial frame
+            which are rotated internally to obtain the same in the coprecessing
+            frame. Finally the modes in the coprecessing frame are used for
+            measuring eccentricity.
 
             For nonprecessing systems, there is no distiction between the
             inertial and co-precessing frame since they are the same.
@@ -289,12 +290,13 @@ class eccDefinition:
             raise Exception("Input time array must have uniform time steps.\n"
                             f"Time steps are {self.t_diff}")
         # get amplitude, phase, omega to be used for eccentricity measurement.
-        # For precessing systems, even in the co-precessing frame, the (2, 2) mode
-        # quantities shows oscillations. To reduce the oscillations further,
-        # we use a combination of (2, 2) and (2, -2) mode to define new quantities
-        # amp_gw, phase_gw and omega_gw. For nonprecessing systems, these quantities
-        # reduce to the (2, 2) mode values. See `get_amp_phase_omega_gw` for more
-        # details
+        # For precessing systems, even in the coprecessing frame, the (2, 2)
+        # mode quantities show some oscillations due to the precession
+        # effect. To reduce these oscillations further, we use a combination of
+        # (2, 2) and (2, -2) mode in the coprecessing frame to define new
+        # quantities amp_gw, phase_gw and omega_gw. For nonprecessing systems,
+        # these quantities reduce to their respective (2, 2) mode values. See
+        # `get_amp_phase_omega_gw` for more details.
         self.amp_gw, self.phase_gw, self.omega_gw \
             = self.get_amp_phase_omega_gw()
         # Sanity check various kwargs and set default values
@@ -552,7 +554,7 @@ class eccDefinition:
             and (2, -2) mode in the coprecessing frame. See `get_amp_phase_omega_gw`
             for more details.
             This needs to be computed before the modes are truncated.
-            # TODO: Maybe we should use the ampitude from al modes and use the
+            # TODO: Maybe we should use the ampitude from all modes and use
             # it's max value.
         min_width_for_extrema : float
             Minimum width for the `find_peaks` function. This is computed
