@@ -490,8 +490,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                               verbose=False,
                               pp=None,
                               plot_info=""):
-        """given a 22-GW mode (t, phase_gw, data), identify a stretch of data
-        [idx_lo, idx_hi] centered roughly around the index idx_ref which
+        """given a GW modes data (t, phase_gw, data), identify a stretch of
+        data [idx_lo, idx_hi] centered roughly around the index idx_ref which
         satisfies the following properties:
 
           - The interval [idx_lo, idx_hi] contains Nbefore+Nafter maxima
@@ -562,12 +562,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         p
             the fitting parameters of the best fit through the extrema
         K
-            an updated estimate of the periastron advance K (i.e. the
-                 average increase of phase_gw between extrema divided by 4pi)
+            an updated estimate of the periastron advance K (i.e. the average
+            increase of phase_gw between extrema divided by 4pi)
         idx_ref
-            a (potentially increased) value of idx_ref, so that
-                       Nbefore extrema were found between the start of the data
-                       and idx_ref
+            a (potentially increased) value of idx_ref, so that Nbefore extrema
+            were found between the start of the data and idx_ref
         extrema_refined
             (t_extrema_refined, data_extrema_refined, phase_gw_extrema_refined)
             information about the
