@@ -42,8 +42,8 @@ jobs:
         shell: bash -l {0}
         run: |
           git clone https://bitbucket.org/eob_ihes/teobresums.git
-          git checkout dev/DALI
           cd teobresums/Python
+          git checkout dev/DALI
           pip install .
 
       - name: Install fftw for macos
