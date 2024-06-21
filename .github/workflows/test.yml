@@ -44,7 +44,7 @@ jobs:
           git clone https://bitbucket.org/eob_ihes/teobresums.git
           cd teobresums/Python
           git checkout dev/DALI
-          pip install .
+          python setup.py build_ext --inplace
 
       - name: Install fftw for macos
         if: matrix.os == 'macos-latest'
