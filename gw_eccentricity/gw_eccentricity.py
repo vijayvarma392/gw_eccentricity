@@ -68,34 +68,30 @@ def measure_eccentricity(tref_in=None,
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
     Eccentricity is measured using the GW frequency omega_gw(t) =
-    d(phase_gw)/dt, where phase_gw(t) is the phase of the (2, 2) waveform mode
-    for nonprecessing systems. For precessing systems, phase_gw is obtained
-    using an antisymmetric combination of (2, 2) and (2, -2) mode phases in the
-    coprecessing frame.
+    d(phase_gw)/dt. Throughout this documentation, we will refer to phase_gw,
+    omega_gw and amp_gw. For nonprecessing systems, these quantities are simply
+    the corresponding values of the (2, 2) mode,
 
-    Throughout this documentation, we will refer to omega_gw and amp_gw. For
-    nonprecessing systems, these quantities reduce to the corresponding values
-    obtained using the (2, 2) mode, i. e., for nonprecessing systems,
-
-    amp_gw = amp22, phase_gw = phase22 and omega_gw = omega22
+    amp_gw = amp22, phase_gw = phase22 and omega_gw = omega22.
 
     On the other hand, for precessing systems, we use Eq.(48) and (49) of
     arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw [phase_gw] is
     defined using a symmetric [antisymmetric] combination of
-    amplitude [phase] of (2, 2) and (2, -2) mode.
+    amplitude [phase] of (2, 2) and (2, -2) mode in the coprecessing frame,
 
     amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
     phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
-    omega_gw = d(phase_gw)/dt
+    omega_gw = d(phase_gw)/dt.
 
     These quantities reduce to the corresponding (2, 2) mode data when the
-    system is nonprecessing. See `eccDefinition.get_amp_phase_omega_gw` for
-    more details.
+    system is nonprecessing, but we treat nonprecessing cases differently by
+    allowing the user to include only the (2, 2) mode. See
+    `eccDefinition.get_amp_phase_omega_gw` for more details.
 
-    We currently only allow time-domain, nonprecessing waveforms. We
-    evaluate omega_gw(t) at pericenter times, t_pericenters, and build a spline
-    interpolant omega_gw_pericenters(t) using those data points. Similarly, we
-    build omega_gw_apocenters(t) using omega_gw(t) at the apocenter times,
+    We currently only allow time-domain waveforms. We evaluate omega_gw(t) at
+    pericenter times, t_pericenters, and build a spline interpolant
+    omega_gw_pericenters(t) using those data points. Similarly, we build
+    omega_gw_apocenters(t) using omega_gw(t) at the apocenter times,
     t_apocenters.
 
     Using omega_gw_pericenters(t) and omega_gw_apocenters(t), we first compute
@@ -306,7 +302,7 @@ def measure_eccentricity(tref_in=None,
         Whether the system is precessing or not. For precessing systems, the
         `dataDict` should contain modes in the coprecessing frame. For
         nonprecessing systems, there is no distiction between the inertial and
-        co-precessing frame since they are the same.
+        coprecessing frame since they are the same.
 
         Default is False which implies the system to be nonprecessing.
 
