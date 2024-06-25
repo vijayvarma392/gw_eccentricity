@@ -157,13 +157,9 @@ class eccDefinition:
 
         precessing: bool, default=False
             Whether the system is precessing or not. For precessing systems,
-            the `dataDict` should contain modes computed in the intertial frame
-            which are rotated internally to obtain the same in the coprecessing
-            frame. Finally the modes in the coprecessing frame are used for
-            measuring eccentricity.
-
-            For nonprecessing systems, there is no distiction between the
-            inertial and co-precessing frame since they are the same.
+            the `dataDict` should contain modes in the coprecessing frame. For
+            nonprecessing systems, there is no distiction between the inertial
+            and co-precessing frame since they are the same.
 
             Default is False which implies the system to be nonprecessing.
 
@@ -669,16 +665,17 @@ class eccDefinition:
         """Get the gw quanitities from modes dict in the coprecessing frame.
 
         For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
-        as those obtained using the (2, 2) mode.
+        as those obtained using the (2, 2) mode, i. e., amp22, phase22 and omega22,
+        respectively.
         
         For precessing systems, the amplitude and omega of the (2, 2) are not
         the best quantities to use for eccentricity measurement even in the
         coprecessing frame.  Ideally we want to use quantities that have the
         least imprint of precession in the coprecessing frame. The symmetric
-        amplitude and antisymmetric phase defined in eq. 48 and 49 of
-        https://arxiv.org/pdf/1701.00550v2 which are the symmetric and
-        antisymmetric combination of the same from (2, 2) and (2, -2) modes
-        could be used for eccentricity measurement.
+        amplitude and antisymmetric phase defined in Eq.(48) and (49) of
+        arXiv:1701.00550 which are the symmetric and antisymmetric combination
+        of the same from (2, 2) and (2, -2) modes are used for eccentricity
+        measurement.
         
         amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
         phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
@@ -692,13 +689,12 @@ class eccDefinition:
                                           self.dataDict["phaselm"][(2, 2)],
                                           self.dataDict["omegalm"][(2, 2)])
         else:
-            # TODO: implement process to obtain copr_data_dict from dataDict in the inertial frame
-            amp_gw = 0.5 * (self.copr_data_dict[(2, 2)] + self.copr_data_dict[(2, -2)])
-            phase_gw = 0.5 * (np.unwrap(np.angle(self.copr_data_dict[(2, 2)]))
-                              - np.unwrap(np.angle(self.copr_data_dict[(2, -2)])))
+            amp_gw = 0.5 * (self.dataDict[(2, 2)] + self.dataDict[(2, -2)])
+            phase_gw = 0.5 * (np.unwrap(np.angle(self.dataDict[(2, 2)]))
+                              - np.unwrap(np.angle(self.dataDict[(2, -2)])))
             omega_gw = time_deriv_4thOrder(
                 phase_gw,
-                self.copr_data_dict["t"][1] - self.copr_data_dict["t"][0])
+                self.dataDict["t"][1] - self.dataDict["t"][0])
         return amp_gw, phase_gw, omega_gw
 
     def get_width_for_peak_finder_from_phase_gw(self,
@@ -1327,9 +1323,9 @@ class eccDefinition:
         amp_gw = amp22, phase_gw = phase22 and omega_gw = omega22
 
         On the other hand, for precessing systems, we use Eq.(48) and (49) of
-        arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw (phase_gw) is
-        defined using a symmetric (antisymmetric) combination of amplitude
-        (phase) of (2, 2) and (2, -2) mode.
+        arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw [phase_gw] is
+        defined using a symmetric [antisymmetric] combination of amplitude
+        [phase] of (2, 2) and (2, -2) mode.
 
         amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
         phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))

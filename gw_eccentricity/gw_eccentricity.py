@@ -80,9 +80,9 @@ def measure_eccentricity(tref_in=None,
     amp_gw = amp22, phase_gw = phase22 and omega_gw = omega22
 
     On the other hand, for precessing systems, we use Eq.(48) and (49) of
-    arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw (phase_gw) is
-    defined using a symmetric (antisymmetric) combination of
-    amplitude (phase) of (2, 2) and (2, -2) mode.
+    arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw [phase_gw] is
+    defined using a symmetric [antisymmetric] combination of
+    amplitude [phase] of (2, 2) and (2, -2) mode.
 
     amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
     phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
@@ -304,13 +304,9 @@ def measure_eccentricity(tref_in=None,
 
     precessing: bool, default=False
         Whether the system is precessing or not. For precessing systems, the
-        `dataDict` should contain modes computed in the intertial frame which
-        are rotated internally to obtain the same in the coprecessing
-        frame. Finally the modes in the coprecessing frame are used for
-        measuring eccentricity.
-
-        For nonprecessing systems, there is no distiction between the inertial
-        and co-precessing frame since they are the same.
+        `dataDict` should contain modes in the coprecessing frame. For
+        nonprecessing systems, there is no distiction between the inertial and
+        co-precessing frame since they are the same.
 
         Default is False which implies the system to be nonprecessing.
 
