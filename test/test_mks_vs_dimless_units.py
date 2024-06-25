@@ -124,7 +124,7 @@ def test_mks_vs_dimless_units():
                      "x = Dimensionless, y = MKS"))
 
         # Try evaluating at single dimensionless frequency
-        fref_in = gwecc_object.compute_orbit_averaged_omega22_between_extrema(
+        fref_in = gwecc_object.compute_orbit_averaged_omega_gw_between_extrema(
             dataDict["t"][idx]) / (2 * np.pi)
         gwecc_dict = measure_eccentricity(
             fref_in=fref_in,
@@ -134,7 +134,7 @@ def test_mks_vs_dimless_units():
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
         # Try evaluating at single MKS frequency
-        fref_in = gwecc_object_MKS.compute_orbit_averaged_omega22_between_extrema(
+        fref_in = gwecc_object_MKS.compute_orbit_averaged_omega_gw_between_extrema(
             dataDictMKS["t"][idx]) / (2 * np.pi)
         gwecc_dict_MKS = measure_eccentricity(
             fref_in=fref_in,
@@ -165,7 +165,7 @@ def test_mks_vs_dimless_units():
                      "x = Dimensionless, y = MKS"))
 
         # Try evaluating at an array of dimensionless frequencies
-        fref_in = gwecc_object.compute_orbit_averaged_omega22_between_extrema(
+        fref_in = gwecc_object.compute_orbit_averaged_omega_gw_between_extrema(
             dataDict["t"][idx: idx+500]) / (2 * np.pi)
         gwecc_dict = measure_eccentricity(
             fref_in=fref_in,
@@ -175,7 +175,7 @@ def test_mks_vs_dimless_units():
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
         # Try evaluating at an array of MKS frequencies
-        fref_in = gwecc_object_MKS.compute_orbit_averaged_omega22_between_extrema(
+        fref_in = gwecc_object_MKS.compute_orbit_averaged_omega_gw_between_extrema(
             dataDictMKS["t"][idx: idx+500]) / (2 * np.pi)
         gwecc_dict_MKS = measure_eccentricity(
             fref_in=fref_in,
