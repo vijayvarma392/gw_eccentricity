@@ -5,7 +5,6 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, Mar 29, 2022
 """
 from .eccDefinitionUsingAmplitude import eccDefinitionUsingAmplitude
-from .plot_settings import labelsDict
 
 
 class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):

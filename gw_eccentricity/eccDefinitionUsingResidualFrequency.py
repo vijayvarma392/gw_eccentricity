@@ -5,7 +5,6 @@ Part of Eccentricity Definition project.
 Md Arif Shaikh, May 14, 2022
 """
 from .eccDefinitionUsingResidualAmplitude import eccDefinitionUsingResidualAmplitude
-from .plot_settings import labelsDict
 
 class eccDefinitionUsingResidualFrequency(eccDefinitionUsingResidualAmplitude):
     """Measure eccentricity by finding extrema from residual frequency."""

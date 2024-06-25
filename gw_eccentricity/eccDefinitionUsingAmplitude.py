@@ -6,7 +6,6 @@ Md Arif Shaikh, Mar 28, 2022
 """
 from scipy.signal import find_peaks
 from .eccDefinition import eccDefinition
-from .plot_settings import labelsDict
 
 
 class eccDefinitionUsingAmplitude(eccDefinition):

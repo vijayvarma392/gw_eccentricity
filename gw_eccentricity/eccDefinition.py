@@ -292,11 +292,11 @@ class eccDefinition:
         # get amplitude, phase, omega to be used for eccentricity measurement.
         # For precessing systems, even in the coprecessing frame, the (2, 2)
         # mode quantities show some oscillations due to the precession
-        # effect. To reduce these oscillations further, we use a combination of
-        # (2, 2) and (2, -2) mode in the coprecessing frame to define new
-        # quantities amp_gw, phase_gw and omega_gw. For nonprecessing systems,
-        # these quantities reduce to their respective (2, 2) mode values. See
-        # `get_amp_phase_omega_gw` for more details.
+        # effect. To reduce these oscillations further, we use (2, 2) and (2, -2)
+        # mode in the coprecessing frame to define new quantities amp_gw,
+        # phase_gw and omega_gw using Eq.(48) and (49) of arXiv:1701.00550. For
+        # nonprecessing systems, these quantities reduce to their respective
+        # (2, 2) mode values. See `get_amp_phase_omega_gw` for more details.
         self.amp_gw, self.phase_gw, self.omega_gw \
             = self.get_amp_phase_omega_gw()
         # Sanity check various kwargs and set default values
@@ -1317,28 +1317,46 @@ class eccDefinition:
         d(phase_gw)/dt, where phase_gw(t) is the phase of the (2, 2) waveform
         mode for nonprecessing systems. For precessing systems, phase_gw is
         obtained using an antisymmetric combination of (2, 2) and (2, -2) mode
-        phases in the coprecessing frame. See
-        `eccDefinition.get_amp_phase_omega_gw` for more details. We currently
-        only allow time-domain, nonprecessing waveforms. We evaluate
-        omega_gw(t) at pericenter times, t_pericenters, and build a spline
-        interpolant omega_gw_pericenters(t) using those data points. Similarly,
-        we build omega_gw_apocenters(t) using omega_gw(t) at the apocenter
-        times, t_apocenters.
+        phases in the coprecessing frame.
+
+        Throughout this documentation, we will refer to omega_gw and
+        amp_gw. For nonprecessing systems, these quantities reduce to the
+        corresponding values obtained using the (2, 2) mode, i. e., for
+        nonprecessing systems,
+
+        amp_gw = amp22, phase_gw = phase22 and omega_gw = omega22
+
+        On the other hand, for precessing systems, we use Eq.(48) and (49) of
+        arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw (phase_gw) is
+        defined using a symmetric (antisymmetric) combination of amplitude
+        (phase) of (2, 2) and (2, -2) mode.
+
+        amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
+        phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
+        omega_gw = d(phase_gw)/dt
+
+        These quantities reduce to the corresponding (2, 2) mode data when the
+        system is nonprecessing. See `eccDefinition.get_amp_phase_omega_gw` for
+        more details.
+        
+        We currently only allow time-domain, nonprecessing waveforms. We
+        evaluate omega_gw(t) at pericenter times, t_pericenters, and build a
+        spline interpolant omega_gw_pericenters(t) using those data
+        points. Similarly, we build omega_gw_apocenters(t) using omega_gw(t) at
+        the apocenter times, t_apocenters.
 
         Using omega_gw_pericenters(t) and omega_gw_apocenters(t), we first
-        compute e_omega_gw(t), as described in Eq.(4) of `arXiv:2302.11257`_. We
-        then use e_omega_gw(t) to compute the eccentricity egw(t) using Eq.(8)
-        of `arXiv:2302.11257`_. Mean anomaly is defined using t_pericenters, as
+        compute e_omega_gw(t), as described in Eq.(4) of `arXiv:2302.11257`_
+        (e_omega_gw is called e_omega_22 in the paper). We then use
+        e_omega_gw(t) to compute the eccentricity egw(t) using Eq.(8) of
+        `arXiv:2302.11257`_. Mean anomaly is defined using t_pericenters, as
         described in Eq.(10) of `arXiv:2302.11257`_.
 
         To find t_pericenters/t_apocenters, one can look for extrema in
-        different waveform data, like omega_gw(t) or amp_gw(t), the amplitude
-        of the (2, 2) mode for nonprecessing systems or a symmetric combination
-        of amplitude of (2, 2) and (2, -2) modes in the coprecessing frame for
-        precessing systems, see `get_amp_phase_omega_gw` for more
-        details. Pericenters correspond to the local maxima, while apocenters
-        correspond to the local minima in the data. The method option
-        (described below) lets the user pick which waveform data to use to find
+        different waveform data, like omega_gw(t) or amp_gw(t). Pericenters
+        correspond to the local maxima, while apocenters correspond to the
+        local minima in the data. The method option (described below) lets the
+        user pick which waveform data to use to find
         t_pericenters/t_apocenters.
 
         .. _arXiv:2302.11257: https://arxiv.org/abs/2302.11257
