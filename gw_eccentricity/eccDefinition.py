@@ -2954,7 +2954,7 @@ class eccDefinition:
                 va="top",
                 transform=ax.transAxes)
         ax.set_xlabel(r"$t$")
-        ax.set_ylabel(labelsDict["omega_gw"])
+        ax.set_ylabel(self.get_label_for_plots("omega"))
         ax.legend(frameon=True,
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
@@ -3028,7 +3028,7 @@ class eccDefinition:
                     c='k',
                     alpha=0.4,
                     lw=0.5,
-                    label=labelsDict["omega_gw"])
+                    label=self.get_label_for_plots("omega"))
         if (self.extra_kwargs["omega_gw_averaging_method"] == "orbit_averaged_omega_gw" and
             plot_orbit_averaged_omega_gw_between_extrema):
             ax.plot(self.t_average_apocenters,
@@ -3125,7 +3125,7 @@ class eccDefinition:
         ymax = max(self.amp_gw)
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(labelsDict["t"])
-        ax.set_ylabel(labelsDict["amp_gw"])
+        ax.set_ylabel(self.get_label_for_plots("amp"))
         ax.legend(handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
@@ -3288,7 +3288,7 @@ class eccDefinition:
         pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(labelsDict["t"])
-        ax.set_ylabel(labelsDict["res_omega_gw"])
+        ax.set_ylabel(self.get_label_for_plots("res_omega"))
         ax.legend(frameon=True, loc="center left",
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
@@ -3358,7 +3358,7 @@ class eccDefinition:
         pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(labelsDict["t"])
-        ax.set_ylabel(labelsDict["res_amp_gw"])
+        ax.set_ylabel(self.get_label_for_plots("res_amp"))
         ax.legend(frameon=True, loc="center left", handlelength=1,
                   labelspacing=0.2,
                   columnspacing=1)
@@ -3469,6 +3469,29 @@ class eccDefinition:
             return figNew, ax
         else:
             return ax
+
+    def get_label_for_plots(self, data_str):
+        """Get appropriate label for plots.
+
+        Depending on whether system is precessing or not, generate appropriate
+        labels to use in plots.
+
+        Parameters:
+        -----------
+        data_str: str
+            A string representing the data for which label will be generated.
+            It must be one of [`amp`, `omega`, `res_amp`, `res_omega`].
+
+        Returns:
+        --------
+        Appropriate label for the input `data_str`.
+        """
+        allowd_data_str_list = ["amp", "omega", "res_amp", "res_omega"]
+        if data_str not in allowd_data_str_list:
+            raise KeyError(f"`data_str` must be one of {allowd_data_str_list}")
+        return (labelsDict[data_str + "_gw"]
+                + " = "
+                + labelsDict[data_str + "22" + ("_copr_symm" if self.precessing else "")])
 
     def save_debug_fig(self, fig, fname, fig_name=None, format="pdf"):
         """Save debug plots in fig using fname.

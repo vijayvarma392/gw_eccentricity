@@ -21,7 +21,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         super().__init__(*args, **kwargs)
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
-        self.label_for_data_for_finding_extrema = labelsDict["amp_gw"]
+        self.label_for_data_for_finding_extrema = self.get_label_for_plots("amp")
         self.method = "Amplitude"
 
     def get_data_for_finding_extrema(self):

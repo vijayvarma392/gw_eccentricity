@@ -204,4 +204,6 @@ labelsDict = {
     "res_omega_gw": r"$\Delta\omega_{\mathrm{gw}}$",
     "res_omega_gw_dimless": r"$\Delta\omega_{\mathrm{gw}}$ [rad/$M$]",
     "res_amp_gw": r"$\Delta A_{\mathrm{gw}}$",
+    "omega22_copr_symm": r"\omega_{22}^{\mathrm{copr, sym}}",
+    "amp22_copr_symm": r"A_{22}^{\mathrm{copr, sym}}" 
 }

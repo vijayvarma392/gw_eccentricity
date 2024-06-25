@@ -20,7 +20,7 @@ class eccDefinitionUsingAmplitudeFits(eccDefinitionUsingFrequencyFits):
         """
         super().__init__(*args, **kwargs)
         self.data_str = "amp_gw"
-        self.label_for_data_for_finding_extrema = labelsDict[self.data_str]
+        self.label_for_data_for_finding_extrema = self.get_label_for_plots("amp")
         self.label_for_fit_to_data_for_finding_extrema \
             = labelsDict[f"{self.data_str}_fit"]
         self.method = "AmplitudeFits"
