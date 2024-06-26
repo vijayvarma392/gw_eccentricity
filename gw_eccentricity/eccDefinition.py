@@ -251,7 +251,7 @@ class eccDefinition:
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
                 for allowed keys.
 
-            set_failures_to_zero : bool, default=False
+            return_zero_if_small_ecc_failure : bool, default=False
                 The code normally raises an exception if sufficient number of
                 extrema are not found. This can happen for various reasons
                 including when the eccentricity is too small for some methods
@@ -259,7 +259,7 @@ class eccDefinition:
                 arxiv.2302.11257. If no extrema are found, we check whether the
                 following two conditions are satisfied.
 
-                1. `set_failures_to_zero` is set to `True`.
+                1. `return_zero_if_small_ecc_failure` is set to `True`.
                 2. The waveform is at least
                   (5 + `num_obrits_to_exclude_before_merger`) orbits long. By
                   default, `num_obrits_to_exclude_before_merger` is set to 2,
@@ -314,7 +314,7 @@ class eccDefinition:
             = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
         self.debug_plots = self.extra_kwargs["debug_plots"]
-        self.set_failures_to_zero = self.extra_kwargs["set_failures_to_zero"]
+        self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -831,7 +831,7 @@ class eccDefinition:
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
-            "set_failures_to_zero": False,
+            "return_zero_if_small_ecc_failure": False,
         }
         return default_extra_kwargs
 
@@ -1194,7 +1194,7 @@ class eccDefinition:
 
         If it is sufficiently long, but the chosen method fails to detect any
         extrema, it is possible that the eccentricity is too small. If
-        `set_failures_to_zero` is set to True, then we set
+        `return_zero_if_small_ecc_failure` is set to True, then we set
         `insufficient_extrema_but_long_waveform` to True and return it.
 
         Parameters
@@ -1235,13 +1235,13 @@ class eccDefinition:
             else:
                 insufficient_extrema_but_long_waveform = False
             if insufficient_extrema_but_long_waveform \
-               and self.set_failures_to_zero:
+               and self.return_zero_if_small_ecc_failure:
                 debug_message(
                     "The waveform has approximately "
                     f"{approximate_num_orbits:.2f}"
                     f" orbits but number of {extrema_type} found is "
-                    f"{num_extrema}. Since `set_failures_to_zero` is set to "
-                    f"{self.set_failures_to_zero}, no exception is raised. "
+                    f"{num_extrema}. Since `return_zero_if_small_ecc_failure` is set to "
+                    f"{self.return_zero_if_small_ecc_failure}, no exception is raised. "
                     "Instead the eccentricity and mean anomaly will be set to "
                     "zero.",
                     important=True,
@@ -1472,14 +1472,14 @@ class eccDefinition:
             = self.check_num_extrema(apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema,
-        # and `set_failures_to_zero` is true, then we set the eccentricity and
+        # and `return_zero_if_small_ecc_failure` is true, then we set the eccentricity and
         # mean anomaly to zero and return them. In this case, the rest of the
         # code in this function is not executed, and therefore, many variables
         # that are needed for making diagnostic plots are not computed. Thus,
         # in such cases, the diagnostic plots may not work.
         if any([insufficient_pericenters_but_long_waveform,
                 insufficient_apocenters_but_long_waveform]) \
-                and self.set_failures_to_zero:
+                and self.return_zero_if_small_ecc_failure:
             # Store this information that we are setting ecc and mean anomaly
             # to zero to use it in other places
             self.setting_ecc_to_zero = True

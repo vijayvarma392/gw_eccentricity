@@ -390,7 +390,7 @@ def measure_eccentricity(tref_in=None,
             eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
             for allowed keys.
 
-        set_failures_to_zero : bool, default=False
+        return_zero_if_small_ecc_failure : bool, default=False
             The code normally raises an exception if sufficient number of
             extrema are not found. This can happen for various reasons
             including when the eccentricity is too small for some methods (like
@@ -398,7 +398,7 @@ def measure_eccentricity(tref_in=None,
             arxiv.2302.11257. If no extrema are found, we check whether the
             following two conditions are satisfied.
 
-            1. `set_failures_to_zero` is set to `True`.
+            1. `return_zero_if_small_ecc_failure` is set to `True`.
             2. The waveform is at least (5 +
               `num_obrits_to_exclude_before_merger`) orbits long. By default,
               `num_obrits_to_exclude_before_merger` is set to 2, meaning that 2
