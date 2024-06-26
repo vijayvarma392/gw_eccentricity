@@ -38,6 +38,15 @@ jobs:
         run: |
           pip install pytest nbconvert ipykernel
 
+      - name: Install Teobresums-Dali
+        shell: bash -l {0}
+        run: |
+          git clone https://bitbucket.org/eob_ihes/teobresums.git
+          cd teobresums/Python
+          git checkout dev/DALI
+          pip install numpy==1.26.4
+          python setup.py build_ext --inplace
+
       - name: Install fftw for macos
         if: matrix.os == 'macos-latest'
         run: |
