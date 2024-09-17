@@ -59,14 +59,14 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             Dictionary containing the waveform data.
         """
         super().__init__(*args, **kwargs)
-        self.data_str = "omega22"
-        self.label_for_data_for_finding_extrema = labelsDict[self.data_str]
+        self.data_str = "omega_gw"
+        self.label_for_data_for_finding_extrema = self.get_label_for_plots("omega")
         self.label_for_fit_to_data_for_finding_extrema \
             = labelsDict[f"{self.data_str}_fit"]
-        # Make a copy of omega22 and use it to set data_for_finding_extrema.
+        # Make a copy of omega_gw and use it to set data_for_finding_extrema.
         # This would ensure that any modification of data_for_finding_extrema
-        # does not modify omega22.
-        self.data_for_finding_extrema = self.omega22.copy()
+        # does not modify omega_gw.
+        self.data_for_finding_extrema = self.omega_gw.copy()
         self.method = "FrequencyFits"
         # Get dictionary of kwargs to be used for Fits methods.
         self.kwargs_for_fits_methods = check_kwargs_and_set_defaults(
@@ -193,9 +193,9 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         #
         # The results of this more accurate extrema-determination are collected
         # in self.periastron_info = [t_extrema_refined,
-        # data_extrema_refined, phase22_extrema_refined] and/or
+        # data_extrema_refined, phase_gw_extrema_refined] and/or
         # self.apastron_info = [t_extrema_refined, data_extrema_refined,
-        # phase22_extrema_refined]
+        # phase_gw_extrema_refined]
         # if False, then
         # self.periastron_info/apastron_info contains the data at the
         # grid-points
@@ -216,7 +216,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # Keeping this initial fit-interval away from merger helps
         # to obtain a good fit that also allows to discern small eccentricities
         N_orbits_for_global_fit = self.num_orbits_for_global_fit
-        idx_end = np.argmax(self.phase22 > self.phase22[0]
+        idx_end = np.argmax(self.phase_gw > self.phase_gw[0]
                             + N_orbits_for_global_fit*4*np.pi)
 
         if idx_end == 0:  # don't have that much data, so use all
@@ -235,7 +235,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         f0 = 0.5 * (self.data_for_finding_extrema[0]+self.data_for_finding_extrema[idx_end])
         p0 = [f0,  # function value
               -self.nPN*f0/(-fit_center_time),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
-              0  # singularity in fit is near t=0, since waveform aligned at max(amp22)
+              0  # singularity in fit is near t=0, since waveform aligned at max(amp_gw)
               ]
         bounds0 = [[0., 0., 0.8*self.t[-1]],
                    [self.fit_bounds_max_amp_factor*f0,
@@ -312,14 +312,14 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # grid-points
         t_extrema_refined = []
         data_extrema_refined = []
-        phase22_extrema_refined = []
+        phase_gw_extrema_refined = []
 
         # estimates for initial start-up values. Because idx_ref
         # is only allowed to increase, be rather conservative with
         # its initial guess
         K = 1.1   # periastron-advance rate
-        idx_ref = np.argmax(self.phase22
-                            > self.phase22[0] + K*(N-1)*4*np.pi)
+        idx_ref = np.argmax(self.phase_gw
+                            > self.phase_gw[0] + K*(N-1)*4*np.pi)
         if idx_ref == 0:
             raise Exception("data set too short.")
         p = p_global
@@ -327,7 +327,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         extra_extrema = []
         extra_extrema_t = []
         extra_extrema_data = []
-        extra_extrema_phase22 = []
+        extra_extrema_phase_gw = []
         while True:
             count = count+1
             if self.verbose:
@@ -367,7 +367,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         extrema.append(idx_extrema[k])
                         t_extrema_refined.append(extrema_refined[0][k])
                         data_extrema_refined.append(extrema_refined[1][k])
-                        phase22_extrema_refined.append(extrema_refined[2][k])
+                        phase_gw_extrema_refined.append(extrema_refined[2][k])
                 if idx_extrema[N] > idx_ref:
                     # the N+1-st extremum should be *after* idx_ref.  If it is
                     # not, something went wrong, so do not take this extremum
@@ -379,14 +379,14 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     extrema.append(idx_extrema[N])
                     t_extrema_refined.append(extrema_refined[0][N])
                     data_extrema_refined.append(extrema_refined[1][N])
-                    phase22_extrema_refined.append(extrema_refined[2][N])
+                    phase_gw_extrema_refined.append(extrema_refined[2][N])
 
                     # also store additional extrema, just in case we want to
                     # return them
                     extra_extrema = idx_extrema[N+1:]
                     extra_extrema_t = extrema_refined[0][N+1:]
                     extra_extrema_data = extrema_refined[1][N+1:]
-                    extra_extrema_phase22 = extrema_refined[2][N+1:]
+                    extra_extrema_phase_gw = extrema_refined[2][N+1:]
 
                 if terminate:
                     # be greedy and take any further extrema we know
@@ -396,7 +396,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                             t_extrema_refined.append(extrema_refined[0][k])
                             data_extrema_refined.append(
                                 extrema_refined[1][k])
-                            phase22_extrema_refined.append(
+                            phase_gw_extrema_refined.append(
                                 extrema_refined[2][k])
             else:
                 # more than two extrema short.  In this case, don't trust the
@@ -415,7 +415,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 extrema.extend(extra_extrema)
                 t_extrema_refined.extend(extra_extrema_t)
                 data_extrema_refined.extend(extra_extrema_data)
-                phase22_extrema_refined.extend(extra_extrema_phase22)
+                phase_gw_extrema_refined.extend(extra_extrema_phase_gw)
 
             if terminate:
                 # print("WARNING - TOO FEW EXTREMA FOUND. THIS IS LIKELY SIGNAL
@@ -441,11 +441,11 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         if sign > 0:
             self.periastron_info = [np.array(t_extrema_refined),
                                     np.array(data_extrema_refined),
-                                    np.array(phase22_extrema_refined)]
+                                    np.array(phase_gw_extrema_refined)]
         else:
             self.apastron_info = [np.array(t_extrema_refined),
                                   np.array(data_extrema_refined),
-                                  np.array(phase22_extrema_refined)]
+                                  np.array(phase_gw_extrema_refined)]
 
         # Now that we are done with finding peaks, we shift the time axis to
         # it's original values
@@ -490,8 +490,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                               verbose=False,
                               pp=None,
                               plot_info=""):
-        """given a 22-GW mode (t, phase22, data), identify a stretch of data
-        [idx_lo, idx_hi] centered roughly around the index idx_ref which
+        """given a GW modes data (t, phase_gw, data), identify a stretch of
+        data [idx_lo, idx_hi] centered roughly around the index idx_ref which
         satisfies the following properties:
 
           - The interval [idx_lo, idx_hi] contains Nbefore+Nafter maxima
@@ -529,7 +529,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             will be centered
         K
             an estimate for the periastron advance of the binary,
-            i.e. the increase of phase22/4pi between two extrema
+            i.e. the increase of phase_gw/4pi between two extrema
         f_fit
             fitting function :func:`f_fit(t, *p)` to use for trend-subtraction
         p_initial
@@ -562,14 +562,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         p
             the fitting parameters of the best fit through the extrema
         K
-            an updated estimate of the periastron advance K (i.e. the
-                 average increase of phase22 between extrema divided by 4pi)
+            an updated estimate of the periastron advance K (i.e. the average
+            increase of phase_gw between extrema divided by 4pi)
         idx_ref
-            a (potentially increased) value of idx_ref, so that
-                       Nbefore extrema were found between the start of the data
-                       and idx_ref
+            a (potentially increased) value of idx_ref, so that Nbefore extrema
+            were found between the start of the data and idx_ref
         extrema_refined
-            (t_extrema_refined, data_extrema_refined, phase22_extrema_refined)
+            (t_extrema_refined, data_extrema_refined, phase_gw_extrema_refined)
             information about the
             parabolic-fit-refined extrema.  If RefineExtrema==True, these
             arrays have same length as idx_extrema.  Otherwise, empty.
@@ -584,13 +583,13 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # look for somewhat more data than we (probably) need
         DeltaPhase = 4.2*np.pi*K
         idx_lo = np.argmax(
-            self.phase22 > self.phase22[idx_ref]
+            self.phase_gw > self.phase_gw[idx_ref]
             - DeltaPhase*Nbefore)
         idx_hi = np.argmax(
-            self.phase22 > self.phase22[idx_ref]
+            self.phase_gw > self.phase_gw[idx_ref]
             + DeltaPhase*Nafter)
         if idx_hi == 0:
-            idx_hi = len(self.phase22)
+            idx_hi = len(self.phase_gw)
             if verbose:
                 print("WARNING: reaching end of data, so close to merger")
         p = p_initial
@@ -671,12 +670,12 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             N_extrema = len(idx_extrema)
             t_extrema = self.t[idx_extrema]
             data_extrema = self.data_for_finding_extrema[idx_extrema]
-            phase22_extrema = self.phase22[idx_extrema]
+            phase_gw_extrema = self.phase_gw[idx_extrema]
             # data_residual is shorter array
             data_residual_extrema = data_residual[idx_extrema-idx_lo]
             # update K based on identified peaks
             if N_extrema >= 2:
-                K = ((phase22_extrema[-1] - phase22_extrema[0])
+                K = ((phase_gw_extrema[-1] - phase_gw_extrema[0])
                      / (4*np.pi * (N_extrema - 1)))
             if verbose:
                 with np.printoptions(precision=2):
@@ -686,10 +685,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     print(f"       t[idx_extrema]={t_extrema}")
 
             if refine_extrema:
-                t_extrema, data_extrema, phase22_extrema \
+                t_extrema, data_extrema, phase_gw_extrema \
                     = self.get_refined_extrema(t_extrema,
                                                data_extrema,
-                                               phase22_extrema,
+                                               phase_gw_extrema,
                                                verbose, f_fit, p)
                 if verbose:
                     with np.printoptions(precision=4):
@@ -753,7 +752,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # extrema.  so return with empty idx_extrema and let upstream
                 # code handle this
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema]
+                                                    phase_gw_extrema]
 
             if Nleft != Nbefore or Nright != Nafter:
                 # number of extrema not as we wished, so update [idx_lo, idx_hi]
@@ -800,8 +799,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                         # radial period earlier.  We rather prefer to err on
                         # the low side, than overshooting and adding two
                         # extrema at once.
-                        phase_lo = self.phase22[idx_lo] - K*4*np.pi*0.6
-                        idx_lo = np.argmax(self.phase22 > phase_lo)
+                        phase_lo = self.phase_gw[idx_lo] - K*4*np.pi*0.6
+                        idx_lo = np.argmax(self.phase_gw > phase_lo)
                         if verbose:
                             print(f"       idx_lo reduced to {idx_lo}")
                 # too many peaks to the right right, discard by placing idx_hi
@@ -814,18 +813,18 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 elif Nright < Nafter:
                     # increase idx_hi to capture one more peak
                     # do we have extra data?
-                    if idx_hi < len(self.phase22):
+                    if idx_hi < len(self.phase_gw):
                         # target phase on right 0.6 radial periods beyond
                         # current end of interval rationale for 0.6: The next
                         # extremum should be 1 radial period away, we are
                         # worried that near the end of the run, this prediction
                         # may not be accurate.  Therefore, go more slowly.
-                        phase_hi = self.phase22[idx_hi] + K*4*np.pi*0.6
-                        idx_hi = np.argmax(self.phase22 > phase_hi)
+                        phase_hi = self.phase_gw[idx_hi] + K*4*np.pi*0.6
+                        idx_hi = np.argmax(self.phase_gw > phase_hi)
                         if idx_hi == 0:
                             # coulnd't get as much data as we wished, take all
                             # we have
-                            idx_hi = len(self.phase22)
+                            idx_hi = len(self.phase_gw)
                         if verbose and idx_hi != old_idx_hi:
                             print(f"       idx_hi increased to {idx_hi}")
                     else:
@@ -852,7 +851,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             #  - data
             #
             # The following arrays are filled with information at the extrema
-            #   t_extrema, phase22_extrema, data_extrema, where:
+            #   t_extrema, phase_gw_extrema, data_extrema, where:
             #      * If refine_extrema==False: the arrays correspond to index
             #      * positions idx_extrema If refine_extrema==True: the arrays
             #      * are refined via fits.
@@ -883,7 +882,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     fig.savefig(pp, format='pdf')
                     plt.close(fig)
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema]
+                                                    phase_gw_extrema]
 
             if Count_Nright_short >= 5 or N_extrema < 5 or it > 20:
                 # safety exit to catch periodic loops note that
@@ -903,7 +902,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     fig.savefig(pp, format='pdf')
                     plt.close(fig)
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema]
+                                                    phase_gw_extrema]
 
             if max_delta_data < TOL:
                 # (this cannot trigger on first iteration, due to
@@ -917,7 +916,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                     fig.savefig(pp, format='pdf')
                     plt.close(fig)
                 return idx_extrema, p, K, idx_ref, [t_extrema, data_extrema,
-                                                    phase22_extrema]
+                                                    phase_gw_extrema]
             p, pconv = scipy.optimize.curve_fit(f_fit, t_extrema,
                                                 data_extrema, p0=p,
                                                 bounds=bounds, maxfev=10000)
@@ -941,8 +940,8 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
         # average orbital period during [idx_lo, idx_hi] idx_hi-1 also
         # works in the case when idx_hi = one-past-last-element
         T_orbit = ((self.t[idx_hi-1] - self.t[idx_lo])
-                   / (self.phase22[idx_hi-1]
-                      - self.phase22[idx_lo])
+                   / (self.phase_gw[idx_hi-1]
+                      - self.phase_gw[idx_lo])
                    * 4*np.pi)
 
         # set distance = distance_factor * period.  This should exclude
@@ -955,7 +954,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
 
         return distance, prominence
 
-    def get_refined_extrema(self, t_extrema, data_extrema, phase22_extrema,
+    def get_refined_extrema(self, t_extrema, data_extrema, phase_gw_extrema,
                             verbose, f_fit, p):
         """Get refined extrema.
 
@@ -1000,10 +999,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 # the fitting-interval is short enough that this is
                 # accurate
                 phase_fit = np.polynomial.polynomial.Polynomial.fit(
-                    t_parafit, self.phase22[idx_refine], 3)
-                phase22_extrema[k] = phase_fit(t_max)
+                    t_parafit, self.phase_gw[idx_refine], 3)
+                phase_gw_extrema[k] = phase_fit(t_max)
             else:
                 pass
                 # if verbose:
                 #    print(f"refinement of k={k} has too few points - skip")
-        return t_extrema, data_extrema, phase22_extrema
+        return t_extrema, data_extrema, phase_gw_extrema

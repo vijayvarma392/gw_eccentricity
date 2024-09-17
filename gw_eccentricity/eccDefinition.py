@@ -23,6 +23,7 @@ class eccDefinition:
     """Base class to define eccentricity for given waveform data dictionary."""
 
     def __init__(self, dataDict, num_orbits_to_exclude_before_merger=2,
+                 precessing=False,
                  extra_kwargs=None):
         """Init eccDefinition class.
 
@@ -80,14 +81,14 @@ class eccDefinition:
             - "t": 1d array of times.
 
                 - Should be uniformly sampled, with a small enough time step so
-                  that omega22(t) can be accurately computed, if necessary. We
-                  use a 4th-order finite difference scheme. In dimensionless
-                  units, we recommend a time step of dtM = 0.1M to be
-                  conservative, but one may be able to get away with larger
-                  time steps like dtM = 1M. The corresponding time step in
-                  seconds would be dtM * M * lal.MTSUN_SI, where M is the total
-                  mass in Solar masses.
-                - We do not require the waveform peak amplitude to occur at any
+                  that frequency of gravitational wave from it's phase can be
+                  accurately computed, if necessary. We use a 4th-order finite
+                  difference scheme. In dimensionless units, we recommend a
+                  time step of dtM = 0.1M to be conservative, but one may be
+                  able to get away with larger time steps like dtM = 1M. The
+                  corresponding time step in seconds would be dtM * M *
+                  lal.MTSUN_SI, where M is the total mass in Solar masses.  -
+                  We do not require the waveform peak amplitude to occur at any
                   specific time, but tref_in should follow the same convention
                   for peak time as "t".
 
@@ -154,6 +155,14 @@ class eccDefinition:
                 https://github.com/vijayvarma392/gw_eccentricity/wiki/NR-investigation-to-set-default-number-of-orbits-to-exclude-before-merger
                 Default: 2.
 
+        precessing: bool, default=False
+            Whether the system is precessing or not. For precessing systems,
+            the `dataDict` should contain modes in the coprecessing frame. For
+            nonprecessing systems, there is no distiction between the inertial
+            and coprecessing frame since they are the same.
+
+            Default is False which implies the system to be nonprecessing.
+
         extra_kwargs: dict
             A dictionary of any extra kwargs to be passed. Allowed kwargs
             are:
@@ -161,8 +170,8 @@ class eccDefinition:
                 Dictionary of arguments to be passed to the spline
                 interpolation routine
                 (scipy.interpolate.InterpolatedUnivariateSpline) used to
-                compute quantities like omega22_pericenters(t) and
-                omega22_apocenters(t).
+                compute quantities like omega_gw_pericenters(t) and
+                omega_gw_apocenters(t).
                 Defaults are set using utils.get_default_spline_kwargs
 
             extrema_finding_kwargs: dict
@@ -172,16 +181,17 @@ class eccDefinition:
                 except for the "width", which sets the minimum allowed "full
                 width at half maximum" for the extrema. Setting this can help
                 avoid false extrema in noisy data (for example, due to junk
-                radiation in NR). The default for "width" is set using phi22(t)
-                near the merger. Starting from 4 cycles of the (2, 2) mode
-                before the merger, we find the number of time steps taken to
-                cover 2 cycles, let's call this "the gap". Note that 2 cycles
-                of the (2, 2) mode are approximately one orbit, so this allows
-                us to approximate the smallest gap between two
+                radiation in NR). The default for "width" is set using
+                phase_gw(t) near the merger. For nonprecessing systems,
+                phase_gw = phase of the (2, 2) mode.  Starting from 4 cycles of
+                the (2, 2) mode before the merger, we find the number of time
+                steps taken to cover 2 cycles, let's call this "the gap". Note
+                that 2 cycles of the (2, 2) mode are approximately one orbit,
+                so this allows us to approximate the smallest gap between two
                 pericenters/apocenters. However, to be conservative, we divide
                 this gap by 4 and set it as the width parameter for
                 find_peaks. See
-                eccDefinition.get_width_for_peak_finder_from_phase22 for more
+                eccDefinition.get_width_for_peak_finder_from_phase_gw for more
                 details.
 
             debug_level: int
@@ -198,11 +208,14 @@ class eccDefinition:
                 debugging. When True, look for figures saved as
                 `gwecc_{method}_*.pdf`.
 
-            omega22_averaging_method:
-                Options for obtaining omega22_average(t) from the instantaneous
-                omega22(t).
-                - "orbit_averaged_omega22": First, orbit averages are obtained
-                  at each pericenter by averaging omega22(t) over the time from
+            omega_gw_averaging_method:
+                Options for obtaining omega_gw_average(t) from the
+                instantaneous omega_gw(t). For nonprecessing systems,
+                omega_gw(t) is the same as the omega(t) of the (2, 2) mode. See
+                `get_amp_phase_omega_gw` for more details.
+
+                - "orbit_averaged_omega_gw": First, orbit averages are obtained
+                  at each pericenter by averaging omega_gw(t) over the time from
                   the current pericenter to the next one. This average value is
                   associated with the time at mid point between the current and
                   the next pericenter. Similarly orbit averages are computed at
@@ -214,15 +227,15 @@ class eccDefinition:
                   respectively. See eccDefinition.get_fref_bounds() for
                   details.
                 - "mean_of_extrema_interpolants": The mean of
-                  omega22_pericenters(t) and omega22_apocenters(t) is used as a
+                  omega_gw_pericenters(t) and omega_gw_apocenters(t) is used as a
                   proxy for the average frequency.
-                - "omega22_zeroecc": omega22(t) of the quasicircular
+                - "omega_gw_zeroecc": omega_gw(t) of the quasicircular
                   counterpart is used as a proxy for the average
                   frequency. This can only be used if "t_zeroecc" and
                   "hlm_zeroecc" are provided in dataDict.
                 See Sec. IID of arXiv:2302.11257 for more detail description of
-                average omega22.
-                Default is "orbit_averaged_omega22".
+                average omega_gw.
+                Default is "orbit_averaged_omega_gw".
 
             treat_mid_points_between_pericenters_as_apocenters:
                 If True, instead of trying to find apocenter locations by
@@ -238,7 +251,7 @@ class eccDefinition:
                 eccDefinitionUsingFrequencyFits.get_default_kwargs_for_fits_methods
                 for allowed keys.
 
-            set_failures_to_zero : bool, default=False
+            return_zero_if_small_ecc_failure : bool, default=False
                 The code normally raises an exception if sufficient number of
                 extrema are not found. This can happen for various reasons
                 including when the eccentricity is too small for some methods
@@ -246,7 +259,7 @@ class eccDefinition:
                 arxiv.2302.11257. If no extrema are found, we check whether the
                 following two conditions are satisfied.
 
-                1. `set_failures_to_zero` is set to `True`.
+                1. `return_zero_if_small_ecc_failure` is set to `True`.
                 2. The waveform is at least
                   (5 + `num_obrits_to_exclude_before_merger`) orbits long. By
                   default, `num_obrits_to_exclude_before_merger` is set to 2,
@@ -260,8 +273,9 @@ class eccDefinition:
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
         """
+        self.precessing = precessing
         # Get data necessary for eccentricity measurement
-        self.dataDict, self.t_merger, self.amp22_merger, \
+        self.dataDict, self.t_merger, self.amp_gw_merger, \
             min_width_for_extrema = self.process_data_dict(
                 dataDict, num_orbits_to_exclude_before_merger, extra_kwargs)
         self.t = self.dataDict["t"]
@@ -271,10 +285,16 @@ class eccDefinition:
         if not np.allclose(self.t_diff, self.t_diff[0]):
             raise Exception("Input time array must have uniform time steps.\n"
                             f"Time steps are {self.t_diff}")
-        # get amplitude, phase and omega of 22 mode
-        self.amp22 = self.dataDict["amplm"][(2, 2)]
-        self.phase22 = self.dataDict["phaselm"][(2, 2)]
-        self.omega22 = self.dataDict["omegalm"][(2, 2)]
+        # get amplitude, phase, omega to be used for eccentricity measurement.
+        # For precessing systems, even in the coprecessing frame, the (2, 2)
+        # mode quantities show some oscillations due to the precession
+        # effect. To reduce these oscillations further, we use (2, 2) and (2, -2)
+        # mode in the coprecessing frame to define new quantities amp_gw,
+        # phase_gw and omega_gw using Eq.(48) and (49) of arXiv:1701.00550. For
+        # nonprecessing systems, these quantities reduce to their respective
+        # (2, 2) mode values. See `get_amp_phase_omega_gw` for more details.
+        self.amp_gw, self.phase_gw, self.omega_gw \
+            = self.get_amp_phase_omega_gw()
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
@@ -291,10 +311,10 @@ class eccDefinition:
             "spline_kwargs",
             "utils.get_default_spline_kwargs()")
         self.available_averaging_methods \
-            = self.get_available_omega22_averaging_methods()
+            = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
         self.debug_plots = self.extra_kwargs["debug_plots"]
-        self.set_failures_to_zero = self.extra_kwargs["set_failures_to_zero"]
+        self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -322,15 +342,15 @@ class eccDefinition:
         # Initially set to None, but will get computed when necessary, either
         # in check_monotonicity_and_convexity or plot_decc_dt.
         self.decc_dt_for_checks = None
-        # omega22_average and the associated time array. omega22_average is
+        # omega_gw_average and the associated time array. omega_gw_average is
         # used to convert a given fref to a tref. If fref is not specified,
-        # these will remain as None. However, if get_omega22_average() is
+        # these will remain as None. However, if get_omega_gw_average() is
         # called, these get set in that function.
-        self.t_for_omega22_average = None
-        self.omega22_average = None
+        self.t_for_omega_gw_average = None
+        self.omega_gw_average = None
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
-            self.compute_res_amp22_and_res_omega22()
+            self.compute_res_amp_gw_and_res_omega_gw()
 
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
@@ -497,7 +517,7 @@ class eccDefinition:
         returning.
 
         In addition to the above data, this function returns a few more
-        variables -- `t_merger`, `amp22_merger`, and `min_width_for_extrema`
+        variables -- `t_merger`, `amp_gw_merger`, and `min_width_for_extrema`
         for future usage. See the details below.
 
         Parameters
@@ -523,9 +543,15 @@ class eccDefinition:
             Merger time evaluated as the time of the global maximum of
             `amplitude_using_all_modes`. This is computed before the
             truncation.
-        amp22_merger : float
-            Amplitude of the (2, 2) mode at t_merger. This is computed before
-            the truncation.
+        amp_gw_merger : float
+            Value of amp_gw at the merger. For nonprecessing systems, amp_gw is
+            the amplitude of the (2, 2) mode. For precessing systems, amp_gw is
+            obtained using a symmetric combination of the amplitude of (2, 2)
+            and (2, -2) mode in the coprecessing frame. See `get_amp_phase_omega_gw`
+            for more details.
+            This needs to be computed before the modes are truncated.
+            # TODO: Maybe we should use the ampitude from all modes and use
+            # it's max value.
         min_width_for_extrema : float
             Minimum width for the `find_peaks` function. This is computed
             before the truncation.
@@ -573,26 +599,48 @@ class eccDefinition:
         # We need to know the merger time of eccentric waveform.
         # This is useful, for example, to subtract the quasi circular
         # amplitude from eccentric amplitude in residual amplitude method
-        # We also compute amp22 and phase22 at the merger which are needed
+        # We also compute amp_gw and phase_gw at the merger which are needed
         # to compute location at certain number orbits earlier than merger
-        # and to rescale amp22 by it's value at the merger (in AmplitudeFits)
+        # and to rescale amp_gw by it's value at the merger (in AmplitudeFits)
         # respectively.
         t_merger = peak_time_via_quadratic_fit(
             newDataDict["t"],
             amplitude_using_all_modes(newDataDict["amplm"], "amplm"))[0]
         merger_idx = np.argmin(np.abs(newDataDict["t"] - t_merger))
-        amp22_merger = newDataDict["amplm"][(2, 2)][merger_idx]
-        phase22 = newDataDict["phaselm"][(2, 2)]
-        phase22_merger = phase22[merger_idx]
+        if not self.precessing:
+            amp_gw_merger = newDataDict["amplm"][(2, 2)][merger_idx]
+            phase_gw = newDataDict["phaselm"][(2, 2)]
+            phase_gw_merger = phase_gw[merger_idx]
+            # TODO: we may need to change this in the future.
+            # For example, omega_gw could be the invariant angular velocity even
+            # for nonprecessing case.
+            omega_gw_merger = newDataDict["omegalm"][(2, 2)][merger_idx]
+        else:
+            raise NotImplementedError("Precessing system is not supported yet.")
+        # check if phase_gw is increasing. phase_gw at merger should be greater
+        # than the phase_gw at the start of the waveform
+        if phase_gw_merger < phase_gw[0]:
+            raise Exception(
+                f"phase_gw = {phase_gw_merger} at the merger is < "
+                f"phase_gw = {phase_gw[0]} at the start. The "
+                "phaselm should be related to hlm as "
+                "hlm = amplm * exp(- i phaselm) ensuring that "
+                "the phaselm is monotonically increasing for m > 0 modes."
+                "This might be fixed by changing the overall sign of "
+                "phase in the input `dataDict`")
+        # check that omega_gw is positive by checking its value at the merger
+        if omega_gw_merger < 0:
+            raise Exception(f"omega_gw at merger is {omega_gw_merger} < 0. "
+                            "omega_gw must be positive.")
         # Minimum width for peak finding function
-        min_width_for_extrema = self.get_width_for_peak_finder_from_phase22(
+        min_width_for_extrema = self.get_width_for_peak_finder_from_phase_gw(
             newDataDict["t"],
-            phase22,
-            phase22_merger)
+            phase_gw,
+            phase_gw_merger)
         if num_orbits_to_exclude_before_merger is not None:
             # Truncate the last num_orbits_to_exclude_before_merger number of
             # orbits before merger.
-            # This helps in avoiding non-physical features in the omega22
+            # This helps in avoiding non-physical features in the omega_gw
             # interpolants through the pericenters and the apocenters due
             # to the data being too close to the merger.
             if num_orbits_to_exclude_before_merger < 0:
@@ -601,8 +649,8 @@ class eccDefinition:
                     " Given value was {num_orbits}")
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
-                    phase22,
-                    phase22_merger,
+                    phase_gw,
+                    phase_gw_merger,
                     num_orbits_to_exclude_before_merger)
             # Truncate amp, phase, omega in eccentric waveform data.
             for k in ["amplm", "phaselm", "omegalm"]:
@@ -611,12 +659,48 @@ class eccDefinition:
                         :index_num_orbits_earlier_than_merger]
                     newDataDict["t"] = newDataDict["t"][
                         :index_num_orbits_earlier_than_merger]
-        return newDataDict, t_merger, amp22_merger, min_width_for_extrema
+        return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
-    def get_width_for_peak_finder_from_phase22(self,
+    def get_amp_phase_omega_gw(self):
+        """Get the gw quanitities from modes dict in the coprecessing frame.
+
+        For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
+        as those obtained using the (2, 2) mode, i. e., amp22, phase22 and omega22,
+        respectively.
+        
+        For precessing systems, the amplitude and omega of the (2, 2) are not
+        the best quantities to use for eccentricity measurement even in the
+        coprecessing frame.  Ideally we want to use quantities that have the
+        least imprint of precession in the coprecessing frame. The symmetric
+        amplitude and antisymmetric phase defined in Eq.(48) and (49) of
+        arXiv:1701.00550 which are the symmetric and antisymmetric combination
+        of the same from (2, 2) and (2, -2) modes are used for eccentricity
+        measurement.
+        
+        amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
+        phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
+        omega_gw = d(phase_gw)/dt
+
+        These quantities reduce to the corresponding (2, 2) mode data when the
+        system is nonprecessing.
+        """
+        if not self.precessing:
+            amp_gw, phase_gw, omega_gw = (self.dataDict["amplm"][(2, 2)],
+                                          self.dataDict["phaselm"][(2, 2)],
+                                          self.dataDict["omegalm"][(2, 2)])
+        else:
+            amp_gw = 0.5 * (self.dataDict[(2, 2)] + self.dataDict[(2, -2)])
+            phase_gw = 0.5 * (np.unwrap(np.angle(self.dataDict[(2, 2)]))
+                              - np.unwrap(np.angle(self.dataDict[(2, -2)])))
+            omega_gw = time_deriv_4thOrder(
+                phase_gw,
+                self.dataDict["t"][1] - self.dataDict["t"][0])
+        return amp_gw, phase_gw, omega_gw
+
+    def get_width_for_peak_finder_from_phase_gw(self,
                                                t,
-                                               phase22,
-                                               phase22_merger,
+                                               phase_gw,
+                                               phase_gw_merger,
                                                num_orbits_before_merger=2):
         """Get the minimal value of `width` parameter for extrema finding.
 
@@ -636,24 +720,30 @@ class eccDefinition:
         the signal might be mistaken for extrema and on the other hand if the
         `width` is too large then we might miss an extremum.
 
-        This function uses phase22 (phase of the (2, 2) mode) to get a
-        reasonable value of `width` by looking at the time scale over which the
-        phase22 changes by about 4pi because the change in phase22 over one
-        orbit would be approximately twice the change in the orbital phase
-        which is about 2pi.  Finally, we divide this by 4 so that the `width`
-        is always smaller than the separation between the two troughs
-        surrounding the current peak. Otherwise, we risk missing a
-        few extrema very close to the merger.
+        This function uses phase_gw (phase of the (2, 2) mode for nonprecessing
+        case or phase from an antisymmetric combination of (2, 2) and (2, -2)
+        mode phases in the coprecessing frame for precessing case, see
+        `get_amp_phase_omega_gw` for more details) to get a reasonable value of
+        `width` by looking at the time scale over which the phase_gw changes by
+        about 4pi because the change in phase_gw over one orbit would be
+        approximately twice the change in the orbital phase which is about 2pi.
+        Finally, we divide this by 4 so that the `width` is always smaller than
+        the separation between the two troughs surrounding the current
+        peak. Otherwise, we risk missing a few extrema very close to the
+        merger.
 
         Parameters:
         -----------
-        t:
+        t: array-like
             Time array.
-        phase22:
-            Phase of the (2, 2) mode.
-        phase22_merger:
-            Phase of the (2, 2) mode at the merger.
-        num_orbits_before_merger:
+        phase_gw: array-like
+            phase of the (2, 2) mode for nonprecessing systems. For precessing
+            systems, phase_gw is obtained using an antisymmetric combination of
+            (2, 2) and (2, -2) mode phases in the coprecessing frame. see
+            `get_amp_phase_omega_gw` for more details.
+        phase_gw_merger: float
+            Value of phase_gw at the merger.
+        num_orbits_before_merger: float, default=2
             Number of orbits before merger to get the time at which the `width`
             parameter is determined. We want to do this near the merger as this
             is where the time between extrema is the smallest, and the `width`
@@ -666,14 +756,14 @@ class eccDefinition:
             Minimal `width` to filter out noisy extrema.
         """
         # get the time for getting width at num orbits before merger.
-        # for 22 mode phase changes about 2 * 2pi for each orbit.
+        # phase_gw changes about 2 * 2pi for each orbit.
         t_at_num_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
-                phase22, phase22_merger, num_orbits_before_merger)]
+                phase_gw, phase_gw_merger, num_orbits_before_merger)]
         t_at_num_minus_one_orbits_before_merger = t[
             self.get_index_at_num_orbits_earlier_than_merger(
-                phase22, phase22_merger, num_orbits_before_merger-1)]
-        # change in time over which phase22 change by 4 pi
+                phase_gw, phase_gw_merger, num_orbits_before_merger-1)]
+        # change in time over which phase_gw change by 4 pi
         # between num_orbits_before_merger and num_orbits_before_merger - 1
         dt = (t_at_num_minus_one_orbits_before_merger
               - t_at_num_orbits_before_merger)
@@ -685,33 +775,36 @@ class eccDefinition:
         return int(width / 4)
 
     def get_index_at_num_orbits_earlier_than_merger(self,
-                                                    phase22,
-                                                    phase22_merger,
+                                                    phase_gw,
+                                                    phase_gw_merger,
                                                     num_orbits):
         """Get the index of time num orbits earlier than merger.
 
         parameters:
         -----------
-        phase22:
-            1d array of phase of (2, 2) mode of the full waveform.
-        phase22_merger:
-            Phase of (2, 2) mode at the merger.
-        num_orbits:
+        phase_gw: array-like
+            phase of the (2, 2) mode for nonprecessing systems. For precessing
+            systems, phase_gw is obtained using an antisymmetric combination of
+            (2, 2) and (2, -2) mode phases in the coprecessing frame. see
+            `get_amp_phase_omega_gw` for more details.
+        phase_gw_merger: float
+            Value of phase_gw at the merger.
+        num_orbits: float
             Number of orbits earlier than merger to use for computing
             the index of time.
         """
-        # one orbit changes the 22 mode phase by 4 pi since
-        # omega22 = 2 omega_orb
-        phase22_num_orbits_earlier_than_merger = (phase22_merger
+        # one orbit changes the phase_gw by 4 pi since
+        # omega_gw = 2 * omega_orb
+        phase_gw_num_orbits_earlier_than_merger = (phase_gw_merger
                                                   - 4 * np.pi
                                                   * num_orbits)
         # check if the waveform is longer than num_orbits
-        if phase22_num_orbits_earlier_than_merger < phase22[0]:
+        if phase_gw_num_orbits_earlier_than_merger < phase_gw[0]:
             raise Exception(f"Trying to find index at {num_orbits}"
                             " orbits earlier than the merger but the waveform"
                             f" has less than {num_orbits} orbits of data.")
         return np.argmin(np.abs(
-            phase22 - phase22_num_orbits_earlier_than_merger))
+            phase_gw - phase_gw_num_orbits_earlier_than_merger))
 
     def get_default_extrema_finding_kwargs(self, width):
         """Defaults for extrema_finding_kwargs."""
@@ -734,11 +827,11 @@ class eccDefinition:
                                             # eccDefinitionUsingAmplitude
             "debug_level": 0,
             "debug_plots": False,
-            "omega22_averaging_method": "orbit_averaged_omega22",
+            "omega_gw_averaging_method": "orbit_averaged_omega_gw",
             "treat_mid_points_between_pericenters_as_apocenters": False,
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
-            "set_failures_to_zero": False,
+            "return_zero_if_small_ecc_failure": False,
         }
         return default_extra_kwargs
 
@@ -802,7 +895,7 @@ class eccDefinition:
         return pericenters, apocenters
 
     def drop_extrema_if_extrema_jumps(self, extrema_location,
-                                      max_r_delta_phase22_extrema=1.5,
+                                      max_r_delta_phase_gw_extrema=1.5,
                                       extrema_type="extrema"):
         """Drop the extrema if jump in extrema is detected.
 
@@ -813,38 +906,38 @@ class eccDefinition:
 
         To detect if an extremum has been missed we do the following:
 
-        - Compute the phase22 difference between i-th and (i+1)-th extrema:
-          delta_phase22_extrema[i] = phase22_extrema[i+1] - phase22_extrema[i]
-        - Compute the ratio of delta_phase22: r_delta_phase22_extrema[i] =
-          delta_phase22_extrema[i+1]/delta_phase22_extrema[i]
+        - Compute the phase_gw difference between i-th and (i+1)-th extrema:
+          delta_phase_gw_extrema[i] = phase_gw_extrema[i+1] - phase_gw_extrema[i]
+        - Compute the ratio of delta_phase_gw: r_delta_phase_gw_extrema[i] =
+          delta_phase_gw_extrema[i+1]/delta_phase_gw_extrema[i]
 
-        For correctly separated extrema, the ratio r_delta_phase22_extrema
+        For correctly separated extrema, the ratio r_delta_phase_gw_extrema
         should be close to 1.
 
-        Therefore if anywhere r_delta_phase22_extrema[i] >
-        max_r_delta_phase22_extrema, where max_r_delta_phase22_extrema = 1.5 by
-        default, then delta_phase22_extrema[i+1] is too large and implies that
-        phase22 difference between (i+2)-th and (i+1)-th extrema is too large
+        Therefore if anywhere r_delta_phase_gw_extrema[i] >
+        max_r_delta_phase_gw_extrema, where max_r_delta_phase_gw_extrema = 1.5 by
+        default, then delta_phase_gw_extrema[i+1] is too large and implies that
+        phase_gw difference between (i+2)-th and (i+1)-th extrema is too large
         and therefore an extrema is missing between (i+1)-th and (i+2)-th
         extrema. We therefore keep extrema only upto (i+1)-th extremum.
 
         It might also be that an extremum is missed at the start of the
-        data. In such case, the phase22 difference would drop from large value
+        data. In such case, the phase_gw difference would drop from large value
         due to missing extremum to normal value. Therefore, in this case, if
-        anywhere r_delta_phase22_extrema[i] < 1 / max_r_delta_phase22_extrema
-        then delta_phase22_extrema[i] is too large compared to
-        delta_phase22_extrema[i+1] and therefore an extremum is missed between
+        anywhere r_delta_phase_gw_extrema[i] < 1 / max_r_delta_phase_gw_extrema
+        then delta_phase_gw_extrema[i] is too large compared to
+        delta_phase_gw_extrema[i+1] and therefore an extremum is missed between
         i-th and (i+1)-th extrema. Therefore, we keep only extrema starting
         from (i+1)-th extremum.
         """
         # Look for extrema jumps at the end of the data.
-        phase22_extrema = self.phase22[extrema_location]
-        delta_phase22_extrema = np.diff(phase22_extrema)
-        r_delta_phase22_extrema = (delta_phase22_extrema[1:] /
-                                   delta_phase22_extrema[:-1])
-        idx_too_large_ratio = np.where(r_delta_phase22_extrema >
-                                       max_r_delta_phase22_extrema)[0]
-        mid_index = int(len(r_delta_phase22_extrema)/2)
+        phase_gw_extrema = self.phase_gw[extrema_location]
+        delta_phase_gw_extrema = np.diff(phase_gw_extrema)
+        r_delta_phase_gw_extrema = (delta_phase_gw_extrema[1:] /
+                                   delta_phase_gw_extrema[:-1])
+        idx_too_large_ratio = np.where(r_delta_phase_gw_extrema >
+                                       max_r_delta_phase_gw_extrema)[0]
+        mid_index = int(len(r_delta_phase_gw_extrema)/2)
         # Check if ratio is too large near the end of the data. Check also
         # that this occurs within the second half of the extrema locations
         if len(idx_too_large_ratio) > 0 and (idx_too_large_ratio[0]
@@ -854,17 +947,17 @@ class eccDefinition:
                                   extrema_location[first_idx+2]]
             first_pair_times = [self.t[first_pair_indices[0]],
                                 self.t[first_pair_indices[1]]]
-            phase_diff_current = delta_phase22_extrema[first_idx+1]
-            phase_diff_previous = delta_phase22_extrema[first_idx]
+            phase_diff_current = delta_phase_gw_extrema[first_idx+1]
+            phase_diff_previous = delta_phase_gw_extrema[first_idx]
             debug_message(
                 f"At least a pair of {extrema_type} are too widely separated"
                 " from each other near the end of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
                 f"First pair of such {extrema_type} are {first_pair_indices}"
                 f" at t={first_pair_times}.\n"
-                f"phase22 difference between this pair of {extrema_type}="
+                f"phase_gw difference between this pair of {extrema_type}="
                 f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
-                "phase22 difference between the previous pair of "
+                "phase_gw difference between the previous pair of "
                 f"{extrema_type}={phase_diff_previous/(4*np.pi):.2f}*4pi\n"
                 f"{extrema_type} after idx={first_pair_indices[0]}, i.e.,"
                 f"t > {first_pair_times[0]} are therefore dropped.",
@@ -872,8 +965,8 @@ class eccDefinition:
             extrema_location = extrema_location[extrema_location <=
                                                 extrema_location[first_idx+1]]
         # Check if ratio is too small
-        idx_too_small_ratio = np.where(r_delta_phase22_extrema <
-                                       (1 / max_r_delta_phase22_extrema))[0]
+        idx_too_small_ratio = np.where(r_delta_phase_gw_extrema <
+                                       (1 / max_r_delta_phase_gw_extrema))[0]
         # We want to detect extrema jump near the start of the data.
         # Check that the location where such jump is found falls within the
         # first half of the extrema locations.
@@ -884,17 +977,17 @@ class eccDefinition:
                                  extrema_location[last_idx+2]]
             last_pair_times = [self.t[last_pair_indices[0]],
                                self.t[last_pair_indices[1]]]
-            phase_diff_current = delta_phase22_extrema[last_idx+1]
-            phase_diff_previous = delta_phase22_extrema[last_idx]
+            phase_diff_current = delta_phase_gw_extrema[last_idx+1]
+            phase_diff_previous = delta_phase_gw_extrema[last_idx]
             debug_message(
                 f"At least a pair of {extrema_type} are too widely separated"
                 " from each other near the start of the data.\n"
                 f"This implies that a {extrema_type[:-1]} might be missing.\n"
                 f"Last pair of such {extrema_type} are {last_pair_indices} at "
                 f"t={last_pair_times}.\n"
-                f"phase22 difference between this pair of {extrema_type}="
+                f"phase_gw difference between this pair of {extrema_type}="
                 f"{phase_diff_previous/(4*np.pi):.2f}*4pi\n"
-                f"phase22 difference between the next pair of {extrema_type}="
+                f"phase_gw difference between the next pair of {extrema_type}="
                 f"{phase_diff_current/(4*np.pi):.2f}*4pi\n"
                 f"{extrema_type} before {last_pair_indices[1]}, i.e., t < t="
                 f"{last_pair_times[-1]} are therefore dropped.",
@@ -904,7 +997,7 @@ class eccDefinition:
         return extrema_location
 
     def drop_extrema_if_too_close(self, extrema_location,
-                                  min_phase22_difference=4*np.pi,
+                                  min_phase_gw_difference=4*np.pi,
                                   extrema_type="extrema"):
         """Check if a pair of extrema is too close to each other.
 
@@ -922,11 +1015,11 @@ class eccDefinition:
         For an example with EOB waveform, see here
         https://github.com/vijayvarma392/gw_eccentricity/wiki/debug-examples#drop-too-close-extrema
         """
-        phase22_extrema = self.phase22[extrema_location]
-        phase22_diff_extrema = np.diff(phase22_extrema)
-        idx_too_close = np.where(phase22_diff_extrema
-                                 < min_phase22_difference)[0]
-        mid_index = int(len(phase22_diff_extrema)/2)
+        phase_gw_extrema = self.phase_gw[extrema_location]
+        phase_gw_diff_extrema = np.diff(phase_gw_extrema)
+        idx_too_close = np.where(phase_gw_diff_extrema
+                                 < min_phase_gw_difference)[0]
+        mid_index = int(len(phase_gw_diff_extrema)/2)
         if len(idx_too_close) > 0:
             # Look for too close pairs in the second half
             if idx_too_close[0] > mid_index:
@@ -936,8 +1029,8 @@ class eccDefinition:
                 first_pair_times = self.t[first_pair]
                 debug_message(
                     f"At least a pair of {extrema_type} are too close to "
-                    "each other with phase22 difference = "
-                    f"{phase22_diff_extrema[first_index]/(4*np.pi):.2f}*4pi.\n"
+                    "each other with phase_gw difference = "
+                    f"{phase_gw_diff_extrema[first_index]/(4*np.pi):.2f}*4pi.\n"
                     " First pair of such extrema is located in the second half"
                     f" of the {extrema_type} locations between {first_pair},"
                     f"i.e., t={first_pair_times}.\n"
@@ -955,8 +1048,8 @@ class eccDefinition:
                 last_pair_times = self.t[last_pair]
                 debug_message(
                     f"At least a pair of {extrema_type} are too close to "
-                    "each other with phase22 difference = "
-                    f"{phase22_diff_extrema[last_index]/(4*np.pi):.2f}*4pi.\n"
+                    "each other with phase_gw difference = "
+                    f"{phase_gw_diff_extrema[last_index]/(4*np.pi):.2f}*4pi.\n"
                     " Last pair of such extrema is located in the first half"
                     f" of the {extrema_type} locations between {last_pair},"
                     f"i.e., t={last_pair_times}.\n"
@@ -969,7 +1062,7 @@ class eccDefinition:
         return extrema_location
 
     def get_good_extrema(self, pericenters, apocenters,
-                         max_r_delta_phase22_extrema=1.5):
+                         max_r_delta_phase_gw_extrema=1.5):
         """Retain only the good extrema if there are extra extrema or missing extrema.
 
         If the number of pericenters/apocenters, n, after the last
@@ -1006,10 +1099,10 @@ class eccDefinition:
             1d array of locations of pericenters.
         apocenters:
             1d array of locations of apocenters.
-        max_r_delta_phase22_extrema:
-            Maximum value for ratio of successive phase22 difference between
+        max_r_delta_phase_gw_extrema:
+            Maximum value for ratio of successive phase_gw difference between
             consecutive extrema. If the ratio is greater than
-            max_r_delta_phase22 or less than 1/max_r_delta_phase22 then
+            max_r_delta_phase_gw or less than 1/max_r_delta_phase_gw then
             an extremum is considered to be missing.
         returns:
         --------
@@ -1019,9 +1112,9 @@ class eccDefinition:
             1d array of apocenters after dropping apocenters as necessary.
         """
         pericenters = self.drop_extrema_if_extrema_jumps(
-            pericenters, max_r_delta_phase22_extrema, "pericenters")
+            pericenters, max_r_delta_phase_gw_extrema, "pericenters")
         apocenters = self.drop_extrema_if_extrema_jumps(
-            apocenters, max_r_delta_phase22_extrema, "apocenters")
+            apocenters, max_r_delta_phase_gw_extrema, "apocenters")
         pericenters = self.drop_extrema_if_too_close(
             pericenters, extrema_type="pericenters")
         apocenters = self.drop_extrema_if_too_close(
@@ -1076,7 +1169,7 @@ class eccDefinition:
                             "'pericenrers' or 'apocenters'.")
         if len(extrema) >= 2:
             return self.get_interp(self.t[extrema],
-                                   self.omega22[extrema])
+                                   self.omega_gw[extrema])
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
@@ -1101,14 +1194,14 @@ class eccDefinition:
 
         If it is sufficiently long, but the chosen method fails to detect any
         extrema, it is possible that the eccentricity is too small. If
-        `set_failures_to_zero` is set to True, then we set
+        `return_zero_if_small_ecc_failure` is set to True, then we set
         `insufficient_extrema_but_long_waveform` to True and return it.
 
         Parameters
         ----------
         extrema : array-like
             1d array of extrema to determine if the length is sufficient for
-            building interpolants of omega22 values at these extrema. We
+            building interpolants of omega_gw values at these extrema. We
             require the length to be greater than or equal to two.
         extrema_type: str, default="extrema"
             String to indicate whether the extrema corresponds to pericenters
@@ -1128,9 +1221,9 @@ class eccDefinition:
             # 4*pi occurs over one orbit.
             # NOTE: Since we truncate the waveform data by removing
             # `num_orbits_to_remove_before_merger` orbits before the merger,
-            # phase22[-1] corresponds to the phase of the (2, 2) mode
+            # phase_gw[-1] corresponds to the phase of the (2, 2) mode
             # `num_orbits_to_remove_before_merger` orbits before the merger.
-            approximate_num_orbits = ((self.phase22[-1] - self.phase22[0])
+            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
                                       / (4 * np.pi))
             if approximate_num_orbits > 5:
                 # The waveform is sufficiently long but the extrema finding
@@ -1142,13 +1235,13 @@ class eccDefinition:
             else:
                 insufficient_extrema_but_long_waveform = False
             if insufficient_extrema_but_long_waveform \
-               and self.set_failures_to_zero:
+               and self.return_zero_if_small_ecc_failure:
                 debug_message(
                     "The waveform has approximately "
                     f"{approximate_num_orbits:.2f}"
                     f" orbits but number of {extrema_type} found is "
-                    f"{num_extrema}. Since `set_failures_to_zero` is set to "
-                    f"{self.set_failures_to_zero}, no exception is raised. "
+                    f"{num_extrema}. Since `return_zero_if_small_ecc_failure` is set to "
+                    f"{self.return_zero_if_small_ecc_failure}, no exception is raised. "
                     "Instead the eccentricity and mean anomaly will be set to "
                     "zero.",
                     important=True,
@@ -1214,26 +1307,48 @@ class eccDefinition:
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
 
-        Eccentricity is measured using the GW frequency omega22(t) =
-        dphi22(t)/dt, where phi22(t) is the phase of the (2, 2) waveform
-        mode. We currently only allow time-domain, nonprecessing waveforms. We
-        evaluate omega22(t) at pericenter times, t_pericenters, and build a
-        spline interpolant omega22_pericenters(t) using those data
-        points. Similarly, we build omega22_apocenters(t) using omega22(t) at
-        the apocenter times, t_apocenters.
+        #TODO: We may decide to use invariant angular velocity as omega in the future
+        
+        Eccentricity is measured using the GW frequency omega_gw(t) =
+        d(phase_gw)/dt. Throughout this documentation, we will refer to
+        phase_gw, omega_gw and amp_gw. For nonprecessing systems, these
+        quantities are simply the corresponding values of the (2, 2) mode,
 
-        Using omega22_pericenters(t) and omega22_apocenters(t), we first
-        compute e_omega22(t), as described in Eq.(4) of `arXiv:2302.11257`_. We
-        then use e_omega22(t) to compute the eccentricity egw(t) using Eq.(8)
-        of `arXiv:2302.11257`_. Mean anomaly is defined using t_pericenters, as
+        amp_gw = amp22, phase_gw = phase22 and omega_gw = omega22.
+
+        On the other hand, for precessing systems, we use Eq.(48) and (49) of
+        arXiv:1701.00550 to define amp_gw and phase_gw. amp_gw [phase_gw] is
+        defined using a symmetric [antisymmetric] combination of amplitude
+        [phase] of (2, 2) and (2, -2) mode in the coprecessing frame,
+
+        amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
+        phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
+        omega_gw = d(phase_gw)/dt.
+
+        These quantities reduce to the corresponding (2, 2) mode data when the
+        system is nonprecessing, but we treat nonprecessing cases differently
+        by allowing the user to include only the (2, 2) mode. See
+        `eccDefinition.get_amp_phase_omega_gw` for more details.
+        
+        We currently only allow time-domain waveforms. We evaluate omega_gw(t)
+        at pericenter times, t_pericenters, and build a spline interpolant
+        omega_gw_pericenters(t) using those data points. Similarly, we build
+        omega_gw_apocenters(t) using omega_gw(t) at the apocenter times,
+        t_apocenters.
+
+        Using omega_gw_pericenters(t) and omega_gw_apocenters(t), we first
+        compute e_omega_gw(t), as described in Eq.(4) of `arXiv:2302.11257`_
+        (e_omega_gw is called e_omega_22 in the paper). We then use
+        e_omega_gw(t) to compute the eccentricity egw(t) using Eq.(8) of
+        `arXiv:2302.11257`_. Mean anomaly is defined using t_pericenters, as
         described in Eq.(10) of `arXiv:2302.11257`_.
 
         To find t_pericenters/t_apocenters, one can look for extrema in
-        different waveform data, like omega22(t) or Amp22(t), the amplitude of
-        the (2, 2) mode. Pericenters correspond to the local maxima, while
-        apocenters correspond to the local minima in the data. The method
-        option (described below) lets the user pick which waveform data to use
-        to find t_pericenters/t_apocenters.
+        different waveform data, like omega_gw(t) or amp_gw(t). Pericenters
+        correspond to the local maxima, while apocenters correspond to the
+        local minima in the data. The method option (described below) lets the
+        user pick which waveform data to use to find
+        t_pericenters/t_apocenters.
 
         .. _arXiv:2302.11257: https://arxiv.org/abs/2302.11257
 
@@ -1250,13 +1365,13 @@ class eccDefinition:
 
             Given an *fref_in*, we find the corresponding tref_in such that::
 
-                omega22_average(tref_in) = 2 * pi * fref_in
+                omega_gw_average(tref_in) = 2 * pi * fref_in
 
-            Here, omega22_average(t) is a monotonically increasing average
+            Here, omega_gw_average(t) is a monotonically increasing average
             frequency obtained from the instantaneous
-            omega22(t). omega22_average(t) defaults to the orbit averaged
-            omega22, but other options are available (see
-            omega22_averaging_method below).
+            omega_gw(t). omega_gw_average(t) defaults to the orbit averaged
+            omega_gw, but other options are available (see
+            omega_gw_averaging_method below).
 
             Eccentricity and mean anomaly measurements are returned on a subset
             of *tref_in*/*fref_in*, called *tref_out*/*fref_out*, which are
@@ -1284,9 +1399,9 @@ class eccDefinition:
                     tmin = max(t_pericenters[0], t_apocenters[0])
 
                 As eccentricity measurement relies on the interpolants
-                omega22_pericenters(t) and omega22_apocenters(t), the above
+                omega_gw_pericenters(t) and omega_gw_apocenters(t), the above
                 cutoffs ensure that we only compute the eccentricity where both
-                omega22_pericenters(t) and omega22_apocenters(t) are within
+                omega_gw_pericenters(t) and omega_gw_apocenters(t) are within
                 their bounds.
 
             fref_out
@@ -1303,8 +1418,8 @@ class eccDefinition:
                 where, fref_min/fref_max are minimum/maximum allowed reference
                 frequency, with::
 
-                    fref_min = omega22_average(tmin_for_fref)/2/pi
-                    fref_max = omega22_average(tmax_for_fref)/2/pi
+                    fref_min = omega_gw_average(tmin_for_fref)/2/pi
+                    fref_max = omega_gw_average(tmax_for_fref)/2/pi
 
                 tmin_for_fref/tmax_for_fref are close to tmin/tmax, see
                 :meth:`eccDefinition.get_fref_bounds()` for details.
@@ -1357,14 +1472,14 @@ class eccDefinition:
             = self.check_num_extrema(apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema,
-        # and `set_failures_to_zero` is true, then we set the eccentricity and
+        # and `return_zero_if_small_ecc_failure` is true, then we set the eccentricity and
         # mean anomaly to zero and return them. In this case, the rest of the
         # code in this function is not executed, and therefore, many variables
         # that are needed for making diagnostic plots are not computed. Thus,
         # in such cases, the diagnostic plots may not work.
         if any([insufficient_pericenters_but_long_waveform,
                 insufficient_apocenters_but_long_waveform]) \
-                and self.set_failures_to_zero:
+                and self.return_zero_if_small_ecc_failure:
             # Store this information that we are setting ecc and mean anomaly
             # to zero to use it in other places
             self.setting_ecc_to_zero = True
@@ -1395,9 +1510,9 @@ class eccDefinition:
             = self.check_extrema_separation(self.apocenters_location,
                                             "apocenters")
 
-        # Build the interpolants of omega22 at the extrema
-        self.omega22_pericenters_interp = self.interp_extrema("pericenters")
-        self.omega22_apocenters_interp = self.interp_extrema("apocenters")
+        # Build the interpolants of omega_gw at the extrema
+        self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
+        self.omega_gw_apocenters_interp = self.interp_extrema("apocenters")
 
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
@@ -1556,9 +1671,9 @@ class eccDefinition:
         """
         Compute eccentricity at time t.
 
-        Compute e_omega22 from the value of omega22_pericenters_interpolant and
-        omega22_apocenters_interpolant at t using Eq.(4) in arXiv:2302.11257
-        and then use Eq.(8) in arXiv:2302.11257 to compute e_gw from e_omega22.
+        Compute e_omega_gw from the value of omega_gw_pericenters_interpolant and
+        omega_gw_apocenters_interpolant at t using Eq.(4) in arXiv:2302.11257
+        and then use Eq.(8) in arXiv:2302.11257 to compute e_gw from e_omega_gw.
 
         Paramerers
         ----------
@@ -1572,14 +1687,14 @@ class eccDefinition:
         # Check that t is within tmin and tmax to avoid extrapolation
         self.check_input_limits(t, self.tmin, self.tmax)
 
-        omega22_pericenter_at_t = self.omega22_pericenters_interp(t)
-        omega22_apocenter_at_t = self.omega22_apocenters_interp(t)
-        self.e_omega22 = ((np.sqrt(omega22_pericenter_at_t)
-                           - np.sqrt(omega22_apocenter_at_t))
-                          / (np.sqrt(omega22_pericenter_at_t)
-                             + np.sqrt(omega22_apocenter_at_t)))
-        # get the  temporal eccentricity from e_omega22
-        return self.et_from_ew22_0pn(self.e_omega22)
+        omega_gw_pericenter_at_t = self.omega_gw_pericenters_interp(t)
+        omega_gw_apocenter_at_t = self.omega_gw_apocenters_interp(t)
+        self.e_omega_gw = ((np.sqrt(omega_gw_pericenter_at_t)
+                           - np.sqrt(omega_gw_apocenter_at_t))
+                          / (np.sqrt(omega_gw_pericenter_at_t)
+                             + np.sqrt(omega_gw_apocenter_at_t)))
+        # get the  temporal eccentricity from e_omega_gw
+        return self.et_from_ew22_0pn(self.e_omega_gw)
 
     def derivative_of_eccentricity(self, t, n=1):
         """Get time derivative of eccentricity.
@@ -1730,7 +1845,7 @@ class eccDefinition:
         if self.debug_level < 1 and always_return is False:
             return None, None
 
-        orb_phase_at_extrema = self.phase22[extrema_location] / 2
+        orb_phase_at_extrema = self.phase_gw[extrema_location] / 2
         orb_phase_diff = np.diff(orb_phase_at_extrema)
         # This might suggest that the data is noisy, for example, and a
         # spurious pericenter got picked up.
@@ -1883,8 +1998,8 @@ class eccDefinition:
                     "pericenters and apocenters do not appear alternately.",
                     self.debug_level, important=False)
 
-    def compute_res_amp22_and_res_omega22(self):
-        """Compute residual amp22 and residual omega22."""
+    def compute_res_amp_gw_and_res_omega_gw(self):
+        """Compute residual amp_gw and residual omega_gw."""
         self.t_zeroecc = self.dataDict["t_zeroecc"]
         # check that the time steps are equal
         self.t_zeroecc_diff = np.diff(self.t_zeroecc)
@@ -1893,8 +2008,8 @@ class eccDefinition:
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
         # get amplitude and omega of 22 mode
-        self.amp22_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
-        self.omega22_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
+        self.amp_gw_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
+        self.omega_gw_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
@@ -1927,22 +2042,22 @@ class eccDefinition:
         # residual quantities can be computed. Above, we check that this
         # extrapolation does not happen before t_merger, which is where
         # eccentricity is normally measured.
-        self.amp22_zeroecc_interp = self.interp(
-            self.t, self.t_zeroecc_shifted, self.amp22_zeroecc,
+        self.amp_gw_zeroecc_interp = self.interp(
+            self.t, self.t_zeroecc_shifted, self.amp_gw_zeroecc,
             allowExtrapolation=True)
-        self.res_amp22 = self.amp22 - self.amp22_zeroecc_interp
-        self.omega22_zeroecc_interp = self.interp(
-            self.t, self.t_zeroecc_shifted, self.omega22_zeroecc,
+        self.res_amp_gw = self.amp_gw - self.amp_gw_zeroecc_interp
+        self.omega_gw_zeroecc_interp = self.interp(
+            self.t, self.t_zeroecc_shifted, self.omega_gw_zeroecc,
             allowExtrapolation=True)
-        self.res_omega22 = (self.omega22 - self.omega22_zeroecc_interp)
+        self.res_omega_gw = (self.omega_gw - self.omega_gw_zeroecc_interp)
 
-    def get_t_average_for_orbit_averaged_omega22(self):
-        """Get the times associated with the fref for orbit averaged omega22.
+    def get_t_average_for_orbit_averaged_omega_gw(self):
+        """Get the times associated with the fref for orbit averaged omega_gw.
 
         t_average_pericenters are the times at midpoints between consecutive
         pericenters. We associate time (t[i] + t[i+1]) / 2 with the orbit
-        averaged omega22 calculated between ith and (i+1)th pericenter. That
-        is, omega22_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega22(t) dt
+        averaged omega_gw calculated between ith and (i+1)th pericenter. That
+        is, omega_gw_average((t[i] + t[i+1])/2) = int_t[i]^t[i+1] omega_gw(t) dt
         / (t[i+1] - t[i]), where t[i] is the time at the ith pericenter.  And
         similarly, we calculate the t_average_apocenters. We combine
         t_average_pericenters and t_average_apocenters, and sort them to obtain
@@ -1950,11 +2065,11 @@ class eccDefinition:
 
         Returns
         -------
-        t_for_orbit_averaged_omega22
-            Times associated with orbit averaged omega22
-        sorted_idx_for_orbit_averaged_omega22
+        t_for_orbit_averaged_omega_gw
+            Times associated with orbit averaged omega_gw
+        sorted_idx_for_orbit_averaged_omega_gw
             Indices used to sort the times associated with orbit averaged
-            omega22
+            omega_gw
         """
         # get the mid points between the pericenters as avg time for
         # pericenters
@@ -1966,18 +2081,18 @@ class eccDefinition:
         self.t_average_apocenters \
             = 0.5 * (self.t[self.apocenters_location][:-1]
                      + self.t[self.apocenters_location][1:])
-        t_for_orbit_averaged_omega22 = np.append(
+        t_for_orbit_averaged_omega_gw = np.append(
             self.t_average_apocenters,
             self.t_average_pericenters)
-        sorted_idx_for_orbit_averaged_omega22 = np.argsort(
-            t_for_orbit_averaged_omega22)
-        t_for_orbit_averaged_omega22 = t_for_orbit_averaged_omega22[
-            sorted_idx_for_orbit_averaged_omega22]
-        return [t_for_orbit_averaged_omega22,
-                sorted_idx_for_orbit_averaged_omega22]
+        sorted_idx_for_orbit_averaged_omega_gw = np.argsort(
+            t_for_orbit_averaged_omega_gw)
+        t_for_orbit_averaged_omega_gw = t_for_orbit_averaged_omega_gw[
+            sorted_idx_for_orbit_averaged_omega_gw]
+        return [t_for_orbit_averaged_omega_gw,
+                sorted_idx_for_orbit_averaged_omega_gw]
 
-    def get_orbit_averaged_omega22_between_pericenters(self):
-        """Get orbital average of omega22 between two consecutive pericenters.
+    def get_orbit_averaged_omega_gw_between_pericenters(self):
+        """Get orbital average of omega_gw between two consecutive pericenters.
 
         Given N pericenters at times t[i], i=0...N-1, this function returns a
         np.array of length N-1, where result[i] is the frequency averaged over
@@ -1985,108 +2100,108 @@ class eccDefinition:
         midpoint between t[i] and t[i+1], i.e (t[i] + t[i+1])/2. See Eq.(12)
         and Eq.(13) in arXiv:2302.11257 for details.
 
-        Orbital average of omega22 between two consecutive pericenters
+        Orbital average of omega_gw between two consecutive pericenters
         i-th and (i+1)-th is given by
-        <omega22>_i = (int_t[i]^t[i+1] omega22(t) dt)/(t[i+1] - t[i])
+        <omega_gw>_i = (int_t[i]^t[i+1] omega_gw(t) dt)/(t[i+1] - t[i])
         t[i] is the time at the i-th extrema.
-        Integration of omega22(t) from t[i] to t[i+1] is the same
-        as taking the difference of phase22(t) between t[i] and t[i+1]
-        <omega22>_i = (phase22[t[i+1]] - phase22[t[i]])/(t[i+1] - t[i])
+        Integration of omega_gw(t) from t[i] to t[i+1] is the same
+        as taking the difference of phase_gw(t) between t[i] and t[i+1]
+        <omega_gw>_i = (phase_gw[t[i+1]] - phase_gw[t[i]])/(t[i+1] - t[i])
         """
-        return (np.diff(self.phase22[self.pericenters_location]) /
+        return (np.diff(self.phase_gw[self.pericenters_location]) /
                 np.diff(self.t[self.pericenters_location]))
 
-    def get_orbit_averaged_omega22_between_apocenters(self):
-        """Get orbital average of omega22 between two consecutive apocenters.
+    def get_orbit_averaged_omega_gw_between_apocenters(self):
+        """Get orbital average of omega_gw between two consecutive apocenters.
 
-        The procedure to get the orbital average of omega22 between apocenters
+        The procedure to get the orbital average of omega_gw between apocenters
         is the same as that between pericenters. See documentation of
-        `get_orbit_averaged_omega22_between_pericenters` for details.
+        `get_orbit_averaged_omega_gw_between_pericenters` for details.
         """
-        return (np.diff(self.phase22[self.apocenters_location]) /
+        return (np.diff(self.phase_gw[self.apocenters_location]) /
                 np.diff(self.t[self.apocenters_location]))
 
-    def compute_orbit_averaged_omega22_between_extrema(self, t):
-        """Compute reference frequency by orbital averaging omega22 between extrema.
+    def compute_orbit_averaged_omega_gw_between_extrema(self, t):
+        """Compute reference frequency by orbital averaging omega_gw between extrema.
 
-        We compute the orbital average of omega22 between two consecutive
+        We compute the orbital average of omega_gw between two consecutive
         extrema as following:
-        <omega22>_i = (int_t[i]^t[i+1] omega22(t) dt) / (t[i+1] - t[i])
+        <omega_gw>_i = (int_t[i]^t[i+1] omega_gw(t) dt) / (t[i+1] - t[i])
         where t[i] is the time of ith extrema and the suffix `i` stands for the
         i-th orbit between i-th and (i+1)-th extrema
-        <omega22>_i is associated with the temporal midpoint between the i-th
+        <omega_gw>_i is associated with the temporal midpoint between the i-th
         and (i+1)-th extrema,
         <t>_i = (t[i] + t[i+1]) / 2
         See Eq.(12) and Eq.(13) in arXiv:2302.11257 for more details.
 
         We do this averaging between consecutive pericenters and consecutive
         apocenters using the functions
-        `get_orbit_averaged_omega22_between_pericenters` and
-        `get_orbit_averaged_omega22_between_apocenters` and combine the
+        `get_orbit_averaged_omega_gw_between_pericenters` and
+        `get_orbit_averaged_omega_gw_between_apocenters` and combine the
         results. The combined array is then sorted using the sorting indices
-        from `get_t_average_for_orbit_averaged_omega22`.
+        from `get_t_average_for_orbit_averaged_omega_gw`.
 
-        Finally we interpolate the data {<t>_i, <omega22>_i} and evaluate the
+        Finally we interpolate the data {<t>_i, <omega_gw>_i} and evaluate the
         interpolant at the input times `t`.
         """
-        # get orbit averaged omega22 between consecutive pericenrers
+        # get orbit averaged omega_gw between consecutive pericenrers
         # and consecutive apoceneters
-        self.orbit_averaged_omega22_pericenters \
-            = self.get_orbit_averaged_omega22_between_pericenters()
-        self.orbit_averaged_omega22_apocenters \
-            = self.get_orbit_averaged_omega22_between_apocenters()
-        # check monotonicity of the omega22 average
-        self.check_monotonicity_of_omega22_average(
-            self.orbit_averaged_omega22_pericenters,
-            "omega22 averaged [pericenter to pericenter]")
-        self.check_monotonicity_of_omega22_average(
-            self.orbit_averaged_omega22_apocenters,
-            "omega22 averaged [apocenter to apocenter]")
-        # combine the average omega22 between consecutive pericenters and
+        self.orbit_averaged_omega_gw_pericenters \
+            = self.get_orbit_averaged_omega_gw_between_pericenters()
+        self.orbit_averaged_omega_gw_apocenters \
+            = self.get_orbit_averaged_omega_gw_between_apocenters()
+        # check monotonicity of the omega_gw average
+        self.check_monotonicity_of_omega_gw_average(
+            self.orbit_averaged_omega_gw_pericenters,
+            "omega_gw averaged [pericenter to pericenter]")
+        self.check_monotonicity_of_omega_gw_average(
+            self.orbit_averaged_omega_gw_apocenters,
+            "omega_gw averaged [apocenter to apocenter]")
+        # combine the average omega_gw between consecutive pericenters and
         # consecutive apocenters
-        orbit_averaged_omega22 = np.append(
-            self.orbit_averaged_omega22_apocenters,
-            self.orbit_averaged_omega22_pericenters)
+        orbit_averaged_omega_gw = np.append(
+            self.orbit_averaged_omega_gw_apocenters,
+            self.orbit_averaged_omega_gw_pericenters)
 
-        # get the times associated to the orbit averaged omega22
-        if not hasattr(self, "t_for_orbit_averaged_omega22"):
-            self.t_for_orbit_averaged_omega22,\
-                self.sorted_idx_for_orbit_averaged_omega22\
-                = self.get_t_average_for_orbit_averaged_omega22()
-        # We now sort omega22_average using
-        # `sorted_idx_for_orbit_averaged_omega22`, the same array of indices
-        # that was used to obtain the `t_for_orbit_averaged_omega22` in the
-        # function `eccDefinition.get_t_average_for_orbit_averaged_omega22`.
-        orbit_averaged_omega22 = orbit_averaged_omega22[
-            self.sorted_idx_for_orbit_averaged_omega22]
-        # check that omega22_average in strictly monotonic
-        self.check_monotonicity_of_omega22_average(
-            orbit_averaged_omega22,
-            "omega22 averaged [apocenter to apocenter] and "
+        # get the times associated to the orbit averaged omega_gw
+        if not hasattr(self, "t_for_orbit_averaged_omega_gw"):
+            self.t_for_orbit_averaged_omega_gw,\
+                self.sorted_idx_for_orbit_averaged_omega_gw\
+                = self.get_t_average_for_orbit_averaged_omega_gw()
+        # We now sort omega_gw_average using
+        # `sorted_idx_for_orbit_averaged_omega_gw`, the same array of indices
+        # that was used to obtain the `t_for_orbit_averaged_omega_gw` in the
+        # function `eccDefinition.get_t_average_for_orbit_averaged_omega_gw`.
+        orbit_averaged_omega_gw = orbit_averaged_omega_gw[
+            self.sorted_idx_for_orbit_averaged_omega_gw]
+        # check that omega_gw_average in strictly monotonic
+        self.check_monotonicity_of_omega_gw_average(
+            orbit_averaged_omega_gw,
+            "omega_gw averaged [apocenter to apocenter] and "
             "[pericenter to pericenter]")
         return self.interp(
-            t, self.t_for_orbit_averaged_omega22, orbit_averaged_omega22)
+            t, self.t_for_orbit_averaged_omega_gw, orbit_averaged_omega_gw)
 
-    def check_monotonicity_of_omega22_average(self,
-                                              omega22_average,
-                                              description="omega22 average"):
+    def check_monotonicity_of_omega_gw_average(self,
+                                              omega_gw_average,
+                                              description="omega_gw average"):
         """Check that omega average is monotonically increasing.
 
         Parameters
         ----------
-        omega22_average : array-like
-            1d array of omega22 averages to check for monotonicity.
+        omega_gw_average : array-like
+            1d array of omega_gw averages to check for monotonicity.
         description : str
-            String to describe what the the which omega22 average we are
+            String to describe what the the which omega_gw average we are
             looking at.
         """
         idx_non_monotonic = np.where(
-            np.diff(omega22_average) <= 0)[0]
+            np.diff(omega_gw_average) <= 0)[0]
         if len(idx_non_monotonic) > 0:
             first_idx = idx_non_monotonic[0]
             change_at_first_idx = (
-                omega22_average[first_idx+1]
-                - omega22_average[first_idx])
+                omega_gw_average[first_idx+1]
+                - omega_gw_average[first_idx])
             if self.debug_plots:
                 style = "APS"
                 use_fancy_plotsettings(style=style)
@@ -2095,42 +2210,42 @@ class eccDefinition:
                     nrows=nrows,
                     figsize=(figWidthsTwoColDict[style],
                              nrows * figHeightsDict[style]))
-                axes[0].plot(omega22_average, marker=".",
+                axes[0].plot(omega_gw_average, marker=".",
                              c=colorsDict["default"])
-                axes[1].plot(np.diff(omega22_average), marker=".",
+                axes[1].plot(np.diff(omega_gw_average), marker=".",
                              c=colorsDict["default"])
                 axes[2].plot(self.t_average_pericenters,
-                             self.orbit_averaged_omega22_pericenters,
+                             self.orbit_averaged_omega_gw_pericenters,
                              label=labelsDict["pericenters"],
                              c=colorsDict["pericenter"],
                              marker=".")
                 axes[2].plot(self.t_average_apocenters,
-                             self.orbit_averaged_omega22_apocenters,
+                             self.orbit_averaged_omega_gw_apocenters,
                              label=labelsDict["apocenters"],
                              c=colorsDict["apocenter"],
                              marker=".")
-                axes[3].plot(self.t, self.omega22, c=colorsDict["default"])
+                axes[3].plot(self.t, self.omega_gw, c=colorsDict["default"])
                 axes[3].plot(self.t_pericenters,
-                             self.omega22[self.pericenters_location],
+                             self.omega_gw[self.pericenters_location],
                              c=colorsDict["pericenter"],
                              label=labelsDict["pericenters"],
                              marker=".")
                 axes[3].plot(self.t_apocenters,
-                             self.omega22[self.apocenters_location],
+                             self.omega_gw[self.apocenters_location],
                              c=colorsDict["apocenter"],
                              label=labelsDict["apocenters"],
                              marker=".")
                 axes[2].legend()
-                axes[2].set_ylabel(labelsDict["omega22_average"])
+                axes[2].set_ylabel(labelsDict["omega_gw_average"])
                 axes[3].legend()
                 axes[3].set_ylim(0,)
-                axes[3].set_ylabel(labelsDict["omega22"])
+                axes[3].set_ylabel(labelsDict["omega_gw"])
                 axes[1].axhline(0, c=colorsDict["vline"])
-                axes[0].set_ylabel(labelsDict["omega22_average"])
+                axes[0].set_ylabel(labelsDict["omega_gw_average"])
                 axes[1].set_ylabel(
-                    fr"$\Delta$ {labelsDict['omega22_average']}")
+                    fr"$\Delta$ {labelsDict['omega_gw_average']}")
                 axes[0].set_title(
-                    self.extra_kwargs["omega22_averaging_method"])
+                    self.extra_kwargs["omega_gw_averaging_method"])
                 fig.tight_layout()
                 figName = (
                     "./gwecc_"
@@ -2146,8 +2261,8 @@ class eccDefinition:
             raise Exception(
                 f"{description} are non-monotonic.\n"
                 f"First non-monotonicity occurs at peak number {first_idx},"
-                f" where omega22 drops from {omega22_average[first_idx]} to"
-                f" {omega22_average[first_idx+1]}, a decrease by"
+                f" where omega_gw drops from {omega_gw_average[first_idx]} to"
+                f" {omega_gw_average[first_idx+1]}, a decrease by"
                 f" {abs(change_at_first_idx)}.\nTotal number of places of"
                 f" non-monotonicity is {len(idx_non_monotonic)}.\n"
                 f"Last one occurs at peak number {idx_non_monotonic[-1]}.\n"
@@ -2158,110 +2273,110 @@ class eccDefinition:
                 "_pericenters_as_apocenters': True")
 
     def compute_mean_of_extrema_interpolants(self, t):
-        """Find omega22 average by taking mean of the extrema interpolants".
+        """Find omega_gw average by taking mean of the extrema interpolants".
 
-        Take mean of omega22 spline through omega22 pericenters
+        Take mean of omega_gw spline through omega_gw pericenters
         and apocenters to get
-        omega22_average = 0.5 * (omega22_p(t) + omega22_a(t))
+        omega_gw_average = 0.5 * (omega_gw_p(t) + omega_gw_a(t))
         """
-        return 0.5 * (self.omega22_pericenters_interp(t) +
-                      self.omega22_apocenters_interp(t))
+        return 0.5 * (self.omega_gw_pericenters_interp(t) +
+                      self.omega_gw_apocenters_interp(t))
 
-    def compute_omega22_zeroecc(self, t):
-        """Find omega22 from zeroecc data."""
+    def compute_omega_gw_zeroecc(self, t):
+        """Find omega_gw from zeroecc data."""
         return self.interp(
-            t, self.t_zeroecc_shifted, self.omega22_zeroecc)
+            t, self.t_zeroecc_shifted, self.omega_gw_zeroecc)
 
-    def get_available_omega22_averaging_methods(self):
-        """Return available omega22 averaging methods."""
+    def get_available_omega_gw_averaging_methods(self):
+        """Return available omega_gw averaging methods."""
         available_methods = {
             "mean_of_extrema_interpolants": self.compute_mean_of_extrema_interpolants,
-            "orbit_averaged_omega22": self.compute_orbit_averaged_omega22_between_extrema,
-            "omega22_zeroecc": self.compute_omega22_zeroecc
+            "orbit_averaged_omega_gw": self.compute_orbit_averaged_omega_gw_between_extrema,
+            "omega_gw_zeroecc": self.compute_omega_gw_zeroecc
         }
         return available_methods
 
-    def get_omega22_average(self, method=None):
-        """Get times and corresponding values of omega22 average.
+    def get_omega_gw_average(self, method=None):
+        """Get times and corresponding values of omega_gw average.
 
         Parameters
         ----------
         method : str
-            omega22 averaging method. Must be one of the following:
+            omega_gw averaging method. Must be one of the following:
             - "mean_of_extrema_interpolants"
-            - "orbit_averaged_omega22"
-            - "omega22_zeroecc"
-            See get_available_omega22_averaging_methods for available averaging
+            - "orbit_averaged_omega_gw"
+            - "omega_gw_zeroecc"
+            See get_available_omega_gw_averaging_methods for available averaging
             methods and Sec.IID of arXiv:2302.11257 for more details.
             Default is None which uses the method provided in
-            `self.extra_kwargs["omega22_averaging_method"]`
+            `self.extra_kwargs["omega_gw_averaging_method"]`
 
         Returns
         -------
-        t_for_omega22_average : array-like
-            Times associated with omega22_average.
-        omega22_average : array-like
-            omega22 average using given "method".
-            These are data interpolated on the times t_for_omega22_average,
-            where t_for_omega22_average is a subset of tref_in passed to the
+        t_for_omega_gw_average : array-like
+            Times associated with omega_gw_average.
+        omega_gw_average : array-like
+            omega_gw average using given "method".
+            These are data interpolated on the times t_for_omega_gw_average,
+            where t_for_omega_gw_average is a subset of tref_in passed to the
             eccentricity measurement function.
 
-            For the "orbit_averaged_omega22" method, the original
-            omega22_average data points <omega22>_i are obtained by averaging
-            the omega22 over the ith orbit between ith to i+1-th extrema. The
+            For the "orbit_averaged_omega_gw" method, the original
+            omega_gw_average data points <omega_gw>_i are obtained by averaging
+            the omega_gw over the ith orbit between ith to i+1-th extrema. The
             associated <t>_i are obtained by taking the times at the midpoints
             between i-th and i+1-the extrema, i.e., <t>_i = (t_i + t_(i+1))/2.
 
-            These original orbit averaged omega22 data points can be accessed
+            These original orbit averaged omega_gw data points can be accessed
             using the gwecc_object with the following variables
 
-            - orbit_averaged_omega22_apocenters: orbit averaged omega22 between
+            - orbit_averaged_omega_gw_apocenters: orbit averaged omega_gw between
               apocenters. This is available when measuring eccentricity at
               reference frequency. If it is not available, it can be computed
-              using `get_orbit_averaged_omega22_between_apocenters`
+              using `get_orbit_averaged_omega_gw_between_apocenters`
             - t_average_apocenters: temporal midpoints between
               apocenters. These are associated with
-              `orbit_averaged_omega22_apocenters`
-            - orbit_averaged_omega22_pericenters: orbit averaged omega22
+              `orbit_averaged_omega_gw_apocenters`
+            - orbit_averaged_omega_gw_pericenters: orbit averaged omega_gw
               between pericenters. This is available when measuring
               eccentricity at reference frequency. If it is not available, it
               can be computed using
-              `get_orbit_averaged_omega22_between_pericenters`
+              `get_orbit_averaged_omega_gw_between_pericenters`
             - t_average_pericenters: temporal midpoints between
               pericenters. These are associated with
-              `orbit_averaged_omega22_pericenters`
+              `orbit_averaged_omega_gw_pericenters`
         """
         if method is None:
-            method = self.extra_kwargs["omega22_averaging_method"]
-        if method != "orbit_averaged_omega22":
-            # the average frequencies are using interpolants that use omega22
+            method = self.extra_kwargs["omega_gw_averaging_method"]
+        if method != "orbit_averaged_omega_gw":
+            # the average frequencies are using interpolants that use omega_gw
             # values between tmin and tmax, therefore the min and max time for
-            # which omega22 average are the same as tmin and tmax,
+            # which omega_gw average are the same as tmin and tmax,
             # respectively.
             self.tmin_for_fref = self.tmin
             self.tmax_for_fref = self.tmax
         else:
-            self.t_for_orbit_averaged_omega22, self.sorted_idx_for_orbit_averaged_omega22 = \
-                self.get_t_average_for_orbit_averaged_omega22()
-            # for orbit averaged omega22, the associated times are obtained
+            self.t_for_orbit_averaged_omega_gw, self.sorted_idx_for_orbit_averaged_omega_gw = \
+                self.get_t_average_for_orbit_averaged_omega_gw()
+            # for orbit averaged omega_gw, the associated times are obtained
             # using the temporal midpoints of the extrema, therefore we need to
             # make sure that we use only those times that fall within tmin and
             # tmax.
             self.tmin_for_fref = max(self.tmin,
-                                     min(self.t_for_orbit_averaged_omega22))
+                                     min(self.t_for_orbit_averaged_omega_gw))
             self.tmax_for_fref = min(self.tmax,
-                                     max(self.t_for_orbit_averaged_omega22))
-        t_for_omega22_average = self.t[
+                                     max(self.t_for_orbit_averaged_omega_gw))
+        t_for_omega_gw_average = self.t[
             np.logical_and(self.t >= self.tmin_for_fref,
                            self.t <= self.tmax_for_fref)]
-        omega22_average = self.available_averaging_methods[
-            method](t_for_omega22_average)
-        return t_for_omega22_average, omega22_average
+        omega_gw_average = self.available_averaging_methods[
+            method](t_for_omega_gw_average)
+        return t_for_omega_gw_average, omega_gw_average
 
     def compute_tref_in_and_fref_out_from_fref_in(self, fref_in):
         """Compute tref_in and fref_out from fref_in.
 
-        Using chosen omega22 average method we get the tref_in and fref_out
+        Using chosen omega_gw average method we get the tref_in and fref_out
         for the given fref_in.
 
         When the input is frequencies where eccentricity/mean anomaly is to be
@@ -2270,60 +2385,60 @@ class eccDefinition:
         this tref_in in the same way as we do when the input array was time
         instead of frequencies.
 
-        We first compute omega22_average(t) using the instantaneous omega22(t),
+        We first compute omega_gw_average(t) using the instantaneous omega_gw(t),
         which can be done in different ways as described below. Then, we keep
         only the allowed frequencies in fref_in by doing
         fref_out = fref_in[fref_in >= fref_min && fref_in < fref_max],
         Where fref_min/fref_max is the minimum/maximum allowed reference
-        frequency for the given omega22 averaging method. See get_fref_bounds
+        frequency for the given omega_gw averaging method. See get_fref_bounds
         for more details.
-        Finally, we find the times where omega22_average(t) = 2*pi*fref_out,
+        Finally, we find the times where omega_gw_average(t) = 2*pi*fref_out,
         and set those to tref_in.
 
-        omega22_average(t) could be calculated in the following ways
+        omega_gw_average(t) could be calculated in the following ways
 
-        - Mean of the omega22 given by the spline through the pericenters and
+        - Mean of the omega_gw given by the spline through the pericenters and
           the spline through the apocenters, we call this
           "mean_of_extrema_interpolants"
         - Orbital average at the extrema, we call this
-          "orbit_averaged_omega22"
-        - omega22 of the zero eccentricity waveform, called "omega22_zeroecc"
+          "orbit_averaged_omega_gw"
+        - omega_gw of the zero eccentricity waveform, called "omega_gw_zeroecc"
 
         Users can provide a method through the "extra_kwargs" option with the
-        key "omega22_averaging_method".
-        Default is "orbit_averaged_omega22"
+        key "omega_gw_averaging_method".
+        Default is "orbit_averaged_omega_gw"
 
         Once we get the reference frequencies, we create a spline to get time
         as a function of these reference frequencies. This should work if the
         reference frequency is monotonic which it should be.
         Finally, we evaluate this spline on the fref_in to get the tref_in.
         """
-        method = self.extra_kwargs["omega22_averaging_method"]
+        method = self.extra_kwargs["omega_gw_averaging_method"]
         if method in self.available_averaging_methods:
             # The fref_in array could have frequencies that is outside the
-            # range of frequencies in omega22 average. Therefore, we want to
+            # range of frequencies in omega_gw average. Therefore, we want to
             # create a separate array of frequencies fref_out which is created
-            # by taking on those frequencies that falls within the omega22
+            # by taking on those frequencies that falls within the omega_gw
             # average. Then proceed to evaluate the tref_in based on these
             # fref_out
             fref_out = self.get_fref_out(fref_in, method)
 
             # Now that we have fref_out, we want to know the corresponding
-            # tref_in such that omega22_average(tref_in) = fref_out * 2 * pi
+            # tref_in such that omega_gw_average(tref_in) = fref_out * 2 * pi
             # This is done by first creating an interpolant of time as function
-            # of omega22_average.
-            # We get omega22_average by evaluating the omega22_average(t)
+            # of omega_gw_average.
+            # We get omega_gw_average by evaluating the omega_gw_average(t)
             # on t, from tmin_for_fref to tmax_for_fref
-            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average(method)
+            self.t_for_omega_gw_average, self.omega_gw_average = self.get_omega_gw_average(method)
 
-            # check that omega22_average is monotonically increasing
-            self.check_monotonicity_of_omega22_average(
-                self.omega22_average, "Interpolated omega22_average")
+            # check that omega_gw_average is monotonically increasing
+            self.check_monotonicity_of_omega_gw_average(
+                self.omega_gw_average, "Interpolated omega_gw_average")
 
             # Get tref_in using interpolation
             tref_in = self.interp(fref_out,
-                                  self.omega22_average/(2 * np.pi),
-                                  self.t_for_omega22_average)
+                                  self.omega_gw_average/(2 * np.pi),
+                                  self.t_for_omega_gw_average)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
                 debug_message(f"tref_in from fref_in using method {method} is"
@@ -2331,52 +2446,53 @@ class eccDefinition:
                               self.debug_level, important=False)
             return tref_in, fref_out
         else:
-            raise KeyError(f"Omega22 averaging method {method} does not exist."
+            raise KeyError(f"Omega_Gw averaging method {method} does not exist."
                            " Must be one of "
                            f"{list(self.available_averaging_methods.keys())}")
 
     def get_fref_bounds(self, method=None):
-        """Get the allowed min and max reference frequency of 22 mode.
+        """Get the allowed min and max reference frequency of f_gw = omega_gw/2pi.
 
-        Depending on the omega22 averaging method, this function returns the
-        minimum and maximum allowed reference frequency of 22 mode.
+        Depending on the omega_gw averaging method, this function returns the
+        minimum and maximum allowed reference frequency of f_gw = omega_gw/2pi.
 
-        Note: If omega22_average is already computed using a `method` and
+        Note: If omega_gw_average is already computed using a `method` and
         therefore is not None, then it returns the minimum and maximum of that
-        omega22_average and does not recompute the omega22_average using the
-        input `method`. In other words, if omega22_average is already not None
-        then input `method` is ignored and the existing omega22_average is
-        used.  To force recomputation of omega22_average, for example, with a
+        omega_gw_average and does not recompute the omega_gw_average using the
+        input `method`. In other words, if omega_gw_average is already not None
+        then input `method` is ignored and the existing omega_gw_average is
+        used.  To force recomputation of omega_gw_average, for example, with a
         new method one need to set it to None first.
-
         Parameters
         ----------
         method : str
-            Omega22 averaging method.  See
-            get_available_omega22_averaging_methods for available methods.
-            Default is None which will use the default method for omega22
-            averaging using `extra_kwargs["omega22_averaging_method"]`
+            Omega_Gw averaging method.  See
+            get_available_omega_gw_averaging_methods for available methods.
+            Default is None which will use the default method for omega_gw
+            averaging using `extra_kwargs["omega_gw_averaging_method"]`
 
         Returns
         -------
             Minimum allowed reference frequency, Maximum allowed reference
             frequency.
         """
-        if self.omega22_average is None:
-            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average(method)
-        return [min(self.omega22_average)/2/np.pi,
-                max(self.omega22_average)/2/np.pi]
+        if self.omega_gw_average is None:
+            self.t_for_omega_gw_average, self.omega_gw_average = self.get_omega_gw_average(method)
+        return [min(self.omega_gw_average)/2/np.pi,
+                max(self.omega_gw_average)/2/np.pi]
 
     def get_fref_out(self, fref_in, method):
-        """Get fref_out from fref_in that falls within the valid average f22 range.
+        """Get fref_out from fref_in that falls within the valid average f_gw range.
+
+        f_gw = omega_gw / 2pi
 
         Parameters
         ----------
         fref_in : array-like
-            Input 22 mode reference frequency array.
+            Input reference frequency array, i.e., f_gw = omega_gw / 2pi.
 
         method : str
-            method for getting average omega22
+            method for getting average omega_gw
 
         Returns
         -------
@@ -2415,7 +2531,7 @@ class eccDefinition:
         - decc/dt vs time, this is to test the monotonicity of eccentricity as
           a function of time
         - mean anomaly vs time
-        - omega_22 vs time with the pericenters and apocenters shown. This
+        - omega_gw vs time with the pericenters and apocenters shown. This
           would show if the method is missing any pericenters/apocenters or
           selecting one which is not a pericenter/apocenter
         - deltaPhi_orb(i)/deltaPhi_orb(i-1), where deltaPhi_orb is the
@@ -2423,18 +2539,18 @@ class eccDefinition:
           This helps to look for missing extrema, as there will be a drastic
           (roughly factor of 2) change in deltaPhi_orb(i) if there is a missing
           extrema, and the ratio will go from ~1 to ~2.
-        - omega22_average, where the omega22 average computed using the
-          `omega22_averaging_method` is plotted as a function of time.
-          omega22_average is used to get the reference time for a given
+        - omega_gw_average, where the omega_gw average computed using the
+          `omega_gw_averaging_method` is plotted as a function of time.
+          omega_gw_average is used to get the reference time for a given
           reference frequency. Therefore, it should be a strictly monotonic
           function of time.
 
         Additionally, we plot the following if data for zero eccentricity is
         provided and method is not residual method
 
-        - residual amp22 vs time with the location of pericenters and
+        - residual amp_gw vs time with the location of pericenters and
           apocenters shown.
-        - residual omega22 vs time with the location of pericenters and
+        - residual omega_gw vs time with the location of pericenters and
           apocenters shown.
 
         If the method itself uses residual data, then add one plot for
@@ -2443,8 +2559,8 @@ class eccDefinition:
           For example, if method is ResidualAmplitude then plot residual omega
           and vice versa.  These two plots further help in understanding any
           unwanted feature in the measured eccentricity vs time plot. For
-          example, non smoothness in the residual omega22 would indicate that
-          the data in omega22 is not good which might be causing glitches in
+          example, non smoothness in the residual omega_gw would indicate that
+          the data in omega_gw is not good which might be causing glitches in
           the measured eccentricity plot.
 
         Finally, plot
@@ -2483,18 +2599,18 @@ class eccDefinition:
         # Make a list of plots we want to add
         list_of_plots = [self.plot_eccentricity,
                          self.plot_mean_anomaly,
-                         self.plot_omega22,
+                         self.plot_omega_gw,
                          self.plot_data_used_for_finding_extrema,
                          self.plot_decc_dt,
                          self.plot_phase_diff_ratio_between_extrema,
-                         self.plot_omega22_average]
+                         self.plot_omega_gw_average]
         if "hlm_zeroecc" in self.dataDict:
-            # add residual amp22 plot
+            # add residual amp_gw plot
             if self.method != "ResidualAmplitude":
-                list_of_plots.append(self.plot_residual_amp22)
-            # add residual omega22 plot
+                list_of_plots.append(self.plot_residual_amp_gw)
+            # add residual omega_gw plot
             if self.method != "ResidualFrequency":
-                list_of_plots.append(self.plot_residual_omega22)
+                list_of_plots.append(self.plot_residual_omega_gw)
 
         # Set style if None
         if style is None:
@@ -2753,7 +2869,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_omega22(
+    def plot_omega_gw(
             self,
             fig=None,
             ax=None,
@@ -2762,7 +2878,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot omega22, the locations of the apocenters and pericenters.
+        """Plot omega_gw, the locations of the apocenters and pericenters.
 
         Also plots their corresponding interpolants.
         This would show if the method is missing any pericenters/apocenters or
@@ -2803,28 +2919,28 @@ class eccDefinition:
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
         ax.plot(self.t_for_checks,
-                self.omega22_pericenters_interp(self.t_for_checks),
+                self.omega_gw_pericenters_interp(self.t_for_checks),
                 c=colorsDict["pericenter"],
-                label=labelsDict["omega22_pericenters"],
+                label=labelsDict["omega_gw_pericenters"],
                 **kwargs)
-        ax.plot(self.t_for_checks, self.omega22_apocenters_interp(
+        ax.plot(self.t_for_checks, self.omega_gw_apocenters_interp(
             self.t_for_checks),
                 c=colorsDict["apocenter"],
-                label=labelsDict["omega22_apocenters"],
+                label=labelsDict["omega_gw_apocenters"],
                 **kwargs)
-        ax.plot(self.t, self.omega22,
-                c=colorsDict["default"], label=labelsDict["omega22"])
+        ax.plot(self.t, self.omega_gw,
+                c=colorsDict["default"], label=labelsDict["omega_gw"])
         ax.plot(self.t[self.pericenters_location],
-                self.omega22[self.pericenters_location],
+                self.omega_gw[self.pericenters_location],
                 c=colorsDict["pericenter"],
                 marker=".", ls="")
         ax.plot(self.t[self.apocenters_location],
-                self.omega22[self.apocenters_location],
+                self.omega_gw[self.apocenters_location],
                 c=colorsDict["apocenter"],
                 marker=".", ls="")
         # set reasonable ylims
-        ymin = min(self.omega22)
-        ymax = max(self.omega22)
+        ymin = min(self.omega_gw)
+        ymax = max(self.omega_gw)
         pad = 0.05 * ymax  # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         # add help text
@@ -2847,7 +2963,7 @@ class eccDefinition:
                 va="top",
                 transform=ax.transAxes)
         ax.set_xlabel(r"$t$")
-        ax.set_ylabel(labelsDict["omega22"])
+        ax.set_ylabel(self.get_label_for_plots("omega"))
         ax.legend(frameon=True,
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
@@ -2855,7 +2971,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_omega22_average(
+    def plot_omega_gw_average(
             self,
             fig=None,
             ax=None,
@@ -2863,10 +2979,10 @@ class eccDefinition:
             usetex=False,
             style="Notebook",
             use_fancy_settings=True,
-            plot_omega22=True,
-            plot_orbit_averaged_omega22_between_extrema=False,
+            plot_omega_gw=True,
+            plot_orbit_averaged_omega_gw_between_extrema=False,
             **kwargs):
-        """Plot omega22_average.
+        """Plot omega_gw_average.
 
         Parameters:
         -----------
@@ -2893,11 +3009,11 @@ class eccDefinition:
             Use fancy settings for matplotlib to make the plot look prettier.
             See plot_settings.py for more details.
             Default is True.
-        plot_omega22: bool
-            If True, plot omega22 also. Default is True.
-        plot_orbit_averaged_omega22_between_extrema: bool
-            If True and method is orbit_averaged_omega22, plot the the orbit
-            averaged omega22 between the extrema as well. Default is False.
+        plot_omega_gw: bool
+            If True, plot omega_gw also. Default is True.
+        plot_orbit_averaged_omega_gw_between_extrema: bool
+            If True and method is orbit_averaged_omega_gw, plot the the orbit
+            averaged omega_gw between the extrema as well. Default is False.
 
         Returns:
         --------
@@ -2907,36 +3023,36 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        # check if omega22_average is already available. If not
+        # check if omega_gw_average is already available. If not
         # available, compute it.
-        if self.omega22_average is None:
-            self.t_for_omega22_average, self.omega22_average = self.get_omega22_average()
-        ax.plot(self.t_for_omega22_average,
-                self.omega22_average,
+        if self.omega_gw_average is None:
+            self.t_for_omega_gw_average, self.omega_gw_average = self.get_omega_gw_average()
+        ax.plot(self.t_for_omega_gw_average,
+                self.omega_gw_average,
                 c=colorsDict["default"],
-                label="omega22_average",
+                label="omega_gw_average",
                 **kwargs)
-        if plot_omega22:
-            ax.plot(self.t, self.omega22,
+        if plot_omega_gw:
+            ax.plot(self.t, self.omega_gw,
                     c='k',
                     alpha=0.4,
                     lw=0.5,
-                    label=labelsDict["omega22"])
-        if (self.extra_kwargs["omega22_averaging_method"] == "orbit_averaged_omega22" and
-            plot_orbit_averaged_omega22_between_extrema):
+                    label=self.get_label_for_plots("omega"))
+        if (self.extra_kwargs["omega_gw_averaging_method"] == "orbit_averaged_omega_gw" and
+            plot_orbit_averaged_omega_gw_between_extrema):
             ax.plot(self.t_average_apocenters,
-                    self.orbit_averaged_omega22_apocenters,
+                    self.orbit_averaged_omega_gw_apocenters,
                     c=colorsDict["apocenter"],
                     marker=".", ls="",
-                    label=labelsDict["orbit_averaged_omega22_apocenters"])
+                    label=labelsDict["orbit_averaged_omega_gw_apocenters"])
             ax.plot(self.t_average_pericenters,
-                    self.orbit_averaged_omega22_pericenters,
+                    self.orbit_averaged_omega_gw_pericenters,
                     c=colorsDict["pericenter"],
                     marker=".", ls="",
-                    label=labelsDict["orbit_averaged_omega22_pericenters"])
+                    label=labelsDict["orbit_averaged_omega_gw_pericenters"])
         # set reasonable ylims
-        ymin = min(self.omega22)
-        ymax = max(self.omega22)
+        ymin = min(self.omega_gw)
+        ymax = max(self.omega_gw)
         pad = 0.05 * ymax  # 5 % buffer for better visibility
         ax.set_ylim(ymin - pad, ymax + pad)
         ax.set_xlabel(r"$t$")
@@ -2946,7 +3062,7 @@ class eccDefinition:
             ax.text(
                 0.35,
                 0.98,
-                (r"omega22_average should be "
+                (r"omega_gw_average should be "
                  "monotonically increasing."),
                 ha="left",
                 va="top",
@@ -2958,7 +3074,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_amp22(
+    def plot_amp_gw(
             self,
             fig=None,
             ax=None,
@@ -2967,7 +3083,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot amp22, the locations of the apocenters and pericenters.
+        """Plot amp_gw, the locations of the apocenters and pericenters.
 
         This would show if the method is missing any pericenters/apocenters or
         selecting one which is not a pericenter/apocenter.
@@ -3003,22 +3119,22 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        ax.plot(self.t, self.amp22,
-                c=colorsDict["default"], label=labelsDict["amp22"])
+        ax.plot(self.t, self.amp_gw,
+                c=colorsDict["default"], label=labelsDict["amp_gw"])
         ax.plot(self.t[self.pericenters_location],
-                self.amp22[self.pericenters_location],
+                self.amp_gw[self.pericenters_location],
                 c=colorsDict["pericenter"],
                 marker=".", ls="", label=labelsDict["pericenters"])
         ax.plot(self.t[self.apocenters_location],
-                self.amp22[self.apocenters_location],
+                self.amp_gw[self.apocenters_location],
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        ymin = min(self.amp22)
-        ymax = max(self.amp22)
+        ymin = min(self.amp_gw)
+        ymax = max(self.amp_gw)
         ax.set_ylim(ymin, ymax)
         ax.set_xlabel(labelsDict["t"])
-        ax.set_ylabel(labelsDict["amp22"])
+        ax.set_ylabel(self.get_label_for_plots("amp"))
         ax.legend(handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
             return figNew, ax
@@ -3116,7 +3232,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_residual_omega22(
+    def plot_residual_omega_gw(
             self,
             fig=None,
             ax=None,
@@ -3125,9 +3241,9 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot residual omega22, the locations of the apocenters and pericenters.
+        """Plot residual omega_gw, the locations of the apocenters and pericenters.
 
-        Useful to look for bad omega22 data near merger.
+        Useful to look for bad omega_gw data near merger.
         We also throw away post merger before since it makes the plot
         unreadble.
 
@@ -3164,24 +3280,24 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        ax.plot(self.t, self.res_omega22, c=colorsDict["default"])
+        ax.plot(self.t, self.res_omega_gw, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
-                self.res_omega22[self.pericenters_location],
+                self.res_omega_gw[self.pericenters_location],
                 marker=".", ls="", label=labelsDict["pericenters"],
                 c=colorsDict["pericenter"])
         ax.plot(self.t[self.apocenters_location],
-                self.res_omega22[self.apocenters_location],
+                self.res_omega_gw[self.apocenters_location],
                 marker=".", ls="", label=labelsDict["apocenters"],
                 c=colorsDict["apocenter"])
         # set reasonable ylims
-        ymin = min(self.res_omega22)
-        ymax = max(self.res_omega22)
+        ymin = min(self.res_omega_gw)
+        ymax = max(self.res_omega_gw)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(labelsDict["t"])
-        ax.set_ylabel(labelsDict["res_omega22"])
+        ax.set_ylabel(self.get_label_for_plots("res_omega"))
         ax.legend(frameon=True, loc="center left",
                   handlelength=1, labelspacing=0.2, columnspacing=1)
         if fig is None or ax is None:
@@ -3189,7 +3305,7 @@ class eccDefinition:
         else:
             return ax
 
-    def plot_residual_amp22(
+    def plot_residual_amp_gw(
             self,
             fig=None,
             ax=None,
@@ -3198,7 +3314,7 @@ class eccDefinition:
             style="Notebook",
             use_fancy_settings=True,
             **kwargs):
-        """Plot residual amp22, the locations of the apocenters and pericenters.
+        """Plot residual amp_gw, the locations of the apocenters and pericenters.
 
         Parameters:
         -----------
@@ -3234,24 +3350,24 @@ class eccDefinition:
             figNew, ax = plt.subplots(figsize=(figWidthsTwoColDict[style], 4))
         if use_fancy_settings:
             use_fancy_plotsettings(usetex=usetex, style=style)
-        ax.plot(self.t, self.res_amp22, c=colorsDict["default"])
+        ax.plot(self.t, self.res_amp_gw, c=colorsDict["default"])
         ax.plot(self.t[self.pericenters_location],
-                self.res_amp22[self.pericenters_location],
+                self.res_amp_gw[self.pericenters_location],
                 c=colorsDict["pericenter"],
                 marker=".", ls="", label=labelsDict["pericenters"])
         ax.plot(self.t[self.apocenters_location],
-                self.res_amp22[self.apocenters_location],
+                self.res_amp_gw[self.apocenters_location],
                 c=colorsDict["apocenter"],
                 marker=".", ls="", label=labelsDict["apocenters"])
         # set reasonable ylims
-        ymin = min(self.res_amp22)
-        ymax = max(self.res_amp22)
+        ymin = min(self.res_amp_gw)
+        ymax = max(self.res_amp_gw)
         # we want to make the ylims symmetric about y=0
         ylim = max(ymax, -ymin)
         pad = 0.05 * ylim  # 5 % buffer for better visibility
         ax.set_ylim(-ylim - pad, ylim + pad)
         ax.set_xlabel(labelsDict["t"])
-        ax.set_ylabel(labelsDict["res_amp22"])
+        ax.set_ylabel(self.get_label_for_plots("res_amp"))
         ax.legend(frameon=True, loc="center left", handlelength=1,
                   labelspacing=0.2,
                   columnspacing=1)
@@ -3363,6 +3479,29 @@ class eccDefinition:
         else:
             return ax
 
+    def get_label_for_plots(self, data_str):
+        """Get appropriate label for plots.
+
+        Depending on whether system is precessing or not, generate appropriate
+        labels to use in plots.
+
+        Parameters:
+        -----------
+        data_str: str
+            A string representing the data for which label will be generated.
+            It must be one of [`amp`, `omega`, `res_amp`, `res_omega`].
+
+        Returns:
+        --------
+        Appropriate label for the input `data_str`.
+        """
+        allowd_data_str_list = ["amp", "omega", "res_amp", "res_omega"]
+        if data_str not in allowd_data_str_list:
+            raise KeyError(f"`data_str` must be one of {allowd_data_str_list}")
+        return (labelsDict[data_str + "_gw"]
+                + " = "
+                + labelsDict[data_str + "22" + ("_copr_symm" if self.precessing else "")])
+
     def save_debug_fig(self, fig, fname, fig_name=None, format="pdf"):
         """Save debug plots in fig using fname.
 
@@ -3401,7 +3540,7 @@ class eccDefinition:
         finder at all. It is useful in situation where finding pericenters is
         easy but finding the apocenters in between is difficult. This is the
         case for highly eccentric systems where eccentricity approaches 1. For
-        such systems the amp22/omega22 data between the pericenters is almost
+        such systems the amp_gw/omega_gw data between the pericenters is almost
         flat and hard to find the local minima.
 
         Returns
@@ -3426,7 +3565,7 @@ class eccDefinition:
         """Get the minimal value of `width` parameter for extrema finding.
 
         See the documentation under
-        eccDefinition.get_width_for_peak_finder_from_phase22
+        eccDefinition.get_width_for_peak_finder_from_phase_gw
         for why this is useful to set when calling scipy.signal.find_peaks.
 
         This function gets an appropriate width by scaling it with the time

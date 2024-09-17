@@ -29,6 +29,7 @@ jobs:
       - name: Set up miniconda
         uses: conda-incubator/setup-miniconda@v2
         with:
+          miniconda-version: "latest"
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
 
@@ -36,6 +37,12 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install pytest nbconvert ipykernel
+
+      - name: Install fftw for macos
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install fftw
+          CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
 
       - name: Install pipenv
         shell: bash -l {0}
