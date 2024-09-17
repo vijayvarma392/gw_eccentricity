@@ -686,6 +686,12 @@ class eccDefinition:
                                           data_dict["phaselm"][(2, 2)],
                                           data_dict["omegalm"][(2, 2)])
         else:
+            # check whether (2, -2) mode is provided.
+            for k in ["amplm", "phaselm"]:
+                if (2, -2) not in data_dict[k]:
+                    raise Exception(f"(2, -2) mode not found in {k}. For precessing"
+                             " systems, (2, -2) mode should be included in "
+                             "`dataDict`.")
             amp_gw = 0.5 * (data_dict["amplm"][(2, 2)]
                             + data_dict["amplm"][(2, -2)])
             phase_gw = 0.5 * (data_dict["phaselm"][(2, 2)]
