@@ -1404,6 +1404,7 @@ def package_modes(modes_dict, ell_min, ell_max):
             i += 1
     return result
 
+
 def unpack_scri(w):
     """Unpack modes from scri list format to dict format."""
     result = {}
@@ -1411,14 +1412,32 @@ def unpack_scri(w):
         result[(key[0], key[1])] = 1 * w.data[:, w.index(key[0], key[1])]
     return result
 
-def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
-    """Get data_dict in coprecessing frame.
 
-    Given a data_dict containing the modes in the inertial frame and the
+def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
+    """Get `data_dict` in the coprecessing frame.
+
+    Given a `data_dict` containing the modes dict in the inertial frame and the
     associated time, obtain the corresponding modes in the coprecessing frame.
 
-    For a given `l`, the data_dict should contain modes for all `m` values from
-    -l to +l.
+    For a given `ell`, the data_dict should contain modes for all `m` values from
+    -ell to +ell.
+    
+    Parameters
+    ----------
+    data_dict: dict
+        Dictionary of waveform modes in the inertial frame and the associated
+        time.  It should have the same structure as `dataDict` in see
+        gw_eccentricity.measure_eccentricity.
+
+    ell_min: int, default=2
+        Minimum `ell` value to use.
+    ell_max: int, default=2
+        Maximum `ell` value to use.
+
+    Returns
+    -------
+    Dictionary of waveform modes in the coprecessing frame. It has the same
+    structure as the input `data_dict` in the intertial frame.
     """
     # prepare list of modes from the dataDict the list should contain modes in
     # the order of increasing m for a given l that is, for l=2, the list should
