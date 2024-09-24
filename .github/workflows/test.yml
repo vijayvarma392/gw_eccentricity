@@ -42,7 +42,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew install fftw
-          CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
+          CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast --no-cache-dir
 
       - name: Install pipenv
         shell: bash -l {0}
