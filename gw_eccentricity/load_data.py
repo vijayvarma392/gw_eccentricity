@@ -2,10 +2,12 @@
 import os
 import numpy as np
 import sxs
+import scri
 import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
+from copy import deepcopy
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
 from .utils import check_kwargs_and_set_defaults
@@ -1381,6 +1383,61 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
     num_obits_duration = (time[idx_at_num_obits_from_start]
                           - time[0])
     return num_obits_duration
+
+
+def package_modes(modes_dict, ell_min, ell_max):
+    """Package modes in a ordered list to use in scri.
+
+    Prepare list of modes from the dataDict the list should contain modes in
+    the order of increasing m for a given l that is, for l=2, the list should
+    be [(2, -2), (2, 1), (2, 0), (2, 1), (2, 2)]
+    """
+    keys = modes_dict.keys()
+    shape = modes_dict[(2, 2)].shape
+    n_elem = (ell_max + 3) * (ell_max - 1)
+    result = np.zeros((shape[0], n_elem), dtype=np.complex128)
+    i = 0
+    for ell in range(ell_min, ell_max + 1):
+        for m in range(-ell, ell + 1):            
+            if (ell, m) in keys:
+                result[:, i] = modes_dict[(ell, m)]
+            i += 1
+    return result
+
+def unpack_scri(w):
+    """Unpack modes from scri list format to dict format."""
+    result = {}
+    for key in w.LM:
+        result[(key[0], key[1])] = 1 * w.data[:, w.index(key[0], key[1])]
+    return result
+
+def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
+    """Get data_dict in coprecessing frame.
+
+    Given a data_dict containing the modes in the inertial frame and the
+    associated time, obtain the corresponding modes in the coprecessing frame.
+
+    For a given `l`, the data_dict should contain modes for all `m` values from
+    -l to +l.
+    """
+    # prepare list of modes from the dataDict the list should contain modes in
+    # the order of increasing m for a given l that is, for l=2, the list should
+    # be [(2, -2), (2, 1), (2, 0), (2, 1), (2, 2)]
+    ordered_mode_list = package_modes(data_dict["hlm"], ell_min=ell_min,
+                                      ell_max=ell_max)
+    w = scri.WaveformModes(
+        dataType=scri.h,
+        t=data_dict["t"],
+        data=ordered_mode_list,
+        ell_min=ell_min,
+        ell_max=ell_max,
+        frameType=scri.Inertial,
+        r_is_scaled_out=True,
+        m_is_scaled_out=True)
+
+    # co-precessing frame modes
+    w_coprecessing = deepcopy(w).to_coprecessing_frame()
+    return {"t": data_dict["t"], "hlm": unpack_scri(deepcopy(w_coprecessing))}
 
 
 def load_h22_from_EOBfile(EOB_file):
