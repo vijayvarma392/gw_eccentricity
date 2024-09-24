@@ -42,7 +42,8 @@ jobs:
       - name: Install fftw for macos
         if: matrix.os == 'macos-latest'
         run: |
-          conda install --channel conda-forge spinsfast
+          brew install fftw
+          CFLAGS="-I/opt/homebrew/include" LDFLAGS="-L/opt/homebrew/lib -lfftw3" python -m pip install --no-binary :all: --verbose spinsfast
 
       - name: Install pipenv
         shell: bash -l {0}
