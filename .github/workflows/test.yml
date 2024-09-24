@@ -32,7 +32,6 @@ jobs:
         with:
           miniconda-version: "latest"
           auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
