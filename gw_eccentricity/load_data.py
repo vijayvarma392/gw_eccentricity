@@ -1386,11 +1386,23 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
 
 
 def package_modes(modes_dict, ell_min, ell_max):
-    """Package modes in a ordered list to use in scri.
+    """Package modes in an ordered list to use as input to `scri.WaveforModes`.
 
-    Prepare list of modes from the dataDict the list should contain modes in
-    the order of increasing m for a given l that is, for l=2, the list should
-    be [(2, -2), (2, 1), (2, 0), (2, 1), (2, 2)]
+    Parameters
+    ----------
+    modes_dict: dict
+        Dictionary of waveform modes.
+
+    ell_min: int
+        Minimum `ell` value to use.
+
+    ell_max: int
+        Maximum `ell` value to use.
+
+    Returns
+    -------
+    List of modes in the order of increasing m for a given `ell` that is, for
+    `ell`=2, the list should be [(2, -2), (2, 1), (2, 0), (2, 1), (2, 2)]
     """
     keys = modes_dict.keys()
     shape = modes_dict[(2, 2)].shape
@@ -1406,7 +1418,11 @@ def package_modes(modes_dict, ell_min, ell_max):
 
 
 def unpack_scri(w):
-    """Unpack modes from scri list format to dict format."""
+    """Unpack modes from `scri.WaveformModes` object to dict format.
+
+    Get back the modes from the scri waveform modes object to dict format as
+    required by `gw_eccentricity`.
+    """
     result = {}
     for key in w.LM:
         result[(key[0], key[1])] = 1 * w.data[:, w.index(key[0], key[1])]
@@ -1431,6 +1447,7 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
 
     ell_min: int, default=2
         Minimum `ell` value to use.
+
     ell_max: int, default=2
         Maximum `ell` value to use.
 
@@ -1439,9 +1456,7 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     Dictionary of waveform modes in the coprecessing frame. It has the same
     structure as the input `data_dict` in the intertial frame.
     """
-    # prepare list of modes from the dataDict the list should contain modes in
-    # the order of increasing m for a given l that is, for l=2, the list should
-    # be [(2, -2), (2, 1), (2, 0), (2, 1), (2, 2)]
+    # Get list of modes from `data_dict` to use as input to `scri.WaveformModes`.
     ordered_mode_list = package_modes(data_dict["hlm"], ell_min=ell_min,
                                       ell_max=ell_max)
     w = scri.WaveformModes(
