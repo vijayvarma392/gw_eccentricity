@@ -1385,8 +1385,8 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
     return num_obits_duration
 
 
-def package_modes(modes_dict, ell_min, ell_max):
-    """Package modes in an ordered list to use as input to `scri.WaveforModes`.
+def package_modes_for_scri(modes_dict, ell_min, ell_max):
+    """Package modes in an ordered list to use as input data to `scri.WaveforModes`.
 
     Parameters
     ----------
@@ -1417,11 +1417,20 @@ def package_modes(modes_dict, ell_min, ell_max):
     return result
 
 
-def unpack_scri(w):
+def unpack_scri_modes(w):
     """Unpack modes from `scri.WaveformModes` object to dict format.
 
-    Get back the modes from the scri waveform modes object to dict format as
+    Get back the modes from the `scri.WaveformModes` object to dict format as
     required by `gw_eccentricity`.
+
+    Parameters
+    ----------
+    w: scri.WaveformModes
+        `scri.WaveformModes` object.
+
+    Returns
+    -------
+    Waveform modes in dict with key `(ell, m)`.
     """
     result = {}
     for key in w.LM:
@@ -1436,14 +1445,14 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     associated time, obtain the corresponding modes in the coprecessing frame.
 
     For a given `ell`, the data_dict should contain modes for all `m` values from
-    -ell to +ell.
+    `-ell` to `+ell`.
     
     Parameters
     ----------
     data_dict: dict
         Dictionary of waveform modes in the inertial frame and the associated
-        time.  It should have the same structure as `dataDict` in see
-        gw_eccentricity.measure_eccentricity.
+        time. It should have the same structure as `dataDict` in
+        `gw_eccentricity.measure_eccentricity`.
 
     ell_min: int, default=2
         Minimum `ell` value to use.
@@ -1453,12 +1462,16 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
 
     Returns
     -------
-    Dictionary of waveform modes in the coprecessing frame. It has the same
-    structure as the input `data_dict` in the intertial frame.
+    Dictionary of waveform modes in the coprecessing frame and the associated
+    time. It has the same structure as the input `data_dict` in the intertial
+    frame.
     """
     # Get list of modes from `data_dict` to use as input to `scri.WaveformModes`.
-    ordered_mode_list = package_modes(data_dict["hlm"], ell_min=ell_min,
-                                      ell_max=ell_max)
+    ordered_mode_list = package_modes_for_scri(
+        data_dict["hlm"],
+        ell_min=ell_min,
+        ell_max=ell_max)
+
     w = scri.WaveformModes(
         dataType=scri.h,
         t=data_dict["t"],
@@ -1471,7 +1484,7 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
 
     # co-precessing frame modes
     w_coprecessing = deepcopy(w).to_coprecessing_frame()
-    return {"t": data_dict["t"], "hlm": unpack_scri(deepcopy(w_coprecessing))}
+    return {"t": data_dict["t"], "hlm": unpack_scri_modes(deepcopy(w_coprecessing))}
 
 
 def load_h22_from_EOBfile(EOB_file):
