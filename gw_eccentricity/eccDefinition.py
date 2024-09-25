@@ -14,6 +14,8 @@ from .utils import time_deriv_4thOrder
 from .utils import interpolate
 from .utils import get_interpolant
 from .utils import get_default_spline_kwargs
+from .utils import get_rational_fit
+from .utils import get_default_rational_fit_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
@@ -310,9 +312,15 @@ class eccDefinition:
             get_default_spline_kwargs(),
             "spline_kwargs",
             "utils.get_default_spline_kwargs()")
+        self.rational_fit_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs["rational_fit_kwargs"],
+            get_default_rational_fit_kwargs(),
+            "rational_fit_kwargs",
+            "utils.get_default_rational_fit_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
+        self.rational_fit_kwargs["verbose"] = True if self.debug_level >=1 else False
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         # check if there are unrecognized keys in the dataDict
@@ -823,6 +831,7 @@ class eccDefinition:
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
             "spline_kwargs": {},
+            "rational_fit_kwargs": {},
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug_level": 0,
@@ -1174,6 +1183,53 @@ class eccDefinition:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolant.")
+        
+    def rational_fit(self, x, y):
+        return get_rational_fit(x, y,
+                                rational_fit_kwargs=self.rational_fit_kwargs,
+                                check_kwargs=False)
+
+    def rational_fit_extrema(self, extrema_type="pericenters"):
+        if extrema_type == "pericenters":
+            extrema = self.pericenters_location
+        elif extrema_type == "apocenters":
+            extrema = self.apocenters_location
+        else:
+            raise Exception("extrema_type must be either "
+                            "'pericenrers' or 'apocenters'.")
+        if len(extrema) >= 2:
+            # assign degree
+            # TODO: Use an optimal degree based on the wavefrom length
+            self.rational_fit_kwargs["num_degree"],\
+                self.rational_fit_kwargs["denom_degree"] = 2, 2
+            rational_fit = self.rational_fit(self.t[extrema],
+                                             self.omega_gw[extrema])
+            t = self.t_for_checks.copy()
+            omega = rational_fit(t)
+            while self.check_domega_dt(t, omega, 1.0):
+                self.rational_fit_kwargs["num_degree"] -= 1
+                self.rational_fit_kwargs["denom_degree"] -= 1
+                debug_message(f"degree is lowered to {self.rational_fit_kwargs['num_degree']}",
+                              debug_level=self.debug_level,
+                              important=True)
+                rational_fit = self.rational_fit(self.t[extrema],
+                                                 self.omega_gw[extrema])
+                omega = rational_fit(t)
+            return rational_fit
+                
+        else:
+            raise Exception(
+                f"Sufficient number of {extrema_type} are not found."
+                " Can not create an interpolant.")
+
+    def check_domega_dt(self, t, omega, tol=1.0):
+        """Check first derivative of omega.
+
+        The first derivative of interpolant/fit of omega at the extrema
+        should be monotonically increasing.
+        """
+        domega_dt = np.gradient(omega, t[1] - t[0])
+        return any(domega_dt[1:]/domega_dt[:-1] < tol)
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
         """Check number of extrema.
@@ -1518,6 +1574,7 @@ class eccDefinition:
         self.t_apocenters = self.t[self.apocenters_location]
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
+        
         if self.domain == "frequency":
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
@@ -1530,6 +1587,19 @@ class eccDefinition:
         self.t_for_checks = self.dataDict["t"][
             np.logical_and(self.dataDict["t"] >= self.tmin,
                            self.dataDict["t"] <= self.tmax)]
+
+        # Check monotonicity of the first derivative of omega_gw interpolant
+        # and build rational fit if necessary.
+        if (self.check_domega_dt(self.t_for_checks,
+                                 self.omega_gw_pericenters_interp(self.t_for_checks))
+            or
+            self.check_domega_dt(self.t_for_checks,
+                                 self.omega_gw_apocenters_interp(self.t_for_checks))):
+            debug_message("The spline interpolant through extrema has non "
+                          "monotonic time derivative. Trying rational fit instead.",
+                          debug_level=self.debug_level, important=True)
+            self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
+            self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
