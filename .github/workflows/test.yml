@@ -51,7 +51,8 @@ jobs:
           brew install gsl
           
 
-      - name: Install Teobresums-Dali
+      - name: Install Teobresums-Dali for ubuntu
+        if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
           git clone https://bitbucket.org/teobresums/teobresums.git
@@ -59,6 +60,17 @@ jobs:
           git checkout Dali
           pip install numpy
           python setup.py build_ext --inplace
+          conda env config vars set PYTHONPATH=$PYTHONPATH:~/teobresums/Python/
+
+      - name: Install Teobresums-Dali for macos
+        if: matrix.os == 'macos-latest'
+        shell: bash -l {0}
+        run: |
+          git clone https://bitbucket.org/teobresums/teobresums.git
+          cd teobresums/Python
+          git checkout Dali
+          pip install numpy
+          CFLAGS=" -L/opt/homebrew/lib " python setup.py build_ext --inplace
           conda env config vars set PYTHONPATH=$PYTHONPATH:~/teobresums/Python/
 
       - name: Install pipenv
