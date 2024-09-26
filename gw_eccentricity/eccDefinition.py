@@ -1264,7 +1264,9 @@ class eccDefinition:
         while self.check_domega_dt(t, omega, 1.0):
             self.rational_fit_kwargs["num_degree"] -= 1
             self.rational_fit_kwargs["denom_degree"] -= 1
-            debug_message(f"degree is lowered to {self.rational_fit_kwargs['num_degree']}",
+            debug_message(f"Rational fit with degree {self.rational_fit_kwargs['num_degree'] + 1} "
+                          " has non-monotonic time derivative. Lowering degree to "
+                          f"{self.rational_fit_kwargs['num_degree']} and trying again.",
                           debug_level=self.debug_level,
                           important=True)
             rat_fit = self.get_rat_fit(x, y)
@@ -1684,28 +1686,36 @@ class eccDefinition:
             np.logical_and(self.dataDict["t"] >= self.tmin,
                            self.dataDict["t"] <= self.tmax)]
 
-        # Check monotonicity of the first derivative of omega_gw interpolant
-        # in case it is built with spine and fallback to build rational fit if necessary.
+        # Verify the monotonicity of the first derivative of the omega_gw interpolant.
+        # If a spline is used for interpolation (as specified by 'omega_gw_extrema_interpolation_method'), 
+        # non-monotonicity may occur in the first derivative. 
+        # If 'use_rational_fit_as_fallback' is set to True, the spline interpolant 
+        # will be replaced with a rational fit to ensure monotonic behavior.
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
-            if (self.check_domega_dt(self.t_for_checks,
-                                     self.omega_gw_pericenters_interp(self.t_for_checks))
-                or
-                self.check_domega_dt(self.t_for_checks,
-                                     self.omega_gw_apocenters_interp(self.t_for_checks))):
+        # Check if the first derivative of omega_gw at pericenters or apocenters is non-monotonic
+            has_non_monotonicity = (
+                self.check_domega_dt(self.t_for_checks, self.omega_gw_pericenters_interp(self.t_for_checks)) or
+                self.check_domega_dt(self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))
+                )      
+    
+            if has_non_monotonicity:
                 if self.use_rational_fit_as_fallback:
-                    debug_message("The spline interpolant through extrema has non "
-                                  "monotonic time derivative. Trying rational fit instead.",
-                                  debug_level=self.debug_level, important=True)
+                    debug_message(
+                        "Non-monotonic time derivative detected in the spline interpolant through extrema. "
+                        "Switching to rational fit.",
+                        debug_level=self.debug_level, important=True
+                        )
+                    # Use rational fit for both pericenters and apocenters
                     self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
                     self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
                 else:
-                    debug_message("The spline interpolant through extrema has non "
-                                  "monotonic time derivative. To avoid this, you may try one of "
-                                  "the following: \n"
-                                  " - Use rational fit as fall back option by setting"
-                                  "  `use_rational_fit_as_fallback` to `True` in `extra_kwargs`\n"
-                                  " - Use rational fit as `omega_gw_extrema_interpolation_method`.",
-                                  debug_level=self.debug_level, important=True)
+                    debug_message(
+                        "Non-monotonic time derivative detected in the spline interpolant through extrema. "
+                        "Consider the following options to avoid this: \n"
+                        " - Set 'use_rational_fit_as_fallback' to True in 'extra_kwargs' to switch to rational fit.\n"
+                        " - Use rational fit directly by setting 'omega_gw_extrema_interpolation_method' to 'rational_fit'.",
+                        debug_level=self.debug_level, important=True
+                        )
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
