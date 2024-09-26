@@ -298,7 +298,7 @@ class eccDefinition:
                 oscillatory. However, it could be orders of magnitude slower compared to
                 `spline` method. Also, since it emphasizes to fit the overall trend,
                 it may suppress pathologies in the waveform which could be checked using
-                `spine` method.
+                `spline` method.
 
                 Therefore, we use `spline` as default with `rational_fit` as fall back.
                 This means that, if the extrema interpolant using `spline` shows 
@@ -312,7 +312,7 @@ class eccDefinition:
                 first derivative.
 
                 This is used only when `omega_gw_extrema_interpolation_method` is `spline`.
-                If `omega_gw_extrema_interpolation_method` is `rational_fit` and it has
+                If `omega_gw_extrema_interpolation_method` is `rational_fit` then it has
                 no use.
         """
         self.precessing = precessing
@@ -1253,7 +1253,8 @@ class eccDefinition:
         # assign degree
         # TODO: Use an optimal degree based on the wavefrom length
         self.rational_fit_kwargs["num_degree"],\
-            self.rational_fit_kwargs["denom_degree"] = 2, 2
+            self.rational_fit_kwargs["denom_degree"] \
+                = self.get_optimal_degree_for_rational_fit()
         rat_fit = self.get_rat_fit(x, y)
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
         omega = rat_fit(t)
@@ -1266,6 +1267,19 @@ class eccDefinition:
             rat_fit = self.get_rat_fit(x, y)
             omega = rat_fit(t)
         return rat_fit
+    
+    def get_optimal_degree_for_rational_fit(self):
+        """Get optimal degree based on the approximate number of orbits."""
+        approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+                                  / (4 * np.pi))
+        if approximate_num_orbits <= 5:
+            return 1, 1
+        elif (approximate_num_orbits > 5) and (approximate_num_orbits <= 20):
+            return 2, 2
+        elif (approximate_num_orbits > 20) and (approximate_num_orbits <= 50):
+            return 3, 3
+        else:
+            return 4, 4
 
     def rational_fit_extrema(self, extrema_type="pericenters"):
         """Build rational fit through extrema.
@@ -1683,10 +1697,12 @@ class eccDefinition:
                     self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
                 else:
                     debug_message("The spline interpolant through extrema has non "
-                                  "monotonic time derivative. To avoid this, try rational "
-                                  "fit by setting `use_rational_fit_as_fallback` to `True` "
-                                  "in `extra_kwargs`.",
-                                debug_level=self.debug_level, important=True)
+                                  "monotonic time derivative. To avoid this, you may try one of "
+                                  "the following: \n"
+                                  " - Use rational fit as fall back option by setting"
+                                  "  `use_rational_fit_as_fallback` to `True` in `extra_kwargs`\n"
+                                  " - Use rational fit as `omega_gw_extrema_interpolation_method`.",
+                                  debug_level=self.debug_level, important=True)
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
