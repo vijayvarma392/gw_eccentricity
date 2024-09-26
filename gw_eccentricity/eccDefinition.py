@@ -176,6 +176,10 @@ class eccDefinition:
                 omega_gw_apocenters(t).
                 Defaults are set using utils.get_default_spline_kwargs
 
+            rational_fit_kwargs: dict
+                Dictionary of arguments to be passed to the rational
+                fit function.
+
             extrema_finding_kwargs: dict
                 Dictionary of arguments to be passed to the extrema finder,
                 scipy.signal.find_peaks.
@@ -274,6 +278,42 @@ class eccDefinition:
                 eccentricity is the cause, and set the returned eccentricity
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
+
+            "omega_gw_extrema_interpolation_method" : str, default="spline"
+                Method to use for building `omega_gw_pericenters_interp(t)` or 
+                `omega_gw_apocenters_interp(t)`. Available options are:
+
+                - `spline`:        Uses `scipy.interpolate.InterpolatedUnivariateSline`.
+                - `rational_fit`:  Uses `polyrat.StabilizedSKRationalApproximation`
+                
+                `spline` is useful when the data is cleaner. For example, when the 
+                waveform modes are generated using an waveform model like SEOB/TEOB.
+                It is also faster to build and evaluate. Since spline tries to go through
+                every data point, it may show some oscillatory behaviour, specially, near
+                the merger.
+
+                `rational_fit` is useful when the data is noisy. For example, when the
+                waveform modes are generated from numerical simulations. Rational fit
+                minimizes least square error making the overall trend smooth and less
+                oscillatory. However, it could be orders of magnitude slower compared to
+                `spline` method. Also, since it emphasizes to fit the overall trend,
+                it may suppress pathologies in the waveform which could be checked using
+                `spine` method.
+
+                Therefore, we use `spline` as default with `rational_fit` as fall back.
+                This means that, if the extrema interpolant using `spline` shows 
+                nonmonotonicity in its first derivative then we fall back to `rational_fit`.
+                
+                Default is `spline`.
+            
+            use_rational_fit_as_fallback : bool, default=True
+                Use rational fit for interpolant of omega at extrema when the
+                interpolant built using spline shows nonmonotonicity in its
+                first derivative.
+
+                This is used only when `omega_gw_extrema_interpolation_method` is `spline`.
+                If `omega_gw_extrema_interpolation_method` is `rational_fit` and it has
+                no use.
         """
         self.precessing = precessing
         # Get data necessary for eccentricity measurement
@@ -323,6 +363,7 @@ class eccDefinition:
         self.rational_fit_kwargs["verbose"] = True if self.debug_level >=1 else False
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
+        self.use_rational_fit_as_fallback = self.extra_kwargs["use_rational_fit_as_fallback"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -841,6 +882,8 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
+            "use_rational_fit_as_fallback": True,
+            "omega_gw_extrema_interpolation_method": "spline"
         }
         return default_extra_kwargs
 
@@ -1185,7 +1228,7 @@ class eccDefinition:
                 " Can not create an interpolant.")
         
     def get_rat_fit(self, x, y):
-        """Get interpolant.
+        """Get rational fit.
 
         A wrapper of `utils.get_rational_fit` with check_kwargs=False.  This is
         to make sure that the checking of kwargs is not performed everytime the
@@ -1221,7 +1264,7 @@ class eccDefinition:
                           debug_level=self.debug_level,
                           important=True)
             rat_fit = self.get_rat_fit(x, y)
-            omega = rational_fit(t)
+            omega = rat_fit(t)
         return rat_fit
 
     def rational_fit_extrema(self, extrema_type="pericenters"):
@@ -1596,8 +1639,15 @@ class eccDefinition:
                                             "apocenters")
 
         # Build the interpolants of omega_gw at the extrema
-        self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
-        self.omega_gw_apocenters_interp = self.interp_extrema("apocenters")
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
+            self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
+            self.omega_gw_apocenters_interp = self.interp_extrema("apocenters")
+        elif self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
+            self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
+            self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
+        else:
+            raise Exception("Unknown method for `omega_gw_extrema_interpolation_method`. "
+                            "Must be one of `spline` or `rational_fit`.")
 
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
@@ -1618,17 +1668,25 @@ class eccDefinition:
                            self.dataDict["t"] <= self.tmax)]
 
         # Check monotonicity of the first derivative of omega_gw interpolant
-        # and build rational fit if necessary.
-        if (self.check_domega_dt(self.t_for_checks,
-                                 self.omega_gw_pericenters_interp(self.t_for_checks))
-            or
-            self.check_domega_dt(self.t_for_checks,
-                                 self.omega_gw_apocenters_interp(self.t_for_checks))):
-            debug_message("The spline interpolant through extrema has non "
-                          "monotonic time derivative. Trying rational fit instead.",
-                          debug_level=self.debug_level, important=True)
-            self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
-            self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
+        # in case it is built with spine and fallback to build rational fit if necessary.
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
+            if (self.check_domega_dt(self.t_for_checks,
+                                     self.omega_gw_pericenters_interp(self.t_for_checks))
+                or
+                self.check_domega_dt(self.t_for_checks,
+                                     self.omega_gw_apocenters_interp(self.t_for_checks))):
+                if self.use_rational_fit_as_fallback:
+                    debug_message("The spline interpolant through extrema has non "
+                                  "monotonic time derivative. Trying rational fit instead.",
+                                  debug_level=self.debug_level, important=True)
+                    self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
+                    self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
+                else:
+                    debug_message("The spline interpolant through extrema has non "
+                                  "monotonic time derivative. To avoid this, try rational "
+                                  "fit by setting `use_rational_fit_as_fallback` to `True` "
+                                  "in `extra_kwargs`.",
+                                debug_level=self.debug_level, important=True)
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
