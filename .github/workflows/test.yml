@@ -47,8 +47,8 @@ jobs:
         run: |
           brew install fftw
           CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
-          conda install -c conda-forge libconfig
-          conda install -c conda-forge gsl
+          brew install libconfig
+          brew install gsl
           
 
       - name: Install Teobresums-Dali
