@@ -38,6 +38,10 @@ jobs:
         run: |
           pip install pytest nbconvert ipykernel
 
+      - name: Install gsl for macos
+        if: matrix.os == 'macos-latest'
+        run: brew install gsl
+        
       - name: Install Teobresums-Dali
         shell: bash -l {0}
         run: |
