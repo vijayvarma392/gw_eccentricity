@@ -1184,12 +1184,58 @@ class eccDefinition:
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolant.")
         
-    def rational_fit(self, x, y):
+    def get_rat_fit(self, x, y):
+        """Get interpolant.
+
+        A wrapper of `utils.get_rational_fit` with check_kwargs=False.  This is
+        to make sure that the checking of kwargs is not performed everytime the
+        rational fit function is called. Instead, the kwargs are checked once
+        in the init and passed to the rational fit function without repeating
+        checks.
+        """
         return get_rational_fit(x, y,
                                 rational_fit_kwargs=self.rational_fit_kwargs,
                                 check_kwargs=False)
 
+    def rational_fit(self, x, y):
+        """Get rational fit with adaptive numerator and denominator degree.
+
+        This function ensures that the rational fit we obtain is using the
+        optimal degree for the numerator and the denominator. We start with an
+        initial estimate of what these degrees should be based on the length of
+        the waveform. We check the first derivative of the resultant fit to
+        check for any nonmonotonicity. In case of nonmonocity detected, we
+        lower the degree by 1 and repeat until the check passes successfully.
+        """
+        # assign degree
+        # TODO: Use an optimal degree based on the wavefrom length
+        self.rational_fit_kwargs["num_degree"],\
+            self.rational_fit_kwargs["denom_degree"] = 2, 2
+        rat_fit = self.get_rat_fit(x, y)
+        t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
+        omega = rat_fit(t)
+        while self.check_domega_dt(t, omega, 1.0):
+            self.rational_fit_kwargs["num_degree"] -= 1
+            self.rational_fit_kwargs["denom_degree"] -= 1
+            debug_message(f"degree is lowered to {self.rational_fit_kwargs['num_degree']}",
+                          debug_level=self.debug_level,
+                          important=True)
+            rat_fit = self.get_rat_fit(x, y)
+            omega = rational_fit(t)
+        return rat_fit
+
     def rational_fit_extrema(self, extrema_type="pericenters"):
+        """Build rational fit through extrema.
+
+        parameters:
+        -----------
+        extrema_type:
+            Either "pericenters" or "apocenters".
+
+        returns:
+        ------
+        Rational fit through extrema
+        """
         if extrema_type == "pericenters":
             extrema = self.pericenters_location
         elif extrema_type == "apocenters":
@@ -1198,25 +1244,8 @@ class eccDefinition:
             raise Exception("extrema_type must be either "
                             "'pericenrers' or 'apocenters'.")
         if len(extrema) >= 2:
-            # assign degree
-            # TODO: Use an optimal degree based on the wavefrom length
-            self.rational_fit_kwargs["num_degree"],\
-                self.rational_fit_kwargs["denom_degree"] = 2, 2
-            rational_fit = self.rational_fit(self.t[extrema],
-                                             self.omega_gw[extrema])
-            t = self.t_for_checks.copy()
-            omega = rational_fit(t)
-            while self.check_domega_dt(t, omega, 1.0):
-                self.rational_fit_kwargs["num_degree"] -= 1
-                self.rational_fit_kwargs["denom_degree"] -= 1
-                debug_message(f"degree is lowered to {self.rational_fit_kwargs['num_degree']}",
-                              debug_level=self.debug_level,
-                              important=True)
-                rational_fit = self.rational_fit(self.t[extrema],
-                                                 self.omega_gw[extrema])
-                omega = rational_fit(t)
-            return rational_fit
-                
+            return self.rational_fit(self.t[extrema],
+                                     self.omega_gw[extrema])
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
