@@ -41,7 +41,16 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install pytest nbconvert ipykernel
-        
+
+      - name: Install extra dependencies for macos
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install fftw
+          CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
+          conda install -c conda-forge libconfig
+          conda install -c conda-forge gsl
+          
+
       - name: Install Teobresums-Dali
         shell: bash -l {0}
         run: |
@@ -50,12 +59,7 @@ jobs:
           git checkout Dali
           pip install numpy
           python setup.py build_ext --inplace
-
-      - name: Install fftw for macos
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install fftw
-          CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
+          conda env config vars set PYTHONPATH=$PYTHONPATH:~/teobresums/Python/
 
       - name: Install pipenv
         shell: bash -l {0}
