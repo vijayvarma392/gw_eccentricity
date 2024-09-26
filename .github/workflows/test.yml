@@ -61,7 +61,7 @@ jobs:
           git checkout Dali
           pip install numpy
           python setup.py build_ext --inplace
-          conda env config vars set PYTHONPATH=$PYTHONPATH:~/teobresums/Python/
+          export PYTHONPATH="$HOME/teobresums/Python"
 
       - name: Install Teobresums-Dali for macos
         if: matrix.os == 'macos-latest'
