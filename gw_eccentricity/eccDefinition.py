@@ -1250,11 +1250,14 @@ class eccDefinition:
         check for any nonmonotonicity. In case of nonmonocity detected, we
         lower the degree by 1 and repeat until the check passes successfully.
         """
-        # assign degree
-        # TODO: Use an optimal degree based on the wavefrom length
-        self.rational_fit_kwargs["num_degree"],\
-            self.rational_fit_kwargs["denom_degree"] \
-                = self.get_optimal_degree_for_rational_fit()
+        # assign degree based on approximate number of orbits if user provided
+        # degree is None.
+        # TODO: Improve this code for optimal degree
+        if (self.rational_fit_kwargs["num_degree"] is None) or (
+            self.rational_fit_kwargs["denom_degree"] is None):
+            self.rational_fit_kwargs["num_degree"],\
+                self.rational_fit_kwargs["denom_degree"] \
+                    = self.get_optimal_degree_for_rational_fit()
         rat_fit = self.get_rat_fit(x, y)
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
         omega = rat_fit(t)
