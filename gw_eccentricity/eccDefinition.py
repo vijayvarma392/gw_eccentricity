@@ -1230,7 +1230,7 @@ class eccDefinition:
     def get_rat_fit(self, x, y):
         """Get rational fit.
 
-        A wrapper of `utils.get_rational_fit` with check_kwargs=False.  This is
+        A wrapper of `utils.get_rational_fit` with check_kwargs=False. This is
         to make sure that the checking of kwargs is not performed everytime the
         rational fit function is called. Instead, the kwargs are checked once
         in the init and passed to the rational fit function without repeating
@@ -1250,9 +1250,6 @@ class eccDefinition:
         check for any nonmonotonicity. In case of nonmonocity detected, we
         lower the degree by 1 and repeat until the check passes successfully.
         """
-        # assign degree based on approximate number of orbits if user provided
-        # degree is None.
-        # TODO: Improve this code for optimal degree
         if (self.rational_fit_kwargs["num_degree"] is None) or (
             self.rational_fit_kwargs["denom_degree"] is None):
             self.rational_fit_kwargs["num_degree"],\
@@ -1260,8 +1257,7 @@ class eccDefinition:
                     = self.get_optimal_degree_for_rational_fit()
         rat_fit = self.get_rat_fit(x, y)
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
-        omega = rat_fit(t)
-        while self.check_domega_dt(t, omega, 1.0):
+        while self.check_domega_dt(t, rat_fit(t), 1.0):
             self.rational_fit_kwargs["num_degree"] -= 1
             self.rational_fit_kwargs["denom_degree"] -= 1
             debug_message(f"Rational fit with degree {self.rational_fit_kwargs['num_degree'] + 1} "
@@ -1270,11 +1266,20 @@ class eccDefinition:
                           debug_level=self.debug_level,
                           important=True)
             rat_fit = self.get_rat_fit(x, y)
-            omega = rat_fit(t)
         return rat_fit
-    
+
     def get_optimal_degree_for_rational_fit(self):
-        """Get optimal degree based on the approximate number of orbits."""
+        """Get optimal degree based on the approximate number of orbits.
+
+        Assign degree based on approximate number of orbits if user provided
+        degree is None. The number of orbits is approximated by the change in
+        phase_gw divided by 4*pi. The degree of the rational fit is then chosen
+        based on this approximate number of orbits. The degree is increased as
+        the number of orbits increases.
+        """
+        # TODO: Optimize this.
+        # assign degree based on approximate number of orbits if user provided
+        # degree is None.
         approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
                                   / (4 * np.pi))
         if approximate_num_orbits <= 5:
