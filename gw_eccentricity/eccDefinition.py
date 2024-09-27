@@ -279,7 +279,7 @@ class eccDefinition:
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
 
-            "omega_gw_extrema_interpolation_method" : str, default="spline"
+            omega_gw_extrema_interpolation_method : str, default="spline"
                 Specifies the method used to build the interpolations for 
                 `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
                 The available options are:
