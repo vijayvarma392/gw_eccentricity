@@ -280,32 +280,42 @@ class eccDefinition:
                 USE THIS WITH CAUTION!
 
             "omega_gw_extrema_interpolation_method" : str, default="spline"
-                Method to use for building `omega_gw_pericenters_interp(t)` or 
-                `omega_gw_apocenters_interp(t)`. Available options are:
+                Specifies the method used to build the interpolations for 
+                `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
+                The available options are:
 
-                - `spline`:        Uses `scipy.interpolate.InterpolatedUnivariateSline`.
-                - `rational_fit`:  Uses `polyrat.StabilizedSKRationalApproximation`
+                - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+                - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+
+                ### When to Use:
                 
-                `spline` is useful when the data is cleaner. For example, when the 
-                waveform modes are generated using an waveform model like SEOB/TEOB.
-                It is also faster to build and evaluate. Since spline tries to go through
-                every data point, it may show some oscillatory behaviour, specially, near
-                the merger.
-
-                `rational_fit` is useful when the data is noisy. For example, when the
-                waveform modes are generated from numerical simulations. Rational fit
-                minimizes least square error making the overall trend smooth and less
-                oscillatory. However, it could be orders of magnitude slower compared to
-                `spline` method. Also, since it emphasizes to fit the overall trend,
-                it may suppress pathologies in the waveform which could be checked using
-                `spline` method.
-
-                Therefore, we use `spline` as default with `rational_fit` as fall back.
-                This means that, if the extrema interpolant using `spline` shows 
-                nonmonotonicity in its first derivative then we fall back to `rational_fit`.
+                - **`spline`** (default):
+                - Best suited for cleaner data, such as when waveform modes are generated 
+                    using models like SEOB or TEOB.
+                - Faster to construct and evaluate.
+                - Since it fits through every data point, it may exhibit oscillatory 
+                    behavior, particularly near the merger.
                 
-                Default is `spline`.
-            
+                - **`rational_fit`**:
+                - More appropriate for noisy data, e.g., waveform modes from numerical 
+                    simulations.
+                - Minimizes least squares error, resulting in a smoother overall trend 
+                    with less oscillation.
+                - Significantly slower compared to the `spline` method.
+                - Can suppress pathologies in the waveform that might be visible with 
+                    `spline`.
+
+                ### Fallback Behavior:
+                
+                With `omega_gw_extrema_interpolation_method` set to `spline`, if 
+                `use_rational_fit_as_fallback` is set to `True`, the method will 
+                initially use `spline`. If the first derivative of the spline interpolant 
+                exhibits non-monotonicity, the code will automatically fall back to the 
+                `rational_fit` method. This ensures a more reliable fit when the spline 
+                method shows undesirable behavior.
+
+                Default value: `"spline"`.
+                    
             use_rational_fit_as_fallback : bool, default=True
                 Use rational fit for interpolant of omega at extrema when the
                 interpolant built using spline shows nonmonotonicity in its
