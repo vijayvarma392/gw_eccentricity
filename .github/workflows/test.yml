@@ -50,7 +50,6 @@ jobs:
           CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
           brew install libconfig
           brew install gsl
-          
 
       - name: Install Teobresums-Dali for ubuntu
         if: matrix.os == 'ubuntu-latest'
@@ -61,7 +60,6 @@ jobs:
           git checkout Dali
           pip install numpy
           python setup.py build_ext --inplace
-          export PYTHONPATH="$HOME/teobresums/Python"
 
       - name: Install Teobresums-Dali for macos
         if: matrix.os == 'macos-latest'
@@ -72,7 +70,6 @@ jobs:
           git checkout Dali
           pip install numpy
           CFLAGS=" -L/opt/homebrew/lib " python setup.py build_ext --inplace
-          conda env config vars set PYTHONPATH=$PYTHONPATH:~/teobresums/Python/
 
       - name: Install pipenv
         shell: bash -l {0}
