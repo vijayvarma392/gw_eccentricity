@@ -79,4 +79,5 @@ jobs:
       - name: Run test suite
         shell: bash -l {0}
         run: |
+          echo "PYTHONPATH=$HOME/teobresums/Python" >> $GITHUB_ENV
           py.test test
