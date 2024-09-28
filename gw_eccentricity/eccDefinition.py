@@ -178,7 +178,8 @@ class eccDefinition:
 
             rational_fit_kwargs: dict
                 Dictionary of arguments to be passed to the rational
-                fit function.
+                fit function. Defaults are set using
+                `utils.get_default_rational_fit_kwargs`
 
             extrema_finding_kwargs: dict
                 Dictionary of arguments to be passed to the extrema finder,

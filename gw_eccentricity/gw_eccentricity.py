@@ -314,6 +314,11 @@ def measure_eccentricity(tref_in=None,
             omega_gw_apocenters(t).
             Defaults are set using utils.get_default_spline_kwargs
 
+        rational_fit_kwargs: dict
+            Dictionary of arguments to be passed to the rational
+            fit function. Defaults are set using
+            `utils.get_default_rational_fit_kwargs`
+
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,
             scipy.signal.find_peaks.
@@ -411,6 +416,51 @@ def measure_eccentricity(tref_in=None,
             eccentricity is the cause, and set the returned eccentricity and
             mean anomaly to zero.
             USE THIS WITH CAUTION!
+        omega_gw_extrema_interpolation_method : str, default="spline"
+            Specifies the method used to build the interpolations for 
+            `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
+            The available options are:
+
+            - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+            - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+
+            ### When to Use:
+            
+            - **`spline`** (default):
+            - Best suited for cleaner data, such as when waveform modes are generated 
+                using models like SEOB or TEOB.
+            - Faster to construct and evaluate.
+            - Since it fits through every data point, it may exhibit oscillatory 
+                behavior, particularly near the merger.
+            
+            - **`rational_fit`**:
+            - More appropriate for noisy data, e.g., waveform modes from numerical 
+                simulations.
+            - Minimizes least squares error, resulting in a smoother overall trend 
+                with less oscillation.
+            - Significantly slower compared to the `spline` method.
+            - Can suppress pathologies in the waveform that might be visible with 
+                `spline`.
+
+            ### Fallback Behavior:
+            
+            With `omega_gw_extrema_interpolation_method` set to `spline`, if 
+            `use_rational_fit_as_fallback` is set to `True`, the method will 
+            initially use `spline`. If the first derivative of the spline interpolant 
+            exhibits non-monotonicity, the code will automatically fall back to the 
+            `rational_fit` method. This ensures a more reliable fit when the spline 
+            method shows undesirable behavior.
+
+            Default value: `"spline"`.
+                
+        use_rational_fit_as_fallback : bool, default=True
+            Use rational fit for interpolant of omega at extrema when the
+            interpolant built using spline shows nonmonotonicity in its
+            first derivative.
+
+            This is used only when `omega_gw_extrema_interpolation_method` is `spline`.
+            If `omega_gw_extrema_interpolation_method` is `rational_fit` then it has
+            no use.
 
     Returns
     -------
