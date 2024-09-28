@@ -15,6 +15,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       max-parallel: 4
       matrix:
         os: [macos-latest, ubuntu-latest]
@@ -31,6 +32,10 @@ jobs:
         with:
           miniconda-version: "latest"
           auto-update-conda: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
@@ -38,11 +43,33 @@ jobs:
         run: |
           pip install pytest nbconvert ipykernel
 
-      - name: Install fftw for macos
+      - name: Install extra dependencies for macos
         if: matrix.os == 'macos-latest'
         run: |
           brew install fftw
           CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
+          brew install libconfig
+          brew install gsl
+
+      - name: Install Teobresums-Dali for ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash -l {0}
+        run: |
+          git clone https://bitbucket.org/teobresums/teobresums.git
+          cd teobresums/Python
+          git checkout Dali
+          pip install numpy
+          python setup.py build_ext --inplace
+
+      - name: Install Teobresums-Dali for macos
+        if: matrix.os == 'macos-latest'
+        shell: bash -l {0}
+        run: |
+          git clone https://bitbucket.org/teobresums/teobresums.git
+          cd teobresums/Python
+          git checkout Dali
+          pip install numpy
+          CFLAGS=" -L/opt/homebrew/lib " python setup.py build_ext --inplace
 
       - name: Install pipenv
         shell: bash -l {0}
@@ -52,4 +79,5 @@ jobs:
       - name: Run test suite
         shell: bash -l {0}
         run: |
+          echo "PYTHONPATH=$HOME/teobresums/Python" >> $GITHUB_ENV
           py.test test
