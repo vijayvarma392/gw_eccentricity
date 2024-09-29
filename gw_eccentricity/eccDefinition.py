@@ -371,7 +371,7 @@ class eccDefinition:
         self.available_averaging_methods \
             = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
-        self.rational_fit_kwargs["verbose"] = True if self.debug_level >=1 else False
+        self.rational_fit_kwargs["verbose"] = True if self.debug_level >= 1 else False
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         self.use_rational_fit_as_fallback = self.extra_kwargs["use_rational_fit_as_fallback"]
