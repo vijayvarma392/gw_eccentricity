@@ -686,6 +686,12 @@ class eccDefinition:
                                           data_dict["phaselm"][(2, 2)],
                                           data_dict["omegalm"][(2, 2)])
         else:
+            # TODO: Currently, we assume that the input `dataDict` is already provided in the 
+            # coprecessing frame. In the future, this assumption could be 
+            # relaxed. If the user's `dataDict` is in the inertial frame, we can 
+            # internally compute the corresponding modes in the coprecessing frame by 
+            # applying the appropriate rotational transformation.
+
             # check whether (2, -2) mode is provided.
             for k in ["amplm", "phaselm"]:
                 if (2, -2) not in data_dict[k]:
