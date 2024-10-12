@@ -1386,7 +1386,7 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
 
 
 def package_modes_for_scri(modes_dict, ell_min, ell_max):
-    """Package modes in an ordered list to use as input data to `scri.WaveforModes`.
+    """Package modes in an ordered list to use as input data to `scri.WaveformModes`.
 
     Parameters
     ----------
