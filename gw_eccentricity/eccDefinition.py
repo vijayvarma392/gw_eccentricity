@@ -347,7 +347,7 @@ class eccDefinition:
         # nonprecessing systems, these quantities reduce to their respective
         # (2, 2) mode values. See `get_amp_phase_omega_gw` for more details.
         self.amp_gw, self.phase_gw, self.omega_gw \
-            = self.get_amp_phase_omega_gw()
+            = self.get_amp_phase_omega_gw(self.dataDict)
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
@@ -667,16 +667,13 @@ class eccDefinition:
             newDataDict["t"],
             amplitude_using_all_modes(newDataDict["amplm"], "amplm"))[0]
         merger_idx = np.argmin(np.abs(newDataDict["t"] - t_merger))
-        if not self.precessing:
-            amp_gw_merger = newDataDict["amplm"][(2, 2)][merger_idx]
-            phase_gw = newDataDict["phaselm"][(2, 2)]
-            phase_gw_merger = phase_gw[merger_idx]
-            # TODO: we may need to change this in the future.
-            # For example, omega_gw could be the invariant angular velocity even
-            # for nonprecessing case.
-            omega_gw_merger = newDataDict["omegalm"][(2, 2)][merger_idx]
-        else:
-            raise NotImplementedError("Precessing system is not supported yet.")
+        amp_gw, phase_gw, omega_gw = self.get_amp_phase_omega_gw(newDataDict)
+        amp_gw_merger = amp_gw[merger_idx]
+        phase_gw_merger = phase_gw[merger_idx]
+        # TODO: we may need to change this in the future.
+        # For example, omega_gw could be the invariant angular velocity even
+        # for nonprecessing case.
+        omega_gw_merger = omega_gw[merger_idx]
         # check if phase_gw is increasing. phase_gw at merger should be greater
         # than the phase_gw at the start of the waveform
         if phase_gw_merger < phase_gw[0]:
@@ -721,7 +718,7 @@ class eccDefinition:
                         :index_num_orbits_earlier_than_merger]
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
-    def get_amp_phase_omega_gw(self):
+    def get_amp_phase_omega_gw(self, data_dict):
         """Get the gw quanitities from modes dict in the coprecessing frame.
 
         For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
@@ -745,16 +742,29 @@ class eccDefinition:
         system is nonprecessing.
         """
         if not self.precessing:
-            amp_gw, phase_gw, omega_gw = (self.dataDict["amplm"][(2, 2)],
-                                          self.dataDict["phaselm"][(2, 2)],
-                                          self.dataDict["omegalm"][(2, 2)])
+            amp_gw, phase_gw, omega_gw = (data_dict["amplm"][(2, 2)],
+                                          data_dict["phaselm"][(2, 2)],
+                                          data_dict["omegalm"][(2, 2)])
         else:
-            amp_gw = 0.5 * (self.dataDict[(2, 2)] + self.dataDict[(2, -2)])
-            phase_gw = 0.5 * (np.unwrap(np.angle(self.dataDict[(2, 2)]))
-                              - np.unwrap(np.angle(self.dataDict[(2, -2)])))
+            # TODO: Currently, we assume that the input `dataDict` is already provided in the 
+            # coprecessing frame. In the future, this assumption could be 
+            # relaxed. If the user's `dataDict` is in the inertial frame, we can 
+            # internally compute the corresponding modes in the coprecessing frame by 
+            # applying the appropriate rotational transformation.
+
+            # check whether (2, -2) mode is provided.
+            for k in ["amplm", "phaselm"]:
+                if (2, -2) not in data_dict[k]:
+                    raise Exception(f"(2, -2) mode not found in {k}. For precessing"
+                             " systems, (2, -2) mode should be included in "
+                             "`dataDict`.")
+            amp_gw = 0.5 * (data_dict["amplm"][(2, 2)]
+                            + data_dict["amplm"][(2, -2)])
+            phase_gw = 0.5 * (data_dict["phaselm"][(2, 2)]
+                              - data_dict["phaselm"][(2, -2)])
             omega_gw = time_deriv_4thOrder(
                 phase_gw,
-                self.dataDict["t"][1] - self.dataDict["t"][0])
+                data_dict["t"][1] - data_dict["t"][0])
         return amp_gw, phase_gw, omega_gw
 
     def get_width_for_peak_finder_from_phase_gw(self,
