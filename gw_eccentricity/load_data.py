@@ -1407,11 +1407,20 @@ def package_modes_for_scri(modes_dict, ell_min, ell_max):
     keys = modes_dict.keys()
     shape = modes_dict[(2, 2)].shape
     n_elem = (ell_max + 3) * (ell_max - 1)
+    # Start with a result array with zeros, and populate only those modes that are
+    # available in modes_dict. This is necessary because scri expects a list of modes in
+    # a particular order.
     result = np.zeros((shape[0], n_elem), dtype=np.complex128)
     i = 0
     for ell in range(ell_min, ell_max + 1):
         for m in range(-ell, ell + 1):            
             if (ell, m) in keys:
+                # for each m > 0, the m < 0 counterpart should also exist in the `data_dict`
+                if m > 0:
+                    if (ell, -m) not in keys:
+                        raise Exception("For each m > 0, corresponding m < 0 mode should also exist "
+                                        f"in the input `data_dict`. {(ell, m)} mode exists but "
+                                        f" {(ell, -m)} mode does not exist.")
                 result[:, i] = modes_dict[(ell, m)]
             i += 1
     return result
@@ -1484,7 +1493,11 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
 
     # co-precessing frame modes
     w_coprecessing = deepcopy(w).to_coprecessing_frame()
-    return {"t": data_dict["t"], "hlm": unpack_scri_modes(deepcopy(w_coprecessing))}
+    # Create a copy of data_dict and replace the "hlm" modes in the inertial frame
+    # with the corresponding modes in the coprecessing frame
+    data_dict_copr = deepcopy(data_dict)
+    data_dict_copr.update({"hlm": unpack_scri_modes(deepcopy(w_coprecessing))})
+    return data_dict
 
 
 def load_h22_from_EOBfile(EOB_file):
