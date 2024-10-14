@@ -31,6 +31,7 @@ setuptools.setup(
         'h5py',
         'lalsuite',
         'sxs',
+        'scri',
         'polyrat'
     ],
     classifiers=[
