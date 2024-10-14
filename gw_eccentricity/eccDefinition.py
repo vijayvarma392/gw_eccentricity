@@ -1279,13 +1279,26 @@ class eccDefinition:
         rat_fit = self.get_rat_fit(x, y)
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
         while self.check_domega_dt(t, rat_fit(t), 1.0):
-            self.rational_fit_kwargs["num_degree"] -= 1
-            self.rational_fit_kwargs["denom_degree"] -= 1
-            debug_message(f"Rational fit with degree {self.rational_fit_kwargs['num_degree'] + 1} "
-                          " has non-monotonic time derivative. Lowering degree to "
-                          f"{self.rational_fit_kwargs['num_degree']} and trying again.",
-                          debug_level=self.debug_level,
-                          important=True)
+            if self.rational_fit_kwargs["num_degree"] == 1:
+                raise Exception("`num_degree` for rational fit is already = 1. "
+                               "Can not be lowered further.")
+            else:
+                self.rational_fit_kwargs["num_degree"] -= 1
+                debug_message(f"Rational fit with `num_degree` {self.rational_fit_kwargs['num_degree'] + 1} "
+                              " has non-monotonic time derivative. Lowering degree to "
+                              f"{self.rational_fit_kwargs['num_degree']} and trying again.",
+                              debug_level=self.debug_level,
+                              important=True)
+            if self.rational_fit_kwargs["denom_degree"] == 1:
+                raise Exception("`denmm_degree` for rational fit is already = 1. "
+                               "Can not be lowered further.")
+            else:
+                self.rational_fit_kwargs["denom_degree"] -= 1
+                debug_message(f"Rational fit with `denom_degree` {self.rational_fit_kwargs['num_degree'] + 1} "
+                              " has non-monotonic time derivative. Lowering degree to "
+                              f"{self.rational_fit_kwargs['num_degree']} and trying again.",
+                              debug_level=self.debug_level,
+                              important=True)
             rat_fit = self.get_rat_fit(x, y)
         return rat_fit
 
