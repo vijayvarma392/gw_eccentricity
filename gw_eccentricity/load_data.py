@@ -1497,7 +1497,7 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     # with the corresponding modes in the coprecessing frame
     data_dict_copr = deepcopy(data_dict)
     data_dict_copr.update({"hlm": unpack_scri_modes(deepcopy(w_coprecessing))})
-    return data_dict
+    return data_dict_copr
 
 
 def load_h22_from_EOBfile(EOB_file):
