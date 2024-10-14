@@ -16,6 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 4
+      fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
         python-version: ['3.9']
@@ -31,6 +32,10 @@ jobs:
         with:
           miniconda-version: "latest"
           auto-update-conda: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
@@ -43,7 +48,7 @@ jobs:
         run: |
           brew install fftw
           CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
-
+          
       - name: Install pipenv
         shell: bash -l {0}
         run: |
