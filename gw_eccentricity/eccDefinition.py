@@ -14,6 +14,8 @@ from .utils import time_deriv_4thOrder
 from .utils import interpolate
 from .utils import get_interpolant
 from .utils import get_default_spline_kwargs
+from .utils import get_rational_fit
+from .utils import get_default_rational_fit_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
@@ -174,6 +176,11 @@ class eccDefinition:
                 omega_gw_apocenters(t).
                 Defaults are set using utils.get_default_spline_kwargs
 
+            rational_fit_kwargs: dict
+                Dictionary of arguments to be passed to the rational
+                fit function. Defaults are set using
+                `utils.get_default_rational_fit_kwargs`
+
             extrema_finding_kwargs: dict
                 Dictionary of arguments to be passed to the extrema finder,
                 scipy.signal.find_peaks.
@@ -272,6 +279,52 @@ class eccDefinition:
                 eccentricity is the cause, and set the returned eccentricity
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
+
+            omega_gw_extrema_interpolation_method : str, default="spline"
+                Specifies the method used to build the interpolations for 
+                `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
+                The available options are:
+
+                - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+                - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+
+                ### When to Use:
+                
+                - **`spline`** (default):
+                - Best suited for cleaner data, such as when waveform modes are generated 
+                    using models like SEOB or TEOB.
+                - Faster to construct and evaluate.
+                - Since it fits through every data point, it may exhibit oscillatory 
+                    behavior, particularly near the merger.
+                
+                - **`rational_fit`**:
+                - More appropriate for noisy data, e.g., waveform modes from numerical 
+                    simulations.
+                - Minimizes least squares error, resulting in a smoother overall trend 
+                    with less oscillation.
+                - Significantly slower compared to the `spline` method.
+                - Can suppress pathologies in the waveform that might be visible with 
+                    `spline`.
+
+                ### Fallback Behavior:
+                
+                With `omega_gw_extrema_interpolation_method` set to `spline`, if 
+                `use_rational_fit_as_fallback` is set to `True`, the method will 
+                initially use `spline`. If the first derivative of the spline interpolant 
+                exhibits non-monotonicity, the code will automatically fall back to the 
+                `rational_fit` method. This ensures a more reliable fit when the spline 
+                method shows undesirable behavior.
+
+                Default value: `"spline"`.
+                    
+            use_rational_fit_as_fallback : bool, default=True
+                Use rational fit for interpolant of omega at extrema when the
+                interpolant built using spline shows nonmonotonicity in its
+                first derivative.
+
+                This is used only when `omega_gw_extrema_interpolation_method` is `spline`.
+                If `omega_gw_extrema_interpolation_method` is `rational_fit` then it has
+                no use.
         """
         self.precessing = precessing
         # Get data necessary for eccentricity measurement
@@ -310,11 +363,18 @@ class eccDefinition:
             get_default_spline_kwargs(),
             "spline_kwargs",
             "utils.get_default_spline_kwargs()")
+        self.rational_fit_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs["rational_fit_kwargs"],
+            get_default_rational_fit_kwargs(),
+            "rational_fit_kwargs",
+            "utils.get_default_rational_fit_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
+        self.rational_fit_kwargs["verbose"] = True if self.debug_level >= 1 else False
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
+        self.use_rational_fit_as_fallback = self.extra_kwargs["use_rational_fit_as_fallback"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -833,6 +893,7 @@ class eccDefinition:
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
             "spline_kwargs": {},
+            "rational_fit_kwargs": {},
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
             "debug_level": 0,
@@ -842,6 +903,8 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
+            "use_rational_fit_as_fallback": True,
+            "omega_gw_extrema_interpolation_method": "spline"
         }
         return default_extra_kwargs
 
@@ -1184,6 +1247,119 @@ class eccDefinition:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolant.")
+        
+    def get_rat_fit(self, x, y):
+        """Get rational fit.
+
+        A wrapper of `utils.get_rational_fit` with check_kwargs=False. This is
+        to make sure that the checking of kwargs is not performed everytime the
+        rational fit function is called. Instead, the kwargs are checked once
+        in the init and passed to the rational fit function without repeating
+        checks.
+        """
+        return get_rational_fit(x, y,
+                                rational_fit_kwargs=self.rational_fit_kwargs,
+                                check_kwargs=False)
+
+    def rational_fit(self, x, y):
+        """Get rational fit with adaptive numerator and denominator degree.
+
+        This function ensures that the rational fit we obtain is using the
+        optimal degree for the numerator and the denominator. We start with an
+        initial estimate of what these degrees should be based on the length of
+        the waveform. We check the first derivative of the resultant fit to
+        check for any nonmonotonicity. In case of nonmonocity detected, we
+        lower the degree by 1 and repeat until the check passes successfully.
+        """
+        if (self.rational_fit_kwargs["num_degree"] is None) or (
+            self.rational_fit_kwargs["denom_degree"] is None):
+            self.rational_fit_kwargs["num_degree"],\
+                self.rational_fit_kwargs["denom_degree"] \
+                    = self.get_optimal_degree_for_rational_fit()
+        rat_fit = self.get_rat_fit(x, y)
+        t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
+        while self.check_domega_dt(t, rat_fit(t), 1.0):
+            if self.rational_fit_kwargs["num_degree"] == 1:
+                raise Exception("`num_degree` for rational fit is already = 1. "
+                               "Can not be lowered further.")
+            else:
+                self.rational_fit_kwargs["num_degree"] -= 1
+                debug_message(f"Rational fit with `num_degree` {self.rational_fit_kwargs['num_degree'] + 1} "
+                              " has non-monotonic time derivative. Lowering degree to "
+                              f"{self.rational_fit_kwargs['num_degree']} and trying again.",
+                              debug_level=self.debug_level,
+                              important=True)
+            if self.rational_fit_kwargs["denom_degree"] == 1:
+                raise Exception("`denom_degree` for rational fit is already = 1. "
+                               "Can not be lowered further.")
+            else:
+                self.rational_fit_kwargs["denom_degree"] -= 1
+                debug_message(f"Rational fit with `denom_degree` {self.rational_fit_kwargs['num_degree'] + 1} "
+                              " has non-monotonic time derivative. Lowering degree to "
+                              f"{self.rational_fit_kwargs['num_degree']} and trying again.",
+                              debug_level=self.debug_level,
+                              important=True)
+            rat_fit = self.get_rat_fit(x, y)
+        return rat_fit
+
+    def get_optimal_degree_for_rational_fit(self):
+        """Get optimal degree based on the approximate number of orbits.
+
+        Assign degree based on approximate number of orbits if user provided
+        degree is None. The number of orbits is approximated by the change in
+        phase_gw divided by 4*pi. The degree of the rational fit is then chosen
+        based on this approximate number of orbits. The degree is increased as
+        the number of orbits increases.
+        """
+        # TODO: Optimize this.
+        # assign degree based on approximate number of orbits if user provided
+        # degree is None.
+        approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+                                  / (4 * np.pi))
+        if approximate_num_orbits <= 5:
+            return 1, 1
+        elif (approximate_num_orbits > 5) and (approximate_num_orbits <= 20):
+            return 2, 2
+        elif (approximate_num_orbits > 20) and (approximate_num_orbits <= 50):
+            return 3, 3
+        else:
+            return 4, 4
+
+    def rational_fit_extrema(self, extrema_type="pericenters"):
+        """Build rational fit through extrema.
+
+        parameters:
+        -----------
+        extrema_type:
+            Either "pericenters" or "apocenters".
+
+        returns:
+        ------
+        Rational fit through extrema
+        """
+        if extrema_type == "pericenters":
+            extrema = self.pericenters_location
+        elif extrema_type == "apocenters":
+            extrema = self.apocenters_location
+        else:
+            raise Exception("extrema_type must be either "
+                            "'pericenrers' or 'apocenters'.")
+        if len(extrema) >= 2:
+            return self.rational_fit(self.t[extrema],
+                                     self.omega_gw[extrema])
+        else:
+            raise Exception(
+                f"Sufficient number of {extrema_type} are not found."
+                " Can not create an interpolant.")
+
+    def check_domega_dt(self, t, omega, tol=1.0):
+        """Check first derivative of omega.
+
+        The first derivative of interpolant/fit of omega at the extrema
+        should be monotonically increasing.
+        """
+        domega_dt = np.gradient(omega, t[1] - t[0])
+        return any(domega_dt[1:]/domega_dt[:-1] < tol)
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
         """Check number of extrema.
@@ -1520,14 +1696,11 @@ class eccDefinition:
             = self.check_extrema_separation(self.apocenters_location,
                                             "apocenters")
 
-        # Build the interpolants of omega_gw at the extrema
-        self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
-        self.omega_gw_apocenters_interp = self.interp_extrema("apocenters")
-
         self.t_pericenters = self.t[self.pericenters_location]
         self.t_apocenters = self.t[self.apocenters_location]
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
+        
         if self.domain == "frequency":
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
@@ -1576,18 +1749,45 @@ class eccDefinition:
            or self.tref_out[-1] > self.t_pericenters[-1]:
             raise Exception("Reference time must be within two pericenters.")
 
+        # Build omega_gw extrema interpolants
+        self.build_omega_gw_extrema_interpolants()
+
         # compute eccentricity at self.tref_out
         self.eccentricity = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
         self.mean_anomaly = self.compute_mean_anomaly(self.tref_out)
 
+        # check if eccentricity is nonmonotonic and try to fix.
+        # If eccentricity is nonmonotonic and `omega_gw_extrema_interpolation_method`
+        # is `rational_fit`, sometimes increasing the degree might help.
+        # Note that increasing the degree may also break the monotonicity of the
+        # omega_gw extrema interpolants (high degree my lead to divergences)
+        # which will automatically decrease the degree.
+        # Therefore, we check the degree before and after trying with increased degree.
+        # If the degree is the same as before, it implies that increasing degree did not
+        # help and we stop attempting to increase the degree any further.
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
+            while self.check_monotonicity_and_convexity()["monotonic"] == False:
+                # store old degrees to compare later
+                num_degree_old = np.copy(self.rational_fit_kwargs["num_degree"])
+                debug_message("Trying to fix nonmonotic egw evolution (current degree = "
+                              f"{num_degree_old}) by increasing rational fit "
+                              "degree by 1.", self.debug_level, important=False)
+                self.rational_fit_kwargs["num_degree"] += 1
+                self.rational_fit_kwargs["denom_degree"] += 1
+                self.build_omega_gw_extrema_interpolants()
+                if self.rational_fit_kwargs["num_degree"] == num_degree_old:
+                    break
+                self.eccentricity = self.compute_eccentricity(self.tref_out)
+                # update ecc for checks
+                self.ecc_for_checks = self.compute_eccentricity(self.t_for_checks)
+        else:
+            self.check_monotonicity_and_convexity()
+        
         # check if eccentricity is positive
         if any(self.eccentricity < 0):
             debug_message("Encountered negative eccentricity.",
                           self.debug_level, point_to_verbose_output=True)
-
-        # check if eccentricity is monotonic and convex
-        self.check_monotonicity_and_convexity()
 
         if self.debug_plots:
             # make a plot for diagnostics
@@ -1597,6 +1797,49 @@ class eccDefinition:
         # return measured eccentricity, mean anomaly and reference time or
         # frequency where these are measured.
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
+    
+    def build_omega_gw_extrema_interpolants(self):
+        # Build the interpolants of omega_gw at the extrema
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
+            self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
+            self.omega_gw_apocenters_interp = self.interp_extrema("apocenters")
+        elif self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
+            self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
+            self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
+        else:
+            raise Exception("Unknown method for `omega_gw_extrema_interpolation_method`. "
+                            "Must be one of `spline` or `rational_fit`.")
+
+        # Verify the monotonicity of the first derivative of the omega_gw interpolant.
+        # If a spline is used for interpolation (as specified by 'omega_gw_extrema_interpolation_method'), 
+        # non-monotonicity may occur in the first derivative. 
+        # If 'use_rational_fit_as_fallback' is set to True, the spline interpolant 
+        # will be replaced with a rational fit to ensure monotonic behavior.
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
+        # Check if the first derivative of omega_gw at pericenters or apocenters is non-monotonic
+            has_non_monotonicity = (
+                self.check_domega_dt(self.t_for_checks, self.omega_gw_pericenters_interp(self.t_for_checks)) or
+                self.check_domega_dt(self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))
+                )      
+    
+            if has_non_monotonicity:
+                if self.use_rational_fit_as_fallback:
+                    debug_message(
+                        "Non-monotonic time derivative detected in the spline interpolant through extrema. "
+                        "Switching to rational fit.",
+                        debug_level=self.debug_level, important=True
+                        )
+                    # Use rational fit for both pericenters and apocenters
+                    self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
+                    self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
+                else:
+                    debug_message(
+                        "Non-monotonic time derivative detected in the spline interpolant through extrema. "
+                        "Consider the following options to avoid this: \n"
+                        " - Set 'use_rational_fit_as_fallback' to True in 'extra_kwargs' to switch to rational fit.\n"
+                        " - Use rational fit directly by setting 'omega_gw_extrema_interpolation_method' to 'rational_fit'.",
+                        debug_level=self.debug_level, important=True
+                        )
 
     def set_eccentricity_and_mean_anomaly_to_zero(self):
         """Set eccentricity and mean_anomaly to zero."""
@@ -1904,6 +2147,9 @@ class eccDefinition:
             self.decc_dt_for_checks = self.derivative_of_eccentricity(
                 self.t_for_checks, n=1)
 
+        # Create an empty dictionary to store the check results
+        check_dict = {}
+
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt_for_checks > 0):
             idx = np.where(self.decc_dt_for_checks > 0)[0]
@@ -1912,6 +2158,9 @@ class eccDefinition:
                        f"{'at' if len(idx) == 1 else 'in the range'} {range}")
             debug_message(message, self.debug_level,
                           point_to_verbose_output=True)
+            check_dict.update({"monotonic": False})
+        else:
+            check_dict.update({"monotonic": True})
 
         # Is ecc(t) a convex function? That is, is the second
         # derivative always negative?
@@ -1927,6 +2176,10 @@ class eccDefinition:
                 debug_message(f"{message} expected to be always negative",
                               self.debug_level,
                               point_to_verbose_output=True)
+                check_dict.update({"convex": False})
+            else:
+                check_dict.update({"convex": True})
+        return check_dict
 
     def get_range_from_indices(self, indices, times):
         """Get the range of time from indices for gives times array."""
