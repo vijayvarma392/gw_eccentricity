@@ -1772,7 +1772,7 @@ class eccDefinition:
                 num_degree_old = np.copy(self.rational_fit_kwargs["num_degree"])
                 debug_message("Trying to fix nonmonotic egw evolution (current degree = "
                               f"{num_degree_old}) by increasing rational fit "
-                              "degree by 1.", self.debug_level, important=False)
+                              "degree by 1.", self.debug_level, important=True)
                 self.rational_fit_kwargs["num_degree"] += 1
                 self.rational_fit_kwargs["denom_degree"] += 1
                 self.build_omega_gw_extrema_interpolants()
