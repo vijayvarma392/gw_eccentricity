@@ -1282,22 +1282,22 @@ class eccDefinition:
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
         while self.check_domega_dt(t, rat_fit(t), 1.0):
             if self.rational_fit_kwargs["num_degree"] == 1:
-                raise Exception("`num_degree` for rational fit is already = 1. "
+                raise Exception("Current `num_degree` for rational fit is already 1. "
                                "Can not be lowered further.")
             else:
                 self.rational_fit_kwargs["num_degree"] -= 1
-                debug_message(f"Rational fit with `num_degree` {self.rational_fit_kwargs['num_degree'] + 1} "
-                              " has non-monotonic time derivative. Lowering degree to "
+                debug_message(f"Rational fit with `num_degree`={self.rational_fit_kwargs['num_degree'] + 1} "
+                              " has nonmonotonic time derivative. Lowering degree to "
                               f"{self.rational_fit_kwargs['num_degree']} and trying again.",
                               debug_level=self.debug_level,
                               important=True)
             if self.rational_fit_kwargs["denom_degree"] == 1:
-                raise Exception("`denom_degree` for rational fit is already = 1. "
+                raise Exception("Current `denom_degree` for rational fit is already 1. "
                                "Can not be lowered further.")
             else:
                 self.rational_fit_kwargs["denom_degree"] -= 1
-                debug_message(f"Rational fit with `denom_degree` {self.rational_fit_kwargs['num_degree'] + 1} "
-                              " has non-monotonic time derivative. Lowering degree to "
+                debug_message(f"Rational fit with `denom_degree`={self.rational_fit_kwargs['num_degree'] + 1} "
+                              " has nonmonotonic time derivative. Lowering degree to "
                               f"{self.rational_fit_kwargs['num_degree']} and trying again.",
                               debug_level=self.debug_level,
                               important=True)
@@ -1802,13 +1802,13 @@ class eccDefinition:
             denom_degree_old = np.copy(self.rational_fit_kwargs["denom_degree"])
             # Increase degree by one
             debug_message("Attempting to resolve nonmonotic egw evolution "
-                          f"(current degree: {num_degree_old}) by increasing rational fit "
+                          f"(current degree={num_degree_old}) by increasing rational fit "
                         "degree by 1.", self.debug_level, important=True)
             self.rational_fit_kwargs["num_degree"] += 1
             self.rational_fit_kwargs["denom_degree"] += 1
             # check if this degree is already tried and corresponding monotonicity
-            # If it was already tried and resulted in nonmonotic fits, then we abandon
-            # this attempt and set the rational fit degrees to its previous values.
+            # If it was already tried and resulted in nonmonotonic fits, then we abandon
+            # this attempt and set the rational fit degrees to their previous values.
             if not self.check_whether_to_try_new_degree(self.rational_fit_kwargs["num_degree"]):
                 # reset the correct value
                 self.rational_fit_kwargs["num_degree"] = int(num_degree_old)
@@ -1828,7 +1828,7 @@ class eccDefinition:
     def check_whether_to_try_new_degree(self, new_degree):
         if f"{new_degree}" in self.rational_fit_nonmonotonicity_history:
             if self.rational_fit_nonmonotonicity_history[f"{new_degree}"]:
-                debug_message(f"Rational fit was already built with degree: {new_degree} and "
+                debug_message(f"Rational fit was already built with degree={new_degree} and "
                               f"was found to be nonmonotonic. Abandoning attempt with degree: {new_degree}",
                               debug_level=self.debug_level, important=True)
             return not self.rational_fit_nonmonotonicity_history[f"{new_degree}"]
