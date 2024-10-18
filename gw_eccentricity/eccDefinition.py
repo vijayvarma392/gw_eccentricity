@@ -372,6 +372,8 @@ class eccDefinition:
             = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
         self.rational_fit_kwargs["verbose"] = True if self.debug_level >= 1 else False
+        # keep history of rational fit degree and nonmonotonicity of the corresponding fits
+        self.rational_fit_nonmonotonicity_history = {}
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         self.use_rational_fit_as_fallback = self.extra_kwargs["use_rational_fit_as_fallback"]
@@ -1303,27 +1305,31 @@ class eccDefinition:
         return rat_fit
 
     def get_optimal_degree_for_rational_fit(self):
-        """Get optimal degree based on the approximate number of orbits.
+        """Get optimal degree based on the number of extrema.
 
-        Assign degree based on approximate number of orbits if user provided
-        degree is None. The number of orbits is approximated by the change in
-        phase_gw divided by 4*pi. The degree of the rational fit is then chosen
-        based on this approximate number of orbits. The degree is increased as
-        the number of orbits increases.
+        Assign degree based on number of extrema found. The degree is increased as
+        the number of extrema increases.
         """
         # TODO: Optimize this.
-        # assign degree based on approximate number of orbits if user provided
+        # assign degree based on the number of extrema if user provided
         # degree is None.
-        approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
-                                  / (4 * np.pi))
+        approximate_num_orbits = max(len(self.pericenters_location),
+                                     len(self.apocenters_location))
         if approximate_num_orbits <= 5:
-            return 1, 1
+            num_degree, denom_degree = 1, 1
         elif (approximate_num_orbits > 5) and (approximate_num_orbits <= 20):
-            return 2, 2
+            num_degree, denom_degree =  2, 2
         elif (approximate_num_orbits > 20) and (approximate_num_orbits <= 50):
-            return 3, 3
+            num_degree, denom_degree = 3, 3
+        elif (approximate_num_orbits > 50) and (approximate_num_orbits <= 100):
+            num_degree, denom_degree = 4, 4
+        elif (approximate_num_orbits > 100) and (approximate_num_orbits <= 150):
+            num_degree, denom_degree = 5, 5
+        elif (approximate_num_orbits > 150) and (approximate_num_orbits <= 200):
+            num_degree, denom_degree = 6, 6
         else:
-            return 4, 4
+            num_degree, denom_degree = 5 + int(np.log10(approximate_num_orbits)), 5 + int(np.log10(approximate_num_orbits))
+        return num_degree, denom_degree
 
     def rational_fit_extrema(self, extrema_type="pericenters"):
         """Build rational fit through extrema.
@@ -1359,7 +1365,12 @@ class eccDefinition:
         should be monotonically increasing.
         """
         domega_dt = np.gradient(omega, t[1] - t[0])
-        return any(domega_dt[1:]/domega_dt[:-1] < tol)
+        is_nonmonotonic = any(domega_dt[1:]/domega_dt[:-1] < tol)
+        # update history
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
+            self.rational_fit_nonmonotonicity_history.update({
+                f"{self.rational_fit_kwargs['num_degree']}": is_nonmonotonic})
+        return is_nonmonotonic
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
         """Check number of extrema.
@@ -1751,7 +1762,6 @@ class eccDefinition:
 
         # Build omega_gw extrema interpolants
         self.build_omega_gw_extrema_interpolants()
-
         # compute eccentricity at self.tref_out
         self.eccentricity = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out
@@ -1767,20 +1777,7 @@ class eccDefinition:
         # If the degree is the same as before, it implies that increasing degree did not
         # help and we stop attempting to increase the degree any further.
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
-            while self.check_monotonicity_and_convexity()["monotonic"] == False:
-                # store old degrees to compare later
-                num_degree_old = np.copy(self.rational_fit_kwargs["num_degree"])
-                debug_message("Trying to fix nonmonotic egw evolution (current degree = "
-                              f"{num_degree_old}) by increasing rational fit "
-                              "degree by 1.", self.debug_level, important=True)
-                self.rational_fit_kwargs["num_degree"] += 1
-                self.rational_fit_kwargs["denom_degree"] += 1
-                self.build_omega_gw_extrema_interpolants()
-                if self.rational_fit_kwargs["num_degree"] == num_degree_old:
-                    break
-                self.eccentricity = self.compute_eccentricity(self.tref_out)
-                # update ecc for checks
-                self.ecc_for_checks = self.compute_eccentricity(self.t_for_checks)
+            self.check_egw_and_try_to_fix_if_nonmonotonic()
         else:
             self.check_monotonicity_and_convexity()
         
@@ -1797,6 +1794,46 @@ class eccDefinition:
         # return measured eccentricity, mean anomaly and reference time or
         # frequency where these are measured.
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
+    
+    def check_egw_and_try_to_fix_if_nonmonotonic(self):
+        while self.check_monotonicity_and_convexity()["monotonic"] == False:
+            # store old degrees to compare later
+            num_degree_old = np.copy(self.rational_fit_kwargs["num_degree"])
+            denom_degree_old = np.copy(self.rational_fit_kwargs["denom_degree"])
+            # Increase degree by one
+            debug_message("Attempting to resolve nonmonotic egw evolution "
+                          f"(current degree: {num_degree_old}) by increasing rational fit "
+                        "degree by 1.", self.debug_level, important=True)
+            self.rational_fit_kwargs["num_degree"] += 1
+            self.rational_fit_kwargs["denom_degree"] += 1
+            # check if this degree is already tried and corresponding monotonicity
+            # If it was already tried and resulted in nonmonotic fits, then we abandon
+            # this attempt and set the rational fit degrees to its previous values.
+            if not self.check_whether_to_try_new_degree(self.rational_fit_kwargs["num_degree"]):
+                # reset the correct value
+                self.rational_fit_kwargs["num_degree"] = int(num_degree_old)
+                self.rational_fit_kwargs["denom_degree"] = int(denom_degree_old)
+                debug_message("Final rational fits were built with "
+                              f"`num_degree`={self.rational_fit_kwargs['num_degree']} and "
+                              f"`denom_degree`={self.rational_fit_kwargs['denom_degree']}.",
+                              debug_level=self.debug_level, important=True)
+                break
+            # build interpolants with updated degree
+            self.build_omega_gw_extrema_interpolants()
+            # compute eccentricity using updated interpolants
+            self.eccentricity = self.compute_eccentricity(self.tref_out)
+            # update ecc for checks
+            self.ecc_for_checks = self.compute_eccentricity(self.t_for_checks)
+
+    def check_whether_to_try_new_degree(self, new_degree):
+        if f"{new_degree}" in self.rational_fit_nonmonotonicity_history:
+            if self.rational_fit_nonmonotonicity_history[f"{new_degree}"]:
+                debug_message(f"Rational fit was already built with degree: {new_degree} and "
+                              f"was found to be nonmonotonic. Abandoning attempt with degree: {new_degree}",
+                              debug_level=self.debug_level, important=True)
+            return not self.rational_fit_nonmonotonicity_history[f"{new_degree}"]
+        else:
+            return True
     
     def build_omega_gw_extrema_interpolants(self):
         # Build the interpolants of omega_gw at the extrema
