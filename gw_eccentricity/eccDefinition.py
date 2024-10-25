@@ -20,7 +20,6 @@ from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 
-
 class eccDefinition:
     """Base class to define eccentricity for given waveform data dictionary."""
 
@@ -373,7 +372,9 @@ class eccDefinition:
         self.debug_level = self.extra_kwargs["debug_level"]
         self.rational_fit_kwargs["verbose"] = True if self.debug_level >= 1 else False
         # keep history of rational fit degree and nonmonotonicity of the corresponding fits
-        self.rational_fit_nonmonotonicity_history = {}
+        self.rational_fit_nonmonotonicity_history = {"pericenters": {}, "apocenters": {}}
+        # Update the degrees used to construct the final fits
+        self.rational_fit_degrees = {"pericenters": None, "apocenters": None}
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         self.use_rational_fit_as_fallback = self.extra_kwargs["use_rational_fit_as_fallback"]
@@ -1263,49 +1264,83 @@ class eccDefinition:
                                 rational_fit_kwargs=self.rational_fit_kwargs,
                                 check_kwargs=False)
 
-    def rational_fit(self, x, y):
+    def rational_fit(self, x, y, description=None):
         """Get rational fit with adaptive numerator and denominator degree.
 
-        This function ensures that the rational fit we obtain is using the
-        optimal degree for the numerator and the denominator. We start with an
-        initial estimate of what these degrees should be based on the length of
-        the waveform. We check the first derivative of the resultant fit to
-        check for any nonmonotonicity. In case of nonmonocity detected, we
-        lower the degree by 1 and repeat until the check passes successfully.
+        This function ensures that the rational fit uses the optimal degree for
+        the numerator and denominator. It first checks for nonmonotonicity in the
+        fit's derivative and lowers the degrees if necessary. Only if the initial
+        degree was monotonic (no reduction needed), it attempts to increase the
+        degrees to find a higher-degree fit. If increasing the degrees causes
+        nonmonotonicity, it reverts to the previous valid monotonic fit.
         """
-        if (self.rational_fit_kwargs["num_degree"] is None) or (
-            self.rational_fit_kwargs["denom_degree"] is None):
-            self.rational_fit_kwargs["num_degree"],\
-                self.rational_fit_kwargs["denom_degree"] \
-                    = self.get_optimal_degree_for_rational_fit()
+        # make sure that description is not None
+        if description is None:
+            raise Exception("Please provide a description. `description` can not be None.")
+        # Set initial degrees if not already specified
+        if not (self.rational_fit_kwargs["num_degree"] and self.rational_fit_kwargs["denom_degree"]):
+            self.rational_fit_kwargs["num_degree"], self.rational_fit_kwargs["denom_degree"] \
+                = self.get_approximate_degree_for_rational_fit()
+
         rat_fit = self.get_rat_fit(x, y)
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
-        while self.check_domega_dt(t, rat_fit(t), 1.0):
-            if self.rational_fit_kwargs["num_degree"] == 1:
-                raise Exception("Current `num_degree` for rational fit is already 1. "
-                               "Can not be lowered further.")
-            else:
+        old_num_degree = self.rational_fit_kwargs["num_degree"]
+        old_denom_degree = self.rational_fit_kwargs["denom_degree"]
+
+        degrees_were_reduced = False
+
+        # Check for nonmonotonicity and lower degrees if needed
+        while self.check_if_domega_dt_is_nonmonotonic(t, rat_fit(t), 1.0, description):
+            degrees_were_reduced = True  # Mark that reduction occurred
+            if self.rational_fit_kwargs["num_degree"] > 1:
                 self.rational_fit_kwargs["num_degree"] -= 1
-                debug_message(f"Rational fit with `num_degree`={self.rational_fit_kwargs['num_degree'] + 1} "
-                              " has nonmonotonic time derivative. Lowering degree to "
-                              f"{self.rational_fit_kwargs['num_degree']} and trying again.",
-                              debug_level=self.debug_level,
-                              important=True)
-            if self.rational_fit_kwargs["denom_degree"] == 1:
-                raise Exception("Current `denom_degree` for rational fit is already 1. "
-                               "Can not be lowered further.")
-            else:
+            if self.rational_fit_kwargs["denom_degree"] > 1:
                 self.rational_fit_kwargs["denom_degree"] -= 1
-                debug_message(f"Rational fit with `denom_degree`={self.rational_fit_kwargs['num_degree'] + 1} "
-                              " has nonmonotonic time derivative. Lowering degree to "
-                              f"{self.rational_fit_kwargs['num_degree']} and trying again.",
-                              debug_level=self.debug_level,
-                              important=True)
+            if self.rational_fit_kwargs["num_degree"] == 1 and self.rational_fit_kwargs["denom_degree"] == 1:
+                raise Exception("Both numerator and denominator degrees cannot be lowered further.")
+
+            debug_message(f"Lowering degrees to num_degree={self.rational_fit_kwargs['num_degree']}, "
+                          f"denom_degree={self.rational_fit_kwargs['denom_degree']} and retrying.",
+                          debug_level=self.debug_level, important=True)
+
             rat_fit = self.get_rat_fit(x, y)
+        # If no degrees were reduced, try increasing the degree for better fit
+        if not degrees_were_reduced:
+            last_monotonic_rat_fit = rat_fit  # Track last monotonic fit
+            # last_monotonic_rat_fit_vals = rat_fit(t)
+            last_monotonic_num_degree = old_num_degree
+            last_monotonic_denom_degree = old_denom_degree
+
+            while not self.check_if_domega_dt_is_nonmonotonic(t, rat_fit(t), 1.0, description):
+                # Increase the degrees for both numerator and denominator
+                new_num_degree = self.rational_fit_kwargs["num_degree"] + 1
+                new_denom_degree = self.rational_fit_kwargs["denom_degree"] + 1
+                self.rational_fit_kwargs["num_degree"], self.rational_fit_kwargs["denom_degree"] \
+                    = new_num_degree, new_denom_degree
+                new_rat_fit = self.get_rat_fit(x, y)
+                if self.check_if_domega_dt_is_nonmonotonic(t, new_rat_fit(t), 1.0, description):
+                    # Revert to previous fit and degrees if nonmonotonicity is detected
+                    debug_message(f"Increasing degrees caused nonmonotonicity. Reverting to "
+                                  f"last monotonic fit with num_degree={last_monotonic_num_degree} "
+                                  f"and denom_degree={last_monotonic_denom_degree}.",
+                                  debug_level=self.debug_level, important=True)
+                    self.rational_fit_kwargs["num_degree"] = last_monotonic_num_degree
+                    self.rational_fit_kwargs["denom_degree"] = last_monotonic_denom_degree
+                    rat_fit = last_monotonic_rat_fit
+                    break
+
+                last_monotonic_rat_fit = new_rat_fit
+                last_monotonic_num_degree = new_num_degree
+                last_monotonic_denom_degree = new_denom_degree
+                rat_fit = new_rat_fit
+
+        # update final degrees used to build the fit
+        self.rational_fit_degrees[description] = (self.rational_fit_kwargs["num_degree"],
+                                                  self.rational_fit_kwargs["denom_degree"])
         return rat_fit
 
-    def get_optimal_degree_for_rational_fit(self):
-        """Get optimal degree based on the number of extrema.
+    def get_approximate_degree_for_rational_fit(self):
+        """Get approximate degree based on the number of extrema.
 
         Assign degree based on number of extrema found. The degree is increased as
         the number of extrema increases.
@@ -1352,14 +1387,15 @@ class eccDefinition:
                             "'pericenrers' or 'apocenters'.")
         if len(extrema) >= 2:
             return self.rational_fit(self.t[extrema],
-                                     self.omega_gw[extrema])
+                                     self.omega_gw[extrema],
+                                     description=extrema_type)
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
                 " Can not create an interpolant.")
 
-    def check_domega_dt(self, t, omega, tol=1.0):
-        """Check first derivative of omega.
+    def check_if_domega_dt_is_nonmonotonic(self, t, omega, tol=1.0, description=None):
+        """Check if the first derivative of omega is nonmonotonic
 
         The first derivative of interpolant/fit of omega at the extrema
         should be monotonically increasing.
@@ -1368,8 +1404,9 @@ class eccDefinition:
         is_nonmonotonic = any(domega_dt[1:]/domega_dt[:-1] < tol)
         # update history
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
-            self.rational_fit_nonmonotonicity_history.update({
-                f"{self.rational_fit_kwargs['num_degree']}": is_nonmonotonic})
+            if description in self.rational_fit_nonmonotonicity_history:
+                self.rational_fit_nonmonotonicity_history[description].update({
+                    (self.rational_fit_kwargs['num_degree'], self.rational_fit_kwargs['num_degree']): is_nonmonotonic})
         return is_nonmonotonic
 
     def check_num_extrema(self, extrema, extrema_type="extrema"):
@@ -1767,19 +1804,8 @@ class eccDefinition:
         # Compute mean anomaly at tref_out
         self.mean_anomaly = self.compute_mean_anomaly(self.tref_out)
 
-        # check if eccentricity is nonmonotonic and try to fix.
-        # If eccentricity is nonmonotonic and `omega_gw_extrema_interpolation_method`
-        # is `rational_fit`, sometimes increasing the degree might help.
-        # Note that increasing the degree may also break the monotonicity of the
-        # omega_gw extrema interpolants (high degree my lead to divergences)
-        # which will automatically decrease the degree.
-        # Therefore, we check the degree before and after trying with increased degree.
-        # If the degree is the same as before, it implies that increasing degree did not
-        # help and we stop attempting to increase the degree any further.
-        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
-            self.check_egw_and_try_to_fix_if_nonmonotonic()
-        else:
-            self.check_monotonicity_and_convexity()
+        # check if eccentricity is nonmonotonic
+        self.check_monotonicity_and_convexity()
         
         # check if eccentricity is positive
         if any(self.eccentricity < 0):
@@ -1795,54 +1821,14 @@ class eccDefinition:
         # frequency where these are measured.
         return self.make_return_dict_for_eccentricity_and_mean_anomaly()
     
-    def check_egw_and_try_to_fix_if_nonmonotonic(self):
-        while self.check_monotonicity_and_convexity()["monotonic"] == False:
-            # store old degrees to compare later
-            num_degree_old = np.copy(self.rational_fit_kwargs["num_degree"])
-            denom_degree_old = np.copy(self.rational_fit_kwargs["denom_degree"])
-            # Increase degree by one
-            debug_message("Attempting to resolve nonmonotic egw evolution "
-                          f"(current degree={num_degree_old}) by increasing rational fit "
-                        "degree by 1.", self.debug_level, important=True)
-            self.rational_fit_kwargs["num_degree"] += 1
-            self.rational_fit_kwargs["denom_degree"] += 1
-            # check if this degree is already tried and corresponding monotonicity
-            # If it was already tried and resulted in nonmonotonic fits, then we abandon
-            # this attempt and set the rational fit degrees to their previous values.
-            if not self.check_whether_to_try_new_degree(self.rational_fit_kwargs["num_degree"]):
-                # reset the correct value
-                self.rational_fit_kwargs["num_degree"] = int(num_degree_old)
-                self.rational_fit_kwargs["denom_degree"] = int(denom_degree_old)
-                debug_message("Final rational fits were built with "
-                              f"`num_degree`={self.rational_fit_kwargs['num_degree']} and "
-                              f"`denom_degree`={self.rational_fit_kwargs['denom_degree']}.",
-                              debug_level=self.debug_level, important=True)
-                break
-            # build interpolants with updated degree
-            self.build_omega_gw_extrema_interpolants()
-            # compute eccentricity using updated interpolants
-            self.eccentricity = self.compute_eccentricity(self.tref_out)
-            # update ecc for checks
-            self.ecc_for_checks = self.compute_eccentricity(self.t_for_checks)
-
-    def check_whether_to_try_new_degree(self, new_degree):
-        if f"{new_degree}" in self.rational_fit_nonmonotonicity_history:
-            if self.rational_fit_nonmonotonicity_history[f"{new_degree}"]:
-                debug_message(f"Rational fit was already built with degree={new_degree} and "
-                              f"was found to be nonmonotonic. Abandoning attempt with degree: {new_degree}",
-                              debug_level=self.debug_level, important=True)
-            return not self.rational_fit_nonmonotonicity_history[f"{new_degree}"]
-        else:
-            return True
-    
     def build_omega_gw_extrema_interpolants(self):
         # Build the interpolants of omega_gw at the extrema
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
-            self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
             self.omega_gw_apocenters_interp = self.interp_extrema("apocenters")
+            self.omega_gw_pericenters_interp = self.interp_extrema("pericenters")
         elif self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "rational_fit":
-            self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
             self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
+            self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
         else:
             raise Exception("Unknown method for `omega_gw_extrema_interpolation_method`. "
                             "Must be one of `spline` or `rational_fit`.")
@@ -1855,8 +1841,10 @@ class eccDefinition:
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
         # Check if the first derivative of omega_gw at pericenters or apocenters is non-monotonic
             has_non_monotonicity = (
-                self.check_domega_dt(self.t_for_checks, self.omega_gw_pericenters_interp(self.t_for_checks)) or
-                self.check_domega_dt(self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))
+                self.check_if_domega_dt_is_nonmonotonic(
+                    self.t_for_checks, self.omega_gw_pericenters_interp(self.t_for_checks)) or
+                self.check_if_domega_dt_is_nonmonotonic(
+                    self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))
                 )      
     
             if has_non_monotonicity:
