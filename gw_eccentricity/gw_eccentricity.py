@@ -442,25 +442,7 @@ def measure_eccentricity(tref_in=None,
             - Can suppress pathologies in the waveform that might be visible with 
                 `spline`.
 
-            ### Fallback Behavior:
-            
-            With `omega_gw_extrema_interpolation_method` set to `spline`, if 
-            `use_rational_fit_as_fallback` is set to `True`, the method will 
-            initially use `spline`. If the first derivative of the spline interpolant 
-            exhibits non-monotonicity, the code will automatically fall back to the 
-            `rational_fit` method. This ensures a more reliable fit when the spline 
-            method shows undesirable behavior.
-
             Default value: `"spline"`.
-                
-        use_rational_fit_as_fallback : bool, default=True
-            Use rational fit for interpolant of omega at extrema when the
-            interpolant built using spline shows nonmonotonicity in its
-            first derivative.
-
-            This is used only when `omega_gw_extrema_interpolation_method` is `spline`.
-            If `omega_gw_extrema_interpolation_method` is `rational_fit` then it has
-            no use.
 
     Returns
     -------

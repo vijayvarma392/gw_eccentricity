@@ -305,25 +305,7 @@ class eccDefinition:
                 - Can suppress pathologies in the waveform that might be visible with 
                     `spline`.
 
-                ### Fallback Behavior:
-                
-                With `omega_gw_extrema_interpolation_method` set to `spline`, if 
-                `use_rational_fit_as_fallback` is set to `True`, the method will 
-                initially use `spline`. If the first derivative of the spline interpolant 
-                exhibits non-monotonicity, the code will automatically fall back to the 
-                `rational_fit` method. This ensures a more reliable fit when the spline 
-                method shows undesirable behavior.
-
                 Default value: `"spline"`.
-                    
-            use_rational_fit_as_fallback : bool, default=True
-                Use rational fit for interpolant of omega at extrema when the
-                interpolant built using spline shows nonmonotonicity in its
-                first derivative.
-
-                This is used only when `omega_gw_extrema_interpolation_method` is `spline`.
-                If `omega_gw_extrema_interpolation_method` is `rational_fit` then it has
-                no use.
         """
         self.precessing = precessing
         # Get data necessary for eccentricity measurement
@@ -377,7 +359,6 @@ class eccDefinition:
         self.rational_fit_degrees = {"pericenters": None, "apocenters": None}
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
-        self.use_rational_fit_as_fallback = self.extra_kwargs["use_rational_fit_as_fallback"]
         # check if there are unrecognized keys in the dataDict
         self.recognized_dataDict_keys = self.get_recognized_dataDict_keys()
         for kw in dataDict.keys():
@@ -906,7 +887,6 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
-            "use_rational_fit_as_fallback": True,
             "omega_gw_extrema_interpolation_method": "spline"
         }
         return default_extra_kwargs
@@ -1833,38 +1813,18 @@ class eccDefinition:
             raise Exception("Unknown method for `omega_gw_extrema_interpolation_method`. "
                             "Must be one of `spline` or `rational_fit`.")
 
-        # Verify the monotonicity of the first derivative of the omega_gw interpolant.
-        # If a spline is used for interpolation (as specified by 'omega_gw_extrema_interpolation_method'), 
-        # non-monotonicity may occur in the first derivative. 
-        # If 'use_rational_fit_as_fallback' is set to True, the spline interpolant 
-        # will be replaced with a rational fit to ensure monotonic behavior.
+        # Verify the monotonicity of the first derivative of the omega_gw interpolant with spline.
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
         # Check if the first derivative of omega_gw at pericenters or apocenters is non-monotonic
-            has_non_monotonicity = (
-                self.check_if_domega_dt_is_nonmonotonic(
+            if (self.check_if_domega_dt_is_nonmonotonic(
                     self.t_for_checks, self.omega_gw_pericenters_interp(self.t_for_checks)) or
                 self.check_if_domega_dt_is_nonmonotonic(
-                    self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))
-                )      
-    
-            if has_non_monotonicity:
-                if self.use_rational_fit_as_fallback:
-                    debug_message(
-                        "Non-monotonic time derivative detected in the spline interpolant through extrema. "
-                        "Switching to rational fit.",
-                        debug_level=self.debug_level, important=True
-                        )
-                    # Use rational fit for both pericenters and apocenters
-                    self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
-                    self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
-                else:
-                    debug_message(
-                        "Non-monotonic time derivative detected in the spline interpolant through extrema. "
-                        "Consider the following options to avoid this: \n"
-                        " - Set 'use_rational_fit_as_fallback' to True in 'extra_kwargs' to switch to rational fit.\n"
-                        " - Use rational fit directly by setting 'omega_gw_extrema_interpolation_method' to 'rational_fit'.",
-                        debug_level=self.debug_level, important=True
-                        )
+                self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))):
+                debug_message(
+                    "Nonmonotonic time derivative detected in the spline interpolant through extrema. "
+                    "Using rational fit by setting 'omega_gw_extrema_interpolation_method' to 'rational_fit' "
+                    "may provide better result.",
+                    debug_level=self.debug_level, important=True)
 
     def set_eccentricity_and_mean_anomaly_to_zero(self):
         """Set eccentricity and mean_anomaly to zero."""
