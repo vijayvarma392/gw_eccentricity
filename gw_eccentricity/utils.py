@@ -344,9 +344,14 @@ def get_rational_fit(x, y, rational_fit_kwargs=None, check_kwargs=True):
             "rational_fit_kwargs",
             "utils.get_default_rational_fit_kwargs"
         )
+    # We use a rational approximation based on Stabilized Sanathanan-Koerner Iteration
+    # described in arXiv:2009.10803 and implemented in `polyrat.StabilizedSKRationalApproximation`.
     rat = StabilizedSKRationalApproximation(**rational_fit_kwargs)
+    # The input x-axis data must be 2-dimensional
     rat.fit(x.reshape(-1, 1), y)
-    return lambda x: rat(x.astype('float64').reshape(-1, 1))
+    # Using a lambda function to change the input 1-d data to
+    # float64 and reshape to 2-d as required by the fit.
+    return lambda t: rat(t.astype('float64').reshape(-1, 1))
 
 
 def debug_message(message, debug_level, important=True,

@@ -20,6 +20,7 @@ from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 
+
 class eccDefinition:
     """Base class to define eccentricity for given waveform data dictionary."""
 
