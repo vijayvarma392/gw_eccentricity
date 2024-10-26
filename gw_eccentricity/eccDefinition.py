@@ -2145,9 +2145,6 @@ class eccDefinition:
             self.decc_dt_for_checks = self.derivative_of_eccentricity(
                 self.t_for_checks, n=1)
 
-        # Create an empty dictionary to store the check results
-        check_dict = {}
-
         # Is ecc(t) a monotonically decreasing function?
         if any(self.decc_dt_for_checks > 0):
             idx = np.where(self.decc_dt_for_checks > 0)[0]
@@ -2156,9 +2153,6 @@ class eccDefinition:
                        f"{'at' if len(idx) == 1 else 'in the range'} {range}")
             debug_message(message, self.debug_level,
                           point_to_verbose_output=True)
-            check_dict.update({"monotonic": False})
-        else:
-            check_dict.update({"monotonic": True})
 
         # Is ecc(t) a convex function? That is, is the second
         # derivative always negative?
@@ -2174,10 +2168,6 @@ class eccDefinition:
                 debug_message(f"{message} expected to be always negative",
                               self.debug_level,
                               point_to_verbose_output=True)
-                check_dict.update({"convex": False})
-            else:
-                check_dict.update({"convex": True})
-        return check_dict
 
     def get_range_from_indices(self, indices, times):
         """Get the range of time from indices for gives times array."""
