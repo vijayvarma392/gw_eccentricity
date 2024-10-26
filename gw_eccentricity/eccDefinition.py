@@ -292,8 +292,8 @@ class eccDefinition:
                         behavior, particularly near the merger.
         
                 - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
-                    - Can handle both noisy data, e.g., waveform modes from numerical 
-                        simulations.
+                    - Can handle both clean and noisy data, e.g., waveform
+                        modes from numerical simulations.
                     - Better monotonic behaviour, particularly near the merger.
                     - Significantly slower compared to the `spline` method. This is because
                         finding optimal numerator and denominator degree needs several iterations

@@ -38,6 +38,10 @@ def test_mks_vs_dimless_units():
                        "D": 1})
     dataDictMKS = load_data.load_waveform(**lal_kwargs)
 
+    # set omega_gw_extrema_interpolation method
+    # TODO: Need to do the same for `rational_fit`
+    extra_kwargs = {"omega_gw_extrema_interpolation_method": "spline"}
+
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
     for method in available_methods:
@@ -46,7 +50,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict = measure_eccentricity(
             tref_in=dataDict["t"][idx],
             method=method,
-            dataDict=dataDict)
+            dataDict=dataDict,
+            extra_kwargs=extra_kwargs)
         tref_out = gwecc_dict["tref_out"]
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
@@ -55,7 +60,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict_MKS = measure_eccentricity(
             tref_in=dataDictMKS["t"][idx],
             method=method,
-            dataDict=dataDictMKS)
+            dataDict=dataDictMKS,
+            extra_kwargs=extra_kwargs)
         tref_out_MKS = gwecc_dict_MKS["tref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
@@ -88,7 +94,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict = measure_eccentricity(
             tref_in=dataDict["t"][idx_start: idx_end],
             method=method,
-            dataDict=dataDict)
+            dataDict=dataDict,
+            extra_kwargs=extra_kwargs)
         tref_out = gwecc_dict["tref_out"]
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
@@ -96,7 +103,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict_MKS = measure_eccentricity(
             tref_in=dataDictMKS["t"][idx_start: idx_end],
             method=method,
-            dataDict=dataDictMKS)
+            dataDict=dataDictMKS,
+            extra_kwargs=extra_kwargs)
         tref_out_MKS = gwecc_dict_MKS["tref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
@@ -129,7 +137,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict = measure_eccentricity(
             fref_in=fref_in,
             method=method,
-            dataDict=dataDict)
+            dataDict=dataDict,
+            extra_kwargs=extra_kwargs)
         fref_out = gwecc_dict["fref_out"]
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
@@ -139,7 +148,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict_MKS = measure_eccentricity(
             fref_in=fref_in,
             method=method,
-            dataDict=dataDictMKS)
+            dataDict=dataDictMKS,
+            extra_kwargs=extra_kwargs)
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
@@ -170,7 +180,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict = measure_eccentricity(
             fref_in=fref_in,
             method=method,
-            dataDict=dataDict)
+            dataDict=dataDict,
+            extra_kwargs=extra_kwargs)
         fref_out = gwecc_dict["fref_out"]
         ecc_ref = gwecc_dict["eccentricity"]
         meanano_ref = gwecc_dict["mean_anomaly"]
@@ -180,7 +191,8 @@ def test_mks_vs_dimless_units():
         gwecc_dict_MKS = measure_eccentricity(
             fref_in=fref_in,
             method=method,
-            dataDict=dataDictMKS)
+            dataDict=dataDictMKS,
+            extra_kwargs=extra_kwargs)
         fref_out_MKS = gwecc_dict_MKS["fref_out"]
         ecc_ref_MKS = gwecc_dict_MKS["eccentricity"]
         meanano_ref_MKS = gwecc_dict_MKS["mean_anomaly"]
