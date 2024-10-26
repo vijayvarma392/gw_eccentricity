@@ -279,33 +279,28 @@ class eccDefinition:
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
 
-            omega_gw_extrema_interpolation_method : str, default="spline"
+            omega_gw_extrema_interpolation_method : str, default="rational_fit"
                 Specifies the method used to build the interpolations for 
                 `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
                 The available options are:
 
                 - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+                    - Best suited for cleaner data, such as when waveform modes are generated
+                        using models like SEOB or TEOB.
+                    - Faster to construct and evaluate.
+                    - Since it fits through every data point, it may exhibit oscillatory 
+                        behavior, particularly near the merger.
+        
                 - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+                    - Can handle both noisy data, e.g., waveform modes from numerical 
+                        simulations.
+                    - Better monotonic behaviour, particularly near the merger.
+                    - Significantly slower compared to the `spline` method. This is because
+                        finding optimal numerator and denominator degree needs several iterations
+                    - Can suppress pathologies in the waveform that might be visible with 
+                        `spline`.
 
-                ### When to Use:
-                
-                - **`spline`** (default):
-                - Best suited for cleaner data, such as when waveform modes are generated 
-                    using models like SEOB or TEOB.
-                - Faster to construct and evaluate.
-                - Since it fits through every data point, it may exhibit oscillatory 
-                    behavior, particularly near the merger.
-                
-                - **`rational_fit`**:
-                - More appropriate for noisy data, e.g., waveform modes from numerical 
-                    simulations.
-                - Minimizes least squares error, resulting in a smoother overall trend 
-                    with less oscillation.
-                - Significantly slower compared to the `spline` method.
-                - Can suppress pathologies in the waveform that might be visible with 
-                    `spline`.
-
-                Default value: `"spline"`.
+                Default value: `"rational_fit"`.
         """
         self.precessing = precessing
         # Get data necessary for eccentricity measurement
@@ -352,7 +347,9 @@ class eccDefinition:
         self.available_averaging_methods \
             = self.get_available_omega_gw_averaging_methods()
         self.debug_level = self.extra_kwargs["debug_level"]
-        self.rational_fit_kwargs["verbose"] = True if self.debug_level >= 1 else False
+        # set verbose to debug_level. If verbose is True, then it prints information
+        # of each iteration for rational fits for a given degree.
+        self.rational_fit_kwargs["verbose"] = self.debug_level
         # keep history of rational fit degree and nonmonotonicity of the corresponding fits
         self.rational_fit_nonmonotonicity_history = {"pericenters": {}, "apocenters": {}}
         # Update the degrees used to construct the final fits
@@ -887,7 +884,7 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
-            "omega_gw_extrema_interpolation_method": "spline"
+            "omega_gw_extrema_interpolation_method": "rational_fit"
         }
         return default_extra_kwargs
 
@@ -1254,19 +1251,33 @@ class eccDefinition:
         degrees to find a higher-degree fit. If increasing the degrees causes
         nonmonotonicity, it reverts to the previous valid monotonic fit.
         """
-        # make sure that description is not None
+        # make sure that description is not None. A description is needed to
+        # update the optimal values of the numerator and denominator degrees
+        # used to build the final rational fit
         if description is None:
-            raise Exception("Please provide a description. `description` can not be None.")
-        # Set initial degrees if not already specified
+            raise Exception("Please provide a description for which to build a "
+                            "rational fit. `description` can not be None. For example, "
+                            "it can be 'apocenters', 'pericenters' or 'omega_gw_average'.")
+        # Set initial degrees if not already specified.
+        # The optimal degrees for the numerator and denominator changes depending on the
+        # eccentricity and duration of the waveform. We set these values by counting the
+        # number of approximate orbits and using some prior mapping between number of orbits
+        # and the optimal degrees. The mapping is done via `get_approximate_degree_for_rational_fit`.
+        # Usually this is a good starting point but not the optimal one
+        # as it varies as a function of eccentricity which we do not know apriori. The optimal
+        # value is found by doing some iterations.
         if not (self.rational_fit_kwargs["num_degree"] and self.rational_fit_kwargs["denom_degree"]):
             self.rational_fit_kwargs["num_degree"], self.rational_fit_kwargs["denom_degree"] \
                 = self.get_approximate_degree_for_rational_fit()
 
         rat_fit = self.get_rat_fit(x, y)
         t = np.arange(x[0], x[-1], self.t[1] - self.t[0])
+        # save the degrees for checks at each step of iterations for finding the optimal degrees
         old_num_degree = self.rational_fit_kwargs["num_degree"]
         old_denom_degree = self.rational_fit_kwargs["denom_degree"]
 
+        # use a flag to know whether the initial degrees produced monotonic
+        # time derivative of the fits or it was required to be reduced.
         degrees_were_reduced = False
 
         # Check for nonmonotonicity and lower degrees if needed
@@ -1277,17 +1288,19 @@ class eccDefinition:
             if self.rational_fit_kwargs["denom_degree"] > 1:
                 self.rational_fit_kwargs["denom_degree"] -= 1
             if self.rational_fit_kwargs["num_degree"] == 1 and self.rational_fit_kwargs["denom_degree"] == 1:
-                raise Exception("Both numerator and denominator degrees cannot be lowered further.")
+                debug_message("Both numerator and denominator degrees are equal to 1 "
+                              "and cannot be lowered further.",
+                              debug_level=self.debug_level, important=False)
+                break
 
             debug_message(f"Lowering degrees to num_degree={self.rational_fit_kwargs['num_degree']}, "
                           f"denom_degree={self.rational_fit_kwargs['denom_degree']} and retrying.",
-                          debug_level=self.debug_level, important=True)
+                          debug_level=self.debug_level, important=False)
 
             rat_fit = self.get_rat_fit(x, y)
         # If no degrees were reduced, try increasing the degree for better fit
         if not degrees_were_reduced:
             last_monotonic_rat_fit = rat_fit  # Track last monotonic fit
-            # last_monotonic_rat_fit_vals = rat_fit(t)
             last_monotonic_num_degree = old_num_degree
             last_monotonic_denom_degree = old_denom_degree
 
@@ -1303,7 +1316,7 @@ class eccDefinition:
                     debug_message(f"Increasing degrees caused nonmonotonicity. Reverting to "
                                   f"last monotonic fit with num_degree={last_monotonic_num_degree} "
                                   f"and denom_degree={last_monotonic_denom_degree}.",
-                                  debug_level=self.debug_level, important=True)
+                                  debug_level=self.debug_level, important=False)
                     self.rational_fit_kwargs["num_degree"] = last_monotonic_num_degree
                     self.rational_fit_kwargs["denom_degree"] = last_monotonic_denom_degree
                     rat_fit = last_monotonic_rat_fit

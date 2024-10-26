@@ -416,33 +416,29 @@ def measure_eccentricity(tref_in=None,
             eccentricity is the cause, and set the returned eccentricity and
             mean anomaly to zero.
             USE THIS WITH CAUTION!
-        omega_gw_extrema_interpolation_method : str, default="spline"
+
+        omega_gw_extrema_interpolation_method : str, default="rational_fit"
             Specifies the method used to build the interpolations for 
             `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
             The available options are:
 
             - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+                - Best suited for cleaner data, such as when waveform modes are generated
+                    using models like SEOB or TEOB.
+                - Faster to construct and evaluate.
+                - Since it fits through every data point, it may exhibit oscillatory 
+                    behavior, particularly near the merger.
+
             - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+                - Can handle both noisy data, e.g., waveform modes from numerical 
+                    simulations.
+                - Better monotonic behaviour, particularly near the merger.
+                - Significantly slower compared to the `spline` method. This is because
+                    finding optimal numerator and denominator degree needs several iterations
+                - Can suppress pathologies in the waveform that might be visible with 
+                    `spline`.
 
-            ### When to Use:
-            
-            - **`spline`** (default):
-            - Best suited for cleaner data, such as when waveform modes are generated 
-                using models like SEOB or TEOB.
-            - Faster to construct and evaluate.
-            - Since it fits through every data point, it may exhibit oscillatory 
-                behavior, particularly near the merger.
-            
-            - **`rational_fit`**:
-            - More appropriate for noisy data, e.g., waveform modes from numerical 
-                simulations.
-            - Minimizes least squares error, resulting in a smoother overall trend 
-                with less oscillation.
-            - Significantly slower compared to the `spline` method.
-            - Can suppress pathologies in the waveform that might be visible with 
-                `spline`.
-
-            Default value: `"spline"`.
+            Default value: `"rational_fit"`.
 
     Returns
     -------
