@@ -1824,8 +1824,10 @@ class eccDefinition:
             self.omega_gw_apocenters_interp = self.rational_fit_extrema("apocenters")
             self.omega_gw_pericenters_interp = self.rational_fit_extrema("pericenters")
         else:
-            raise Exception("Unknown method for `omega_gw_extrema_interpolation_method`. "
-                            "Must be one of `spline` or `rational_fit`.")
+            raise Exception(
+                f"Unknown method {self.extra_kwargs['omega_gw_extrema_interpolation_method']} "
+                "for `omega_gw_extrema_interpolation_method`. "
+                "Must be one of `spline` or `rational_fit`.")
 
         # Verify the monotonicity of the first derivative of the omega_gw interpolant with spline.
         if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
