@@ -17,10 +17,15 @@ parser.add_argument(
     type=str,
     required=True,
     help="EccDefinition method to save the regression data for.")
+parser.add_argument(
+    "--interp_method",
+    type=str,
+    required=True,
+    help="omega_gw_extrema_interpolation_method to save the regression data for.")
 args = parser.parse_args()
 
 
-def generate_regression_data(method):
+def generate_regression_data(method, interp_method):
     """Generate data for regression test using a method."""
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
@@ -42,7 +47,7 @@ def generate_regression_data(method):
         raise Exception(f"method {method} is not available. Must be one of "
                         f"{available_methods}")
 
-    extra_kwargs = {}
+    extra_kwargs = {"omega_gw_extrema_interpolation_method": interp_method}
     user_kwargs = extra_kwargs.copy()
     regression_data.update({"extra_kwargs": extra_kwargs})
     # Try evaluating at an array of times
@@ -79,9 +84,9 @@ def generate_regression_data(method):
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
     # save to a json file
-    fl = open(f"{data_dir}/{method}_regression_data.json", "w")
+    fl = open(f"{data_dir}/{method}_{interp_method}_regression_data.json", "w")
     json.dump(regression_data, fl)
     fl.close()
 
 # generate regression data
-generate_regression_data(args.method)
+generate_regression_data(args.method, args.interp_method)
