@@ -9,7 +9,6 @@ import glob
 # locally it passs without problem but on github action, we need to set this tolerance
 atol = 1e-9
 
-
 def test_regression():
     """Regression test using all methods."""
     # List of all available methods
