@@ -7,6 +7,7 @@ import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
+import json
 from copy import deepcopy
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
@@ -89,7 +90,8 @@ def get_load_waveform_defaults(origin="LAL"):
                        "zero_ecc_approximant",
                        "num_orbits_to_remove_as_junk",
                        "mode_array",
-                       "extrap_order"]
+                       "extrap_order",
+                       "remove_memory"]
         return make_a_sub_dict(get_defaults_for_nr(), kwargs_list)
     # for waveforms in LVCNR format file using recommended function in LALSuite
     elif origin == "LVCNR":
@@ -526,6 +528,13 @@ def get_defaults_for_nr():
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
         NOTE: This is used only for sxs catalog formatted waveforms.
+
+    remove_memory: bool
+        If True, remove memory contribution from the waveform modes.
+        This will require metadata file to find t_relax which is used
+        to start the integration for computing memory contribution.
+        NOTE: This is currently implemented ony for sxs catalog formatted
+        waveforms.
     """
     return {"filepath": None,
             "data_dir": None,
@@ -537,7 +546,8 @@ def get_defaults_for_nr():
             "metadata_path": None,
             "num_orbits_to_remove_as_junk": 2,
             "mode_array": [(2, 2)],
-            "extrap_order": 2}
+            "extrap_order": 2,
+            "remove_memory": False}
 
 
 def load_lvcnr_waveform(**kwargs):
@@ -824,6 +834,11 @@ def load_sxs_catalogformat(**kwargs):
         to locate the strain file. This function will seek a file named
         `Strain_N{extrap_order}.h5` in the `data_dir`.
 
+    remove_memory: bool
+        If True, remove memory contribution from the waveform modes.
+        This will require metadata file to find t_relax which is used
+        to start the integration for computing memory contribution.
+
     Returns
     -------
     Returns a dictionary with the following quantities:
@@ -989,9 +1004,9 @@ def check_sxs_data_dir(origin, **kwargs):
         "If you are using the new format, You should provide the h5 and json "
         f"file named `Strain_N{kwargs['extrap_order']}` since `extrap_order` "
         f"is {kwargs['extrap_order']}."}
-    # metadata.txt is required if include_zero_ecc or include_params_dict is
-    # True
-    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
+    # metadata.txt/metadata.json is required if include_zero_ecc or include_params_dict
+    # or remove_memory is True
+    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"], kwargs["remove_memory"]]):
         for k in required_files_dict:
             required_files_dict.update(
                 {k: np.append(required_files_dict[k], ["metadata.txt"])})
@@ -1000,11 +1015,16 @@ def check_sxs_data_dir(origin, **kwargs):
         if not os.path.exists(
                 os.path.join(kwargs["data_dir"], filename)):
             if filename == "metadata.txt":
-                message = (
-                    " `metadata.txt` file is required when "
-                    "`include_zero_ecc` or `include_params_dict` "
-                    "is set to True to get the binary parameters of "
-                    "the NR simulation.")
+                # check if metadata.json exists
+                if os.path.exists(
+                        os.path.join(kwargs["data_dir"], 'metadata.json')):
+                    continue
+                else:
+                    message = (
+                        " `metadata.txt` or `metadata.json` file is required when "
+                        "`include_zero_ecc` or `include_params_dict` or `remove_memory` "
+                        "is set to True to get the binary parameters of "
+                        "the NR simulation.")
             else:
                 message = message_dict[origin]
             raise FileNotFoundError(
@@ -1053,9 +1073,13 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     # shift time axis by tpeak such that peak occurs at t = 0
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
-    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
-        params_dict = get_params_dict_from_sxs_metadata(
-            os.path.join(kwargs["data_dir"], "metadata.txt"))
+    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"], kwargs["remove_memory"]]):
+        if os.path.exists(os.path.join(kwargs["data_dir"], "metadata.txt")):
+            params_dict = get_params_dict_from_sxs_metadata(
+                os.path.join(kwargs["data_dir"], "metadata.txt"))
+        else:
+            params_dict = get_params_dict_from_sxs_metadata(
+                os.path.join(kwargs["data_dir"], "metadata.json"))
     # if include_zero_ecc is True, load zeroecc dataDict
     if kwargs["include_zero_ecc"]:
         params_dict_zero_ecc = params_dict.copy()
@@ -1093,9 +1117,9 @@ def get_modes_dict_from_sxs_catalog_old_format(**kwargs):
             time = mode_data[:, 0]
             t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
         hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
-        amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        real_interp = interpolate(t, time, np.real(hlm))
+        imag_interp = interpolate(t, time, np.imag(hlm))
+        hlm_interp = real_interp + 1j * imag_interp
         modes_dict.update({(ell, m): hlm_interp})
     return t, modes_dict
 
@@ -1118,9 +1142,9 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     for mode in kwargs["mode_array"]:
         ell, m = mode
         hlm = waveform[:, waveform.index(ell, m)].data
-        amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        real_interp = interpolate(t, time, np.real(hlm))
+        imag_interp = interpolate(t, time, np.imag(hlm))
+        hlm_interp = real_interp + 1j * imag_interp
         modes_dict.update({(ell, m): hlm_interp})
     return t, modes_dict
 
@@ -1128,22 +1152,34 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
 def get_params_dict_from_sxs_metadata(metadata_path):
     """Get binary parameters from sxs metadata file.
 
-    This file is usually located in the same directory as the waveform
-    file and has the name `metadata.txt`. It contains metadata related
-    to the NR simulation performed to obtain the waveform modes.
+    This file is usually located in the same directory as the waveform file and
+    has the name `metadata.txt` or `metadata.json`. It contains metadata
+    related to the NR simulation performed to obtain the waveform modes.
     """
-    fl = open(metadata_path, "r")
-    lines = fl.readlines()
-    fl.close()
-    for line in lines:
-        if "reference-dimensionless-spin1" in line:
-            chi1 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
-        if "reference-dimensionless-spin2" in line:
-            chi2 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
-        if "reference-mass1" in line:
-            m1 = float(line.split("=")[-1].strip())
-        if "reference-mass2" in line:
-            m2 = float(line.split("=")[-1].strip())
+    if "metadata.txt" in metadata_path:
+        fl = open(metadata_path, "r")
+        lines = fl.readlines()
+        fl.close()
+        for line in lines:
+            if "reference-dimensionless-spin1" in line:
+                chi1 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
+            if "reference-dimensionless-spin2" in line:
+                chi2 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
+            if "reference-mass1" in line:
+                m1 = float(line.split("=")[-1].strip())
+            if "reference-mass2" in line:
+                m2 = float(line.split("=")[-1].strip())
+            if "relaxation-time" in line:
+                t_relax = float(line.split("=")[-1].strip())
+    if "metadata.json" in metadata_path:
+        fl = open(metadata_path, "r")
+        data = json.load(fl)
+        fl.close()
+        chi1 = data["reference_dimensionless_spin1"]
+        chi2 = data["reference_dimensionless_spin2"]
+        m1 = data["reference_mass1"]
+        m2 = data["reference_mass2"]
+        t_relax = data["relaxation_time"]
     # numerical noise can make m1 slightly lesser than m2. Catch this whenver
     # it happens. Typically dq = (1 - q) is very small (dq <~ 1e-7) but for few
     # cases it can be dq ~ 1e-4. Therefore, if dq < 5e-4, we treat it as 1,
@@ -1163,7 +1199,8 @@ def get_params_dict_from_sxs_metadata(metadata_path):
                             f"1 - (m1/m2) = {dq} > {dq_tol}.")
     params_dict = {"q": q,
                    "chi1": chi1,
-                   "chi2": chi2}
+                   "chi2": chi2,
+                   "t_relax": t_relax}
     return params_dict
 
 
