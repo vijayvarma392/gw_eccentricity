@@ -509,11 +509,13 @@ def get_defaults_for_nr():
     metadata_path: str
         NOTE: Only for SXS catalog format waveform.
         Path to the sxs metadata file. This file generally can be found in the
-        same directory as the waveform file and has the name `metadata.txt` or
-        `metadata.json`. It contains the metadata including binary parameters
-        along with other information related to the NR simulation performed to
-        obtain the waveform modes.  Required when `include_zero_ecc` is True.
-        If provided, a dictionary containing binary mass ratio and spins is
+        same directory as the waveform file and has the name `metadata.txt`
+        (for SXSCatalog_old) or `metadata.json` (for SXSCatalog). It contains
+        the metadata including binary parameters along with other information
+        related to the NR simulation performed to obtain the waveform modes.
+        Required when `include_zero_ecc` or `include_params_dict` or
+        `remove_memory` (available only for `SXSCatalog`) is True.  If
+        provided, a dictionary containing binary mass ratio and spins is
         returned.
         Default is None.
 
@@ -762,8 +764,8 @@ def load_sxs_catalogformat(**kwargs):
 
         1. The strain file `Strain_N{extrap_order}.h5` (required)
         2. The corresponding json file `Strain_N{extrap_order}.json` (required)
-        3. The metadata file `metadata.txt` or `metadata.json` (required when
-          `include_zero_ecc` or `include_params_dict` or `remove_memory` is True)
+        3. The metadata file `metadata.json` (required when `include_zero_ecc`
+          or `include_params_dict` or `remove_memory` is True)
         4. The horizon file `Horizons.h5` (optional)
 
         `Strain_N{extrap_order}.h5` contains the waveform extrapolated to
@@ -772,9 +774,8 @@ def load_sxs_catalogformat(**kwargs):
         waveform modes.
 
         When `include_zero_ecc` or `include_params_dict` or `remove_memory` is
-        True, `metadata.txt` or `metadata.json` is required to obtain the
-        parameters used in the NR simulation. See more under
-        `get_params_dict_from_sxs_metadata`.
+        True, `metadata.json` is required to obtain the parameters used in the
+        NR simulation. See more under `get_params_dict_from_sxs_metadata`.
 
         If `Horizons.h5` is provided, it is used to get a better estimate of
         the duration of an orbit from phase data to use it for removing junk
@@ -790,11 +791,10 @@ def load_sxs_catalogformat(**kwargs):
         for the same set of parameters except with eccentricity set to
         zero.
 
-        When set to True, the function will search for the `metadata.txt` or
-        `metadata.json` file in the `data_dir` directory. Typically, the
-        `metadata.txt` or `metadata.json` file is located in the same directory
-        as the waveform file within the sxs catalog. The
-        `metadata.txt`/`metadata.json` file is essential for extracting binary
+        When set to True, the function will search for the `metadata.json` file
+        in the `data_dir` directory. Typically, the `metadata.json` file is
+        located in the same directory as the waveform file within the sxs
+        catalog. The `metadata.json` file is essential for extracting binary
         parameters and related metadata, as it typically contains crucial
         information about the binary parameters and the NR simulation used to
         generate the waveform modes.
@@ -918,9 +918,11 @@ def load_sxs_catalogformat_old(**kwargs):
     following files are looked for in the `data_dir` directory:
 
     1. `rhOverM_Asymptotic_GeometricUnits_CoM.h5` (mandatory).
-    2. `metadata.txt` or `metadata.json` (required when `include_zero_ecc` or
-        `include_params_dict` or `remove_memory` is True). For more details,
-        see `data_dir` under `load_sxs_catalogformat`.
+    2. `metadata.txt` (required when `include_zero_ecc` or
+        `include_params_dict` is True). For more details, see `data_dir` under
+        `load_sxs_catalogformat`. `metadata.txt` is required for sxs old
+        catalog format. In newer version it is replaced by `metadata.json`
+        file.
     3. `Horizons.h5` (optional). For more details, see `data_dir`
       under `load_sxs_catalogformat`.
     """
@@ -963,8 +965,11 @@ def check_sxs_data_dir(origin, **kwargs):
 
         These files are required to extract the waveform modes successfully.
     - `metadata.txt` or `metadata.json` file to get the parameters of the NR
-        Simulation.  This file is required when `include_zero_ecc` or
-        `include_params_dict` or `remove_memory` is True.
+        Simulation. `metadata.txt` is required for `SXSCatalog_old`. In
+        `SXSCatalog`, the newer format of sxs catalog, it is replaced by
+        `metadata.json`. This file is required when `include_zero_ecc` or
+        `include_params_dict` or `remove_memory` (available only for
+        `SXSCatalog`) is True.
     - `Horizons.h5` file to estimate the duration of an orbit using the orbital
         phase data. This file is optional. If it is not found, we use the phase
         of the (2, 2) mode to get the duration of an orbit assuming a phase
@@ -1006,29 +1011,23 @@ def check_sxs_data_dir(origin, **kwargs):
         "If you are using the new format, You should provide the h5 and json "
         f"file named `Strain_N{kwargs['extrap_order']}` since `extrap_order` "
         f"is {kwargs['extrap_order']}."}
-    # metadata.txt/metadata.json is required if include_zero_ecc or include_params_dict
-    # or remove_memory is True
     if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"], kwargs["remove_memory"]]):
+        # In newer versions of sxscatalog format, metadata.txt files are
+        # replaced by metadata.json file.
+        required_metadata_file = "metadata.json" if origin == "SXSCatalog" else "metadata.txt"
         for k in required_files_dict:
             required_files_dict.update(
-                {k: np.append(required_files_dict[k], ["metadata.txt"])})
+                {k: np.append(required_files_dict[k], [required_metadata_file])})
     # Check if all the required files exist
     for filename in required_files_dict[origin]:
         if not os.path.exists(
                 os.path.join(kwargs["data_dir"], filename)):
-            if filename == "metadata.txt":
-                # In newer versions of sxs catalog, metadata.txt is replaced by
-                # metadata.json. If metadata.txt is not found, we check if
-                # metadata.json exists
-                if os.path.exists(
-                        os.path.join(kwargs["data_dir"], 'metadata.json')):
-                    continue
-                else:
-                    message = (
-                        " `metadata.txt` or `metadata.json` file is required when "
-                        "`include_zero_ecc` or `include_params_dict` or `remove_memory` "
-                        "is set to True to get the binary parameters of "
-                        "the NR simulation.")
+            if "metadata" in filename:
+                message = (
+                    f" {required_metadata_file} file is required when "
+                    "`include_zero_ecc` or `include_params_dict` or `remove_memory` "
+                    "is set to True to get the binary parameters of "
+                    "the NR simulation.")
             else:
                 message = message_dict[origin]
             raise FileNotFoundError(
