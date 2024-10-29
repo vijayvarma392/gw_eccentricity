@@ -1017,8 +1017,9 @@ def check_sxs_data_dir(origin, **kwargs):
         if not os.path.exists(
                 os.path.join(kwargs["data_dir"], filename)):
             if filename == "metadata.txt":
-                # In newer versions of sxs catalog, metadata.txt is replace by metadata.json.
-                # If metadata.txt is not found, we check if metadata.json exists
+                # In newer versions of sxs catalog, metadata.txt is replaced by
+                # metadata.json. If metadata.txt is not found, we check if
+                # metadata.json exists
                 if os.path.exists(
                         os.path.join(kwargs["data_dir"], 'metadata.json')):
                     continue
@@ -1100,41 +1101,6 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     return dataDict
 
 
-def get_memory_contribution_from_sxs_catalog_format(sxs_waveform_object, t_relax):
-    """Get memory contribution in sxs waveform.
-
-    The current sxs catalog format waveforms comes with memory correction.
-    This function estimates the memory contribution to the waveforms. It can be
-    used to get waveforms without the memory contribution.
-
-    Parameters
-    ----------
-    sxs_waveform_object:
-        Instance of `sxs.rpdmb.load`.
-    t_relax:
-        Relaxation time from the `metadata.json` file.  This is used as the
-        starting time for the integration to get memory contribution from the
-        sxs waveforms.
-
-    Returns
-    -------
-    Memory contribution.
-    """
-    # Get the memory contribution
-    h_sxs_mem_only = sxs.waveforms.memory.J_E(
-        sxs_waveform_object,
-        integration_start_time=t_relax)
-    
-    # NOTE: This is currently required becase the ell=0,1 modes
-    # get included by silly sxs when removing memory.
-    # So, we drop all modes before the first nonzero mode (2,-2).
-    # This should eventually not be required if fixed in sxs, but
-    # that should not break this code anyway.
-    h_sxs_mem_only_data = h_sxs_mem_only.data[
-        :, sf.LM_index(2,-2, h_sxs_mem_only.ell_min):]
-    return h_sxs_mem_only_data
-
-
 def get_modes_dict_from_sxs_catalog_old_format(**kwargs):
     """Get modes from sxs catalog old format files.
 
@@ -1175,9 +1141,18 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     if kwargs["remove_memory"]:
         params_dict = get_params_dict_from_sxs_metadata(
             os.path.join(kwargs["data_dir"], "metadata.json"))
-        waveform_modes = (
-            waveform.data
-            - get_memory_contribution_from_sxs_catalog_format(waveform, params_dict["t_relax"]))
+
+        # Get the memory contribution
+        waveform_mem_only = sxs.waveforms.memory.J_E(
+            waveform, integration_start_time=params_dict["t_relax"])
+    
+        # NOTE: This is currently required because the ell = 0, 1 modes get
+        # included by silly sxs when removing memory.  So, we drop all modes
+        # before the first nonzero mode (2, -2).  This should eventually not be
+        # required if fixed in sxs, but that should not break this code anyway.
+        waveform_mem_only_data = waveform_mem_only.data[
+            :, sf.LM_index(2, -2, waveform_mem_only.ell_min):]
+        waveform_modes = waveform.data - waveform_mem_only_data
     else:
         waveform_modes = waveform.data
     # get the time
