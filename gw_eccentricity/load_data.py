@@ -8,6 +8,7 @@ import lal
 import lalsimulation as lalsim
 import warnings
 import json
+import spherical_functions as sf
 from copy import deepcopy
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
@@ -90,8 +91,9 @@ def get_load_waveform_defaults(origin="LAL"):
                        "zero_ecc_approximant",
                        "num_orbits_to_remove_as_junk",
                        "mode_array",
-                       "extrap_order",
-                       "remove_memory"]
+                       "extrap_order"]
+        if origin == "SXSCatalog":
+            kwargs_list.append("remove_memory")
         return make_a_sub_dict(get_defaults_for_nr(), kwargs_list)
     # for waveforms in LVCNR format file using recommended function in LALSuite
     elif origin == "LVCNR":
@@ -532,8 +534,7 @@ def get_defaults_for_nr():
         If True, remove memory contribution from the waveform modes.
         This will require metadata file to find t_relax which is used
         to start the integration for computing memory contribution.
-        NOTE: This is currently implemented ony for sxs catalog formatted
-        waveforms.
+        NOTE: This is used only in the newer sxs catalog formatted waveforms
     """
     return {"filepath": None,
             "data_dir": None,
@@ -1099,6 +1100,41 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     return dataDict
 
 
+def get_memory_contribution_from_sxs_catalog_format(sxs_waveform_object, t_relax):
+    """Get memory contribution in sxs waveform.
+
+    The current sxs catalog format waveforms comes with memory correction.
+    This function estimates the memory contribution to the waveforms. It can be
+    used to get waveforms without the memory contribution.
+
+    Parameters
+    ----------
+    sxs_waveform_object:
+        Instance of `sxs.rpdmb.load`.
+    t_relax:
+        Relaxation time from the `metadata.json` file.  This is used as the
+        starting time for the integration to get memory contribution from the
+        sxs waveforms.
+
+    Returns
+    -------
+    Memory contribution.
+    """
+    # Get the memory contribution
+    h_sxs_mem_only = sxs.waveforms.memory.J_E(
+        sxs_waveform_object,
+        integration_start_time=t_relax)
+    
+    # NOTE: This is currently required becase the ell=0,1 modes
+    # get included by silly sxs when removing memory.
+    # So, we drop all modes before the first nonzero mode (2,-2).
+    # This should eventually not be required if fixed in sxs, but
+    # that should not break this code anyway.
+    h_sxs_mem_only_data = h_sxs_mem_only.data[
+        :, sf.LM_index(2,-2, h_sxs_mem_only.ell_min):]
+    return h_sxs_mem_only_data
+
+
 def get_modes_dict_from_sxs_catalog_old_format(**kwargs):
     """Get modes from sxs catalog old format files.
 
@@ -1135,6 +1171,15 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     # get the waveform object
     waveform = sxs.rpdmb.load(
         os.path.join(kwargs["data_dir"], f"Strain_N{kwargs['extrap_order']}"))
+    # remove memory if required
+    if kwargs["remove_memory"]:
+        params_dict = get_params_dict_from_sxs_metadata(
+            os.path.join(kwargs["data_dir"], "metadata.json"))
+        waveform_modes = (
+            waveform.data
+            - get_memory_contribution_from_sxs_catalog_format(waveform, params_dict["t_relax"]))
+    else:
+        waveform_modes = waveform.data
     # get the time
     time = waveform.t
     # Create a time array with step = dt, to interpolate the waveform
@@ -1143,7 +1188,7 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     modes_dict = {}
     for mode in kwargs["mode_array"]:
         ell, m = mode
-        hlm = waveform[:, waveform.index(ell, m)].data
+        hlm = waveform_modes[:, waveform.index(ell, m)]
         real_interp = interpolate(t, time, np.real(hlm))
         imag_interp = interpolate(t, time, np.imag(hlm))
         hlm_interp = real_interp + 1j * imag_interp
