@@ -93,6 +93,9 @@ def get_load_waveform_defaults(origin="LAL"):
                        "mode_array",
                        "extrap_order"]
         if origin == "SXSCatalog":
+            # SXS waveforms in the new catalog format comes with memory
+            # correction. We can use the following kwarg to remove memory if
+            # needed
             kwargs_list.append("remove_memory")
         return make_a_sub_dict(get_defaults_for_nr(), kwargs_list)
     # for waveforms in LVCNR format file using recommended function in LALSuite
@@ -515,8 +518,8 @@ def get_defaults_for_nr():
         related to the NR simulation performed to obtain the waveform modes.
         Required when `include_zero_ecc` or `include_params_dict` or
         `remove_memory` (available only for `SXSCatalog`) is True.  If
-        provided, a dictionary containing binary mass ratio and spins is
-        returned.
+        provided, a dictionary containing binary mass ratio, spins and the
+        relaxation time is returned.
         Default is None.
 
     num_orbits_to_remove_as_junk: float
@@ -533,10 +536,12 @@ def get_defaults_for_nr():
         NOTE: This is used only for sxs catalog formatted waveforms.
 
     remove_memory: bool
-        If True, remove memory contribution from the waveform modes.
-        This will require metadata file to find t_relax which is used
-        to start the integration for computing memory contribution.
-        NOTE: This is used only in the newer sxs catalog formatted waveforms
+        If True, remove memory contribution from the waveform modes.  This will
+        require metadata file to find t_relax which is used to start the
+        integration for computing memory contribution.  NOTE: This can be used
+        only in the newer sxs catalog formatted waveforms with
+        origin=`SXSCatalog`
+        Default is False.
     """
     return {"filepath": None,
             "data_dir": None,
@@ -921,8 +926,8 @@ def load_sxs_catalogformat_old(**kwargs):
     2. `metadata.txt` (required when `include_zero_ecc` or
         `include_params_dict` is True). For more details, see `data_dir` under
         `load_sxs_catalogformat`. `metadata.txt` is required for sxs old
-        catalog format. In newer version it is replaced by `metadata.json`
-        file.
+        catalog format. This file contains the same information as found in
+        `metadata.json` in the newer sxs catalog format (origin=`SXSCatalog`).
     3. `Horizons.h5` (optional). For more details, see `data_dir`
       under `load_sxs_catalogformat`.
     """
@@ -1138,6 +1143,9 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
         os.path.join(kwargs["data_dir"], f"Strain_N{kwargs['extrap_order']}"))
     # remove memory if required
     if kwargs["remove_memory"]:
+        # Get parameters from the metadata file. We need the relaxation time
+        # `t_relax` to use as the starting time for the integration to compute
+        # the memory contribution
         params_dict = get_params_dict_from_sxs_metadata(
             os.path.join(kwargs["data_dir"], "metadata.json"))
 
@@ -1151,6 +1159,7 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
         # required if fixed in sxs, but that should not break this code anyway.
         waveform_mem_only_data = waveform_mem_only.data[
             :, sf.LM_index(2, -2, waveform_mem_only.ell_min):]
+        # Get waveform modes without the memory
         waveform_modes = waveform.data - waveform_mem_only_data
     else:
         waveform_modes = waveform.data
