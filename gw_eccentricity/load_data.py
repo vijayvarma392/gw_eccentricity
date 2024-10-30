@@ -1091,6 +1091,8 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     # if include_zero_ecc is True, load zeroecc dataDict
     if kwargs["include_zero_ecc"]:
         params_dict_zero_ecc = params_dict.copy()
+        # remove t_relax from the params dict
+        params_dict_zero_ecc.pop("t_relax", None)
         # provide the approximant to be used for zero eccentricity waveform
         params_dict_zero_ecc.update(
             {"approximant": kwargs["zero_ecc_approximant"],
