@@ -94,9 +94,10 @@ def get_load_waveform_defaults(origin="LAL"):
                        "extrap_order"]
         if origin == "SXSCatalog":
             # SXS waveforms in the new catalog format comes with memory
-            # correction. We can use the following kwarg to remove memory if
-            # needed
-            kwargs_list.append("remove_memory")
+            # correction. By default we remove this memory correction from the
+            # waveform modes for measuring eccentricity. One can opt to keep
+            # memory using the following kwarg.
+            kwargs_list.append("keep_memory")
         return make_a_sub_dict(get_defaults_for_nr(), kwargs_list)
     # for waveforms in LVCNR format file using recommended function in LALSuite
     elif origin == "LVCNR":
@@ -517,7 +518,7 @@ def get_defaults_for_nr():
         the metadata including binary parameters along with other information
         related to the NR simulation performed to obtain the waveform modes.
         Required when `include_zero_ecc` or `include_params_dict` or
-        `remove_memory` (available only for `SXSCatalog`) is True.  If
+        `keep_memory` (available only for `SXSCatalog`) is False.  If
         provided, a dictionary containing binary mass ratio, spins and the
         relaxation time is returned.
         Default is None.
@@ -535,8 +536,8 @@ def get_defaults_for_nr():
         Extrapolation order to use for loading the waveform data.
         NOTE: This is used only for sxs catalog formatted waveforms.
 
-    remove_memory: bool
-        If True, remove memory contribution from the waveform modes.  This will
+    keep_memory: bool
+        If False, remove memory contribution from the waveform modes.  This will
         require metadata file to find t_relax which is used to start the
         integration for computing memory contribution.  NOTE: This can be used
         only in the newer sxs catalog formatted waveforms with
@@ -554,7 +555,7 @@ def get_defaults_for_nr():
             "num_orbits_to_remove_as_junk": 2,
             "mode_array": [(2, 2)],
             "extrap_order": 2,
-            "remove_memory": False}
+            "keep_memory": False}
 
 
 def load_lvcnr_waveform(**kwargs):
@@ -770,7 +771,7 @@ def load_sxs_catalogformat(**kwargs):
         1. The strain file `Strain_N{extrap_order}.h5` (required)
         2. The corresponding json file `Strain_N{extrap_order}.json` (required)
         3. The metadata file `metadata.json` (required when `include_zero_ecc`
-          or `include_params_dict` or `remove_memory` is True)
+          or `include_params_dict` is True or `keep_memory` is False)
         4. The horizon file `Horizons.h5` (optional)
 
         `Strain_N{extrap_order}.h5` contains the waveform extrapolated to
@@ -778,9 +779,10 @@ def load_sxs_catalogformat(**kwargs):
         drift. This and `Strain_N{extrap_order}.json` must be provided to load
         waveform modes.
 
-        When `include_zero_ecc` or `include_params_dict` or `remove_memory` is
-        True, `metadata.json` is required to obtain the parameters used in the
-        NR simulation. See more under `get_params_dict_from_sxs_metadata`.
+        When `include_zero_ecc` or `include_params_dict` is True or
+        `keep_memory` is False, `metadata.json` is required to obtain the
+        parameters used in the NR simulation. See more under
+        `get_params_dict_from_sxs_metadata`.
 
         If `Horizons.h5` is provided, it is used to get a better estimate of
         the duration of an orbit from phase data to use it for removing junk
@@ -841,8 +843,8 @@ def load_sxs_catalogformat(**kwargs):
         to locate the strain file. This function will seek a file named
         `Strain_N{extrap_order}.h5` in the `data_dir`.
 
-    remove_memory: bool
-        If True, remove memory contribution from the waveform modes.
+    keep_memory: bool
+        If False, remove memory contribution from the waveform modes.
         This will require metadata file to find t_relax which is used
         to start the integration for computing memory contribution.
 
@@ -973,8 +975,8 @@ def check_sxs_data_dir(origin, **kwargs):
         Simulation. `metadata.txt` is required for `SXSCatalog_old`. In
         `SXSCatalog`, the newer format of sxs catalog, it is replaced by
         `metadata.json`. This file is required when `include_zero_ecc` or
-        `include_params_dict` or `remove_memory` (available only for
-        `SXSCatalog`) is True.
+        `include_params_dict` is True or `keep_memory` (available only
+        for `SXSCatalog`) is False.
     - `Horizons.h5` file to estimate the duration of an orbit using the orbital
         phase data. This file is optional. If it is not found, we use the phase
         of the (2, 2) mode to get the duration of an orbit assuming a phase
@@ -1016,7 +1018,8 @@ def check_sxs_data_dir(origin, **kwargs):
         "If you are using the new format, You should provide the h5 and json "
         f"file named `Strain_N{kwargs['extrap_order']}` since `extrap_order` "
         f"is {kwargs['extrap_order']}."}
-    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"], kwargs["remove_memory"]]):
+    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"],
+            not kwargs["keep_memory"]]):
         # In newer versions of sxscatalog format, metadata.txt files are
         # replaced by metadata.json file.
         required_metadata_file = "metadata.json" if origin == "SXSCatalog" else "metadata.txt"
@@ -1030,9 +1033,9 @@ def check_sxs_data_dir(origin, **kwargs):
             if "metadata" in filename:
                 message = (
                     f" {required_metadata_file} file is required when "
-                    "`include_zero_ecc` or `include_params_dict` or `remove_memory` "
-                    "is set to True to get the binary parameters of "
-                    "the NR simulation.")
+                    "`include_zero_ecc` or `include_params_dict` is True or "
+                    "`keep_memory` is set to False to get the binary "
+                    "parameters of the NR simulation.")
             else:
                 message = message_dict[origin]
             raise FileNotFoundError(
@@ -1081,7 +1084,8 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     # shift time axis by tpeak such that peak occurs at t = 0
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
-    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"], kwargs["remove_memory"]]):
+    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"],
+            not kwargs["keep_memory"]]):
         if os.path.exists(os.path.join(kwargs["data_dir"], "metadata.txt")):
             params_dict = get_params_dict_from_sxs_metadata(
                 os.path.join(kwargs["data_dir"], "metadata.txt"))
@@ -1141,10 +1145,13 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     default values.
     """
     # get the waveform object
-    waveform = sxs.rpdmb.load(
+    waveform = sxs.load(
         os.path.join(kwargs["data_dir"], f"Strain_N{kwargs['extrap_order']}"))
-    # remove memory if required
-    if kwargs["remove_memory"]:
+    
+    if kwargs["keep_memory"]:
+        waveform_modes = waveform.data
+    else:
+        # remove memory contribution.
         # Get parameters from the metadata file. We need the relaxation time
         # `t_relax` to use as the starting time for the integration to compute
         # the memory contribution
@@ -1163,8 +1170,6 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
             :, sf.LM_index(2, -2, waveform_mem_only.ell_min):]
         # Get waveform modes without the memory
         waveform_modes = waveform.data - waveform_mem_only_data
-    else:
-        waveform_modes = waveform.data
     # get the time
     time = waveform.t
     # Create a time array with step = dt, to interpolate the waveform
