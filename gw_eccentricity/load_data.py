@@ -1131,6 +1131,9 @@ def get_modes_dict_from_sxs_catalog_old_format(**kwargs):
             time = mode_data[:, 0]
             t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
         hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
+        # See comments under `get_modes_dict_from_sxs_catalog_format` on why we
+        # interpolate real and imaginary parts instead of the amplitude and
+        # phase.
         real_interp = interpolate(t, time, np.real(hlm))
         imag_interp = interpolate(t, time, np.imag(hlm))
         hlm_interp = real_interp + 1j * imag_interp
@@ -1179,6 +1182,14 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     for mode in kwargs["mode_array"]:
         ell, m = mode
         hlm = waveform_modes[:, waveform.index(ell, m)]
+        # NOTE: We interpolate the real and imaginary parts of the modes,
+        # instead of interpolating the amplitude and phase. We noticed that for
+        # systems with high eccentricity and extreme precession, interpolating
+        # amplitude and phase over smaller deltaTOverM values introduces
+        # artificial spikes in the frequency that are absent in the original
+        # data. These spikes become more pronounced as the spline order
+        # increases. In contrast, interpolating the real and imaginary parts
+        # avoids these issues.
         real_interp = interpolate(t, time, np.real(hlm))
         imag_interp = interpolate(t, time, np.imag(hlm))
         hlm_interp = real_interp + 1j * imag_interp
