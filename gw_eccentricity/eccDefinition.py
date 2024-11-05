@@ -353,7 +353,7 @@ class eccDefinition:
         self.rational_fit_kwargs["verbose"] = self.debug_level
         # keep history of rational fit degree and nonmonotonicity of the corresponding fits
         self.rational_fit_nonmonotonicity_history = {"pericenters": {}, "apocenters": {}}
-        # Update the degrees used to construct the final fits
+        # Store degrees used to construct the final fits
         self.rational_fit_degrees = {"pericenters": None, "apocenters": None}
         self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure = self.extra_kwargs["return_zero_if_small_ecc_failure"]
