@@ -190,10 +190,6 @@ class eccDefinition:
             `frame="coprecessing"` with a precessing system, the modes in
             `dataDict` are expected to be already in the coprecessing frame.
 
-            TODO: Should all m modes for l=2 be mandatory for obtaining
-            coprecessing modes? It seems any missing m modes cause
-            oscillations in egw.
-
             Default value is "inertial".
 
         extra_kwargs: dict
@@ -620,7 +616,7 @@ class eccDefinition:
                 "2. 'amplm' and 'phaselm'\n"
                 "But not both 1. and 2. at the same time."))
         # if the system is precessing and the modes are given in the inertial
-        # frame, rotate the modes and the corresponding modes in the
+        # frame, rotate the modes and obtain the corresponding modes in the
         # coprecessing frame
         if self.precessing is True and self.frame == "inertial":
             dataDict = self.rotate_modes(dataDict)
@@ -704,16 +700,43 @@ class eccDefinition:
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
     def rotate_modes(self, data_dict):
-        """"Rotate intertial modes in data_dict to coprecessing frame."""
+        """"Rotate intertial frame modes to obtain coprecessing frame modes.
+        
+        Parameters
+        ----------
+        data_dict: dict
+            Dictionary of modes in the inertial frame. The modes are rotated
+            using `get_coprecessing_data_dict` to obtain the corresponding
+            modes in the coprecessing frame.
+
+            To obtain coprecessing frame modes from an inertial frame dictionary,
+            this dictionary should include all (ell, m) modes for a specified
+            ell value. For instance, the inertial modes dictionary should
+            contain at least all the modes for `ell=2`, i.e., (2, -2), (2, -1),
+            (2, 0), (2, 1), and (2, 2), to achieve accurate coprecessing frame
+            modes.
+
+        Returns
+        -------
+        data_dict with the inertial modes replaced by the corresponding
+        modes in the coprecessing frame.
+        """
         if "hlm" in data_dict:
             data_dict = get_coprecessing_data_dict(data_dict)
         if "hlm_zeroecc" in data_dict:
+            # `get_coprecessing_data_dict` looks for modes using the key "hlm"
+            # and the associated time using "t".
+            # Make a dictionary with a key "hlm" and pass the zeroecc modes 
+            # dict via it. Similary for the times using "t".
             intertial_zeroecc_data_dict = {"t": data_dict["t_zeroecc"],
                                            "hlm": data_dict["hlm_zeroecc"]}
             coprecessing_zeroecc_data_dict = get_coprecessing_data_dict(
                 intertial_zeroecc_data_dict)
+            # update the data_dict by replacing the inertial frame zeroecc
+            # modes with coprecessing frame zeroecc modes.
             data_dict.update(
                 {"hlm_zeroecc": coprecessing_zeroecc_data_dict["hlm"]})
+
         # if hlm is not in data_dict, get it from amplm and phaselm.
         # We need to provide hlm to get the rotated modes.
         if "hlm" not in data_dict:
