@@ -619,7 +619,8 @@ class eccDefinition:
                 "1. 'hlm' OR \n"
                 "2. 'amplm' and 'phaselm'\n"
                 "But not both 1. and 2. at the same time."))
-        # if the system is precessing, rotate the modes in dataDict to
+        # if the system is precessing and the modes are given in the inertial
+        # frame, rotate the modes and the corresponding modes in the
         # coprecessing frame
         if self.precessing is True and self.frame == "inertial":
             dataDict = self.rotate_modes(dataDict)

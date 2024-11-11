@@ -1500,13 +1500,15 @@ def package_modes_for_scri(modes_dict, ell_min, ell_max):
     for ell in range(ell_min, ell_max + 1):
         for m in range(-ell, ell + 1):            
             if (ell, m) in keys:
-                # for each m > 0, the m < 0 counterpart should also exist in the `data_dict`
-                if m > 0:
-                    if (ell, -m) not in keys:
-                        raise Exception("For each m > 0, corresponding m < 0 mode should also exist "
-                                        f"in the input `data_dict`. {(ell, m)} mode exists but "
-                                        f" {(ell, -m)} mode does not exist.")
                 result[:, i] = modes_dict[(ell, m)]
+            else:
+                # for a given ell, all (ell, m) modes should exist in the 
+                # modes_dict
+                raise Exception(
+                    f"{ell, m} mode for ell={ell} does not exist in the "
+                    "modes dict. To get the coprecessing modes accurately, "
+                    "all the `(ell, m)` modes for a given `ell` should exist "
+                    "in the input modes dict.")
             i += 1
     return result
 
