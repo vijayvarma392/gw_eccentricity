@@ -169,7 +169,10 @@ class eccDefinition:
                   directly via `dataDict`.
                 - Set `frame="inertial"` and provide the inertial frame modes
                   via `dataDict`. In this case, the modes in `dataDict` are
-                  rotated internally before further computation.
+                  rotated internally (see `rotate_modes`) before further
+                  computation. To get the coprecessing modes from the inertial
+                  modes accurately, `dataDict` must include all modes for
+                  `ell=2`, i.e., (2, -2), (2, -1), (2, 0), (2, 1) and (2, 2).
 
             For nonprecessing systems, the inertial and coprecessing frames are
             equivalent, so there is no distinction.
