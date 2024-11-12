@@ -300,12 +300,39 @@ def measure_eccentricity(tref_in=None,
         Default: 2.
 
     precessing: bool, default=False
-        Whether the system is precessing or not. For precessing systems, the
-        `dataDict` should contain modes in the coprecessing frame. For
-        nonprecessing systems, there is no distiction between the inertial and
-        coprecessing frame since they are the same.
+        Indicates whether the system is precessing. For precessing systems, the
+        (2, 2) and (2, -2) modes in the coprecessing frame are required to
+        compute `amp_gw`, `phase_gw`, and `omega_gw` (see
+        `get_amp_phase_omega_gw`), which are used to determine eccentricity.
 
-        Default is False which implies the system to be nonprecessing.
+        For precessing systems, waveform modes in the coprecessing frame must
+        be provided. This can be done in two ways:
+            - Set `frame="coprecessing"` and supply the coprecessing modes
+                directly via `dataDict`.
+            - Set `frame="inertial"` and provide the inertial frame modes
+                via `dataDict`. In this case, the modes in `dataDict` are
+                rotated internally before further computation.
+
+        For nonprecessing systems, the inertial and coprecessing frames are
+        equivalent, so there is no distinction.
+
+        Default is `False`, indicating the system is nonprecessing.
+
+    frame: str, default="inertial"
+        Specifies the reference frame for the modes in `dataDict`. Acceptable
+        values are:
+            - "inertial": The modes in `dataDict` are in the inertial
+                frame.
+            - "coprecessing": The modes in `dataDict` are in the
+                coprecessing frame.
+
+        If the system is precessing (`precessing=True`) and `frame="inertial"`,
+        the modes in `dataDict` are rotated into the coprecessing frame for
+        further computation. If `frame="coprecessing"` with a precessing
+        system, the modes in `dataDict` are expected to be already in the
+        coprecessing frame.
+
+        Default value is "inertial".
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         spline_kwargs:
