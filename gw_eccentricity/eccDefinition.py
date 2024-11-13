@@ -788,7 +788,7 @@ class eccDefinition:
                 data_dict.pop(omega, None)
         return data_dict
 
-    def get_amp_phase_omega_gw(self, data_dict):
+    def get_amp_phase_omega_gw(self, data_dict, data_name_suffix=""):
         """Get the gw quanitities from modes dict in the coprecessing frame.
 
         For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
@@ -810,25 +810,52 @@ class eccDefinition:
 
         These quantities reduce to the corresponding (2, 2) mode data when the
         system is nonprecessing.
+
+        Parameters
+        ----------
+        data_dict: dict
+            A dictionary with the waveform modes and times. The structure of
+            `data_dict` should be consistent with that of `dataDict`.
+            
+        data_name_suffix: str, default=""
+            A string identifier for selecting the data type when accessing
+            amplitude, phase, and frequency (omega) values. It is used to
+            specify if the waveform data corresponds to eccentric modes or
+            zero-eccentricity (zeroecc) modes. For instance, set
+            `data_name_suffix=""` for eccentric modes or
+            `data_name_suffix="zeroecc"` for non-eccentric modes.
+            
+            It will look for the key=`data_name` if `data_name_suffix` is empty
+            else key=`data_name` + "_" + "data_name_suffix" where the
+            `data_name` are "amplm", "phaselm" or "omegalm".
         """
+        # get the correct keys
+        if data_name_suffix == "":
+            t_key, amp_key, phase_key, omega_key = "t", "amplm", "phaselm", "omegalm"
+        else:
+            t_key = "t" + "_" + data_name_suffix
+            amp_key = "amplm" + "_" + data_name_suffix
+            phase_key = "phaselm" + "_" + data_name_suffix
+            omega_key = "omegalm" + "_" +  data_name_suffix
         if not self.precessing:
-            amp_gw, phase_gw, omega_gw = (data_dict["amplm"][(2, 2)],
-                                          data_dict["phaselm"][(2, 2)],
-                                          data_dict["omegalm"][(2, 2)])
+            amp_gw, phase_gw, omega_gw = (data_dict[amp_key][(2, 2)],
+                                          data_dict[phase_key][(2, 2)],
+                                          data_dict[omega_key][(2, 2)])
         else:
             # check whether (2, -2) mode is provided.
-            for k in ["amplm", "phaselm"]:
+            for k in [amp_key, phase_key]:
                 if (2, -2) not in data_dict[k]:
-                    raise Exception(f"(2, -2) mode not found in {k}. For precessing"
-                             " systems, (2, -2) mode should be included in "
-                             "`dataDict`.")
-            amp_gw = 0.5 * (data_dict["amplm"][(2, 2)]
-                            + data_dict["amplm"][(2, -2)])
-            phase_gw = 0.5 * (data_dict["phaselm"][(2, 2)]
-                              - data_dict["phaselm"][(2, -2)])
+                    raise Exception(
+                        f"(2, -2) mode not found in {k}. For precessing"
+                        " systems, (2, -2) mode should be included in "
+                        "`dataDict`.")
+            amp_gw = 0.5 * (data_dict[amp_key][(2, 2)]
+                            + data_dict[amp_key][(2, -2)])
+            phase_gw = 0.5 * (data_dict[phase_key][(2, 2)]
+                              - data_dict[phase_key][(2, -2)])
             omega_gw = time_deriv_4thOrder(
                 phase_gw,
-                data_dict["t"][1] - data_dict["t"][0])
+                data_dict[t_key][1] - data_dict[t_key][0])
         return amp_gw, phase_gw, omega_gw
 
     def get_width_for_peak_finder_from_phase_gw(self,
@@ -2141,9 +2168,10 @@ class eccDefinition:
             raise Exception(
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
-        # get amplitude and omega of 22 mode
-        self.amp_gw_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
-        self.omega_gw_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
+        # get amplitude, phase and omega omega data 
+        self.amp_gw_zeroecc, self.phase_gw_zeroecc, self.omega_gw_zeroecc\
+            = self.get_amp_phase_omega_gw(self.dataDict,
+                                          data_name_suffix="zeroecc")
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
