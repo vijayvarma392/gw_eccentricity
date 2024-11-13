@@ -170,7 +170,7 @@ class eccDefinition:
             are:
             extrema_interp_kwargs: dict
                 A dictionary of dictionaries where each key corresponds to a
-                specific interpolation method from the available
+                specific interpolation method from the
                 `available_omega_gw_extrema_interpolation_methods`. Each
                 top-level key maps to a nested dictionary containing keyword
                 arguments (`kwargs`) specific to that interpolation method. The
@@ -182,7 +182,7 @@ class eccDefinition:
                         "method_1": {"param1": value1, "param2": value2},
                         "method_2": {"paramA": valueA, "paramB": valueB}
                     },
-                "method_1", "method_2" should be available methods in
+                "method_1", "method_2" should be methods from
                 `available_omega_gw_extrema_interpolation_methods`.
 
                 currently, the available methods are: 

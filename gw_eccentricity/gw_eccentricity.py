@@ -307,17 +307,39 @@ def measure_eccentricity(tref_in=None,
         Default is False which implies the system to be nonprecessing.
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
-        spline_kwargs:
+        extrema_interp_kwargs: dict
+            A dictionary of dictionaries where each key corresponds to a
+            specific interpolation method from the
+            `available_omega_gw_extrema_interpolation_methods`. Each top-level
+            key maps to a nested dictionary containing keyword arguments
+            (`kwargs`) specific to that interpolation method. The inner
+            dictionary is passed as arguments to the respective
+            `omega_gw_extrema_interpolation_method`.
+
+            Example structure:
+                {
+                    "method_1": {"param1": value1, "param2": value2},
+                    "method_2": {"paramA": valueA, "paramB": valueB}
+                },
+            "method_1", "method_2" should be methods from
+            `available_omega_gw_extrema_interpolation_methods`.
+
+            currently, the available methods are: 
+
+            - "spline": default kwargs are set using
+              `utils.get_default_spline_kwargs`
+            - "rational_fit": default kwargs are set using
+                `utils.get_default_rational_fit_kwargs`
+
+            See under `omega_gw_extrema_interpolation_method` for more details
+            on these interpolation methods.
+
+        non_extrema_interp_kwargs: dict
             Dictionary of arguments to be passed to the spline interpolation
             routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-            compute quantities like omega_gw_pericenters(t) and
-            omega_gw_apocenters(t).
-            Defaults are set using utils.get_default_spline_kwargs
-
-        rational_fit_kwargs: dict
-            Dictionary of arguments to be passed to the rational
-            fit function. Defaults are set using
-            `utils.get_default_rational_fit_kwargs`
+            interpolate data other than the omega_gw extrema.
+            
+            Defaults are set using `utils.get_default_spline_kwargs`
 
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,
