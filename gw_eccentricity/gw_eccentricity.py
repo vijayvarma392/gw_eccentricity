@@ -308,31 +308,22 @@ def measure_eccentricity(tref_in=None,
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         extrema_interp_kwargs: dict
-            A dictionary of dictionaries where each key corresponds to a
-            specific interpolation method from the
-            `available_omega_gw_extrema_interpolation_methods`. Each top-level
-            key maps to a nested dictionary containing keyword arguments
-            (`kwargs`) specific to that interpolation method. The inner
-            dictionary is passed as arguments to the respective
-            `omega_gw_extrema_interpolation_method`.
+            A dictionary with a single key matching the current
+                `omega_gw_extrema_interpolation_method`. See under
+                `omega_gw_extrema_interpolation_method` for more details on
+                possible values of interpolation methods.
 
-            Example structure:
-                {
-                    "method_1": {"param1": value1, "param2": value2},
-                    "method_2": {"paramA": valueA, "paramB": valueB}
-                },
-            "method_1", "method_2" should be methods from
-            `available_omega_gw_extrema_interpolation_methods`.
+                Example structure:
+                    {
+                        "method": {"param1": value1, "param2": value2},
+                    }
 
-            currently, the available methods are: 
+                currently, the available options for "method" are: 
 
-            - "spline": default kwargs are set using
-              `utils.get_default_spline_kwargs`
-            - "rational_fit": default kwargs are set using
-                `utils.get_default_rational_fit_kwargs`
-
-            See under `omega_gw_extrema_interpolation_method` for more details
-            on these interpolation methods.
+                - "spline": default kwargs are set using
+                  `utils.get_default_spline_kwargs`
+                - "rational_fit": default kwargs are set using
+                  `utils.get_default_rational_fit_kwargs`
 
         non_extrema_interp_kwargs: dict
             Dictionary of arguments to be passed to the spline interpolation

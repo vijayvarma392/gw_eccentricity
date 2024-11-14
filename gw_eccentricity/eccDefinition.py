@@ -8,6 +8,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 
 import numpy as np
 import matplotlib.pyplot as plt
+from copy import deepcopy
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -169,31 +170,22 @@ class eccDefinition:
             A dictionary of any extra kwargs to be passed. Allowed kwargs
             are:
             extrema_interp_kwargs: dict
-                A dictionary of dictionaries where each key corresponds to a
-                specific interpolation method from the
-                `available_omega_gw_extrema_interpolation_methods`. Each
-                top-level key maps to a nested dictionary containing keyword
-                arguments (`kwargs`) specific to that interpolation method. The
-                inner dictionary is passed as arguments to the respective
-                `omega_gw_extrema_interpolation_method`.
+                A dictionary with a single key matching the current
+                `omega_gw_extrema_interpolation_method`. See under
+                `omega_gw_extrema_interpolation_method` for more details on
+                possible values of interpolation methods.
 
                 Example structure:
                     {
-                        "method_1": {"param1": value1, "param2": value2},
-                        "method_2": {"paramA": valueA, "paramB": valueB}
-                    },
-                "method_1", "method_2" should be methods from
-                `available_omega_gw_extrema_interpolation_methods`.
+                        "method": {"param1": value1, "param2": value2},
+                    }
 
-                currently, the available methods are: 
+                currently, the available options for "method" are: 
 
                 - "spline": default kwargs are set using
                   `utils.get_default_spline_kwargs`
                 - "rational_fit": default kwargs are set using
                   `utils.get_default_rational_fit_kwargs`
-
-                See under `omega_gw_extrema_interpolation_method` for more
-                details on these interpolation methods.
 
             non_extrema_interp_kwargs: dict
                 Dictionary of arguments to be passed to the spline
@@ -350,7 +342,7 @@ class eccDefinition:
             = self.get_amp_phase_omega_gw(self.dataDict)
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
-            extra_kwargs, self.get_default_extra_kwargs(),
+            deepcopy(extra_kwargs), self.get_default_extra_kwargs(),
             "extra_kwargs",
             "eccDefinition.get_default_extra_kwargs()")
         self.debug_level = self.extra_kwargs["debug_level"]
@@ -371,6 +363,8 @@ class eccDefinition:
                 "Unknown omega_gw_extrema_interpolation_method "
                 f"`{self.omega_gw_extrema_interpolation_method}`. Should be "
                 f"of {self.available_omega_gw_extrema_interpolation_methods.keys()}")
+        # check extrema interp kwargs
+        self.check_extrema_interp_kwargs(extra_kwargs)
         # set extrema interpolation kwargs
         self.extrema_interp_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs[
@@ -926,6 +920,47 @@ class eccDefinition:
                             f"`{self.omega_gw_extrema_interpolation_method}`. "
                             f"Allowed methods are {allowed_methods}")
         return kwargs
+    
+    def check_extrema_interp_kwargs(self, extra_kwargs):
+        """Check extrema interp kwargs provided in extra_kwargs.
+        
+        The `extrema_interp_kwargs` should have exactly one
+        key matching the current `omega_gw_extrema_interpolation_method`.
+        """
+
+        if "extrema_interp_kwargs" in extra_kwargs:
+            # check that kwargs for only one extrema interpolation method is
+            # provided.
+            common_message = (
+                "The input `extrema_interp_kwargs` must contain a single "
+                "key, matching the current "
+                "`omega_gw_extrema_interpolation_method` "
+                f"'{self.omega_gw_extrema_interpolation_method}', "
+                "with a dictionary of kwargs for "
+                f"'{self.omega_gw_extrema_interpolation_method}' "
+                "as its value.")
+            extrema_interp_keys \
+                = list(extra_kwargs["extrema_interp_kwargs"].keys())
+            if len(extrema_interp_keys) == 0:
+                raise Exception(
+                    "Dictionay provided by 'extrema_interp_kwargs' "
+                    " in 'extra_kwargs' can not be empty.\n"
+                    f"{common_message}"
+                    )
+            # check that the key in extrema_interp_kwargs matches
+            # `omega_gw_extrema_interpolation_method`
+            if  len(extrema_interp_keys) == 1 and (
+                extrema_interp_keys[0] 
+                != self.omega_gw_extrema_interpolation_method):
+                raise Exception(
+                    "`omega_gw_extrema_interpolation_method` is "
+                    f"{self.omega_gw_extrema_interpolation_method} but the "
+                    "kwargs in 'extrema_interp_kwargs' via 'extra_kwargs' is "
+                    f"for {extrema_interp_keys[0]}.\n"
+                    f"{common_message}"
+                )
+            if len(extrema_interp_keys) > 1:
+                raise Exception(f"{common_message}")
         
     def set_other_variables_for_extrema_interpolation(self):
         """Set other variables required for extrema interpolation.
