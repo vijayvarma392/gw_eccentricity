@@ -927,8 +927,7 @@ class eccDefinition:
         The `extrema_interp_kwargs` should have exactly one
         key matching the current `omega_gw_extrema_interpolation_method`.
         """
-
-        if "extrema_interp_kwargs" in extra_kwargs:
+        if extra_kwargs is not None and "extrema_interp_kwargs" in extra_kwargs:
             # check that kwargs for only one extrema interpolation method is
             # provided.
             common_message = (
