@@ -175,23 +175,22 @@ class eccDefinition:
                   `ell=2`, i.e., (2, -2), (2, -1), (2, 0), (2, 1) and (2, 2).
 
             For nonprecessing systems, the inertial and coprecessing frames are
-            equivalent, so there is no distinction.
+            equivalent, so there is no distinction. For nonprecessing systems,
+            it is sufficient to include only the (2, 2) mode.
 
             Default is `False`, indicating the system is nonprecessing.
 
         frame: str, default="inertial"
             Specifies the reference frame for the modes in `dataDict`.
-            Acceptable values are:
-                - "inertial": The modes in `dataDict` are in the inertial
-                  frame.
-                - "coprecessing": The modes in `dataDict` are in the
-                  coprecessing frame.
+            
+            This parameter determines the frame in which the mode data is
+            provided. It is especially relevant for measuring eccentricity in
+            precessing systems, as the choice of reference frame affects the
+            interpretation of the modes. Use this in conjunction with the
+            `precessing` parameter (see its documentation for more details) to
+            ensure appropriate handling of the data.
 
-            If the system is precessing (`precessing=True`) and
-            `frame="inertial"`, the modes in `dataDict` are rotated into the
-            coprecessing frame for further computation. If
-            `frame="coprecessing"` with a precessing system, the modes in
-            `dataDict` are expected to be already in the coprecessing frame.
+            Currently `frame` can be "inertial" or "coprecessing".
 
             Default value is "inertial".
 
@@ -308,10 +307,10 @@ class eccDefinition:
         self.precessing = precessing
         self.frame = frame
         # check if frame makes sense.
-        self.available_frames = ["inertial", "coprecessing"]
-        if self.frame not in self.available_frames:
+        available_frames = ["inertial", "coprecessing"]
+        if self.frame not in available_frames:
             raise ValueError(f"Unknown frame `{self.frame}`. Frame should be "
-                             f"one of {self.available_frames}")
+                             f"one of {available_frames}")
 
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp_gw_merger, \
