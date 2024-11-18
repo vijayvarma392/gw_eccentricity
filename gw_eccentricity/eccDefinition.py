@@ -697,8 +697,8 @@ class eccDefinition:
                 for mode in newDataDict[k]:
                     newDataDict[k][mode] = newDataDict[k][mode][
                         :index_num_orbits_earlier_than_merger]
-                    newDataDict["t"] = newDataDict["t"][
-                        :index_num_orbits_earlier_than_merger]
+            newDataDict["t"] = newDataDict["t"][
+                :index_num_orbits_earlier_than_merger]
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
     def rotate_modes(self, data_dict):
