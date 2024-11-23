@@ -317,7 +317,8 @@ def measure_eccentricity(tref_in=None,
                 `ell=2`, i.e., (2, -2), (2, -1), (2, 0), (2, 1) and (2, 2).
 
         For nonprecessing systems, the inertial and coprecessing frames are
-        equivalent, so there is no distinction.
+        equivalent, so there is no distinction. For nonprecessing systems, it
+        is sufficient to include only the (2, 2) mode.
 
         Default is `False`, indicating the system is nonprecessing.
 
