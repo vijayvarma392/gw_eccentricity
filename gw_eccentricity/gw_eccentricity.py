@@ -322,18 +322,16 @@ def measure_eccentricity(tref_in=None,
         Default is `False`, indicating the system is nonprecessing.
 
     frame: str, default="inertial"
-        Specifies the reference frame for the modes in `dataDict`. Acceptable
-        values are:
-            - "inertial": The modes in `dataDict` are in the inertial
-                frame.
-            - "coprecessing": The modes in `dataDict` are in the
-                coprecessing frame.
+        Specifies the reference frame for the modes in `dataDict`.
+            
+        This parameter determines the frame in which the mode data is provided.
+        It is especially relevant for measuring eccentricity in precessing
+        systems, as the choice of reference frame affects the interpretation of
+        the modes. Use this in conjunction with the `precessing` parameter (see
+        its documentation for more details) to ensure appropriate handling of
+        the data.
 
-        If the system is precessing (`precessing=True`) and `frame="inertial"`,
-        the modes in `dataDict` are rotated into the coprecessing frame for
-        further computation. If `frame="coprecessing"` with a precessing
-        system, the modes in `dataDict` are expected to be already in the
-        coprecessing frame.
+        Currently `frame` can be "inertial" or "coprecessing".
 
         Default value is "inertial".
 
