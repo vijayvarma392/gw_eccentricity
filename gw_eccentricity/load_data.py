@@ -1534,7 +1534,7 @@ def unpack_scri_modes(w):
     return result
 
 
-def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
+def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2, suffix=""):
     """Get `data_dict` in the coprecessing frame.
 
     Given a `data_dict` containing the modes dict in the inertial frame and the
@@ -1556,6 +1556,14 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     ell_max: int, default=2
         Maximum `ell` value to use.
 
+    suffix: str, default=""
+        A suffix used to specify which input modes dictionary to use for
+        obtaining the coprecessing modes. For example, using
+        `suffix="_zeroecc"` selects the input modes corresponding to the
+        "zeroecc" modes dictionary, which are then rotated to compute the
+        coprecessing modes. If left as the default value (`""`), the input
+        modes from the eccentric modes dictionary are used.
+
     Returns
     -------
     Dictionary of waveform modes in the coprecessing frame and the associated
@@ -1564,13 +1572,13 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     """
     # Get list of modes from `data_dict` to use as input to `scri.WaveformModes`.
     ordered_mode_list = package_modes_for_scri(
-        data_dict["hlm"],
+        data_dict["hlm" + suffix],
         ell_min=ell_min,
         ell_max=ell_max)
 
     w = scri.WaveformModes(
         dataType=scri.h,
-        t=data_dict["t"],
+        t=data_dict["t" + suffix],
         data=ordered_mode_list,
         ell_min=ell_min,
         ell_max=ell_max,
@@ -1583,7 +1591,8 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     # Create a copy of data_dict and replace the "hlm" modes in the inertial frame
     # with the corresponding modes in the coprecessing frame
     data_dict_copr = deepcopy(data_dict)
-    data_dict_copr.update({"hlm": unpack_scri_modes(deepcopy(w_coprecessing))})
+    data_dict_copr.update(
+        {"hlm" + suffix: unpack_scri_modes(deepcopy(w_coprecessing))})
     return data_dict_copr
 
 
