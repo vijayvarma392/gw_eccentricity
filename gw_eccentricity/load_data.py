@@ -1557,12 +1557,11 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2, suffix=""):
         Maximum `ell` value to use.
 
     suffix: str, default=""
-        A suffix used to specify which input modes dictionary to use for
-        obtaining the coprecessing modes. For example, using
-        `suffix="_zeroecc"` selects the input modes corresponding to the
-        "zeroecc" modes dictionary, which are then rotated to compute the
-        coprecessing modes. If left as the default value (`""`), the input
-        modes from the eccentric modes dictionary are used.
+        A suffix specifying which inertial frame data to use when transforming
+        inertial frame modes to coprecessing frame modes. For example, setting
+        `suffix="_zeroecc"` selects the inertial frame modes corresponding to
+        the "zeroecc" (non-eccentric) case. If left as the default value
+        (`""`), the inertial frame modes for the eccentric case are used.
 
     Returns
     -------

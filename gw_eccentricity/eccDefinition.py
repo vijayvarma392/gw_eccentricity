@@ -732,12 +732,12 @@ class eccDefinition:
             coprecessing frame modes.
 
         suffix: str, default=""
-            A suffix used to specify which input modes dictionary to use for
-            obtaining the coprecessing modes. For example, using
-            `suffix="_zeroecc"` selects the input modes corresponding to the
-            "zeroecc" modes dictionary, which are then rotated to compute the
-            coprecessing modes. If left as the default value (`""`), the input
-            modes from the eccentric modes dictionary are used.
+            A suffix specifying which inertial frame data to use when
+            transforming inertial frame modes to coprecessing frame modes. For
+            example, setting `suffix="_zeroecc"` selects the inertial frame
+            modes corresponding to the "zeroecc" (non-eccentric) case. If left
+            as the default value (`""`), the inertial frame modes for the
+            eccentric case are used.
 
         Returns
         -------
@@ -756,17 +756,18 @@ class eccDefinition:
             data_dict.update(hlm_dict)
             data_dict = get_coprecessing_data_dict(data_dict, suffix=suffix)
             warnings.warn(
-                f"Removing the inertial {'amplm' + suffix}, "
-                f"{'phaselm' + suffix} from `dataDict`. The same is computed "
+                f"Removing the input inertial frame {'amplm' + suffix}, "
+                f"{'phaselm' + suffix} from `dataDict`. The corresponding "
+                "coprecessing frame quantities are computed "
                 f"later from the coprecessing {'hlm' + suffix} in"
-                f"`get_amp_phase_omega_data.`")
+                f"`get_amp_phase_omega_data`.")
             data_dict.pop("amplm" + suffix, None)
             data_dict.pop("phaselm" + suffix, None)
         if "omegalm" + suffix in data_dict:
             warnings.warn(
-                f"Removing the inertial {'omegalm' + suffix} from `dataDict`. "
-                f"The coprecessing {'omegalm' + suffix}. The same is computed "
-                f"later from the coprecessing {'hlm' + suffix} in "
+                f"Removing the input inertial frame {'omegalm' + suffix} "
+                f"from `dataDict`. The coprecessing {'omegalm' + suffix} is "
+                f"computed later from the coprecessing {'hlm' + suffix} in "
                 f"`get_amp_phase_omega_data`.")
             data_dict.pop("omegalm" + suffix, None)
         return data_dict
