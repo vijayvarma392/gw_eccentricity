@@ -632,7 +632,7 @@ class eccDefinition:
             # transform the zeroecc modes as well if provided in dataDict
             if "hlm_zeroecc" in dataDict or "amplm_zeroecc" in dataDict:
                 dataDict = self.transform_inertial_to_coprecessing(
-                    dataDict, suffix="_zeroecc")
+                    dataDict, tag="_zeroecc")
             # Now that the modes are in the coprecessing frame, update frame
             self.frame = "coprecessing"
         # Create a new dictionary that will contain the data necessary for
@@ -759,7 +759,7 @@ class eccDefinition:
                 f"Removing the input inertial frame {'amplm' + tag}, "
                 f"{'phaselm' + tag} from `dataDict`. The corresponding "
                 "coprecessing frame quantities are computed "
-                f"later from the coprecessing {'hlm' + tag} in"
+                f"later from the coprecessing {'hlm' + tag} in "
                 f"`get_amp_phase_omega_data`.")
             data_dict.pop("amplm" + tag, None)
             data_dict.pop("phaselm" + tag, None)
