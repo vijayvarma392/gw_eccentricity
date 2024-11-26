@@ -714,7 +714,7 @@ class eccDefinition:
                 :index_num_orbits_earlier_than_merger]
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
-    def transform_inertial_to_coprecessing(self, data_dict, suffix=""):
+    def transform_inertial_to_coprecessing(self, data_dict, tag=""):
         """"Transfrom intertial frame modes to coprecessing frame modes.
         
         Parameters
@@ -731,10 +731,10 @@ class eccDefinition:
             (2, -1), (2, 0), (2, 1), and (2, 2), to achieve accurate
             coprecessing frame modes.
 
-        suffix: str, default=""
-            A suffix specifying which inertial frame data to use when
+        tag: str, default=""
+            A tag specifying which inertial frame data to use when
             transforming inertial frame modes to coprecessing frame modes. For
-            example, setting `suffix="_zeroecc"` selects the inertial frame
+            example, setting `tag="_zeroecc"` selects the inertial frame
             modes corresponding to the "zeroecc" (non-eccentric) case. If left
             as the default value (`""`), the inertial frame modes for the
             eccentric case are used.
@@ -744,32 +744,32 @@ class eccDefinition:
         data_dict with the inertial modes replaced by the corresponding
         modes in the coprecessing frame.
         """
-        if ("hlm" + suffix) in data_dict:
-            data_dict = get_coprecessing_data_dict(data_dict, suffix=suffix)
+        if ("hlm" + tag) in data_dict:
+            data_dict = get_coprecessing_data_dict(data_dict, tag=tag)
         # if hlm is not in data_dict, get it from amplm and phaselm.
         # We need to provide hlm to get the rotated modes.
-        if ("hlm" + suffix) not in data_dict:
+        if ("hlm" + tag) not in data_dict:
             amplm_dict = self.get_amplm_from_dataDict(data_dict)
             phaselm_dict = self.get_phaselm_from_dataDict(data_dict)
             # combine amplm and phaselm to get hlm
             hlm_dict = self.get_hlm_from_amplm_phaselm(amplm_dict, phaselm_dict)
             data_dict.update(hlm_dict)
-            data_dict = get_coprecessing_data_dict(data_dict, suffix=suffix)
+            data_dict = get_coprecessing_data_dict(data_dict, tag=tag)
             warnings.warn(
-                f"Removing the input inertial frame {'amplm' + suffix}, "
-                f"{'phaselm' + suffix} from `dataDict`. The corresponding "
+                f"Removing the input inertial frame {'amplm' + tag}, "
+                f"{'phaselm' + tag} from `dataDict`. The corresponding "
                 "coprecessing frame quantities are computed "
-                f"later from the coprecessing {'hlm' + suffix} in"
+                f"later from the coprecessing {'hlm' + tag} in"
                 f"`get_amp_phase_omega_data`.")
-            data_dict.pop("amplm" + suffix, None)
-            data_dict.pop("phaselm" + suffix, None)
-        if "omegalm" + suffix in data_dict:
+            data_dict.pop("amplm" + tag, None)
+            data_dict.pop("phaselm" + tag, None)
+        if "omegalm" + tag in data_dict:
             warnings.warn(
-                f"Removing the input inertial frame {'omegalm' + suffix} "
-                f"from `dataDict`. The coprecessing {'omegalm' + suffix} is "
-                f"computed later from the coprecessing {'hlm' + suffix} in "
+                f"Removing the input inertial frame {'omegalm' + tag} "
+                f"from `dataDict`. The coprecessing {'omegalm' + tag} is "
+                f"computed later from the coprecessing {'hlm' + tag} in "
                 f"`get_amp_phase_omega_data`.")
-            data_dict.pop("omegalm" + suffix, None)
+            data_dict.pop("omegalm" + tag, None)
         return data_dict
     
     def get_hlm_from_amplm_phaselm(self, amplm_dict, phaselm_dict):
@@ -784,19 +784,19 @@ class eccDefinition:
         added to the returned `data_dict`.
         """
         if "amplm_zeroecc" in amplm_dict:
-            suffixes = ["", "_zeroecc"]
+            tags = ["", "_zeroecc"]
         else:
-            suffixes = [""]
+            tags = [""]
         data_dict = {}
-        for suffix in suffixes:
-            data_dict["hlm" + suffix] = {}
-            for k in amplm_dict["amplm" + suffix]:
-                data_dict["hlm" + suffix].update(
-                    {k: amplm_dict["amplm" + suffix][k]
-                    * np.exp(-1j * phaselm_dict["phaselm" + suffix][k])})
+        for tag in tags:
+            data_dict["hlm" + tag] = {}
+            for k in amplm_dict["amplm" + tag]:
+                data_dict["hlm" + tag].update(
+                    {k: amplm_dict["amplm" + tag][k]
+                    * np.exp(-1j * phaselm_dict["phaselm" + tag][k])})
         return data_dict
 
-    def get_amp_phase_omega_gw(self, data_dict, suffix=""):
+    def get_amp_phase_omega_gw(self, data_dict, tag=""):
         """Get the gw quanitities from modes dict in the coprecessing frame.
 
         For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
@@ -814,7 +814,7 @@ class eccDefinition:
         
         amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
         phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
-        omega_gw = d(phase_gw)/dt
+        omega_gw = d(phase_gw)/dt = (1/2) * (omega(2, 2) - omega(2, -2))
 
         These quantities reduce to the corresponding (2, 2) mode data when the
         system is nonprecessing.
@@ -825,26 +825,20 @@ class eccDefinition:
             A dictionary with the waveform modes and times. The structure of
             `data_dict` should be consistent with that of `dataDict`.
             
-        suffix: str, default=""
+        tag: str, default=""
             A string identifier for selecting the data type when accessing
             amplitude, phase, and frequency (omega) values. It is used to
             specify if the waveform data corresponds to eccentric modes or
             zero-eccentricity (zeroecc) modes. For instance, set
-            `suffix=""` for eccentric modes or
-            `suffix="_zeroecc"` for non-eccentric modes.
+            `tag=""` for eccentric modes or
+            `tag="_zeroecc"` for non-eccentric modes.
             
-            It will look for the key=`data_name` if `suffix` is empty
-            else key=`data_name` + `suffix` where the
-            `data_name` are "amplm", "phaselm" or "omegalm".
+            It will look for the key=`data_name` + `tag` where the `data_name`
+            are "amplm", "phaselm" or "omegalm".
         """
         # get the correct keys
-        if suffix == "":
-            t_key, amp_key, phase_key, omega_key = "t", "amplm", "phaselm", "omegalm"
-        else:
-            t_key = "t" + suffix
-            amp_key = "amplm" + suffix
-            phase_key = "phaselm" + suffix
-            omega_key = "omegalm" +  suffix
+        t_key, amp_key, phase_key, omega_key \
+                = [k + tag for k in ["t", "amplm", "phaselm", "omegalm"]]
         if not self.precessing:
             amp_gw, phase_gw, omega_gw = (data_dict[amp_key][(2, 2)],
                                           data_dict[phase_key][(2, 2)],
@@ -861,9 +855,8 @@ class eccDefinition:
                             + data_dict[amp_key][(2, -2)])
             phase_gw = 0.5 * (data_dict[phase_key][(2, 2)]
                               - data_dict[phase_key][(2, -2)])
-            omega_gw = time_deriv_4thOrder(
-                phase_gw,
-                data_dict[t_key][1] - data_dict[t_key][0])
+            omega_gw = 0.5 * (data_dict[omega_key][(2, 2)]
+                              - data_dict[omega_key][(2, -2)])
         return amp_gw, phase_gw, omega_gw
 
     def get_width_for_peak_finder_from_phase_gw(self,
@@ -2179,7 +2172,7 @@ class eccDefinition:
         # get amplitude, phase and omega omega data 
         self.amp_gw_zeroecc, self.phase_gw_zeroecc, self.omega_gw_zeroecc\
             = self.get_amp_phase_omega_gw(self.dataDict,
-                                          suffix="_zeroecc")
+                                          tag="_zeroecc")
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
