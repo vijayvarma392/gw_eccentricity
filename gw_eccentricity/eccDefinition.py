@@ -8,6 +8,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 
 import numpy as np
 import matplotlib.pyplot as plt
+import warnings
 from .load_data import get_coprecessing_data_dict
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
@@ -622,23 +623,16 @@ class eccDefinition:
         # frame, rotate the modes and obtain the corresponding modes in the
         # coprecessing frame
         if self.precessing is True and self.frame == "inertial":
-            # get debug level
-            if extra_kwargs is not None:
-                debug_level = extra_kwargs.get("debug_level", 0)
-            else:
-                debug_level = 0
-            debug_message(
+            warnings.warn(
                 f"The system is precessing but the modes are provided in "
                 f"the {self.frame} frame. Transforming the modes from"
                 f" the {self.frame} frame to the coprecessing frame and "
-                "updating `self.frame` to `coprecessing`.",
-                debug_level=debug_level, important=False)
-            dataDict = self.transform_inertial_to_coprecessing(
-                dataDict, debug_level=debug_level)
+                "updating `self.frame` to `coprecessing`.")
+            dataDict = self.transform_inertial_to_coprecessing(dataDict)
             # transform the zeroecc modes as well if provided in dataDict
             if "hlm_zeroecc" in dataDict or "amplm_zeroecc" in dataDict:
                 dataDict = self.transform_inertial_to_coprecessing(
-                    dataDict, tag="_zeroecc", debug_level=debug_level)
+                    dataDict, tag="_zeroecc")
             # Now that the modes are in the coprecessing frame, update frame
             self.frame = "coprecessing"
         # Create a new dictionary that will contain the data necessary for
@@ -720,8 +714,7 @@ class eccDefinition:
                 :index_num_orbits_earlier_than_merger]
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
-    def transform_inertial_to_coprecessing(
-            self, data_dict, tag="", debug_level=0):
+    def transform_inertial_to_coprecessing(self, data_dict, tag=""):
         """"Transfrom intertial frame modes to coprecessing frame modes.
         
         Parameters
@@ -746,10 +739,6 @@ class eccDefinition:
             as the default value (`""`), the inertial frame modes for the
             eccentric case are used.
 
-        debug_level: int, default=0
-            Debug level to use. See documentation for `debug_level` under
-            `extra_kwargs`
-
         Returns
         -------
         data_dict with the inertial modes replaced by the corresponding
@@ -766,22 +755,20 @@ class eccDefinition:
             hlm_dict = self.get_hlm_from_amplm_phaselm(amplm_dict, phaselm_dict)
             data_dict.update(hlm_dict)
             data_dict = get_coprecessing_data_dict(data_dict, tag=tag)
-            debug_message(
+            warnings.warn(
                 f"Removing the input inertial frame {'amplm' + tag}, "
                 f"{'phaselm' + tag} from `dataDict`. The corresponding "
                 "coprecessing frame quantities are computed "
                 f"later from the coprecessing {'hlm' + tag} in "
-                f"`get_amp_phase_omega_data`.", debug_level=debug_level,
-                important=False)
+                f"`get_amp_phase_omega_data`.")
             data_dict.pop("amplm" + tag, None)
             data_dict.pop("phaselm" + tag, None)
         if "omegalm" + tag in data_dict:
-            debug_message(
+            warnings.warn(
                 f"Removing the input inertial frame {'omegalm' + tag} "
                 f"from `dataDict`. The coprecessing {'omegalm' + tag} is "
                 f"computed later from the coprecessing {'hlm' + tag} in "
-                f"`get_amp_phase_omega_data`.", debug_level=debug_level,
-                important=False)
+                f"`get_amp_phase_omega_data`.")
             data_dict.pop("omegalm" + tag, None)
         return data_dict
     
