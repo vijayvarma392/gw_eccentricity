@@ -9,6 +9,8 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
+import warnings
+from .load_data import get_coprecessing_data_dict
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
 from .utils import time_deriv_4thOrder
@@ -27,6 +29,7 @@ class eccDefinition:
 
     def __init__(self, dataDict, num_orbits_to_exclude_before_merger=2,
                  precessing=False,
+                 frame="inertial",
                  extra_kwargs=None):
         """Init eccDefinition class.
 
@@ -159,12 +162,42 @@ class eccDefinition:
                 Default: 2.
 
         precessing: bool, default=False
-            Whether the system is precessing or not. For precessing systems,
-            the `dataDict` should contain modes in the coprecessing frame. For
-            nonprecessing systems, there is no distiction between the inertial
-            and coprecessing frame since they are the same.
+            Indicates whether the system is precessing. For precessing systems,
+            the (2, 2) and (2, -2) modes in the coprecessing frame are required
+            to compute `amp_gw`, `phase_gw`, and `omega_gw` (see
+            `get_amp_phase_omega_gw`), which are used to determine eccentricity.
 
-            Default is False which implies the system to be nonprecessing.
+            For precessing systems, waveform modes in the coprecessing frame
+            must be provided. This can be done in two ways:
+                - Set `frame="coprecessing"` and supply the coprecessing modes
+                  directly via `dataDict`.
+                - Set `frame="inertial"` and provide the inertial frame modes
+                  via `dataDict`. In this case, the modes in `dataDict` are
+                  rotated internally (see `transform_inertial_to_coprecessing`)
+                  before further computation. To get the coprecessing modes
+                  from the inertial modes accurately, `dataDict` must include
+                  all modes for `ell=2`, i.e., (2, -2), (2, -1), (2, 0), (2, 1)
+                  and (2, 2).
+
+            For nonprecessing systems, the inertial and coprecessing frames are
+            equivalent, so there is no distinction. For nonprecessing systems,
+            it is sufficient to include only the (2, 2) mode.
+
+            Default is `False`, indicating the system is nonprecessing.
+
+        frame: str, default="inertial"
+            Specifies the reference frame for the modes in `dataDict`.
+            
+            This parameter determines the frame in which the mode data is
+            provided. It is especially relevant for measuring eccentricity in
+            precessing systems, as the choice of reference frame affects the
+            interpretation of the modes. Use this in conjunction with the
+            `precessing` parameter (see its documentation for more details) to
+            ensure appropriate handling of the data.
+
+            Currently `frame` can be "inertial" or "coprecessing".
+
+            Default value is "inertial".
 
         extra_kwargs: dict
             A dictionary of any extra kwargs to be passed. Allowed kwargs
@@ -319,6 +352,13 @@ class eccDefinition:
                 Default value: `"rational_fit"`.
         """
         self.precessing = precessing
+        self.frame = frame
+        # check if frame makes sense.
+        available_frames = ["inertial", "coprecessing"]
+        if self.frame not in available_frames:
+            raise ValueError(f"Unknown frame `{self.frame}`. Frame should be "
+                             f"one of {available_frames}")
+
         # Get data necessary for eccentricity measurement
         self.dataDict, self.t_merger, self.amp_gw_merger, \
             min_width_for_extrema = self.process_data_dict(
@@ -652,6 +692,22 @@ class eccDefinition:
                 "1. 'hlm' OR \n"
                 "2. 'amplm' and 'phaselm'\n"
                 "But not both 1. and 2. at the same time."))
+        # if the system is precessing and the modes are given in the inertial
+        # frame, rotate the modes and obtain the corresponding modes in the
+        # coprecessing frame
+        if self.precessing is True and self.frame == "inertial":
+            warnings.warn(
+                f"The system is precessing but the modes are provided in "
+                f"the {self.frame} frame. Transforming the modes from"
+                f" the {self.frame} frame to the coprecessing frame and "
+                "updating `self.frame` to `coprecessing`.")
+            dataDict = self.transform_inertial_to_coprecessing(dataDict)
+            # transform the zeroecc modes as well if provided in dataDict
+            if "hlm_zeroecc" in dataDict or "amplm_zeroecc" in dataDict:
+                dataDict = self.transform_inertial_to_coprecessing(
+                    dataDict, tag="_zeroecc")
+            # Now that the modes are in the coprecessing frame, update frame
+            self.frame = "coprecessing"
         # Create a new dictionary that will contain the data necessary for
         # eccentricity measurement.
         newDataDict = {}
@@ -727,11 +783,93 @@ class eccDefinition:
                 for mode in newDataDict[k]:
                     newDataDict[k][mode] = newDataDict[k][mode][
                         :index_num_orbits_earlier_than_merger]
-                    newDataDict["t"] = newDataDict["t"][
-                        :index_num_orbits_earlier_than_merger]
+            newDataDict["t"] = newDataDict["t"][
+                :index_num_orbits_earlier_than_merger]
         return newDataDict, t_merger, amp_gw_merger, min_width_for_extrema
 
-    def get_amp_phase_omega_gw(self, data_dict):
+    def transform_inertial_to_coprecessing(self, data_dict, tag=""):
+        """"Transfrom intertial frame modes to coprecessing frame modes.
+        
+        Parameters
+        ----------
+        data_dict: dict
+            Dictionary of modes in the inertial frame. The modes are
+            transformed using `get_coprecessing_data_dict` to obtain the
+            corresponding modes in the coprecessing frame.
+
+            To obtain coprecessing frame modes from an inertial frame
+            dictionary, this dictionary should include all (ell, m) modes for a
+            specified ell value. For instance, the inertial modes dictionary
+            should contain at least all the modes for `ell=2`, i.e., (2, -2),
+            (2, -1), (2, 0), (2, 1), and (2, 2), to achieve accurate
+            coprecessing frame modes.
+
+        tag: str, default=""
+            A tag specifying which inertial frame data to use when
+            transforming inertial frame modes to coprecessing frame modes. For
+            example, setting `tag="_zeroecc"` selects the inertial frame
+            modes corresponding to the "zeroecc" (non-eccentric) case. If left
+            as the default value (`""`), the inertial frame modes for the
+            eccentric case are used.
+
+        Returns
+        -------
+        data_dict with the inertial modes replaced by the corresponding
+        modes in the coprecessing frame.
+        """
+        if ("hlm" + tag) in data_dict:
+            data_dict = get_coprecessing_data_dict(data_dict, tag=tag)
+        # if hlm is not in data_dict, get it from amplm and phaselm.
+        # We need to provide hlm to get the rotated modes.
+        if ("hlm" + tag) not in data_dict:
+            amplm_dict = self.get_amplm_from_dataDict(data_dict)
+            phaselm_dict = self.get_phaselm_from_dataDict(data_dict)
+            # combine amplm and phaselm to get hlm
+            hlm_dict = self.get_hlm_from_amplm_phaselm(amplm_dict, phaselm_dict)
+            data_dict.update(hlm_dict)
+            data_dict = get_coprecessing_data_dict(data_dict, tag=tag)
+            warnings.warn(
+                f"Removing the input inertial frame {'amplm' + tag}, "
+                f"{'phaselm' + tag} from `dataDict`. The corresponding "
+                "coprecessing frame quantities are computed "
+                f"later from the coprecessing {'hlm' + tag} in "
+                f"`get_amp_phase_omega_data`.")
+            data_dict.pop("amplm" + tag, None)
+            data_dict.pop("phaselm" + tag, None)
+        if "omegalm" + tag in data_dict:
+            warnings.warn(
+                f"Removing the input inertial frame {'omegalm' + tag} "
+                f"from `dataDict`. The coprecessing {'omegalm' + tag} is "
+                f"computed later from the coprecessing {'hlm' + tag} in "
+                f"`get_amp_phase_omega_data`.")
+            data_dict.pop("omegalm" + tag, None)
+        return data_dict
+    
+    def get_hlm_from_amplm_phaselm(self, amplm_dict, phaselm_dict):
+        """Compute the complex hlm modes from amplitude and phase data.
+
+        The hlm modes are calculated using the formula: hlm = amplm * exp(-1j *
+        phaselm), where `amplm` and `phaselm` are dictionaries containing the
+        amplitude and phase for each mode.
+
+        If the `amplm` and `phaselm` dictionaries include "zeroecc" modes,
+        these are also processed, and the corresponding hlm_zeroecc modes are
+        added to the returned `data_dict`.
+        """
+        if "amplm_zeroecc" in amplm_dict:
+            tags = ["", "_zeroecc"]
+        else:
+            tags = [""]
+        data_dict = {}
+        for tag in tags:
+            data_dict["hlm" + tag] = {}
+            for k in amplm_dict["amplm" + tag]:
+                data_dict["hlm" + tag].update(
+                    {k: amplm_dict["amplm" + tag][k]
+                    * np.exp(-1j * phaselm_dict["phaselm" + tag][k])})
+        return data_dict
+
+    def get_amp_phase_omega_gw(self, data_dict, tag=""):
         """Get the gw quanitities from modes dict in the coprecessing frame.
 
         For nonprecessing systems, the amp_gw, phase_gw and omega_gw are the same
@@ -749,35 +887,49 @@ class eccDefinition:
         
         amp_gw = (1/2) * (amp(2, 2) + amp(2, -2))
         phase_gw = (1/2) * (phase(2, 2) - phase(2, -2))
-        omega_gw = d(phase_gw)/dt
+        omega_gw = d(phase_gw)/dt = (1/2) * (omega(2, 2) - omega(2, -2))
 
         These quantities reduce to the corresponding (2, 2) mode data when the
         system is nonprecessing.
-        """
-        if not self.precessing:
-            amp_gw, phase_gw, omega_gw = (data_dict["amplm"][(2, 2)],
-                                          data_dict["phaselm"][(2, 2)],
-                                          data_dict["omegalm"][(2, 2)])
-        else:
-            # TODO: Currently, we assume that the input `dataDict` is already provided in the 
-            # coprecessing frame. In the future, this assumption could be 
-            # relaxed. If the user's `dataDict` is in the inertial frame, we can 
-            # internally compute the corresponding modes in the coprecessing frame by 
-            # applying the appropriate rotational transformation.
 
+        Parameters
+        ----------
+        data_dict: dict
+            A dictionary with the waveform modes and times. The structure of
+            `data_dict` should be consistent with that of `dataDict`.
+            
+        tag: str, default=""
+            A string identifier for selecting the data type when accessing
+            amplitude, phase, and frequency (omega) values. It is used to
+            specify if the waveform data corresponds to eccentric modes or
+            zero-eccentricity (zeroecc) modes. For instance, set
+            `tag=""` for eccentric modes or
+            `tag="_zeroecc"` for non-eccentric modes.
+            
+            It will look for the key=`data_name` + `tag` where the `data_name`
+            are "amplm", "phaselm" or "omegalm".
+        """
+        # get the correct keys
+        t_key, amp_key, phase_key, omega_key \
+                = [k + tag for k in ["t", "amplm", "phaselm", "omegalm"]]
+        if not self.precessing:
+            amp_gw, phase_gw, omega_gw = (data_dict[amp_key][(2, 2)],
+                                          data_dict[phase_key][(2, 2)],
+                                          data_dict[omega_key][(2, 2)])
+        else:
             # check whether (2, -2) mode is provided.
-            for k in ["amplm", "phaselm"]:
+            for k in [amp_key, phase_key]:
                 if (2, -2) not in data_dict[k]:
-                    raise Exception(f"(2, -2) mode not found in {k}. For precessing"
-                             " systems, (2, -2) mode should be included in "
-                             "`dataDict`.")
-            amp_gw = 0.5 * (data_dict["amplm"][(2, 2)]
-                            + data_dict["amplm"][(2, -2)])
-            phase_gw = 0.5 * (data_dict["phaselm"][(2, 2)]
-                              - data_dict["phaselm"][(2, -2)])
-            omega_gw = time_deriv_4thOrder(
-                phase_gw,
-                data_dict["t"][1] - data_dict["t"][0])
+                    raise Exception(
+                        f"(2, -2) mode not found in {k}. For precessing"
+                        " systems, (2, -2) mode should be included in "
+                        "`dataDict`.")
+            amp_gw = 0.5 * (data_dict[amp_key][(2, 2)]
+                            + data_dict[amp_key][(2, -2)])
+            phase_gw = 0.5 * (data_dict[phase_key][(2, 2)]
+                              - data_dict[phase_key][(2, -2)])
+            omega_gw = 0.5 * (data_dict[omega_key][(2, 2)]
+                              - data_dict[omega_key][(2, -2)])
         return amp_gw, phase_gw, omega_gw
 
     def get_width_for_peak_finder_from_phase_gw(self,
@@ -2431,9 +2583,10 @@ class eccDefinition:
             raise Exception(
                 "Input time array t_zeroecc must have uniform time steps\n"
                 f"Time steps are {self.t_zeroecc_diff}")
-        # get amplitude and omega of 22 mode
-        self.amp_gw_zeroecc = self.dataDict["amplm_zeroecc"][(2, 2)]
-        self.omega_gw_zeroecc = self.dataDict["omegalm_zeroecc"][(2, 2)]
+        # get amplitude, phase and omega omega data 
+        self.amp_gw_zeroecc, self.phase_gw_zeroecc, self.omega_gw_zeroecc\
+            = self.get_amp_phase_omega_gw(self.dataDict,
+                                          tag="_zeroecc")
         # to get the residual amplitude and omega, we need to shift the
         # zeroecc time axis such that the merger of the zeroecc is at the
         # same time as that of the eccentric waveform
