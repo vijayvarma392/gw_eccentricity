@@ -64,6 +64,7 @@ def measure_eccentricity(tref_in=None,
                          dataDict=None,
                          num_orbits_to_exclude_before_merger=2,
                          precessing=False,
+                         frame="inertial",
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -299,12 +300,42 @@ def measure_eccentricity(tref_in=None,
         Default: 2.
 
     precessing: bool, default=False
-        Whether the system is precessing or not. For precessing systems, the
-        `dataDict` should contain modes in the coprecessing frame. For
-        nonprecessing systems, there is no distiction between the inertial and
-        coprecessing frame since they are the same.
+        Indicates whether the system is precessing. For precessing systems, the
+        (2, 2) and (2, -2) modes in the coprecessing frame are required to
+        compute `amp_gw`, `phase_gw`, and `omega_gw` (see
+        `get_amp_phase_omega_gw`), which are used to determine eccentricity.
 
-        Default is False which implies the system to be nonprecessing.
+        For precessing systems, waveform modes in the coprecessing frame must
+        be provided. This can be done in two ways:
+            - Set `frame="coprecessing"` and supply the coprecessing modes
+                directly via `dataDict`.
+            - Set `frame="inertial"` and provide the inertial frame modes
+                via `dataDict`. In this case, the modes in `dataDict` are
+                rotated internally (see `transform_inertial_to_coprecessing`)
+                before further computation. To get the coprecessing modes from
+                the inertial modes accurately, `dataDict` must include all
+                modes for `ell=2`, i.e., (2, -2), (2, -1), (2, 0), (2, 1) and
+                (2, 2).
+
+        For nonprecessing systems, the inertial and coprecessing frames are
+        equivalent, so there is no distinction. For nonprecessing systems, it
+        is sufficient to include only the (2, 2) mode.
+
+        Default is `False`, indicating the system is nonprecessing.
+
+    frame: str, default="inertial"
+        Specifies the reference frame for the modes in `dataDict`.
+            
+        This parameter determines the frame in which the mode data is provided.
+        It is especially relevant for measuring eccentricity in precessing
+        systems, as the choice of reference frame affects the interpretation of
+        the modes. Use this in conjunction with the `precessing` parameter (see
+        its documentation for more details) to ensure appropriate handling of
+        the data.
+
+        Currently `frame` can be "inertial" or "coprecessing".
+
+        Default value is "inertial".
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         spline_kwargs:
@@ -469,7 +500,7 @@ def measure_eccentricity(tref_in=None,
     if method in available_methods:
         gwecc_object = available_methods[method](
             dataDict, num_orbits_to_exclude_before_merger,
-            precessing, extra_kwargs)
+            precessing, frame, extra_kwargs)
         return_dict = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
         return_dict.update({"gwecc_object": gwecc_object})

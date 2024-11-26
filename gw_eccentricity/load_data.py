@@ -1500,13 +1500,15 @@ def package_modes_for_scri(modes_dict, ell_min, ell_max):
     for ell in range(ell_min, ell_max + 1):
         for m in range(-ell, ell + 1):            
             if (ell, m) in keys:
-                # for each m > 0, the m < 0 counterpart should also exist in the `data_dict`
-                if m > 0:
-                    if (ell, -m) not in keys:
-                        raise Exception("For each m > 0, corresponding m < 0 mode should also exist "
-                                        f"in the input `data_dict`. {(ell, m)} mode exists but "
-                                        f" {(ell, -m)} mode does not exist.")
                 result[:, i] = modes_dict[(ell, m)]
+            else:
+                # for a given ell, all (ell, m) modes should exist in the 
+                # modes_dict
+                raise Exception(
+                    f"{ell, m} mode for ell={ell} does not exist in the "
+                    "modes dict. To get the coprecessing modes accurately, "
+                    "all the `(ell, m)` modes for a given `ell` should exist "
+                    "in the input modes dict.")
             i += 1
     return result
 
@@ -1532,7 +1534,7 @@ def unpack_scri_modes(w):
     return result
 
 
-def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
+def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2, tag=""):
     """Get `data_dict` in the coprecessing frame.
 
     Given a `data_dict` containing the modes dict in the inertial frame and the
@@ -1554,6 +1556,13 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     ell_max: int, default=2
         Maximum `ell` value to use.
 
+    tag: str, default=""
+        A tag specifying which inertial frame data to use when transforming
+        inertial frame modes to coprecessing frame modes. For example, setting
+        `tag="_zeroecc"` selects the inertial frame modes corresponding to
+        the "zeroecc" (non-eccentric) case. If left as the default value
+        (`""`), the inertial frame modes for the eccentric case are used.
+
     Returns
     -------
     Dictionary of waveform modes in the coprecessing frame and the associated
@@ -1562,13 +1571,13 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     """
     # Get list of modes from `data_dict` to use as input to `scri.WaveformModes`.
     ordered_mode_list = package_modes_for_scri(
-        data_dict["hlm"],
+        data_dict["hlm" + tag],
         ell_min=ell_min,
         ell_max=ell_max)
 
     w = scri.WaveformModes(
         dataType=scri.h,
-        t=data_dict["t"],
+        t=data_dict["t" + tag],
         data=ordered_mode_list,
         ell_min=ell_min,
         ell_max=ell_max,
@@ -1581,7 +1590,8 @@ def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2):
     # Create a copy of data_dict and replace the "hlm" modes in the inertial frame
     # with the corresponding modes in the coprecessing frame
     data_dict_copr = deepcopy(data_dict)
-    data_dict_copr.update({"hlm": unpack_scri_modes(deepcopy(w_coprecessing))})
+    data_dict_copr.update(
+        {"hlm" + tag: unpack_scri_modes(deepcopy(w_coprecessing))})
     return data_dict_copr
 
 
