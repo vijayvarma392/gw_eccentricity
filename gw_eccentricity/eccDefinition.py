@@ -202,7 +202,7 @@ class eccDefinition:
         extra_kwargs: dict
             A dictionary of any extra kwargs to be passed. Allowed kwargs
             are:
-            extrema_interp_kwargs: dict
+            special_interp_kwargs_for_extrema: dict
                 A dictionary with a single key matching the current
                 `omega_gw_extrema_interpolation_method`. See under
                 `omega_gw_extrema_interpolation_method` for more details on
@@ -220,7 +220,7 @@ class eccDefinition:
                 - "rational_fit": default kwargs are set using
                   `utils.get_default_rational_fit_kwargs`
 
-            non_extrema_interp_kwargs: dict
+            general_interp_kwargs: dict
                 Dictionary of arguments to be passed to the spline
                 interpolation routine
                 (scipy.interpolate.InterpolatedUnivariateSpline) used to
@@ -404,24 +404,24 @@ class eccDefinition:
                 f"`{self.omega_gw_extrema_interpolation_method}`. Should be "
                 f"of {self.available_omega_gw_extrema_interpolation_methods.keys()}")
         # check extrema interp kwargs
-        self.check_extrema_interp_kwargs(extra_kwargs)
+        self.check_special_interp_kwargs_for_extrema(extra_kwargs)
         # set extrema interpolation kwargs
-        self.extrema_interp_kwargs = check_kwargs_and_set_defaults(
+        self.special_interp_kwargs_for_extrema = check_kwargs_and_set_defaults(
             self.extra_kwargs[
-                "extrema_interp_kwargs"][
+                "special_interp_kwargs_for_extrema"][
                     self.omega_gw_extrema_interpolation_method],
-            self.get_default_extrema_interp_kwargs(),
-            "extrema_interp_kwargs",
-            "eccDefinition.get_default_extrema_interp_kwargs()")
+            self.get_default_special_interp_kwargs_for_extrema(),
+            "special_interp_kwargs_for_extrema",
+            "eccDefinition.get_default_special_interp_kwargs_for_extrema()")
         # set other variables required for the omega_gw extrema interpolation
         # method
         self.set_other_variables_for_extrema_interpolation()
         # set spline interpolation kwargs to be used for interpolating data
         # other than the extrema.
-        self.non_extrema_interp_kwargs = check_kwargs_and_set_defaults(
-            self.extra_kwargs["non_extrema_interp_kwargs"],
+        self.general_interp_kwargs = check_kwargs_and_set_defaults(
+            self.extra_kwargs["general_interp_kwargs"],
             get_default_spline_kwargs(),
-            "non_extrema_interp_kwargs",
+            "general_interp_kwargs",
             "utils.get_default_spline_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega_gw_averaging_methods()
@@ -1054,7 +1054,7 @@ class eccDefinition:
             "plateau_size": None}
         return default_extrema_finding_kwargs
     
-    def get_default_extrema_interp_kwargs(self):
+    def get_default_special_interp_kwargs_for_extrema(self):
         """Get default kwargs to be passed to extrema interpolating method.
         
         Accurate interpolation of omega_gw extrema is crucial for obtaining
@@ -1062,7 +1062,7 @@ class eccDefinition:
         interpolation method, this function returns the default kwargs to be
         passed to the interpolating function. 
         """
-        allowed_methods = self.extra_kwargs["extrema_interp_kwargs"].keys()
+        allowed_methods = self.extra_kwargs["special_interp_kwargs_for_extrema"].keys()
         if self.omega_gw_extrema_interpolation_method == "spline":
             kwargs = get_default_spline_kwargs()
         elif self.omega_gw_extrema_interpolation_method == "rational_fit":
@@ -1073,32 +1073,33 @@ class eccDefinition:
                             f"Allowed methods are {allowed_methods}")
         return kwargs
     
-    def check_extrema_interp_kwargs(self, extra_kwargs):
+    def check_special_interp_kwargs_for_extrema(self, extra_kwargs):
         """Check extrema interp kwargs provided in extra_kwargs.
         
-        The `extrema_interp_kwargs` should have exactly one
+        The `special_interp_kwargs_for_extrema` should have exactly one
         key matching the current `omega_gw_extrema_interpolation_method`.
         """
-        if extra_kwargs is not None and "extrema_interp_kwargs" in extra_kwargs:
+        if (extra_kwargs is not None 
+            and "special_interp_kwargs_for_extrema" in extra_kwargs):
             # check that kwargs for only one extrema interpolation method is
             # provided.
             common_message = (
-                "The input `extrema_interp_kwargs` must contain a single "
-                "key, matching the current "
+                "The input `special_interp_kwargs_for_extrema` must contain "
+                "a single key, matching the current "
                 "`omega_gw_extrema_interpolation_method` "
                 f"'{self.omega_gw_extrema_interpolation_method}', "
                 "with a dictionary of kwargs for "
                 f"'{self.omega_gw_extrema_interpolation_method}' "
                 "as its value.")
             extrema_interp_keys \
-                = list(extra_kwargs["extrema_interp_kwargs"].keys())
+                = list(extra_kwargs["special_interp_kwargs_for_extrema"].keys())
             if len(extrema_interp_keys) == 0:
                 raise Exception(
-                    "Dictionay provided by 'extrema_interp_kwargs' "
+                    "Dictionay provided via 'special_interp_kwargs_for_extrema'"
                     " in 'extra_kwargs' can not be empty.\n"
                     f"{common_message}"
                     )
-            # check that the key in extrema_interp_kwargs matches
+            # check that the key in special_interp_kwargs_for_extrema matches
             # `omega_gw_extrema_interpolation_method`
             if  len(extrema_interp_keys) == 1 and (
                 extrema_interp_keys[0] 
@@ -1106,8 +1107,8 @@ class eccDefinition:
                 raise Exception(
                     "`omega_gw_extrema_interpolation_method` is "
                     f"{self.omega_gw_extrema_interpolation_method} but the "
-                    "kwargs in 'extrema_interp_kwargs' via 'extra_kwargs' is "
-                    f"for {extrema_interp_keys[0]}.\n"
+                    "kwargs in 'special_interp_kwargs_for_extrema' via "
+                    f"'extra_kwargs' is for {extrema_interp_keys[0]}.\n"
                     f"{common_message}"
                 )
             if len(extrema_interp_keys) > 1:
@@ -1124,7 +1125,7 @@ class eccDefinition:
             # set verbose to debug_level. If verbose is True, then it prints
             # information of each iteration for rational fits for a given
             # degree.
-            self.extrema_interp_kwargs["verbose"] = self.debug_level
+            self.special_interp_kwargs_for_extrema["verbose"] = self.debug_level
             # keep history of rational fit degree and nonmonotonicity of the
             # corresponding fits
             self.rational_fit_nonmonotonicity_history = {
@@ -1136,8 +1137,8 @@ class eccDefinition:
     def get_default_extra_kwargs(self):
         """Defaults for additional kwargs."""
         default_extra_kwargs = {
-            "non_extrema_interp_kwargs": {},
-            "extrema_interp_kwargs": {
+            "general_interp_kwargs": {},
+            "special_interp_kwargs_for_extrema": {
                 "spline": {},
                 "rational_fit": {}},
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
@@ -1441,66 +1442,6 @@ class eccDefinition:
             pericenters, apocenters)
         return pericenters, apocenters
 
-    def get_spline_interpolant_for_non_extrema(
-        self, oldX, oldY, allowExtrapolation=False, interpolator="spline"):
-        """Get spline interpolant for data other than the omega_gw extrema.
-
-        Interpolating the omega_gw extrema could be challenging, particularly
-        near the merger due to the rapid change in the omega_gw values and
-        limited number of data points. Thus, it requires special treatment. For
-        other data, this problem is less likely to occur. Therefore, we use
-        this function to interpolate data other than omega_gw extrema. The
-        spline kwargs for this function is provided by `extra_kwargs` using the
-        key "non_extrema_interp_kwargs".
-
-        A wrapper of utils.get_interpolant with check_kwargs=False.
-        This is to make sure that the checking of kwargs is not performed
-        everytime the interpolation function is called. Instead, the kwargs
-        are checked once in the init and passed to the interpolation
-        function without repeating checks.
-        """
-        return get_interpolant(oldX, oldY, allowExtrapolation, interpolator,
-                               spline_kwargs=self.non_extrema_interp_kwargs,
-                               check_kwargs=False)
-
-    def get_spline_interpolant_for_extrema(
-        self, oldX, oldY, allowExtrapolation=False, interpolator="spline"):
-        """Get spline interpolant for omega_gw extrema.
-
-        Same as `get_spline_interpolant_for_non_extrema` but uses the
-        `spline_kwargs` provided via `self.extrema_interp_kwargs`. For more,
-        see `get_spline_interpolant_for_non_extrema`.
-        """
-        return get_interpolant(oldX, oldY, allowExtrapolation, interpolator,
-                               spline_kwargs=self.extrema_interp_kwargs,
-                               check_kwargs=False)
-
-    def spline_interpolate_non_extrema(self, newX, oldX, oldY, allowExtrapolation=False,
-               interpolator="spline"):
-        """Get interpolated values using spline for data other than omega_gw
-        extrema.
-
-        A wrapper of utils.interpolate with check_kwargs=False for reasons
-        explained in the documentation of
-        `get_spline_interpolant_for_non_extrema` function.
-        """
-        return interpolate(newX, oldX, oldY, allowExtrapolation, interpolator,
-                           spline_kwargs=self.non_extrema_interp_kwargs,
-                           check_kwargs=False)
-        
-    def get_rational_fit_wrapper(self, x, y):
-        """Get rational fit.
-
-        A wrapper of `utils.get_rational_fit` with check_kwargs=False. This is
-        to make sure that the checking of kwargs is not performed everytime the
-        rational fit function is called. Instead, the kwargs are checked once
-        in the init and passed to the rational fit function without repeating
-        checks.
-        """
-        return get_rational_fit(x, y,
-                                rational_fit_kwargs=self.extrema_interp_kwargs,
-                                check_kwargs=False)
-
     def get_rational_fit_for_extrema(self, x, y, data_name=None):
         """Get rational fit with adaptive numerator and denominator degree.
 
@@ -1513,12 +1454,12 @@ class eccDefinition:
         the previous valid monotonic fit.
 
         The initial degrees for the rational fit can be specified through
-        `extrema_interp_kwargs` in `extra_kwargs` with the key "rational_fit".
-        (See `extrema_interp_kwargs` under `extra_kwargs` for more details)
-        Default values are provided by `get_default_rational_fit_kwargs`, where
-        both degrees are set to `None`. If both degrees remain `None`,
-        appropriate starting values are determined using
-        `self.get_approximate_degree_for_rational_fit`.
+        `special_interp_kwargs_for_extrema` in `extra_kwargs` with the key
+        "rational_fit". (See `special_interp_kwargs_for_extrema` under
+        `extra_kwargs` for more details) Default values are provided by
+        `get_default_rational_fit_kwargs`, where both degrees are set to
+        `None`. If both degrees remain `None`, appropriate starting values are
+        determined using `self.get_approximate_degree_for_rational_fit`.
         """
         # make sure that data_name is not None. A data_name is needed to
         # update the optimal values of the numerator and denominator degrees
@@ -1544,32 +1485,37 @@ class eccDefinition:
         # as the ideal degree can change based on the eccentricity which we do
         # not know apriori. The true optimal values are determined through
         # further iterations.
-        if self.extrema_interp_kwargs["num_degree"] is None \
-            and self.extrema_interp_kwargs["denom_degree"] is None:
-            self.extrema_interp_kwargs["num_degree"], self.extrema_interp_kwargs["denom_degree"] = \
+        if self.special_interp_kwargs_for_extrema["num_degree"] is None \
+            and self.special_interp_kwargs_for_extrema["denom_degree"] is None:
+            self.special_interp_kwargs_for_extrema["num_degree"], \
+                self.special_interp_kwargs_for_extrema["denom_degree"] = \
                 self.get_approximate_degree_for_rational_fit()
-        elif self.extrema_interp_kwargs["num_degree"] is None:
-            self.extrema_interp_kwargs["num_degree"] = self.extrema_interp_kwargs["denom_degree"]
-        elif self.extrema_interp_kwargs["denom_degree"] is None:
-            self.extrema_interp_kwargs["denom_degree"] = self.extrema_interp_kwargs["num_degree"]
+        elif self.special_interp_kwargs_for_extrema["num_degree"] is None:
+            self.special_interp_kwargs_for_extrema["num_degree"] \
+                = self.special_interp_kwargs_for_extrema["denom_degree"]
+        elif self.special_interp_kwargs_for_extrema["denom_degree"] is None:
+            self.special_interp_kwargs_for_extrema["denom_degree"] \
+                = self.special_interp_kwargs_for_extrema["num_degree"]
 
-        rat_fit = self.get_rational_fit_wrapper(x, y)
+        rat_fit = get_rational_fit(
+            x, y, rational_fit_kwargs=self.special_interp_kwargs_for_extrema,
+            check_kwargs=False)
         x_test = np.arange(x[0], x[-1], self.t[1] - self.t[0])
         # save the degrees for checks at each step of iterations for finding
         # the optimal degrees
-        old_num_degree = self.extrema_interp_kwargs["num_degree"]
-        old_denom_degree = self.extrema_interp_kwargs["denom_degree"]
+        old_num_degree = self.special_interp_kwargs_for_extrema["num_degree"]
+        old_denom_degree = self.special_interp_kwargs_for_extrema["denom_degree"]
 
         # Check for nonmonotonicity and lower degrees if needed
         fit_is_nonmonotonic = self.check_if_first_derivative_is_not_strictly_monotonic(
             x_test, rat_fit(x_test), 1.0, data_name)
         while fit_is_nonmonotonic:
-            if self.extrema_interp_kwargs["num_degree"] > 1:
-                self.extrema_interp_kwargs["num_degree"] -= 1
-            if self.extrema_interp_kwargs["denom_degree"] > 1:
-                self.extrema_interp_kwargs["denom_degree"] -= 1
-            if self.extrema_interp_kwargs["num_degree"] == 1 \
-                and self.extrema_interp_kwargs["denom_degree"] == 1:
+            if self.special_interp_kwargs_for_extrema["num_degree"] > 1:
+                self.special_interp_kwargs_for_extrema["num_degree"] -= 1
+            if self.special_interp_kwargs_for_extrema["denom_degree"] > 1:
+                self.special_interp_kwargs_for_extrema["denom_degree"] -= 1
+            if self.special_interp_kwargs_for_extrema["num_degree"] == 1 \
+                and self.special_interp_kwargs_for_extrema["denom_degree"] == 1:
                 debug_message(
                     "Both numerator and denominator degrees are equal to 1 "
                     "and cannot be lowered further.",
@@ -1578,13 +1524,19 @@ class eccDefinition:
 
             debug_message(
                 "Lowering degrees to "
-                f"num_degree={self.extrema_interp_kwargs['num_degree']}, "
-                f"denom_degree={self.extrema_interp_kwargs['denom_degree']} "
+                "num_degree="
+                f"{self.special_interp_kwargs_for_extrema['num_degree']}, "
+                "denom_degree="
+                f"{self.special_interp_kwargs_for_extrema['denom_degree']} "
                 "and retrying.", debug_level=self.debug_level, important=False)
 
             # build new fit and check monotonicity
-            rat_fit = self.get_rational_fit_wrapper(x, y)
-            fit_is_nonmonotonic = self.check_if_first_derivative_is_not_strictly_monotonic(
+            rat_fit = get_rational_fit(
+                x, y,
+                rational_fit_kwargs=self.special_interp_kwargs_for_extrema,
+                check_kwargs=False)
+            fit_is_nonmonotonic \
+                = self.check_if_first_derivative_is_not_strictly_monotonic(
                 x_test, rat_fit(x_test), 1.0, data_name)
         # If fit with initial degree is monotonic, try increasing the degree
         # for a better fit
@@ -1595,12 +1547,18 @@ class eccDefinition:
 
             while not fit_is_nonmonotonic:
                 # Increase the degrees for both numerator and denominator
-                new_num_degree = self.extrema_interp_kwargs["num_degree"] + 1
-                new_denom_degree = self.extrema_interp_kwargs["denom_degree"] + 1
-                self.extrema_interp_kwargs["num_degree"], self.extrema_interp_kwargs["denom_degree"] \
+                new_num_degree \
+                    = self.special_interp_kwargs_for_extrema["num_degree"] + 1
+                new_denom_degree \
+                    = self.special_interp_kwargs_for_extrema["denom_degree"] + 1
+                self.special_interp_kwargs_for_extrema["num_degree"],\
+                    self.special_interp_kwargs_for_extrema["denom_degree"] \
                     = new_num_degree, new_denom_degree
                 # build new fit and check monotonicity
-                new_rat_fit = self.get_rational_fit_wrapper(x, y)
+                new_rat_fit = get_rational_fit(
+                    x, y,
+                    rational_fit_kwargs=self.special_interp_kwargs_for_extrema,
+                    check_kwargs=False)
                 fit_is_nonmonotonic \
                     = self.check_if_first_derivative_is_not_strictly_monotonic(
                         x_test, new_rat_fit(x_test), 1.0, data_name)
@@ -1608,13 +1566,14 @@ class eccDefinition:
                     # Revert to previous fit and degrees if nonmonotonicity is
                     # detected
                     debug_message(
-                        "Increasing degrees caused nonmonotonicity. Reverting to "
-                        f"last monotonic fit with num_degree={last_monotonic_num_degree} "
-                        f"and denom_degree={last_monotonic_denom_degree}.",
+                        "Increasing degrees caused nonmonotonicity. "
+                        "Reverting to last monotonic fit with "
+                        f"num_degree={last_monotonic_num_degree} and "
+                        f"denom_degree={last_monotonic_denom_degree}.",
                         debug_level=self.debug_level, important=False)
-                    self.extrema_interp_kwargs["num_degree"] \
+                    self.special_interp_kwargs_for_extrema["num_degree"] \
                         = last_monotonic_num_degree
-                    self.extrema_interp_kwargs["denom_degree"] \
+                    self.special_interp_kwargs_for_extrema["denom_degree"] \
                         = last_monotonic_denom_degree
                     rat_fit = last_monotonic_rat_fit
                     break
@@ -1626,8 +1585,8 @@ class eccDefinition:
 
         # update final degrees used to build the fit
         self.rational_fit_degrees[data_name] = (
-            self.extrema_interp_kwargs["num_degree"],
-            self.extrema_interp_kwargs["denom_degree"])
+            self.special_interp_kwargs_for_extrema["num_degree"],
+            self.special_interp_kwargs_for_extrema["denom_degree"])
         return rat_fit
 
     def get_approximate_degree_for_rational_fit(self):
@@ -1670,15 +1629,15 @@ class eccDefinition:
             == "rational_fit":
             if data_name in self.rational_fit_nonmonotonicity_history:
                 self.rational_fit_nonmonotonicity_history[data_name].update(
-                    {(self.extrema_interp_kwargs['num_degree'],
-                      self.extrema_interp_kwargs['num_degree']):
+                    {(self.special_interp_kwargs_for_extrema['num_degree'],
+                      self.special_interp_kwargs_for_extrema['num_degree']):
                       is_not_strictly_monotonic})
         return is_not_strictly_monotonic
 
     def get_available_omega_gw_extrema_interpolation_methods(self):
         """Return available omega_gw extrema interpolation methods."""
         available_methods = {
-            "spline": self.get_spline_interpolant_for_extrema,
+            "spline": get_interpolant,
             "rational_fit": self.get_rational_fit_for_extrema,
         }
         return available_methods
@@ -1718,12 +1677,13 @@ class eccDefinition:
             method = self.available_omega_gw_extrema_interpolation_methods[
                 self.omega_gw_extrema_interpolation_method]
             if self.omega_gw_extrema_interpolation_method == "rational_fit":
-                # rational fit method `get_rational_fit_for_extrema` takes an
-                # additional argument
                 return method(self.t[extrema], self.omega_gw[extrema],
                 extrema_type)
-            else:
-                return method(self.t[extrema], self.omega_gw[extrema])
+            if self.omega_gw_extrema_interpolation_method == "spline":
+                return method(
+                    self.t[extrema], self.omega_gw[extrema], 
+                    spline_kwargs=self.special_interp_kwargs_for_extrema,
+                    check_kwargs=False)
         else:
             raise Exception(
                 f"Sufficient number of {extrema_type} are not found."
@@ -2026,11 +1986,11 @@ class eccDefinition:
             = self.check_num_extrema(apocenters, "apocenters")
 
         # If the eccentricity is too small for a method to find the extrema,
-        # and `return_zero_if_small_ecc_failure` is true, then we set the eccentricity and
-        # mean anomaly to zero and return them. In this case, the rest of the
-        # code in this function is not executed, and therefore, many variables
-        # that are needed for making diagnostic plots are not computed. Thus,
-        # in such cases, the diagnostic plots may not work.
+        # and `return_zero_if_small_ecc_failure` is true, then we set the
+        # eccentricity and mean anomaly to zero and return them. In this case,
+        # the rest of the code in this function is not executed, and therefore,
+        # many variables that are needed for making diagnostic plots are not
+        # computed. Thus, in such cases, the diagnostic plots may not work.
         if any([insufficient_pericenters_but_long_waveform,
                 insufficient_apocenters_but_long_waveform]) \
                 and self.return_zero_if_small_ecc_failure:
@@ -2118,8 +2078,10 @@ class eccDefinition:
             raise Exception("Reference time must be within two pericenters.")
 
         # Build omega_gw extrema interpolants
-        self.omega_gw_pericenters_interp = self.get_omega_gw_extrema_interpolant("pericenters")
-        self.omega_gw_apocenters_interp = self.get_omega_gw_extrema_interpolant("apocenters")
+        self.omega_gw_pericenters_interp \
+            = self.get_omega_gw_extrema_interpolant("pericenters")
+        self.omega_gw_apocenters_interp \
+            = self.get_omega_gw_extrema_interpolant("apocenters")
         # check monotonicity of the interpolants
         self.check_omega_gw_extrema_interpolants()
         # compute eccentricity at self.tref_out
@@ -2150,13 +2112,16 @@ class eccDefinition:
         """
         # Verify the monotonicity of the first derivative of the omega_gw
         # interpolant with spline.
-        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] == "spline":
+        if self.extra_kwargs["omega_gw_extrema_interpolation_method"] \
+            == "spline":
         # Check if the first derivative of omega_gw at pericenters or
         # apocenters is non-monotonic
             if (self.check_if_first_derivative_is_not_strictly_monotonic(
-                    self.t_for_checks, self.omega_gw_pericenters_interp(self.t_for_checks)) or
+                    self.t_for_checks,
+                    self.omega_gw_pericenters_interp(self.t_for_checks)) or
                 self.check_if_first_derivative_is_not_strictly_monotonic(
-                self.t_for_checks, self.omega_gw_apocenters_interp(self.t_for_checks))):
+                    self.t_for_checks,
+                    self.omega_gw_apocenters_interp(self.t_for_checks))):
                 debug_message(
                     "Nonmonotonic time derivative detected in the spline "
                     "interpolant through extrema. Using rational fit by "
@@ -2295,8 +2260,9 @@ class eccDefinition:
                 self.t_for_checks)
 
         if self.ecc_interp is None:
-            self.ecc_interp = self.get_spline_interpolant_for_non_extrema(
-                self.t_for_checks, self.ecc_for_checks)
+            self.ecc_interp = get_interpolant(
+                self.t_for_checks, self.ecc_for_checks,
+                spline_kwargs=self.general_interp_kwargs, check_kwargs=False)
         # Get derivative of ecc(t) using spline
         return self.ecc_interp.derivative(n=n)(t)
 
@@ -2619,13 +2585,15 @@ class eccDefinition:
         # residual quantities can be computed. Above, we check that this
         # extrapolation does not happen before t_merger, which is where
         # eccentricity is normally measured.
-        self.amp_gw_zeroecc_interp = self.spline_interpolate_non_extrema(
+        self.amp_gw_zeroecc_interp = interpolate(
             self.t, self.t_zeroecc_shifted, self.amp_gw_zeroecc,
-            allowExtrapolation=True)
+            allowExtrapolation=True, spline_kwargs=self.general_interp_kwargs,
+            check_kwargs=False)
         self.res_amp_gw = self.amp_gw - self.amp_gw_zeroecc_interp
-        self.omega_gw_zeroecc_interp = self.spline_interpolate_non_extrema(
+        self.omega_gw_zeroecc_interp = interpolate(
             self.t, self.t_zeroecc_shifted, self.omega_gw_zeroecc,
-            allowExtrapolation=True)
+            allowExtrapolation=True, spline_kwargs=self.general_interp_kwargs,
+            check_kwargs=False)
         self.res_omega_gw = (self.omega_gw - self.omega_gw_zeroecc_interp)
 
     def get_t_average_for_orbit_averaged_omega_gw(self):
@@ -2756,8 +2724,9 @@ class eccDefinition:
             orbit_averaged_omega_gw,
             "omega_gw averaged [apocenter to apocenter] and "
             "[pericenter to pericenter]")
-        return self.spline_interpolate_non_extrema(
-            t, self.t_for_orbit_averaged_omega_gw, orbit_averaged_omega_gw)
+        return interpolate(
+            t, self.t_for_orbit_averaged_omega_gw, orbit_averaged_omega_gw,
+            spline_kwargs=self.general_interp_kwargs, check_kwargs=False)
 
     def check_monotonicity_of_omega_gw_average(self,
                                               omega_gw_average,
@@ -2860,8 +2829,9 @@ class eccDefinition:
 
     def compute_omega_gw_zeroecc(self, t):
         """Find omega_gw from zeroecc data."""
-        return self.spline_interpolate_non_extrema(
-            t, self.t_zeroecc_shifted, self.omega_gw_zeroecc)
+        return interpolate(
+            t, self.t_zeroecc_shifted, self.omega_gw_zeroecc,
+            spline_kwargs=self.general_interp_kwargs, check_kwargs=False)
 
     def get_available_omega_gw_averaging_methods(self):
         """Return available omega_gw averaging methods."""
@@ -3005,16 +2975,19 @@ class eccDefinition:
             # of omega_gw_average.
             # We get omega_gw_average by evaluating the omega_gw_average(t)
             # on t, from tmin_for_fref to tmax_for_fref
-            self.t_for_omega_gw_average, self.omega_gw_average = self.get_omega_gw_average(method)
+            self.t_for_omega_gw_average, self.omega_gw_average \
+                = self.get_omega_gw_average(method)
 
             # check that omega_gw_average is monotonically increasing
             self.check_monotonicity_of_omega_gw_average(
                 self.omega_gw_average, "Interpolated omega_gw_average")
 
             # Get tref_in using interpolation
-            tref_in = self.spline_interpolate_non_extrema(fref_out,
+            tref_in = interpolate(fref_out,
                                   self.omega_gw_average/(2 * np.pi),
-                                  self.t_for_omega_gw_average)
+                                  self.t_for_omega_gw_average,
+                                  spline_kwargs=self.general_interp_kwargs,
+                                  check_kwargs=False)
             # check if tref_in is monotonically increasing
             if any(np.diff(tref_in) <= 0):
                 debug_message(f"tref_in from fref_in using method {method} is"
@@ -3053,7 +3026,8 @@ class eccDefinition:
             frequency.
         """
         if self.omega_gw_average is None:
-            self.t_for_omega_gw_average, self.omega_gw_average = self.get_omega_gw_average(method)
+            self.t_for_omega_gw_average, self.omega_gw_average \
+                = self.get_omega_gw_average(method)
         return [min(self.omega_gw_average)/2/np.pi,
                 max(self.omega_gw_average)/2/np.pi]
 

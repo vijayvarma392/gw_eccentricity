@@ -338,7 +338,7 @@ def measure_eccentricity(tref_in=None,
         Default value is "inertial".
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
-        extrema_interp_kwargs: dict
+        special_interp_kwargs_for_extrema: dict
             A dictionary with a single key matching the current
                 `omega_gw_extrema_interpolation_method`. See under
                 `omega_gw_extrema_interpolation_method` for more details on
@@ -356,7 +356,7 @@ def measure_eccentricity(tref_in=None,
                 - "rational_fit": default kwargs are set using
                   `utils.get_default_rational_fit_kwargs`
 
-        non_extrema_interp_kwargs: dict
+        general_interp_kwargs: dict
             Dictionary of arguments to be passed to the spline interpolation
             routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
             interpolate data other than the omega_gw extrema.
