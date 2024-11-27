@@ -17,10 +17,15 @@ parser.add_argument(
     type=str,
     required=True,
     help="EccDefinition method to save the regression data for.")
+parser.add_argument(
+    "--interp_method",
+    type=str,
+    required=True,
+    help="omega_gw_extrema_interpolation_method to save the regression data for.")
 args = parser.parse_args()
 
 
-def generate_regression_data(method):
+def generate_regression_data(method, interp_method):
     """Generate data for regression test using a method."""
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
@@ -42,7 +47,7 @@ def generate_regression_data(method):
         raise Exception(f"method {method} is not available. Must be one of "
                         f"{available_methods}")
 
-    extra_kwargs = {}
+    extra_kwargs = {"omega_gw_extrema_interpolation_method": interp_method}
     user_kwargs = extra_kwargs.copy()
     regression_data.update({"extra_kwargs": extra_kwargs})
     # Try evaluating at an array of times
@@ -56,9 +61,9 @@ def generate_regression_data(method):
     meanano_ref = gwecc_dict["mean_anomaly"]
     # We save the measured data 3 reference times
     n = len(tref_out)
-    dict_tref =  {"time": [tref_out[0], tref_out[n//4], tref_out[n//2]],
-                  "eccentricity": [ecc_ref[0], ecc_ref[n//4], ecc_ref[n//2]],
-                  "mean_anomaly": [meanano_ref[0], meanano_ref[n//4], meanano_ref[n//2]]}
+    dict_tref =  {"time": [tref_out[n//8], tref_out[n//4], tref_out[n//2]],
+                  "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
+                  "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
         
     # Try evaluating at an array of frequencies
     gwecc_dict = measure_eccentricity(
@@ -70,18 +75,18 @@ def generate_regression_data(method):
     ecc_ref = gwecc_dict["eccentricity"]
     meanano_ref = gwecc_dict["mean_anomaly"]
     n = len(fref_out)
-    dict_fref = {"frequency": [fref_out[0], fref_out[n//4], fref_out[n//2]],
-                 "eccentricity": [ecc_ref[0], ecc_ref[n//4], ecc_ref[n//2]],
-                 "mean_anomaly": [meanano_ref[0], meanano_ref[n//4], meanano_ref[n//2]]}
+    dict_fref = {"frequency": [fref_out[n//8], fref_out[n//4], fref_out[n//2]],
+                 "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
+                 "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
     regression_data.update({"tref": dict_tref,
                             "fref": dict_fref})
 
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
     # save to a json file
-    fl = open(f"{data_dir}/{method}_regression_data.json", "w")
+    fl = open(f"{data_dir}/{method}_{interp_method}_regression_data.json", "w")
     json.dump(regression_data, fl)
     fl.close()
 
 # generate regression data
-generate_regression_data(args.method)
+generate_regression_data(args.method, args.interp_method)

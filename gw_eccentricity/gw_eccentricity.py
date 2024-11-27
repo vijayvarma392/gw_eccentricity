@@ -338,12 +338,30 @@ def measure_eccentricity(tref_in=None,
         Default value is "inertial".
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
-        spline_kwargs:
+        special_interp_kwargs_for_extrema: dict
+            A dictionary with a single key matching the current
+                `omega_gw_extrema_interpolation_method`. See under
+                `omega_gw_extrema_interpolation_method` for more details on
+                possible values of interpolation methods.
+
+                Example structure:
+                    {
+                        "method": {"param1": value1, "param2": value2},
+                    }
+
+                currently, the available options for "method" are: 
+
+                - "spline": default kwargs are set using
+                  `utils.get_default_spline_kwargs`
+                - "rational_fit": default kwargs are set using
+                  `utils.get_default_rational_fit_kwargs`
+
+        general_interp_kwargs: dict
             Dictionary of arguments to be passed to the spline interpolation
             routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-            compute quantities like omega_gw_pericenters(t) and
-            omega_gw_apocenters(t).
-            Defaults are set using utils.get_default_spline_kwargs
+            interpolate data other than the omega_gw extrema.
+            
+            Defaults are set using `utils.get_default_spline_kwargs`
 
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,
@@ -442,6 +460,29 @@ def measure_eccentricity(tref_in=None,
             eccentricity is the cause, and set the returned eccentricity and
             mean anomaly to zero.
             USE THIS WITH CAUTION!
+
+        omega_gw_extrema_interpolation_method : str, default="rational_fit"
+            Specifies the method used to build the interpolations for 
+            `omega_gw_pericenters_interp(t)` or `omega_gw_apocenters_interp(t)`.
+            The available options are:
+
+            - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+                - Best suited for cleaner data, such as when waveform modes are generated
+                    using models like SEOB or TEOB.
+                - Faster to construct and evaluate.
+                - Since it fits through every data point, it may exhibit oscillatory 
+                    behavior, particularly near the merger.
+
+            - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+                - Can handle both clean and noisy data, e.g., waveform modes
+                    from numerical simulations.
+                - Better monotonic behaviour, particularly near the merger.
+                - Significantly slower compared to the `spline` method. This is because
+                    finding optimal numerator and denominator degree needs several iterations
+                - Can suppress pathologies in the waveform that might be visible with 
+                    `spline`.
+
+            Default value: `"rational_fit"`.
 
     Returns
     -------
