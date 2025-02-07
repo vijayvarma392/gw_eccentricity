@@ -52,8 +52,8 @@ jobs:
       - name: Install spinsfast for ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
-          conda install -c conda-forge pyfftw
-          conda install -c conda-forge spinsfast
+          sudo apt-get update && sudo apt-get install -y libfftw3-dev
+          pip install spinsfast
           
       - name: Install pipenv
         shell: bash -l {0}
