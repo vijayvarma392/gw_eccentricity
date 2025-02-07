@@ -52,7 +52,7 @@ jobs:
       - name: Install spinsfast for ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
-          pip install fftw
+          pip install pyfftw
           pip install spinsfast
           
       - name: Install pipenv
