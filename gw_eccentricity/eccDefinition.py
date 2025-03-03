@@ -8,6 +8,7 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 
 import numpy as np
 import matplotlib.pyplot as plt
+from copy import deepcopy
 from .load_data import get_coprecessing_data_dict
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
@@ -383,7 +384,6 @@ class eccDefinition:
             deepcopy(extra_kwargs), self.get_default_extra_kwargs(),
             "extra_kwargs",
             "eccDefinition.get_default_extra_kwargs()")
-        self.debug_level = self.extra_kwargs["debug_level"]
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
             self.get_default_extrema_finding_kwargs(min_width_for_extrema),
@@ -1515,9 +1515,9 @@ class eccDefinition:
             if self.special_interp_kwargs_for_extrema["denom_degree"] > 1:
                 self.special_interp_kwargs_for_extrema["denom_degree"] -= 1
             if self.special_interp_kwargs_for_extrema["num_degree"] == 1 \
-                and self.special_interp_kwargs_for_extrema["denom_degree"] == 1:
+                and self.special_interp_kwargs_for_extrema["denom_degree"] == 0:
                 debug_message(
-                    "Both numerator and denominator degrees are equal to 1 "
+                    "Both numerator and denominator degrees are equal to 0 "
                     "and cannot be lowered further.",
                     debug_level=self.debug_level, important=False)
                 break
