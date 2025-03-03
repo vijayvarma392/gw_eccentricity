@@ -8,8 +8,6 @@ https://github.com/vijayvarma392/gw_eccentricity/wiki/Adding-new-eccentricity-de
 
 import numpy as np
 import matplotlib.pyplot as plt
-from copy import deepcopy
-import warnings
 from .load_data import get_coprecessing_data_dict
 from .utils import peak_time_via_quadratic_fit, check_kwargs_and_set_defaults
 from .utils import amplitude_using_all_modes
@@ -28,8 +26,7 @@ class eccDefinition:
     """Base class to define eccentricity for given waveform data dictionary."""
 
     def __init__(self, dataDict, num_orbits_to_exclude_before_merger=2,
-                 precessing=False,
-                 frame="inertial",
+                 precessing=False, frame="inertial", debug_level=0,
                  extra_kwargs=None):
         """Init eccDefinition class.
 
@@ -199,6 +196,14 @@ class eccDefinition:
 
             Default value is "inertial".
 
+        debug_level: int
+            Debug settings for warnings/errors:
+            -1: All warnings are suppressed. NOTE: Use at your own risk!
+            0: Only important warnings are issued.
+            1: All warnings are issued. Use when investigating.
+            2: All warnings become exceptions.
+            Default: 0.
+
         extra_kwargs: dict
             A dictionary of any extra kwargs to be passed. Allowed kwargs
             are:
@@ -246,14 +251,6 @@ class eccDefinition:
                 find_peaks. See
                 eccDefinition.get_width_for_peak_finder_from_phase_gw for more
                 details.
-
-            debug_level: int
-                Debug settings for warnings/errors:
-                -1: All warnings are suppressed. NOTE: Use at your own risk!
-                0: Only important warnings are issued.
-                1: All warnings are issued. Use when investigating.
-                2: All warnings become exceptions.
-                Default: 0.
 
             debug_plots: bool
                 If True, diagnostic plots are generated. This can be
@@ -353,6 +350,7 @@ class eccDefinition:
         """
         self.precessing = precessing
         self.frame = frame
+        self.debug_level = debug_level
         # check if frame makes sense.
         available_frames = ["inertial", "coprecessing"]
         if self.frame not in available_frames:
@@ -696,11 +694,12 @@ class eccDefinition:
         # frame, rotate the modes and obtain the corresponding modes in the
         # coprecessing frame
         if self.precessing is True and self.frame == "inertial":
-            warnings.warn(
+            debug_message(
                 f"The system is precessing but the modes are provided in "
                 f"the {self.frame} frame. Transforming the modes from"
                 f" the {self.frame} frame to the coprecessing frame and "
-                "updating `self.frame` to `coprecessing`.")
+                "updating `self.frame` to `coprecessing`.",
+                debug_level=self.debug_level, important=False)
             dataDict = self.transform_inertial_to_coprecessing(dataDict)
             # transform the zeroecc modes as well if provided in dataDict
             if "hlm_zeroecc" in dataDict or "amplm_zeroecc" in dataDict:
@@ -828,20 +827,22 @@ class eccDefinition:
             hlm_dict = self.get_hlm_from_amplm_phaselm(amplm_dict, phaselm_dict)
             data_dict.update(hlm_dict)
             data_dict = get_coprecessing_data_dict(data_dict, tag=tag)
-            warnings.warn(
+            debug_message(
                 f"Removing the input inertial frame {'amplm' + tag}, "
                 f"{'phaselm' + tag} from `dataDict`. The corresponding "
                 "coprecessing frame quantities are computed "
                 f"later from the coprecessing {'hlm' + tag} in "
-                f"`get_amp_phase_omega_data`.")
+                f"`get_amp_phase_omega_data`.", debug_level=self.debug_level,
+                important=False)
             data_dict.pop("amplm" + tag, None)
             data_dict.pop("phaselm" + tag, None)
         if "omegalm" + tag in data_dict:
-            warnings.warn(
+            debug_message(
                 f"Removing the input inertial frame {'omegalm' + tag} "
                 f"from `dataDict`. The coprecessing {'omegalm' + tag} is "
                 f"computed later from the coprecessing {'hlm' + tag} in "
-                f"`get_amp_phase_omega_data`.")
+                f"`get_amp_phase_omega_data`.", debug_level=self.debug_level,
+                important=False)
             data_dict.pop("omegalm" + tag, None)
         return data_dict
     
@@ -1143,7 +1144,6 @@ class eccDefinition:
                 "rational_fit": {}},
             "extrema_finding_kwargs": {},   # Gets overridden in methods like
                                             # eccDefinitionUsingAmplitude
-            "debug_level": 0,
             "debug_plots": False,
             "omega_gw_averaging_method": "orbit_averaged_omega_gw",
             "treat_mid_points_between_pericenters_as_apocenters": False,

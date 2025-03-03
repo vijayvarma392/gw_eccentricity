@@ -63,6 +63,8 @@ All of these can be installed through pip or conda.
 * [scipy](https://www.scipy.org/install.html)
 * [h5py](http://docs.h5py.org/en/latest/build.html)
 * [lalsuite](https://pypi.org/project/lalsuite)
+* [sxs](https://github.com/sxs-collaboration/sxs)
+* [scri](https://github.com/moble/scri)
 
 # Usage
 See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb) for a demo.

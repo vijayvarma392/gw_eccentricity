@@ -65,6 +65,7 @@ def measure_eccentricity(tref_in=None,
                          num_orbits_to_exclude_before_merger=2,
                          precessing=False,
                          frame="inertial",
+                         debug_level=0,
                          extra_kwargs=None):
     """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -337,6 +338,14 @@ def measure_eccentricity(tref_in=None,
 
         Default value is "inertial".
 
+    debug_level: int
+        Debug settings for warnings/errors:
+        -1: All warnings are suppressed. NOTE: Use at your own risk!
+        0: Only important warnings are issued.
+        1: All warnings are issued. Use when investigating.
+        2: All warnings become exceptions.
+        Default: 0.
+
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
         special_interp_kwargs_for_extrema: dict
             A dictionary with a single key matching the current
@@ -382,14 +391,6 @@ def measure_eccentricity(tref_in=None,
             parameter for find_peaks. See
             eccDefinition.get_width_for_peak_finder_from_phase_gw for more
             details.
-
-        debug_level: int
-            Debug settings for warnings/errors:
-            -1: All warnings are suppressed. NOTE: Use at your own risk!
-            0: Only important warnings are issued.
-            1: All warnings are issued. Use when investigating.
-            2: All warnings become exceptions.
-            Default: 0.
 
         debug_plots: bool
             If True, diagnostic plots are generated. This can be
@@ -541,7 +542,7 @@ def measure_eccentricity(tref_in=None,
     if method in available_methods:
         gwecc_object = available_methods[method](
             dataDict, num_orbits_to_exclude_before_merger,
-            precessing, frame, extra_kwargs)
+            precessing, frame, debug_level, extra_kwargs)
         return_dict = gwecc_object.measure_ecc(
             tref_in=tref_in, fref_in=fref_in)
         return_dict.update({"gwecc_object": gwecc_object})
