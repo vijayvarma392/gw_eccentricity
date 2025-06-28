@@ -18,6 +18,7 @@ from .utils import get_default_spline_kwargs
 from .utils import debug_message
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
+from .filter import FilterSpinInducedOscillations
 
 
 class eccDefinition:
@@ -334,6 +335,16 @@ class eccDefinition:
         # (2, 2) mode values. See `get_amp_phase_omega_gw` for more details.
         self.amp_gw, self.phase_gw, self.omega_gw \
             = self.get_amp_phase_omega_gw(self.dataDict)
+        # filter out spin induced oscillations if required
+        if self.precessing:
+            self.omega_gw_unfiltered = np.copy(self.omega_gw)
+            Filter = FilterSpinInducedOscillations(self.dataDict)
+            self.omega_gw = Filter.filter_spin_induced_oscillations(
+                self.t, self.omega_gw, "omega")
+            # filter amp_gw
+            self.amp_gw_unfiltered = np.copy(self.amp_gw)
+            self.amp_gw = Filter.filter_spin_induced_oscillations(
+                self.t, self.amp_gw, "amp")
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             extra_kwargs, self.get_default_extra_kwargs(),
