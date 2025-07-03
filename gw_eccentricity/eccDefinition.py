@@ -1515,9 +1515,9 @@ class eccDefinition:
             if self.special_interp_kwargs_for_extrema["denom_degree"] > 1:
                 self.special_interp_kwargs_for_extrema["denom_degree"] -= 1
             if self.special_interp_kwargs_for_extrema["num_degree"] == 1 \
-                and self.special_interp_kwargs_for_extrema["denom_degree"] == 0:
+                and self.special_interp_kwargs_for_extrema["denom_degree"] == 1:
                 debug_message(
-                    "Both numerator and denominator degrees are equal to 0 "
+                    "Both numerator and denominator degrees are equal to 1 "
                     "and cannot be lowered further.",
                     debug_level=self.debug_level, important=False)
                 break
