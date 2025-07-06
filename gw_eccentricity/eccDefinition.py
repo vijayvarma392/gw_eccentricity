@@ -1595,27 +1595,31 @@ class eccDefinition:
         Assign degree based on number of extrema found. The degree is increased
         as the number of extrema increases.
         """
-        # TODO: Optimize this.
+        # TODO: Optimize this. These numbers are not very robust
+        # since the relation between the final degrees and number of
+        # cycles is not very simple, and are meant only for a
+        # reasonable guess for the initial degrees which is then
+        # optimized to get the final degrees.
+        # For waveforms containing numerical noise, these numbers may
+        # not be even close to the final degrees used for rational
+        # fits.
+        
         # assign degree based on the number of extrema if user provided
         # degree is None.
         approximate_num_orbits = max(len(self.pericenters_location),
                                      len(self.apocenters_location))
-        if approximate_num_orbits <= 5:
-            num_degree, denom_degree = 1, 1
+        if approximate_num_orbits <= 10:
+            num_degree, denom_degree = 2, 2
         elif approximate_num_orbits <= 20:
-            num_degree, denom_degree =  2, 2
-        elif approximate_num_orbits <= 50:
-            num_degree, denom_degree = 3, 3
-        elif approximate_num_orbits <= 100:
+            num_degree, denom_degree =  3, 3
+        elif approximate_num_orbits <= 40:
             num_degree, denom_degree = 4, 4
-        elif approximate_num_orbits <= 150:
+        elif approximate_num_orbits <= 60:
             num_degree, denom_degree = 5, 5
-        elif approximate_num_orbits <= 200:
+        elif approximate_num_orbits <= 125:
             num_degree, denom_degree = 6, 6
         else:
-            num_degree, denom_degree \
-                = (5 + int(np.log10(approximate_num_orbits)),
-                5 + int(np.log10(approximate_num_orbits)))
+            num_degree, denom_degree = 7, 7
         return num_degree, denom_degree
 
     def check_if_first_derivative_is_not_strictly_monotonic(
