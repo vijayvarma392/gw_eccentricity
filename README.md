@@ -65,6 +65,7 @@ All of these can be installed through pip or conda.
 * [lalsuite](https://pypi.org/project/lalsuite)
 * [sxs](https://github.com/sxs-collaboration/sxs)
 * [scri](https://github.com/moble/scri)
+* [polyrat](https://pypi.org/project/polyrat/)
 
 # Usage
 See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb) for a demo.
