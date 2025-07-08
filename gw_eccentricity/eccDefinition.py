@@ -341,9 +341,9 @@ class eccDefinition:
                     - Can handle both clean and noisy data, e.g., waveform
                         modes from numerical simulations.
                     - Better monotonic behaviour, particularly near the merger.
-                    - Significantly slower compared to the `spline` method.
+                    - Can be slower compared to the `spline` method.
                       This is because finding optimal numerator and denominator
-                      degree needs several iterations
+                      degree may need several iterations.
                     - Can suppress pathologies in the waveform that might be
                       visible with `spline`.
 
