@@ -69,8 +69,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: bash -l {0}
         run: |
-          git clone https://bitbucket.org/teobresums/teobresums.git
-          cd teobresums/Python
+          git clone https://bitbucket.org/teobresums/teobresums.git $HOME/teobresums
+          cd $HOME/teobresums/Python
           git checkout Dali
           pip install numpy
           python setup.py build_ext --inplace
