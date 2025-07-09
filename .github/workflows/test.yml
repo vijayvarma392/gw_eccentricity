@@ -17,6 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 4
+      fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
         python-version: ['3.9']
@@ -42,12 +43,18 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install pytest nbconvert ipykernel
-
-      - name: Install extra dependencies for macos
+      - name: Install spinsfast for macos
         if: matrix.os == 'macos-latest'
         run: |
           brew install fftw
           CFLAGS=" -L/opt/homebrew/lib " python -m pip install spinsfast
+      - name: Install spinsfast for ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libfftw3-dev
+          pip install spinsfast
+
+      - name: Install extra dependencies for macos
           brew install libconfig
           brew install gsl
 

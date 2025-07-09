@@ -25,7 +25,7 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
         """
         super().__init__(*args, **kwargs)
         self.method = "ResidualAmplitude"
-        self.label_for_data_for_finding_extrema = r"$\Delta A_{22}$"
+        self.label_for_data_for_finding_extrema = self.get_label_for_plots("res_amp")
 
     def check_and_raise_zeroecc_data_not_found(self, method):
         """Raise exception if zeroecc data not found for Residual method.
@@ -56,4 +56,4 @@ class eccDefinitionUsingResidualAmplitude(eccDefinitionUsingAmplitude):
     def get_data_for_finding_extrema(self):
         """Get the data for extrema finding."""
         self.check_and_raise_zeroecc_data_not_found("ResidualAmplitude")
-        return self.res_amp22
+        return self.res_amp_gw

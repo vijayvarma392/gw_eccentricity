@@ -4,15 +4,15 @@ from gw_eccentricity import measure_eccentricity
 import numpy as np
 
 
-def test_set_failures_to_zero():
-    """Test that the interface works with set_failures_to_zero for waveforms
-    with small or zero ecc.
+def test_return_zero_if_small_ecc_failure():
+    """Test that the interface works with return_zero_if_small_ecc_failure for
+    waveforms with small or zero ecc.
 
     In certain situations, the waveform may have zero eccentricity or a very
     small eccentricity, making it difficult for the given method to identify
     any extrema. In cases where such a situation occurs, and if the user has
-    set 'set_failures_to_zero' to `True` in the 'extra_kwargs' parameter, both
-    the eccentricity and mean anomaly will be set to zero.
+    set 'return_zero_if_small_ecc_failure' to `True` in the 'extra_kwargs'
+    parameter, both the eccentricity and mean anomaly will be set to zero.
     """
     # The Amplitude and Frequency methods usually fail to detect any extrema
     # for eccentricities less than about 1e-3. Therefore, to test whether we
@@ -39,7 +39,7 @@ def test_set_failures_to_zero():
     available_methods = gw_eccentricity.get_available_methods()
     # The following will set ecc and mean ano to zero
     # if no extrema are found.
-    extra_kwargs = {"set_failures_to_zero": True}
+    extra_kwargs = {"return_zero_if_small_ecc_failure": True}
 
     # We want to test it with both a single reference point
     # as well as an array of reference points

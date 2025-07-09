@@ -2,10 +2,14 @@
 import os
 import numpy as np
 import sxs
+import scri
 import h5py
 import lal
 import lalsimulation as lalsim
 import warnings
+import json
+import spherical_functions as sf
+from copy import deepcopy
 from .utils import peak_time_via_quadratic_fit
 from .utils import amplitude_using_all_modes
 from .utils import check_kwargs_and_set_defaults
@@ -88,6 +92,12 @@ def get_load_waveform_defaults(origin="LAL"):
                        "num_orbits_to_remove_as_junk",
                        "mode_array",
                        "extrap_order"]
+        if origin == "SXSCatalog":
+            # SXS waveforms in the new catalog format comes with memory
+            # correction. By default we remove this memory correction from the
+            # waveform modes for measuring eccentricity. One can opt to keep
+            # memory using the following kwarg.
+            kwargs_list.append("keep_memory")
         return make_a_sub_dict(get_defaults_for_nr(), kwargs_list)
     # for waveforms in LVCNR format file using recommended function in LALSuite
     elif origin == "LVCNR":
@@ -502,14 +512,15 @@ def get_defaults_for_nr():
 
     metadata_path: str
         NOTE: Only for SXS catalog format waveform.
-        Path to the sxs metadata file. This file generally can be
-        found in the same directory as the waveform file and has the
-        name `metadata.txt`. It contains the metadata including binary
-        parameters along with other information related to the NR
-        simulation performed to obtain the waveform modes.
-        Required when `include_zero_ecc` is True.
-        If provided, a dictionary containing binary mass ratio and
-        spins is returned.
+        Path to the sxs metadata file. This file generally can be found in the
+        same directory as the waveform file and has the name `metadata.txt`
+        (for SXSCatalog_old) or `metadata.json` (for SXSCatalog). It contains
+        the metadata including binary parameters along with other information
+        related to the NR simulation performed to obtain the waveform modes.
+        Required when `include_zero_ecc` or `include_params_dict` or
+        `keep_memory` (available only for `SXSCatalog`) is False.  If
+        provided, a dictionary containing binary mass ratio, spins and the
+        relaxation time is returned.
         Default is None.
 
     num_orbits_to_remove_as_junk: float
@@ -524,6 +535,14 @@ def get_defaults_for_nr():
     extrap_order: int
         Extrapolation order to use for loading the waveform data.
         NOTE: This is used only for sxs catalog formatted waveforms.
+
+    keep_memory: bool
+        If False, remove memory contribution from the waveform modes.  This will
+        require metadata file to find t_relax which is used to start the
+        integration for computing memory contribution.  NOTE: This can be used
+        only in the newer sxs catalog formatted waveforms with
+        origin=`SXSCatalog`
+        Default is False.
     """
     return {"filepath": None,
             "data_dir": None,
@@ -535,7 +554,8 @@ def get_defaults_for_nr():
             "metadata_path": None,
             "num_orbits_to_remove_as_junk": 2,
             "mode_array": [(2, 2)],
-            "extrap_order": 2}
+            "extrap_order": 2,
+            "keep_memory": False}
 
 
 def load_lvcnr_waveform(**kwargs):
@@ -750,8 +770,8 @@ def load_sxs_catalogformat(**kwargs):
 
         1. The strain file `Strain_N{extrap_order}.h5` (required)
         2. The corresponding json file `Strain_N{extrap_order}.json` (required)
-        3. The metadata file `metadata.txt` (required when `include_zero_ecc`
-          or `include_params_dict` is True)
+        3. The metadata file `metadata.json` (required when `include_zero_ecc`
+          or `include_params_dict` is True or `keep_memory` is False)
         4. The horizon file `Horizons.h5` (optional)
 
         `Strain_N{extrap_order}.h5` contains the waveform extrapolated to
@@ -759,9 +779,10 @@ def load_sxs_catalogformat(**kwargs):
         drift. This and `Strain_N{extrap_order}.json` must be provided to load
         waveform modes.
 
-        When `include_zero_ecc` or `include_params_dict` is True,
-        `metadata.txt` is required to obtain the parameters used in the NR
-        simulation. See more under `get_params_dict_from_sxs_metadata`.
+        When `include_zero_ecc` or `include_params_dict` is True or
+        `keep_memory` is False, `metadata.json` is required to obtain the
+        parameters used in the NR simulation. See more under
+        `get_params_dict_from_sxs_metadata`.
 
         If `Horizons.h5` is provided, it is used to get a better estimate of
         the duration of an orbit from phase data to use it for removing junk
@@ -777,10 +798,10 @@ def load_sxs_catalogformat(**kwargs):
         for the same set of parameters except with eccentricity set to
         zero.
 
-        When set to True, the function will search for the `metadata.txt` file
-        in the `data_dir` directory. Typically, the `metadata.txt` file is
+        When set to True, the function will search for the `metadata.json` file
+        in the `data_dir` directory. Typically, the `metadata.json` file is
         located in the same directory as the waveform file within the sxs
-        catalog. The `metadata.txt` file is essential for extracting binary
+        catalog. The `metadata.json` file is essential for extracting binary
         parameters and related metadata, as it typically contains crucial
         information about the binary parameters and the NR simulation used to
         generate the waveform modes.
@@ -821,6 +842,11 @@ def load_sxs_catalogformat(**kwargs):
         The extrapolation order determines the filename to search for in order
         to locate the strain file. This function will seek a file named
         `Strain_N{extrap_order}.h5` in the `data_dir`.
+
+    keep_memory: bool
+        If False, remove memory contribution from the waveform modes.
+        This will require metadata file to find t_relax which is used
+        to start the integration for computing memory contribution.
 
     Returns
     -------
@@ -899,9 +925,11 @@ def load_sxs_catalogformat_old(**kwargs):
     following files are looked for in the `data_dir` directory:
 
     1. `rhOverM_Asymptotic_GeometricUnits_CoM.h5` (mandatory).
-    2. `metadata.txt` (required when `include_zero_ecc`
-          or `include_params_dict` is True). For more details, see `data_dir`
-      under `load_sxs_catalogformat`.
+    2. `metadata.txt` (required when `include_zero_ecc` or
+        `include_params_dict` is True). For more details, see `data_dir` under
+        `load_sxs_catalogformat`. `metadata.txt` is required for sxs old
+        catalog format. This file contains the same information as found in
+        `metadata.json` in the newer sxs catalog format (origin=`SXSCatalog`).
     3. `Horizons.h5` (optional). For more details, see `data_dir`
       under `load_sxs_catalogformat`.
     """
@@ -943,9 +971,12 @@ def check_sxs_data_dir(origin, **kwargs):
          - `rhOverM_Asymptotic_GeometricUnits_CoM.h5`.
 
         These files are required to extract the waveform modes successfully.
-    - `metadata.txt` file to get the parameters of the NR Simulation.
-        This file is required when `include_zero_ecc` or `include_params_dict`
-        is True.
+    - `metadata.txt` or `metadata.json` file to get the parameters of the NR
+        Simulation. `metadata.txt` is required for `SXSCatalog_old`. In
+        `SXSCatalog`, the newer format of sxs catalog, it is replaced by
+        `metadata.json`. This file is required when `include_zero_ecc` or
+        `include_params_dict` is True or `keep_memory` (available only
+        for `SXSCatalog`) is False.
     - `Horizons.h5` file to estimate the duration of an orbit using the orbital
         phase data. This file is optional. If it is not found, we use the phase
         of the (2, 2) mode to get the duration of an orbit assuming a phase
@@ -987,22 +1018,24 @@ def check_sxs_data_dir(origin, **kwargs):
         "If you are using the new format, You should provide the h5 and json "
         f"file named `Strain_N{kwargs['extrap_order']}` since `extrap_order` "
         f"is {kwargs['extrap_order']}."}
-    # metadata.txt is required if include_zero_ecc or include_params_dict is
-    # True
-    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
+    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"],
+            not kwargs["keep_memory"]]):
+        # In newer versions of sxscatalog format, metadata.txt files are
+        # replaced by metadata.json file.
+        required_metadata_file = "metadata.json" if origin == "SXSCatalog" else "metadata.txt"
         for k in required_files_dict:
             required_files_dict.update(
-                {k: np.append(required_files_dict[k], ["metadata.txt"])})
+                {k: np.append(required_files_dict[k], [required_metadata_file])})
     # Check if all the required files exist
     for filename in required_files_dict[origin]:
         if not os.path.exists(
                 os.path.join(kwargs["data_dir"], filename)):
-            if filename == "metadata.txt":
+            if "metadata" in filename:
                 message = (
-                    " `metadata.txt` file is required when "
-                    "`include_zero_ecc` or `include_params_dict` "
-                    "is set to True to get the binary parameters of "
-                    "the NR simulation.")
+                    f" {required_metadata_file} file is required when "
+                    "`include_zero_ecc` or `include_params_dict` is True or "
+                    "`keep_memory` is set to False to get the binary "
+                    "parameters of the NR simulation.")
             else:
                 message = message_dict[origin]
             raise FileNotFoundError(
@@ -1051,12 +1084,19 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     # shift time axis by tpeak such that peak occurs at t = 0
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
-    if kwargs["include_zero_ecc"] or kwargs["include_params_dict"]:
-        params_dict = get_params_dict_from_sxs_metadata(
-            os.path.join(kwargs["data_dir"], "metadata.txt"))
+    if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"],
+            not kwargs["keep_memory"]]):
+        if os.path.exists(os.path.join(kwargs["data_dir"], "metadata.txt")):
+            params_dict = get_params_dict_from_sxs_metadata(
+                os.path.join(kwargs["data_dir"], "metadata.txt"))
+        else:
+            params_dict = get_params_dict_from_sxs_metadata(
+                os.path.join(kwargs["data_dir"], "metadata.json"))
     # if include_zero_ecc is True, load zeroecc dataDict
     if kwargs["include_zero_ecc"]:
         params_dict_zero_ecc = params_dict.copy()
+        # remove t_relax from the params dict
+        params_dict_zero_ecc.pop("t_relax", None)
         # provide the approximant to be used for zero eccentricity waveform
         params_dict_zero_ecc.update(
             {"approximant": kwargs["zero_ecc_approximant"],
@@ -1091,9 +1131,12 @@ def get_modes_dict_from_sxs_catalog_old_format(**kwargs):
             time = mode_data[:, 0]
             t = np.arange(time[0], time[-1], kwargs["deltaTOverM"])
         hlm = mode_data[:, 1] + 1j * mode_data[:, 2]
-        amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        # See comments under `get_modes_dict_from_sxs_catalog_format` on why we
+        # interpolate real and imaginary parts instead of the amplitude and
+        # phase.
+        real_interp = interpolate(t, time, np.real(hlm))
+        imag_interp = interpolate(t, time, np.imag(hlm))
+        hlm_interp = real_interp + 1j * imag_interp
         modes_dict.update({(ell, m): hlm_interp})
     return t, modes_dict
 
@@ -1105,8 +1148,31 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     default values.
     """
     # get the waveform object
-    waveform = sxs.rpdmb.load(
+    waveform = sxs.load(
         os.path.join(kwargs["data_dir"], f"Strain_N{kwargs['extrap_order']}"))
+    
+    if kwargs["keep_memory"]:
+        waveform_modes = waveform.data
+    else:
+        # remove memory contribution.
+        # Get parameters from the metadata file. We need the relaxation time
+        # `t_relax` to use as the starting time for the integration to compute
+        # the memory contribution
+        params_dict = get_params_dict_from_sxs_metadata(
+            os.path.join(kwargs["data_dir"], "metadata.json"))
+
+        # Get the memory contribution
+        waveform_mem_only = sxs.waveforms.memory.J_E(
+            waveform, integration_start_time=params_dict["t_relax"])
+    
+        # NOTE: This is currently required because the ell = 0, 1 modes get
+        # included by silly sxs when removing memory.  So, we drop all modes
+        # before the first nonzero mode (2, -2).  This should eventually not be
+        # required if fixed in sxs, but that should not break this code anyway.
+        waveform_mem_only_data = waveform_mem_only.data[
+            :, sf.LM_index(2, -2, waveform_mem_only.ell_min):]
+        # Get waveform modes without the memory
+        waveform_modes = waveform.data - waveform_mem_only_data
     # get the time
     time = waveform.t
     # Create a time array with step = dt, to interpolate the waveform
@@ -1115,10 +1181,18 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
     modes_dict = {}
     for mode in kwargs["mode_array"]:
         ell, m = mode
-        hlm = waveform[:, waveform.index(ell, m)].data
-        amp_interp = interpolate(t, time, np.abs(hlm))
-        phase_interp = interpolate(t, time, -np.unwrap(np.angle(hlm)))
-        hlm_interp = amp_interp * np.exp(-1j * phase_interp)
+        hlm = waveform_modes[:, waveform.index(ell, m)]
+        # NOTE: We interpolate the real and imaginary parts of the modes,
+        # instead of interpolating the amplitude and phase. We noticed that for
+        # systems with high eccentricity and extreme precession, interpolating
+        # amplitude and phase over smaller deltaTOverM values introduces
+        # artificial spikes in the frequency that are absent in the original
+        # data. These spikes become more pronounced as the spline order
+        # increases. In contrast, interpolating the real and imaginary parts
+        # avoids these issues.
+        real_interp = interpolate(t, time, np.real(hlm))
+        imag_interp = interpolate(t, time, np.imag(hlm))
+        hlm_interp = real_interp + 1j * imag_interp
         modes_dict.update({(ell, m): hlm_interp})
     return t, modes_dict
 
@@ -1126,22 +1200,34 @@ def get_modes_dict_from_sxs_catalog_format(**kwargs):
 def get_params_dict_from_sxs_metadata(metadata_path):
     """Get binary parameters from sxs metadata file.
 
-    This file is usually located in the same directory as the waveform
-    file and has the name `metadata.txt`. It contains metadata related
-    to the NR simulation performed to obtain the waveform modes.
+    This file is usually located in the same directory as the waveform file and
+    has the name `metadata.txt` or `metadata.json`. It contains metadata
+    related to the NR simulation performed to obtain the waveform modes.
     """
-    fl = open(metadata_path, "r")
-    lines = fl.readlines()
-    fl.close()
-    for line in lines:
-        if "reference-dimensionless-spin1" in line:
-            chi1 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
-        if "reference-dimensionless-spin2" in line:
-            chi2 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
-        if "reference-mass1" in line:
-            m1 = float(line.split("=")[-1].strip())
-        if "reference-mass2" in line:
-            m2 = float(line.split("=")[-1].strip())
+    if "metadata.txt" in metadata_path:
+        fl = open(metadata_path, "r")
+        lines = fl.readlines()
+        fl.close()
+        for line in lines:
+            if "reference-dimensionless-spin1" in line:
+                chi1 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
+            if "reference-dimensionless-spin2" in line:
+                chi2 = [float(x.strip()) for x in line.split("=")[-1].split(",")]
+            if "reference-mass1" in line:
+                m1 = float(line.split("=")[-1].strip())
+            if "reference-mass2" in line:
+                m2 = float(line.split("=")[-1].strip())
+            if "relaxation-time" in line:
+                t_relax = float(line.split("=")[-1].strip())
+    if "metadata.json" in metadata_path:
+        fl = open(metadata_path, "r")
+        data = json.load(fl)
+        fl.close()
+        chi1 = data["reference_dimensionless_spin1"]
+        chi2 = data["reference_dimensionless_spin2"]
+        m1 = data["reference_mass1"]
+        m2 = data["reference_mass2"]
+        t_relax = data["relaxation_time"]
     # numerical noise can make m1 slightly lesser than m2. Catch this whenver
     # it happens. Typically dq = (1 - q) is very small (dq <~ 1e-7) but for few
     # cases it can be dq ~ 1e-4. Therefore, if dq < 5e-4, we treat it as 1,
@@ -1161,7 +1247,8 @@ def get_params_dict_from_sxs_metadata(metadata_path):
                             f"1 - (m1/m2) = {dq} > {dq_tol}.")
     params_dict = {"q": q,
                    "chi1": chi1,
-                   "chi2": chi2}
+                   "chi2": chi2,
+                   "t_relax": t_relax}
     return params_dict
 
 
@@ -1381,6 +1468,131 @@ def get_num_orbits_duration_from_horizon_data(horizon_filepath, num_orbits):
     num_obits_duration = (time[idx_at_num_obits_from_start]
                           - time[0])
     return num_obits_duration
+
+
+def package_modes_for_scri(modes_dict, ell_min, ell_max):
+    """Package modes in an ordered list to use as input data to `scri.WaveformModes`.
+
+    Parameters
+    ----------
+    modes_dict: dict
+        Dictionary of waveform modes.
+
+    ell_min: int
+        Minimum `ell` value to use.
+
+    ell_max: int
+        Maximum `ell` value to use.
+
+    Returns
+    -------
+    List of modes in the order of increasing m for a given `ell` that is, for
+    `ell`=2, the list should be [(2, -2), (2, 1), (2, 0), (2, 1), (2, 2)]
+    """
+    keys = modes_dict.keys()
+    shape = modes_dict[(2, 2)].shape
+    n_elem = (ell_max + 3) * (ell_max - 1)
+    # Start with a result array with zeros, and populate only those modes that are
+    # available in modes_dict. This is necessary because scri expects a list of modes in
+    # a particular order.
+    result = np.zeros((shape[0], n_elem), dtype=np.complex128)
+    i = 0
+    for ell in range(ell_min, ell_max + 1):
+        for m in range(-ell, ell + 1):            
+            if (ell, m) in keys:
+                result[:, i] = modes_dict[(ell, m)]
+            else:
+                # for a given ell, all (ell, m) modes should exist in the 
+                # modes_dict
+                raise Exception(
+                    f"{ell, m} mode for ell={ell} does not exist in the "
+                    "modes dict. To get the coprecessing modes accurately, "
+                    "all the `(ell, m)` modes for a given `ell` should exist "
+                    "in the input modes dict.")
+            i += 1
+    return result
+
+
+def unpack_scri_modes(w):
+    """Unpack modes from `scri.WaveformModes` object to dict format.
+
+    Get back the modes from the `scri.WaveformModes` object to dict format as
+    required by `gw_eccentricity`.
+
+    Parameters
+    ----------
+    w: scri.WaveformModes
+        `scri.WaveformModes` object.
+
+    Returns
+    -------
+    Waveform modes in dict with key `(ell, m)`.
+    """
+    result = {}
+    for key in w.LM:
+        result[(key[0], key[1])] = 1 * w.data[:, w.index(key[0], key[1])]
+    return result
+
+
+def get_coprecessing_data_dict(data_dict, ell_min=2, ell_max=2, tag=""):
+    """Get `data_dict` in the coprecessing frame.
+
+    Given a `data_dict` containing the modes dict in the inertial frame and the
+    associated time, obtain the corresponding modes in the coprecessing frame.
+
+    For a given `ell`, the data_dict should contain modes for all `m` values from
+    `-ell` to `+ell`.
+    
+    Parameters
+    ----------
+    data_dict: dict
+        Dictionary of waveform modes in the inertial frame and the associated
+        time. It should have the same structure as `dataDict` in
+        `gw_eccentricity.measure_eccentricity`.
+
+    ell_min: int, default=2
+        Minimum `ell` value to use.
+
+    ell_max: int, default=2
+        Maximum `ell` value to use.
+
+    tag: str, default=""
+        A tag specifying which inertial frame data to use when transforming
+        inertial frame modes to coprecessing frame modes. For example, setting
+        `tag="_zeroecc"` selects the inertial frame modes corresponding to
+        the "zeroecc" (non-eccentric) case. If left as the default value
+        (`""`), the inertial frame modes for the eccentric case are used.
+
+    Returns
+    -------
+    Dictionary of waveform modes in the coprecessing frame and the associated
+    time. It has the same structure as the input `data_dict` in the intertial
+    frame.
+    """
+    # Get list of modes from `data_dict` to use as input to `scri.WaveformModes`.
+    ordered_mode_list = package_modes_for_scri(
+        data_dict["hlm" + tag],
+        ell_min=ell_min,
+        ell_max=ell_max)
+
+    w = scri.WaveformModes(
+        dataType=scri.h,
+        t=data_dict["t" + tag],
+        data=ordered_mode_list,
+        ell_min=ell_min,
+        ell_max=ell_max,
+        frameType=scri.Inertial,
+        r_is_scaled_out=True,
+        m_is_scaled_out=True)
+
+    # co-precessing frame modes
+    w_coprecessing = deepcopy(w).to_coprecessing_frame()
+    # Create a copy of data_dict and replace the "hlm" modes in the inertial frame
+    # with the corresponding modes in the coprecessing frame
+    data_dict_copr = deepcopy(data_dict)
+    data_dict_copr.update(
+        {"hlm" + tag: unpack_scri_modes(deepcopy(w_coprecessing))})
+    return data_dict_copr
 
 
 def load_h22_from_EOBfile(EOB_file):
