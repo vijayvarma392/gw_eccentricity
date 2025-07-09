@@ -83,8 +83,10 @@ jobs:
           cd $HOME/teobresums/Python
           git checkout Dali
           pip install numpy
-          CFLAGS=" -L/opt/homebrew/lib " python setup.py build_ext --inplace
-
+          CFLAGS="-I/opt/homebrew/include -L/opt/homebrew/lib" \
+          LDFLAGS="-L/opt/homebrew/lib" \
+          python setup.py build_ext --inplace
+          
       - name: Install pipenv
         shell: bash -l {0}
         run: |
