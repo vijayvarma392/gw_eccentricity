@@ -75,19 +75,12 @@ jobs:
           pip install numpy
           python setup.py build_ext --inplace
 
-      - name: Confirm EOBRun_module exists
-        shell: bash -l {0}
-        run: |
-          echo "Files in $HOME/teobresums/Python:"
-          ls -l $HOME/teobresums/Python
-          find $HOME/teobresums/Python -name 'EOBRun_module*'
-
       - name: Install Teobresums-Dali for macos
         if: matrix.os == 'macos-latest'
         shell: bash -l {0}
         run: |
-          git clone https://bitbucket.org/teobresums/teobresums.git
-          cd teobresums/Python
+          git clone https://bitbucket.org/teobresums/teobresums.git $HOME/teobresums
+          cd $HOME/teobresums/Python
           git checkout Dali
           pip install numpy
           CFLAGS=" -L/opt/homebrew/lib " python setup.py build_ext --inplace
