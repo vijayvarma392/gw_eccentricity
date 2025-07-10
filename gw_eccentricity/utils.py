@@ -352,8 +352,8 @@ def get_rational_fit(x, y, rational_fit_kwargs=None, check_kwargs=True):
     # Using a lambda function to change the input 1-d data to
     # float64 and reshape to 2-d as required by the fit.
     # Ensure also that the input and output types are the same.
-    return lambda t: (rat(t.astype('float64').reshape(-1, 1)).item() if np.isscalar(t)\
-                      else rat(t.astype('float64').reshape(-1, 1)))
+    return lambda t: (rat(np.atleast_2d(t).astype('float64').reshape(-1, 1)).item() if np.isscalar(t)\
+                      else rat(np.atleast_2d(t).astype('float64').reshape(-1, 1)))
 
 
 def debug_message(message, debug_level, important=True,
