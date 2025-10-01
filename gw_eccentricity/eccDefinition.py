@@ -1569,7 +1569,11 @@ class eccDefinition:
         """Get approximate degree based on the number of extrema.
 
         Assign degree based on number of extrema found. The degree is increased
-        as the number of extrema increases.
+        as the number of extrema increases. This is based on limited investigation
+        using TEOBResumS-Dali waveforms, see
+        https://github.com/vijayvarma392/gw_eccentricity/wiki/Investigation-on-initial-degrees-for-rationa-fit-to-omega-extrema.
+        These numbers are meant to provide a rough estimate
+        only which is improved iteratively within `get_rational_fit_for_extrema`.
         """
         # TODO: Optimize this. These numbers are not very robust
         # since the relation between the final degrees and number of
