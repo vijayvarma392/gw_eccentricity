@@ -375,14 +375,12 @@ def measure_eccentricity(tref_in=None,
 
         special_interp_kwargs_for_omega_gw_extrema: dict
             A dictionary of kwargs for `omega_gw_extrema_interpolation_method`.
-            Currently, the available `omega_gw_extrema_interpolation_method` and
-            the corresponding defaults for `special_interp_kwargs_for_omega_gw_extrema`
-            are:
+            The defaults are set according to the value of `omega_gw_extrema_interpolation_method`:"
 
-            - "spline": default kwargs are set using
-              `utils.get_default_spline_kwargs`
-            - "rational_fit": default kwargs are set using
-              `utils.get_default_rational_fit_kwargs`
+            - if omega_gw_extrema_interpolation_method is "spline", default kwargs are set
+              using `utils.get_default_spline_kwargs`.
+            - if omega_gw_extrema_interpolation_method is "rational_fit", default kwargs are set
+              using `utils.get_default_rational_fit_kwargs`.
 
         general_interp_kwargs: dict
             Dictionary of arguments to be passed to the spline interpolation
