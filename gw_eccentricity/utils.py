@@ -1,6 +1,7 @@
 """Useful functions for the project."""
 import numpy as np
 import argparse
+from polyrat import StabilizedSKRationalApproximation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import PchipInterpolator
 import warnings
@@ -315,6 +316,44 @@ def get_interpolant(oldX,
         raise ValueError(f"Unknown interpolator {interpolator}. Must be one"
                          " of ['spline', 'monotonic_spline']")
     return interpolant
+
+
+def get_default_rational_fit_kwargs():
+    """Get default kwargs for rational fit."""
+    default_rational_fit_kwargs = {
+        "num_degree": None,
+        "denom_degree": None,
+        "norm": 2,
+        "maxiter": 20,
+        "verbose": False,
+        "xtol": 1e-07,
+    }
+    return default_rational_fit_kwargs
+
+
+def get_rational_fit(x, y, rational_fit_kwargs=None, check_kwargs=True):
+    """Get rational fit for the data set (x, y).
+
+    We use `polyrat.StabilizedSKRationalApproximation` to obtain
+    rational fit to the data.
+    """
+    if check_kwargs:
+        rational_fit_kwargs = check_kwargs_and_set_defaults(
+            rational_fit_kwargs,
+            get_default_rational_fit_kwargs(),
+            "rational_fit_kwargs",
+            "utils.get_default_rational_fit_kwargs"
+        )
+    # We use a rational approximation based on Stabilized Sanathanan-Koerner Iteration
+    # described in arXiv:2009.10803 and implemented in `polyrat.StabilizedSKRationalApproximation`.
+    rat = StabilizedSKRationalApproximation(**rational_fit_kwargs)
+    # The input x-axis data must be 2-dimensional
+    rat.fit(x.reshape(-1, 1), y)
+    # Using a lambda function to change the input 1-d data to
+    # float64 and reshape to 2-d as required by the fit.
+    # Ensure also that the input and output types are the same.
+    return lambda t: (rat(np.atleast_2d(t).astype('float64').reshape(-1, 1)).item() if np.isscalar(t)\
+                      else rat(np.atleast_2d(t).astype('float64').reshape(-1, 1)))
 
 
 def debug_message(message, debug_level, important=True,

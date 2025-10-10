@@ -1019,7 +1019,7 @@ def check_sxs_data_dir(origin, **kwargs):
         f"file named `Strain_N{kwargs['extrap_order']}` since `extrap_order` "
         f"is {kwargs['extrap_order']}."}
     if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"],
-            not kwargs["keep_memory"]]):
+            not kwargs.get("keep_memory", True)]):
         # In newer versions of sxscatalog format, metadata.txt files are
         # replaced by metadata.json file.
         required_metadata_file = "metadata.json" if origin == "SXSCatalog" else "metadata.txt"
@@ -1085,7 +1085,7 @@ def make_return_dict_for_sxs_catalog_format(t, modes_dict, horizon_file_exits,
     dataDict = {"t": t - tpeak,
                 "hlm": modes_dict}
     if any([kwargs["include_zero_ecc"], kwargs["include_params_dict"],
-            not kwargs["keep_memory"]]):
+            not kwargs.get("keep_memory", True)]):
         if os.path.exists(os.path.join(kwargs["data_dir"], "metadata.txt")):
             params_dict = get_params_dict_from_sxs_metadata(
                 os.path.join(kwargs["data_dir"], "metadata.txt"))

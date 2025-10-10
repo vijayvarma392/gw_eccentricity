@@ -347,12 +347,47 @@ def measure_eccentricity(tref_in=None,
         Default: 0.
 
     extra_kwargs: A dict of any extra kwargs to be passed. Allowed kwargs are:
-        spline_kwargs:
+        omega_gw_extrema_interpolation_method : str, default="rational_fit"
+            Specifies the method used to build the interpolations for
+            `omega_gw_pericenters_interp(t)` or
+            `omega_gw_apocenters_interp(t)`. The available options are:
+
+            - `spline`: Uses `scipy.interpolate.InterpolatedUnivariateSpline`.
+                - Best suited for cleaner data, such as when waveform modes
+                  are generated using models like SEOB or TEOB.
+                - Faster to construct and evaluate.
+                - Since it fits through every data point, it may exhibit
+                  oscillatory behavior, particularly near the merger,
+                  especially for noisy NR data.
+
+            - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+                - Can handle both clean and noisy data, e.g., waveform
+                    modes from numerical simulations.
+                - Better monotonic behaviour, particularly near the merger.
+                - Can be slower compared to the `spline` method.
+                  This is because finding optimal numerator and
+                  denominator degree may need several
+                  iterations. See under `get_rational_fit_for_extrema`
+                - Can suppress pathologies in the waveform that might be
+                  seen with `spline`.
+
+            Default value: `"rational_fit"`.
+
+        special_interp_kwargs_for_omega_gw_extrema: dict
+            A dictionary of kwargs for `omega_gw_extrema_interpolation_method`.
+            The defaults are set according to the value of `omega_gw_extrema_interpolation_method`:
+
+            - if omega_gw_extrema_interpolation_method is "spline", default kwargs are set
+              using `utils.get_default_spline_kwargs`.
+            - if omega_gw_extrema_interpolation_method is "rational_fit", default kwargs are set
+              using `utils.get_default_rational_fit_kwargs`.
+
+        general_interp_kwargs: dict
             Dictionary of arguments to be passed to the spline interpolation
             routine (scipy.interpolate.InterpolatedUnivariateSpline) used to
-            compute quantities like omega_gw_pericenters(t) and
-            omega_gw_apocenters(t).
-            Defaults are set using utils.get_default_spline_kwargs
+            interpolate data other than the omega_gw extrema.
+            
+            Defaults are set using `utils.get_default_spline_kwargs`
 
         extrema_finding_kwargs:
             Dictionary of arguments to be passed to the extrema finder,

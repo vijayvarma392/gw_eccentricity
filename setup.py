@@ -31,7 +31,8 @@ setuptools.setup(
         'h5py',
         'lalsuite',
         'sxs',
-        'scri'
+        'scri',
+        'polyrat'
     ],
     classifiers=[
         "Intended Audience :: Science/Research",
