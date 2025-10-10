@@ -23,6 +23,12 @@ These methods are described in the following paper: <br/>
 Maarten van de Meent, "Defining eccentricity for gravitational wave astronomy",
 [Phys. Rev. D 108, 104007 (2023)](https://doi.org/10.1103/PhysRevD.108.104007),
 [arXiv:2302.11257](https://arxiv.org/abs/2302.11257)
+- [2] Md Arif Shaikh, Vijay Varma, Antoni Ramos-Buades, Harald P
+  Pfeiffer, Michael Boyle, Lawrence E Kidder and Mark A Scheel,
+  "Defining eccentricity for spin-precessing binaries",
+  [Class. Quantum Grav. 42 195012
+  (2025)](https://iopscience.iop.org/article/10.1088/1361-6382/ae085d),
+  [arXiv:2507.08345](https://arxiv.org/abs/2507.08345)
 
 Please see [Credits](#credits) below for citing this work.
 This package lives on [GitHub](https://github.com/vijayvarma392/gw_eccentricity), is compatible with
@@ -83,8 +89,8 @@ The main contributors to this code are [Md Arif Shaikh](https://md-arif-shaikh.g
 Varma](https://vijayvarma.com), and [Harald Pfeiffer](https://www.aei.mpg.de/person/54205/2784). You can find the full list of contributors
 [here](https://github.com/vijayvarma392/gw_eccentricity/graphs/contributors).
 
-If you find this package useful in your work, please cite reference [1] and
-this package. You can use the following bibtex keys:
+If you find this package useful in your work, please cite reference
+[1], [2] and this package. You can use the following bibtex keys:
 ```BibTeX
 @article{Shaikh:2023ypz,
     author = "Shaikh, Md Arif and Varma, Vijay and Pfeiffer, Harald P. and Ramos-Buades, Antoni and van de Meent, Maarten",
@@ -99,6 +105,21 @@ this package. You can use the following bibtex keys:
     pages = "104007",
     year = "2023",
     Note = "{\href{https://pypi.org/project/gw_eccentricity}{pypi.org/project/gw\_eccentricity}}",
+}
+
+@article{Shaikh:2025tae,
+    author = "Shaikh, Md Arif and Varma, Vijay and Ramos-Buades, Antoni and Pfeiffer, Harald P. and Boyle, Michael and Kidder, Lawrence E. and Scheel, Mark A.",
+    title = "{Defining eccentricity for spin-precessing binaries}",
+    eprint = "2507.08345",
+    archivePrefix = "arXiv",
+    primaryClass = "gr-qc",
+    doi = "10.1088/1361-6382/ae085d",
+    journal = "Class. Quant. Grav.",
+    volume = "42",
+    number = "19",
+    pages = "195012",
+    year = "2025",
+	Note = "{\href{https://pypi.org/project/gw_eccentricity}{pypi.org/project/gw\_eccentricity}}",
 }
 ```
 
