@@ -74,7 +74,10 @@ All of these can be installed through pip or conda.
 * [polyrat](https://pypi.org/project/polyrat/)
 
 # Usage
-See the example notebook [here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb) for a demo.
+See example notebooks:
+* [gw_eccentricity demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb) for how to use the package, along with diagnostic plots.
+* [Load waveforms demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/load_waveform_demo.ipynb) for loading waveform data into a dictionary format suitable for gw_eccentricity, including for LAL, SXS, and LVCNR waveforms.
+  - [TEOBResumS demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_TEOBResumS-DALI_demo.ipynb) for the same for TEOBResumS.
 
 # Making contributions
 See this
