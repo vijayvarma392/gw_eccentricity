@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gw_eccentricity"
+dynamic = ["version", "readme"]
+
+description = "Defining eccentricity for gravitational wave astronomy."
+authors = [
+  { name = "Md Arif Shaikh", email = "arifshaikh.astro@gmail.com" },
+  { name = "Vijay Varma", email = "vijay.varma392@gmail.com" }
+]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["black-holes", "gravitational-waves"]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Astronomy",
+  "Programming Language :: Python",
+  "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+  "numpy",
+  "scipy",
+  "h5py",
+  "lalsuite",
+  "sxs",
+  "scri",
+  "polyrat",
+]
+
+[project.urls]
+Homepage = "https://github.com/vijayvarma392/gw_eccentricity"
+Repository = "https://github.com/vijayvarma392/gw_eccentricity"
+Issues = "https://github.com/vijayvarma392/gw_eccentricity/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*", "examples*", "docs*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "gw_eccentricity.gw_eccentricity.__version__" }
+readme = { file = ["README.md"], content-type = "text/markdown" }
