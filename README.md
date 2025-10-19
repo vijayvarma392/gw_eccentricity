@@ -56,11 +56,11 @@ conda install -c conda-forge gw_eccentricity
 ```shell
 git clone git@github.com:vijayvarma392/gw_eccentricity.git
 cd gw_eccentricity
-python setup.py install
+pip install .
 ```
 
 If you do not have root permissions, replace the last step with
-`python setup.py install --user`
+`pip install --user .`
 
 ## Dependencies
 
