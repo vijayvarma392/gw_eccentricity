@@ -1097,6 +1097,7 @@ class eccDefinition:
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
             "omega_gw_extrema_interpolation_method": "rational_fit",
+            "use_segment": False,
             "segment_length_to_use": 20 # in number of orbits
         }
         return default_extra_kwargs
@@ -2023,7 +2024,8 @@ class eccDefinition:
             self.fref_in = np.atleast_1d(fref_in)
 
         # Get amp, phase and omega segments around the reference points
-        self.get_amp_phase_omega_gw_segments()
+        if self.extra_kwargs["use_segment"]:
+            self.get_amp_phase_omega_gw_segments()
             
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")

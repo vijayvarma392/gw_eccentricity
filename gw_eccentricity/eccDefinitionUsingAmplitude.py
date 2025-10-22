@@ -25,7 +25,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         # use a flag so the the function
         # `get_segment_of_data_for_finding_extrema` to get relevant
         # segment of is called only once.
-        self.get_segment_of_data = True
+        self.get_segment_of_data = self.extra_kwargs["use_segment"]
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
