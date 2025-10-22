@@ -1812,8 +1812,22 @@ class eccDefinition:
         """Get only the segment of the data that is relevant for measuring eccentricity.
         """
         if self.domain == "time":
-            phase_gw_at_ref_left = interpolate(self.tref_in[0], self.t, self.phase_gw)
-            phase_gw_at_ref_right = interpolate(self.tref_in[-1], self.t, self.phase_gw)
+            t_left = self.tref_in[0]
+            t_right = self.tref_in[-1]
+        else:
+            left = np.where(self.omega_gw >= self.fref_in[0] * 2 * np.pi)[0]
+            right = np.where(self.omega_gw <= self.fref_in[-1] * 2 * np.pi)[0]
+            if len(left) > 0:
+                t_left = self.t[left[0]]
+            else:
+                t_left = self.t[0]
+            if len(right) > 0:
+                t_right = self.t[right[-1]]
+            else:
+                t_right = self.t[-1]
+            
+        phase_gw_at_ref_left = interpolate(t_left, self.t, self.phase_gw)
+        phase_gw_at_ref_right = interpolate(t_right, self.t, self.phase_gw)
         k = 1.1 # to account for pericenter advance
         width_on_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * 4 * k * np.pi
         left_indices = np.where(self.phase_gw >= phase_gw_at_ref_left - width_on_each_side)[0]
@@ -1845,10 +1859,13 @@ class eccDefinition:
         self.omega_gw = self.omega_gw[self.segment_start_index: self.segment_end_index]
         # plot data after getting the segments, for debugging.
         if self.debug_plots:
-            if len(self.tref_in) == 1:
-                segment_label = f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            if self.domain == "time":
+                if len(self.tref_in) == 1:
+                    segment_label = f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+                else:
+                    segment_label = f"tref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
             else:
-                segment_label = f"tref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+                segment_label = f"fref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
             axes[0].plot(
                 self.t, self.amp_gw,
                 label=segment_label,
@@ -1858,17 +1875,27 @@ class eccDefinition:
                 label=segment_label,
                 ls="--")
             for ax in axes:
-                if len(self.tref_in) == 1:
-                    ax.axvline(self.tref_in,
-                               label=labelsDict["t_ref"] + f" = {self.tref_in[0]}",
-                               ls="-", c=colorsDict["vline"])
+                if self.domain == "time":
+                    if len(self.tref_in) == 1:
+                        ax.axvline(self.tref_in,
+                                   label=labelsDict["t_ref"] + f" = {self.tref_in[0]}",
+                                   ls="-", c=colorsDict["vline"])
+                    else:
+                        ax.axvline(self.tref_in[0],
+                                   label="First " + labelsDict["t_ref"] + f" = {self.tref_in[0]}",
+                                   ls="-", c=colorsDict["vline"])
+                        ax.axvline(self.tref_in[-1],
+                                   label="Last " + labelsDict["t_ref"] + f" = {self.tref_in[-1]}",
+                                   ls="-.", c=colorsDict["vline"])
                 else:
-                    ax.axvline(self.tref_in[0],
-                               label="First " + labelsDict["t_ref"] + f" = {self.tref_in[0]}",
-                               ls="-", c=colorsDict["vline"])
-                    ax.axvline(self.tref_in[-1],
-                               label="Last " + labelsDict["t_ref"] + f" = {self.tref_in[-1]}",
-                               ls="-.", c=colorsDict["vline"])
+                    if ax == axes[1]:
+                        ax.axhline(self.fref_in[0] * 2 * np.pi,
+                                   label=r"$2\pi$" + labelsDict["f_gw_ref"],
+                                   ls="-", c=colorsDict["hline"])
+                        ax.axvline(t_left, label="First crossing", c=colorsDict["vline"])
+                        ax.axvline(t_right, label="Last crossing", c=colorsDict["vline"], ls="-.")
+                    else:
+                        continue
                 ax.legend()
             axes[1].set_xlabel(labelsDict["t"])
             axes[0].set_ylabel(labelsDict["amp_gw"])
