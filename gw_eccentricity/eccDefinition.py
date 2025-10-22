@@ -1096,7 +1096,8 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
-            "omega_gw_extrema_interpolation_method": "rational_fit"
+            "omega_gw_extrema_interpolation_method": "rational_fit",
+            "segment_length_to_use": 20 # in number of orbits
         }
         return default_extra_kwargs
 
@@ -1806,6 +1807,78 @@ class eccDefinition:
                           f"original {extrema_type} was dropped.",
                           self.debug_level, important=False)
 
+    def get_amp_phase_omega_gw_segments(self):
+        """Get only the segment of the data that is relevant for measuring eccentricity.
+        """
+        if self.domain == "time":
+            phase_gw_at_ref_left = interpolate(self.tref_in[0], self.t, self.phase_gw)
+            phase_gw_at_ref_right = interpolate(self.tref_in[-1], self.t, self.phase_gw)
+        k = 1.1 # to account for pericenter advance
+        width_on_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * 4 * k * np.pi
+        left_indices = np.where(self.phase_gw >= phase_gw_at_ref_left - width_on_each_side)[0]
+        right_indices = np.where(self.phase_gw >= phase_gw_at_ref_right + width_on_each_side)[0]
+        self.segment_start_index = 0
+        self.segment_end_index = -1
+        if len(left_indices) > 0:
+            self.segment_start_index = left_indices[0]
+        if len(right_indices) > 0:
+            self.segment_end_index = right_indices[0]
+        # For debugging, make some plots
+        if self.debug_plots:
+            style = "APS"
+            use_fancy_plotsettings(style=style)
+            nrows = 2
+            fig, axes = plt.subplots(
+                nrows=nrows,
+                figsize=(
+                    figWidthsTwoColDict[style],
+                    nrows * figHeightsDict[style]),
+                sharex=True)
+            axes[0].plot(self.t, self.amp_gw, label=" Full waveform")
+            axes[1].plot(self.t, self.omega_gw, label=" Full waveform")
+        # update the amp, phase, omega data so that they contain only
+        # the relevant segment.
+        self.t = self.t[self.segment_start_index: self.segment_end_index]
+        self.amp_gw = self.amp_gw[self.segment_start_index: self.segment_end_index]
+        self.phase_gw = self.phase_gw[self.segment_start_index: self.segment_end_index]
+        self.omega_gw = self.omega_gw[self.segment_start_index: self.segment_end_index]
+        # plot data after getting the segments, for debugging.
+        if self.debug_plots:
+            if len(self.tref_in) == 1:
+                segment_label = f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            else:
+                segment_label = f"tref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            axes[0].plot(
+                self.t, self.amp_gw,
+                label=segment_label,
+                ls="--")
+            axes[1].plot(
+                self.t, self.omega_gw,
+                label=segment_label,
+                ls="--")
+            for ax in axes:
+                if len(self.tref_in) == 1:
+                    ax.axvline(self.tref_in,
+                               label=labelsDict["t_ref"] + f" = {self.tref_in[0]}",
+                               ls="-", c=colorsDict["vline"])
+                else:
+                    ax.axvline(self.tref_in[0],
+                               label="First " + labelsDict["t_ref"] + f" = {self.tref_in[0]}",
+                               ls="-", c=colorsDict["vline"])
+                    ax.axvline(self.tref_in[-1],
+                               label="Last " + labelsDict["t_ref"] + f" = {self.tref_in[-1]}",
+                               ls="-.", c=colorsDict["vline"])
+                ax.legend()
+            axes[1].set_xlabel(labelsDict["t"])
+            axes[0].set_ylabel(labelsDict["amp_gw"])
+            axes[1].set_ylabel(labelsDict["omega_gw"])
+            fig.tight_layout()
+            self.save_debug_fig(
+                fig,
+                f"gwecc_get_segment_debug_{self.extra_kwargs['segment_length_to_use']}.pdf")
+            plt.close(fig)
+
+
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -1948,6 +2021,10 @@ class eccDefinition:
             self.domain = "frequency"
             self.ref_ndim = np.ndim(fref_in)
             self.fref_in = np.atleast_1d(fref_in)
+
+        # Get amp, phase and omega segments around the reference points
+        self.get_amp_phase_omega_gw_segments()
+            
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()

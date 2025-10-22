@@ -22,6 +22,10 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         self.data_for_finding_extrema = self.get_data_for_finding_extrema()
         self.label_for_data_for_finding_extrema = self.get_label_for_plots("amp")
         self.method = "Amplitude"
+        # use a flag so the the function
+        # `get_segment_of_data_for_finding_extrema` to get relevant
+        # segment of is called only once.
+        self.get_segment_of_data = True
 
     def get_data_for_finding_extrema(self):
         """Get data to be used for finding extrema location.
@@ -30,9 +34,20 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         to return the appropriate data that is to be used. For example,
         in residual amplitude method, this function would return
         residual amp_gw, whereas for frequency method, it would
-        return omega22 and so on.
+        return omega_gw and so on.
         """
         return self.amp_gw
+
+    def get_segment_of_data_for_finding_extrema(self):
+        """Get only the relevant segment of `data_for_finding_extrema`.
+
+        `data_for_finding_extrema` is initialised right the begining
+        inside `self.__init__` where it has the full length of the
+        data. Therefore, we need to get the relevant segment befor
+        passing it to the `find_extrema` function.
+        """
+        self.data_for_finding_extrema = self.data_for_finding_extrema[
+            self.segment_start_index: self.segment_end_index]
 
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the amp_gw.
@@ -53,6 +68,15 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         else:
             raise Exception("`extrema_type` must be either 'pericenters'"
                             " or 'apocenters'")
+        # We need to get the relevant segment from the full data only
+        # once, whereas `find_extrema` is called twice, once for the
+        # pericenters and then for the apocenters. We handle this
+        # by setting the flag `get_segment_of_data` to False after
+        # `self.get_segment_of_data_for_finding_extrema` is called for
+        # the first time.
+        if self.get_segment_of_data:
+            self.get_segment_of_data_for_finding_extrema()
+            self.get_segment_of_data = False
 
         return find_peaks(
             sign * self.data_for_finding_extrema,
