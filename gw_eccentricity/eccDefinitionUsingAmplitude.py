@@ -38,17 +38,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         """
         return self.amp_gw
 
-    def get_segment_of_data_for_finding_extrema(self):
-        """Get only the relevant segment of `data_for_finding_extrema`.
-
-        `data_for_finding_extrema` is initialised right the begining
-        inside `self.__init__` where it has the full length of the
-        data. Therefore, we need to get the relevant segment befor
-        passing it to the `find_extrema` function.
-        """
-        self.data_for_finding_extrema = self.data_for_finding_extrema[
-            self.segment_start_index: self.segment_end_index]
-
     def find_extrema(self, extrema_type="pericenters"):
         """Find the extrema in the amp_gw.
 

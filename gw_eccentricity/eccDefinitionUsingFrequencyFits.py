@@ -90,6 +90,10 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 "data": self.data_for_finding_extrema,
                 "t": self.t
             }
+        # use a flag so the the function
+        # `get_segment_of_data_for_finding_extrema` to get relevant
+        # segment of is called only once.
+        self.get_segment_of_data = self.extra_kwargs["use_segment"]
 
     def get_default_kwargs_for_fits_methods(self):
         """Get default kwargs to be used for Fits methods.
@@ -177,6 +181,15 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             sign = -1
         else:
             raise Exception(f"extrema_type='{extrema_type}' unknown.")
+        # We need to get the relevant segment from the full data only
+        # once, whereas `find_extrema` is called twice, once for the
+        # pericenters and then for the apocenters. We handle this
+        # by setting the flag `get_segment_of_data` to False after
+        # `self.get_segment_of_data_for_finding_extrema` is called for
+        # the first time.
+        if self.get_segment_of_data:
+            self.get_segment_of_data_for_finding_extrema()
+            self.get_segment_of_data = False
         # The fit function assume the merger to be at t=0. So we align the time
         # axis such that merger occurs at t=0.
         # After the peaks are found, the time is reshifted to to its original
