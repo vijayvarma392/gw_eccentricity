@@ -19,6 +19,7 @@ from .utils import get_default_spline_kwargs
 from .utils import get_rational_fit
 from .utils import get_default_rational_fit_kwargs
 from .utils import debug_message
+from .utils import SecularTrend
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 
@@ -1096,7 +1097,9 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
-            "omega_gw_extrema_interpolation_method": "rational_fit"
+            "omega_gw_extrema_interpolation_method": "rational_fit",
+            "use_segment": False,
+            "segment_length_to_use": 20 # in number of orbits
         }
         return default_extra_kwargs
 
@@ -1806,6 +1809,159 @@ class eccDefinition:
                           f"original {extrema_type} was dropped.",
                           self.debug_level, important=False)
 
+    def get_approximate_tref_for_fref_using_secular_trend(
+            self, fref):
+        """Get approximate value of tref that corresponds to a given fref.
+
+        omega_gw is nonmonotonic and therefore, a given reference
+        frequency will typically have more than one points in time
+        (tref) where omega_gw(tref) = 2pi * fref.
+
+        To avoid this isssue, we require a monotonic frequency to
+        use. However, at this stage, we do not have the information
+        about the extrema locations, and therefore, do not have the
+        orbit averaged omega_gw or the mean between the omega_gw at
+        the extrema.
+
+        Since we only need to know the reference time approximately,
+        we can use the secular trend of omega_gw as the reference
+        frequency to obtain the tref. We fit omega_gw to the
+        quasicircular PN behaviour of omega_gw using least_square fit.
+        """
+        # The actual tref will be always between the first and the
+        # last times where omega_gw crosses fref_in. We use only this
+        # segment to build the secular trend of omega_gw.
+        left = np.where(self.omega_gw >= fref * 2 * np.pi)[0][0]
+        right = np.where(self.omega_gw <= fref * 2 * np.pi)[0][-1]
+        # check the phase difference between the first and the last crossing
+        # we need at least a few orbits to have a good fit.
+        if (self.phase_gw[right] - self.phase_gw[left])/(4*np.pi) < 5:
+            left_indices = np.where(
+                self.phase_gw >= self.phase_gw[left] - 5 * 4 *np.pi)[0]
+            right_indices = np.where(
+                self.phase_gw >= self.phase_gw[right] + 5 * 4 *np.pi)[0]
+            left = left_indices[0] if len(left_indices) > 1 else 0
+            right = right_indices[0] if len(right_indices) > 1 else -1
+        times = self.t[left:right]
+        frequencies = self.omega_gw[left:right]/2/np.pi
+        # get the secular trend
+        secular_trend = SecularTrend(times, frequencies)
+        res = secular_trend.least_square_fit()
+        # get the time where the secular trend crosses fref_in
+        indices = np.where(secular_trend.model(times, *res.x) >= fref)[0]
+        if len(indices) > 0:
+            return times[indices][0]
+        else:
+            raise Exception(
+                "Cannot find tref for fref from the given segment of data.")
+        
+    def get_amp_phase_omega_gw_segments(self):
+        """Get relevant segment of the data for eccentricity measurement."""
+        if self.domain == "time":
+            t_left = self.tref_in[0]
+            t_right = self.tref_in[-1]
+        else:
+            t_left = self.get_approximate_tref_for_fref_using_secular_trend(
+                self.fref_in[0])
+            if len(self.fref_in) > 1:
+                t_right = self.get_approximate_tref_for_fref_using_secular_trend(
+                    self.fref_in[-1])
+            else:
+                t_right = t_left
+
+        phase_gw_at_ref_left = self.phase_gw[np.where(self.t >= t_left)[0][0]]
+        phase_gw_at_ref_right = self.phase_gw[np.where(self.t >= t_right)[0][0]]
+        k = 1.1 # to account for pericenter advance
+        width_on_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * 4 * k * np.pi
+        left_indices = np.where(self.phase_gw >= phase_gw_at_ref_left - width_on_each_side)[0]
+        right_indices = np.where(self.phase_gw >= phase_gw_at_ref_right + width_on_each_side)[0]
+        self.segment_start_index = left_indices[0] if len(left_indices) > 0 else 0
+        self.segment_end_index = right_indices[0] if len(right_indices) > 0 else -1
+        # For debugging, make some plots
+        if self.debug_plots:
+            style = "APS"
+            use_fancy_plotsettings(style=style)
+            nrows = 2
+            fig, axes = plt.subplots(
+                nrows=nrows,
+                figsize=(
+                    figWidthsTwoColDict[style],
+                    nrows * figHeightsDict[style]),
+                sharex=True)
+            axes[0].plot(self.t, self.amp_gw, label=" Full waveform")
+            axes[1].plot(self.t, self.omega_gw, label=" Full waveform")
+        # update the amp, phase, omega data so that they contain only
+        # the relevant segment.
+        self.t = self.t[self.segment_start_index: self.segment_end_index]
+        self.amp_gw = self.amp_gw[self.segment_start_index: self.segment_end_index]
+        self.phase_gw = self.phase_gw[self.segment_start_index: self.segment_end_index]
+        self.omega_gw = self.omega_gw[self.segment_start_index: self.segment_end_index]
+        # plot data after getting the segments, for debugging.
+        if self.debug_plots:
+            if self.domain == "time":
+                if len(self.tref_in) == 1:
+                    segment_label = f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+                else:
+                    segment_label = f"tref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            else:
+                segment_label = f"fref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            axes[0].plot(
+                self.t, self.amp_gw,
+                label=segment_label,
+                ls="--")
+            axes[1].plot(
+                self.t, self.omega_gw,
+                label=segment_label,
+                ls="--")
+            for ax in axes:
+                if self.domain == "time":
+                    if len(self.tref_in) == 1:
+                        ax.axvline(self.tref_in,
+                                   label=labelsDict["t_ref"] + f" = {self.tref_in[0]}",
+                                   ls="-", c=colorsDict["vline"])
+                    else:
+                        ax.axvline(self.tref_in[0],
+                                   label="First " + labelsDict["t_ref"] + f" = {self.tref_in[0]}",
+                                   ls="-", c=colorsDict["vline"])
+                        ax.axvline(self.tref_in[-1],
+                                   label="Last " + labelsDict["t_ref"] + f" = {self.tref_in[-1]}",
+                                   ls="-.", c=colorsDict["vline"])
+                else:
+                    if ax == axes[1]:
+                        ax.axhline(self.fref_in[0] * 2 * np.pi,
+                                   label=r"$2\pi$" + labelsDict["f_gw_ref"],
+                                   ls="-", c=colorsDict["hline"])
+                        if len(self.fref_in) == 1:
+                            ax.axvline(t_left, label=f"Approx {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"])
+                        else:
+                            ax.axvline(t_left, label=f"Approx first {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"])
+                            ax.axvline(t_right, label=f"Approx last {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"], ls="-.")
+                            ax.axhline(self.fref_in[-1] * 2 * np.pi,
+                                   label=r"$2\pi$" + labelsDict["f_gw_ref"],
+                                   ls="-.", c=colorsDict["hline"])
+                    else:
+                        continue
+                ax.legend()
+            axes[1].set_xlabel(labelsDict["t"])
+            axes[0].set_ylabel(labelsDict["amp_gw"])
+            axes[1].set_ylabel(labelsDict["omega_gw"])
+            fig.tight_layout()
+            self.save_debug_fig(
+                fig,
+                f"gwecc_get_segment_debug_{self.extra_kwargs['segment_length_to_use']}.pdf")
+            plt.close(fig)
+        
+    def get_segment_of_data_for_finding_extrema(self):
+        """Get only the relevant segment of `data_for_finding_extrema`.
+
+        `data_for_finding_extrema` is initialised right the begining
+        inside `self.__init__` where it has the full length of the
+        data. Therefore, we need to get the relevant segment befor
+        passing it to the `find_extrema` function.
+        """
+        self.data_for_finding_extrema = self.data_for_finding_extrema[
+            self.segment_start_index: self.segment_end_index]
+
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
 
@@ -1948,6 +2104,11 @@ class eccDefinition:
             self.domain = "frequency"
             self.ref_ndim = np.ndim(fref_in)
             self.fref_in = np.atleast_1d(fref_in)
+
+        # Get amp, phase and omega segments around the reference points
+        if self.extra_kwargs["use_segment"]:
+            self.get_amp_phase_omega_gw_segments()
+            
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()

@@ -4,6 +4,7 @@ import argparse
 from polyrat import StabilizedSKRationalApproximation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import PchipInterpolator
+from scipy.optimize import least_squares
 import warnings
 
 
@@ -402,3 +403,39 @@ def debug_message(message, debug_level, important=True,
     if debug_level == 2:
         # raise Exception
         raise Exception(message)
+
+class SecularTrend:
+    """Fit eccentric data to get the secular trend.
+
+    Re-parameterize A*(T-t)^n in terms of function value and 
+    first derivative at the time t0, and T.
+    """
+
+    def __init__(self, times, frequencies):
+        """Init."""
+        self.times = times
+        self.frequencies = frequencies
+        self.t0 = 0.5 * (times[0] + times[-1])
+
+    def residual(self, p, t, w):
+        f0, f1, T = p
+        return w - self.model(t, f0, f1, T)
+
+    def model(self, t, f0, f1, T):
+        """model for quasicircular frequency."""
+        # f0, f1 are function values and first time-derivatives
+        # at t0.  Re-expfress as T, n, A, then evalate A*(T-t)^n
+        n = -(T - self.t0) * (f1/f0)
+        A = f0 * (T - self.t0)**(-n)
+        return A * (T - t)**n
+
+    def least_square_fit(self):
+        # typial scale of data
+        f0 = 0.5 * (self.frequencies[0] + self.frequencies[-1])
+        p0 = [f0,  # function value
+              (3.0/8.0) * f0 / (-self.t0),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
+              0  # singularity in fit is near t=0, since waveform aligned at max(amp_gw)
+              ]
+        res = least_squares(self.residual, p0, args=(self.times, self.frequencies),
+                            method='trf', max_nfev=100)
+        return res
