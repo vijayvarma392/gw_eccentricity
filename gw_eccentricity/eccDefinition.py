@@ -1098,8 +1098,8 @@ class eccDefinition:
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
             "omega_gw_extrema_interpolation_method": "rational_fit",
-            "use_segment": False,
-            "segment_length_to_use": 20 # in number of orbits
+            "use_segment": True,
+            "segment_length_to_use": 10 # in number of orbits
         }
         return default_extra_kwargs
 
@@ -1817,7 +1817,7 @@ class eccDefinition:
         frequency will typically have more than one points in time
         (tref) where omega_gw(tref) = 2pi * fref.
 
-        To avoid this isssue, we require a monotonic frequency to
+        To avoid this issue, we require a monotonic frequency to
         use. However, at this stage, we do not have the information
         about the extrema locations, and therefore, do not have the
         orbit averaged omega_gw or the mean between the omega_gw at
@@ -1827,12 +1827,31 @@ class eccDefinition:
         we can use the secular trend of omega_gw as the reference
         frequency to obtain the tref. We fit omega_gw to the
         quasicircular PN behaviour of omega_gw using least_square fit.
+        We find that such fits are very close to the orbit averaged
+        frequency. See the example plot here
+        https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment#reference-frequency
         """
         # The actual tref will be always between the first and the
         # last times where omega_gw crosses fref_in. We use only this
         # segment to build the secular trend of omega_gw.
-        left = np.where(self.omega_gw >= fref * 2 * np.pi)[0][0]
-        right = np.where(self.omega_gw <= fref * 2 * np.pi)[0][-1]
+        left_indices = np.where(self.omega_gw >= fref * 2 * np.pi)[0]
+        right_indices = np.where(self.omega_gw <= fref * 2 * np.pi)[0]
+        # if omega_gw is > 2pi*fref, then right_indices will be
+        # empty. It implies that the fref, where we want to measure
+        # the eccentricity, is too low. That is, fref is smaller than
+        # the frequency where we can measure eccentricity.
+        if len(right_indices) == 0:
+            left = left_indices[0]
+            right = left
+        # Similarly, if fref is too high, that is, omega_gw <
+        # 2pi*fref, then left_indices will be empty.
+        elif len(left_indices) == 0:
+            right = right_indices[-1]
+            left = right
+        else:
+            left = left_indices[0]
+            right = right_indices[-1]
+        
         # check the phase difference between the first and the last crossing
         # we need at least a few orbits to have a good fit.
         if (self.phase_gw[right] - self.phase_gw[left])/(4*np.pi) < 5:
@@ -1847,16 +1866,39 @@ class eccDefinition:
         # get the secular trend
         secular_trend = SecularTrend(times, frequencies)
         res = secular_trend.least_square_fit()
-        # get the time where the secular trend crosses fref_in
-        indices = np.where(secular_trend.model(times, *res.x) >= fref)[0]
-        if len(indices) > 0:
-            return times[indices][0]
-        else:
-            raise Exception(
-                "Cannot find tref for fref from the given segment of data.")
+        # get the location where the secular trend crosses fref_in
+        idx = np.argmin(np.abs(secular_trend.model(times, *res.x) - fref))
+        return times[idx]
         
     def get_amp_phase_omega_gw_segments(self):
-        """Get relevant segment of the data for eccentricity measurement."""
+        """Get relevant segment of the data for eccentricity measurement.
+
+        We want to select the relevant segment of the data for the given
+        reference time (tref_in) or reference frequency (fref_in). We will
+        use the phase_gw to obtain the relevant segment. phase_gw changes
+        by approximately 4*pi over one orbit.
+
+        - A single reference time: For measuring egw at a single
+          reference time, we use phase_gw to get a segment of
+          containing `segment_length_to_use` orbits centered around
+          the reference time.
+        - An array of reference times: For measuring egw at an array
+          of reference times, we find the first (t_left) and the last
+          (t_right) reference time in the array. Then we add half of
+          `segment_length_to_use` on the left of t_left and the same
+          on the right of t_right. And use this as the data segment to
+          use for measuring egw.
+        - A single reference frequency: We use the function
+          `get_approximate_tref_for_fref_using_secular_trend` to get
+          the corresponding `t_ref` and use the method as discussed in
+          the first step for a single reference time.
+        - An array of reference frequency: We get the first and the
+          last reference frequency from the array, then for each
+          frequency, we get the reference time using
+          `get_approximate_tref_for_fref_using_secular_trend` to get
+          the t_left and t_right. After that we follow the method
+          outlined in the second step.
+        """
         if self.domain == "time":
             t_left = self.tref_in[0]
             t_right = self.tref_in[-1]
@@ -1869,14 +1911,58 @@ class eccDefinition:
             else:
                 t_right = t_left
 
-        phase_gw_at_ref_left = self.phase_gw[np.where(self.t >= t_left)[0][0]]
-        phase_gw_at_ref_right = self.phase_gw[np.where(self.t >= t_right)[0][0]]
+        phase_gw_at_ref_left = self.phase_gw[np.argmin(np.abs(self.t - t_left))]
+        phase_gw_at_ref_right = self.phase_gw[np.argmin(np.abs(self.t - t_right))]
         k = 1.1 # to account for pericenter advance
+        # calculate the number of orbits between t_left and t_right
+        orbits_between_t_left_and_t_right = (
+            (phase_gw_at_ref_right - phase_gw_at_ref_left) / (4 * k * np.pi))
+        # we want to add half of the `segment_length_to_use` on the left
+        # of t_left and the other half on the right of t_right. In
+        # case of a single reference time or frequency, t_left =
+        # t_right.
         width_on_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * 4 * k * np.pi
+        # find the start of the segment
         left_indices = np.where(self.phase_gw >= phase_gw_at_ref_left - width_on_each_side)[0]
-        right_indices = np.where(self.phase_gw >= phase_gw_at_ref_right + width_on_each_side)[0]
         self.segment_start_index = left_indices[0] if len(left_indices) > 0 else 0
+        if self.segment_start_index == 0:
+            # it could be that the reference time is too close to the
+            # left edge of the waveform and we may not have the
+            # necessary number of orbits on the left to the reference
+            # time.  In such case, we just add the missing number of
+            # orbits on the right so that total number of orbits in
+            # the segment matches the `segment_length_to_use`.
+            # However, if we are measuring egw for an array of times
+            # and the number of orbits between t_left and t_right is
+            # already > `segment_length_to_use`, then we do not need
+            # to this.
+            additional_orbits_to_add_on_the_right = max(
+                0.5 * self.extra_kwargs["segment_length_to_use"] # required number of orbits on the left
+                - ((phase_gw_at_ref_left - self.phase_gw[self.segment_start_index])/(4 * k * np.pi)) # available number of orbits on the left
+                - orbits_between_t_left_and_t_right,# number of orbits already contained between t_left and t_right
+                0)
+        else:
+            additional_orbits_to_add_on_the_right = 0
+        right_indices = np.where(
+            self.phase_gw >= (
+                phase_gw_at_ref_right
+                + width_on_each_side
+                + additional_orbits_to_add_on_the_right * 4 * k * np.pi
+            ))[0]
         self.segment_end_index = right_indices[0] if len(right_indices) > 0 else -1
+        if self.segment_end_index == -1:
+            # Similar to the left edge case, but now on the right.
+            additional_orbits_to_add_on_the_left = max(
+                0.5 * self.extra_kwargs["segment_length_to_use"]
+                - ((self.phase_gw[self.segment_end_index] - phase_gw_at_ref_right)/(4 * k * np.pi))
+                - orbits_between_t_left_and_t_right, 0)
+            # recompute
+            left_indices = np.where(
+                self.phase_gw >= (
+                    phase_gw_at_ref_left
+                    - width_on_each_side
+                    - additional_orbits_to_add_on_the_left * 4 * k * np.pi))[0]
+            self.segment_start_index = left_indices[0] if len(left_indices) > 0 else 0
         # For debugging, make some plots
         if self.debug_plots:
             style = "APS"
@@ -1954,7 +2040,7 @@ class eccDefinition:
     def get_segment_of_data_for_finding_extrema(self):
         """Get only the relevant segment of `data_for_finding_extrema`.
 
-        `data_for_finding_extrema` is initialised right the begining
+        `data_for_finding_extrema` is initialised right at the begining
         inside `self.__init__` where it has the full length of the
         data. Therefore, we need to get the relevant segment befor
         passing it to the `find_extrema` function.
@@ -2107,7 +2193,10 @@ class eccDefinition:
 
         # Get amp, phase and omega segments around the reference points
         if self.extra_kwargs["use_segment"]:
-            self.get_amp_phase_omega_gw_segments()
+            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+                                      / (4 * np.pi))
+            if approximate_num_orbits >= self.extra_kwargs["segment_length_to_use"]:
+                self.get_amp_phase_omega_gw_segments()
             
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
@@ -3149,6 +3238,13 @@ class eccDefinition:
             Minimum allowed reference frequency, Maximum allowed reference
             frequency.
         """
+        if self.extra_kwargs["use_segment"]:
+            debug_message(
+                (f"`use_segments` is set to {self.extra_kwargs['use_segment']}. "
+                 "fref_bounds will be only for the short segments around the "
+                 "reference point. To obtain the fref bounds for the full "
+                 "waveform, set `use_segments` in `extra_kwargs` to False."),
+                 debug_level=self.debug_level, important=True)
         if self.omega_gw_average is None:
             self.t_for_omega_gw_average, self.omega_gw_average \
                 = self.get_omega_gw_average(method)

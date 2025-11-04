@@ -431,11 +431,15 @@ class SecularTrend:
 
     def least_square_fit(self):
         # typial scale of data
-        f0 = 0.5 * (self.frequencies[0] + self.frequencies[-1])
+        f0 = 0.5 * (max(self.frequencies) + min(self.frequencies)) #0.5 * (self.frequencies[0] + self.frequencies[-1])
         p0 = [f0,  # function value
               (3.0/8.0) * f0 / (-self.t0),  # func = f0/t0^n*(t)^n -> dfunc/dt (t0) = n*f0/t0
               0  # singularity in fit is near t=0, since waveform aligned at max(amp_gw)
               ]
-        res = least_squares(self.residual, p0, args=(self.times, self.frequencies),
+        bounds = [[0., 0., 0.8*self.times[-1]],
+                  [10 * f0,
+                   10 * f0 / (-self.t0),
+                   -self.t0]]
+        res = least_squares(self.residual, p0, bounds=bounds, args=(self.times, self.frequencies),
                             method='trf', max_nfev=100)
         return res
