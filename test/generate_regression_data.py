@@ -22,10 +22,12 @@ parser.add_argument(
     type=str,
     required=True,
     help="omega_gw_extrema_interpolation_method to save the regression data for.")
+parser.add_argument("--no-segment", action="store_false", dest="use_segment", help="Disable use of segment, use full waveform.")
+
 args = parser.parse_args()
 
 
-def generate_regression_data(method, interp_method):
+def generate_regression_data(method, interp_method, use_segment):
     """Generate data for regression test using a method."""
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
@@ -47,7 +49,8 @@ def generate_regression_data(method, interp_method):
         raise Exception(f"method {method} is not available. Must be one of "
                         f"{available_methods}")
 
-    extra_kwargs = {"omega_gw_extrema_interpolation_method": interp_method}
+    extra_kwargs = {"omega_gw_extrema_interpolation_method": interp_method,
+                    "use_segment": use_segment}
     user_kwargs = extra_kwargs.copy()
     regression_data.update({"extra_kwargs": extra_kwargs})
     # Try evaluating at an array of times
@@ -84,9 +87,9 @@ def generate_regression_data(method, interp_method):
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
     # save to a json file
-    fl = open(f"{data_dir}/{method}_{interp_method}_regression_data.json", "w")
+    fl = open(f"{data_dir}/{method}_{interp_method}_use_segment_{use_segment}_regression_data.json", "w")
     json.dump(regression_data, fl)
     fl.close()
 
 # generate regression data
-generate_regression_data(args.method, args.interp_method)
+generate_regression_data(args.method, args.interp_method, args.use_segment)

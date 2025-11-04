@@ -1983,7 +1983,6 @@ class eccDefinition:
         self.phase_gw = self.phase_gw[self.segment_start_index: self.segment_end_index]
         self.omega_gw = self.omega_gw[self.segment_start_index: self.segment_end_index]
         if "Residual" in self.method:
-            print("residual segments")
             self.res_amp_gw = self.res_amp_gw[self.segment_start_index: self.segment_end_index]
             self.res_omega_gw = self.res_omega_gw[self.segment_start_index: self.segment_end_index]
         # plot data after getting the segments, for debugging.
