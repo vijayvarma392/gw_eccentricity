@@ -1982,6 +1982,10 @@ class eccDefinition:
         self.amp_gw = self.amp_gw[self.segment_start_index: self.segment_end_index]
         self.phase_gw = self.phase_gw[self.segment_start_index: self.segment_end_index]
         self.omega_gw = self.omega_gw[self.segment_start_index: self.segment_end_index]
+        if "Residual" in self.method:
+            print("residual segments")
+            self.res_amp_gw = self.res_amp_gw[self.segment_start_index: self.segment_end_index]
+            self.res_omega_gw = self.res_omega_gw[self.segment_start_index: self.segment_end_index]
         # plot data after getting the segments, for debugging.
         if self.debug_plots:
             if self.domain == "time":
@@ -3244,7 +3248,7 @@ class eccDefinition:
                  "fref_bounds will be only for the short segments around the "
                  "reference point. To obtain the fref bounds for the full "
                  "waveform, set `use_segments` in `extra_kwargs` to False."),
-                 debug_level=self.debug_level, important=True)
+                 debug_level=self.debug_level, important=False)
         if self.omega_gw_average is None:
             self.t_for_omega_gw_average, self.omega_gw_average \
                 = self.get_omega_gw_average(method)
