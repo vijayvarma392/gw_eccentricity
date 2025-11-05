@@ -64,9 +64,28 @@ def generate_regression_data(method, interp_method, use_segment):
     meanano_ref = gwecc_dict["mean_anomaly"]
     # We save the measured data 3 reference times
     n = len(tref_out)
-    dict_tref =  {"time": [tref_out[n//8], tref_out[n//4], tref_out[n//2]],
-                  "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
-                  "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
+    times = [tref_out[n//8], tref_out[n//4], tref_out[n//2]]
+    if not use_segment:
+        dict_tref =  {"time": times,
+                      "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
+                      "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
+    else:
+        # when `use_segment = True`, we evaluate at three different times
+        # using only the relevant segments.
+        eccentricity = []
+        mean_anomaly = []
+        for tref in times:
+            gwecc_dict = measure_eccentricity(
+                tref_in=tref,
+                method=method,
+                dataDict=dataDict,
+                extra_kwargs=user_kwargs)
+            eccentricity.append(gwecc_dict["eccentricity"])
+            mean_anomaly.append(gwecc_dict["mean_anomaly"])
+
+            dict_tref =  {"time": times,
+                          "eccentricity": eccentricity,
+                          "mean_anomaly": mean_anomaly}
         
     # Try evaluating at an array of frequencies
     gwecc_dict = measure_eccentricity(
@@ -78,9 +97,29 @@ def generate_regression_data(method, interp_method, use_segment):
     ecc_ref = gwecc_dict["eccentricity"]
     meanano_ref = gwecc_dict["mean_anomaly"]
     n = len(fref_out)
-    dict_fref = {"frequency": [fref_out[n//8], fref_out[n//4], fref_out[n//2]],
-                 "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
-                 "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
+    frequencies = [fref_out[n//8], fref_out[n//4], fref_out[n//2]]
+    if not use_segment:
+        dict_fref = {"frequency": frequencies,
+                     "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
+                     "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
+    else:
+        # when `use_segment = True`, we evaluate at three different frequencies
+        # using only the relevant segments.
+        eccentricity = []
+        mean_anomaly = []
+        for fref in frequencies:
+            gwecc_dict = measure_eccentricity(
+                fref_in=fref,
+                method=method,
+                dataDict=dataDict,
+                extra_kwargs=user_kwargs)
+            eccentricity.append(gwecc_dict["eccentricity"])
+            mean_anomaly.append(gwecc_dict["mean_anomaly"])
+
+            dict_fref =  {"frequency": frequencies,
+                          "eccentricity": eccentricity,
+                          "mean_anomaly": mean_anomaly}
+
     regression_data.update({"tref": dict_tref,
                             "fref": dict_fref})
 

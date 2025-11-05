@@ -1484,9 +1484,17 @@ class eccDefinition:
                 if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] == 1 \
                     and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] == 1:
                     debug_message(
-                        "Both numerator and denominator degrees are equal to 1 "
-                        "and cannot be lowered further.",
-                        debug_level=self.debug_level, important=False)
+                        "Both numerator and denominator degrees are equal to 1, "
+                        "but the fit is still nonmonotonic. This implies that the omega "
+                        "at the extrema is not varying much and using even the "
+                        "lowest degrees is causing spurious divergences (poles). "
+                        "In such cases, we want the denominator degree to be lowered to 0, "
+                        "which is similar to fitting to a linear polynomial. "
+                        "We can no longer use rational_fit for such cases, and therefore, "
+                        "simply fit the data to a linear polynomial.",
+                        debug_level=self.debug_level, important=True)
+                    # fallback to polynomial
+                    rat_fit = lambda x_: np.polyval(np.polyfit(x, y, 1), x_)
                     break
 
                 debug_message(
@@ -1597,11 +1605,24 @@ class eccDefinition:
         return num_degree, denom_degree
 
     def check_if_first_derivative_is_not_strictly_monotonic(
-        self, x, y, tol=1.0):
+            self, x, y, tol=1e-5):
         """Check if the first derivative of data is not strictly monotonic.
         """
-        dy_dx = np.gradient(y, x[1] - x[0])
-        is_not_strictly_monotonic = any(dy_dx[1:]/dy_dx[:-1] < tol)
+        dx = x[1] - x[0]
+        dy = np.diff(y)
+        dy_dx = dy/dx
+        # Tolerate small numerical fluctions where the dy/dx is very
+        # flat.
+        # For very early in the inspiral, dydx can be almost constant.
+        # The slope of dy/dx will be (1 +- tiny value) due numerical
+        # noise. Therefore, we allow the slope to be below 1 by a
+        # small value given by the `tol`.
+        slope_ratio = dy_dx[1:]/dy_dx[:-1]
+        mask = np.abs(1.0 - slope_ratio) < tol
+        if np.any(mask):
+            slope_ratio[mask] = 1
+        
+        is_not_strictly_monotonic = any(slope_ratio < 1)
         return is_not_strictly_monotonic
 
     def get_available_omega_gw_extrema_interpolation_methods(self):
@@ -1655,15 +1676,12 @@ class eccDefinition:
                     spline_kwargs=self.special_interp_kwargs_for_omega_gw_extrema,
                     check_kwargs=False)
             # check monotonicity of the interpolant
-            if (self.check_if_first_derivative_is_not_strictly_monotonic(
+            if self.check_if_first_derivative_is_not_strictly_monotonic(
                     self.t_for_checks,
-                    interpolant(self.t_for_checks)) or
-                self.check_if_first_derivative_is_not_strictly_monotonic(
-                    self.t_for_checks,
-                    interpolant(self.t_for_checks))):
+                    interpolant(self.t_for_checks)):
                 message = ("Nonmonotonic time derivative detected in the "
                            f"{self.omega_gw_extrema_interpolation_method} "
-                           "interpolant through extrema.")
+                           f"interpolant through {extrema_type}.")
                 if self.omega_gw_extrema_interpolation_method == "spline":
                     additional_message = (
                         "Using rational fit by "
@@ -1672,7 +1690,7 @@ class eccDefinition:
                 else:
                     additional_message = ""
                 debug_message(
-                    message+" "+additional_message,
+                    message + " " + additional_message,
                     debug_level=self.debug_level, important=True)
             return interpolant
         else:
@@ -1834,9 +1852,10 @@ class eccDefinition:
         # The actual tref will be always between the first and the
         # last times where omega_gw crosses fref_in. We use only this
         # segment to build the secular trend of omega_gw.
-        left_indices = np.where(self.omega_gw >= fref * 2 * np.pi)[0]
-        right_indices = np.where(self.omega_gw <= fref * 2 * np.pi)[0]
-        # if omega_gw is > 2pi*fref, then right_indices will be
+        omega_ref = fref * 2 * np.pi
+        left_indices = np.where(self.omega_gw >= omega_ref)[0]
+        right_indices = np.where(self.omega_gw <= omega_ref)[0]
+        # if omega_gw is > omega_ref, then right_indices will be
         # empty. It implies that the fref, where we want to measure
         # the eccentricity, is too low. That is, fref is smaller than
         # the frequency where we can measure eccentricity.
@@ -1844,7 +1863,7 @@ class eccDefinition:
             left = left_indices[0]
             right = left
         # Similarly, if fref is too high, that is, omega_gw <
-        # 2pi*fref, then left_indices will be empty.
+        # omega_ref, then left_indices will be empty.
         elif len(left_indices) == 0:
             right = right_indices[-1]
             left = right
@@ -1861,14 +1880,20 @@ class eccDefinition:
                 self.phase_gw >= self.phase_gw[right] + 5 * 4 *np.pi)[0]
             left = left_indices[0] if len(left_indices) > 1 else 0
             right = right_indices[0] if len(right_indices) > 1 else -1
-        times = self.t[left:right]
-        frequencies = self.omega_gw[left:right]/2/np.pi
+            
+        time = self.t[left:right]
+        omega = self.omega_gw[left:right]
+        # downsample to minimize the computation for the fitting process
+        if len(time) >= 1000:
+            step = len(time) // 1000
+            time = time[::step]
+            omega = omega[::step]
         # get the secular trend
-        secular_trend = SecularTrend(times, frequencies)
+        secular_trend = SecularTrend(time, omega)
         res = secular_trend.least_square_fit()
         # get the location where the secular trend crosses fref_in
-        idx = np.argmin(np.abs(secular_trend.model(times, *res.x) - fref))
-        return times[idx]
+        idx = np.argmin(np.abs(secular_trend.model(time, *res.x) - omega_ref))
+        return time[idx]
         
     def get_amp_phase_omega_gw_segments(self):
         """Get relevant segment of the data for eccentricity measurement.

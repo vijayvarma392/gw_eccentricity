@@ -18,6 +18,7 @@ def test_regression():
         regression_data_files = glob.glob(f"test/regression_data/{method}_*_regression_data.json")
         for regression_data_file in regression_data_files:
             # Load the regression data
+            print(regression_data_file)
             fl = open(regression_data_file, "r")
             regression_data = json.load(fl)
             fl.close()
@@ -30,15 +31,28 @@ def test_regression():
             # Try evaluating at times where regression data are saved
             regression_data_at_tref = regression_data["tref"]
             tref_in = regression_data_at_tref["time"]
-            gwecc_dict = measure_eccentricity(
-                tref_in=tref_in,
-                method=method,
-                dataDict=dataDict,
-                extra_kwargs=extra_kwargs)
-            tref_out = gwecc_dict["tref_out"]
-            ecc_ref = gwecc_dict["eccentricity"]
-            meanano_ref = gwecc_dict["mean_anomaly"]
+            if not extra_kwargs["use_segment"]:
+                gwecc_dict = measure_eccentricity(
+                    tref_in=tref_in,
+                    method=method,
+                    dataDict=dataDict,
+                    extra_kwargs=extra_kwargs)
+                ecc_ref = gwecc_dict["eccentricity"]
+                meanano_ref = gwecc_dict["mean_anomaly"]
+            else:
+                ecc_ref = []
+                meanano_ref = []
+                for tref in tref_in:
+                    gwecc_dict = measure_eccentricity(
+                    tref_in=tref,
+                    method=method,
+                    dataDict=dataDict,
+                    extra_kwargs=extra_kwargs)
+                    ecc_ref.append(gwecc_dict["eccentricity"])
+                    meanano_ref.append(gwecc_dict["mean_anomaly"])
+                
             # Compare the measured data with the saved data
+            print(ecc_ref, regression_data_at_tref["eccentricity"])
             np.testing.assert_allclose(
                 ecc_ref, regression_data_at_tref["eccentricity"],
                 atol=atol,
@@ -51,14 +65,25 @@ def test_regression():
             # Try evaluating at frequencies where regression data are saved
             regression_data_at_fref = regression_data["fref"]
             fref_in = regression_data_at_fref["frequency"]
-            gwecc_dict = measure_eccentricity(
-                fref_in=fref_in,
-                method=method,
-                dataDict=dataDict,
-                extra_kwargs=extra_kwargs)
-            fref_out = gwecc_dict["fref_out"]
-            ecc_ref = gwecc_dict["eccentricity"]
-            meanano_ref = gwecc_dict["mean_anomaly"]
+            if not extra_kwargs["use_segment"]:
+                gwecc_dict = measure_eccentricity(
+                    fref_in=fref_in,
+                    method=method,
+                    dataDict=dataDict,
+                    extra_kwargs=extra_kwargs)
+                ecc_ref = gwecc_dict["eccentricity"]
+                meanano_ref = gwecc_dict["mean_anomaly"]
+            else:
+                ecc_ref = []
+                meanano_ref = []
+                for fref in fref_in:
+                    gwecc_dict = measure_eccentricity(
+                        fref_in=fref,
+                        method=method,
+                        dataDict=dataDict,
+                        extra_kwargs=extra_kwargs)
+                    ecc_ref.append(gwecc_dict["eccentricity"])
+                    meanano_ref.append(gwecc_dict["mean_anomaly"])
             # Compare the measured data with the saved data
             np.testing.assert_allclose(
                 ecc_ref, regression_data_at_fref["eccentricity"],
