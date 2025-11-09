@@ -341,6 +341,43 @@ class eccDefinition:
                 eccentricity is the cause, and set the returned eccentricity
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
+
+            use_segment : bool, default=True
+                Instead of using the full waveform data, use only a
+                small segment of data around the reference
+                time/frequency. The length of the segment of the data
+                is set by `segment_length_to_use` (see below).  The
+                main reason for using only a short segment is to speed
+                up the computation of eccentricity and mean anomaly
+                measurement.
+
+                Methods like `AmplitudeFits` or `FrequencyFits` finds
+                the extrema in the data one by one, making the process
+                computationally expensive for long waveforms. For
+                these methods, the computation time increases with the
+                inspiral duration. Whereas, using a small segment,
+                makes this computation time almost independent of the
+                inspiral duration.
+
+                The difference between the measured eccentricity and
+                mean anomaly values using the full waveform vs a small
+                segment is typically small, but depends on the
+                `omega_gw_extrema_interpolation_method`. The
+                difference is usually smaller in case of `spline`
+                compared to `rational_fit`. For NR waveforms, the
+                difference is below 1%, whereas for model waveforms,
+                it is below 0.01%.  To get an overview of the
+                difference and speed up, see the results in the wiki
+                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
+
+            segment_length_to_use : float, default=10
+                Length of the segment in number of orbits to be used
+                for measuring eccentricity and mean anomaly when
+                `use_segment` is True. Smaller value implies better
+                speedup factor while less agreement with the
+                measurement using the full waveform. see the results
+                in the wiki
+                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
         """
         self.precessing = precessing
         self.frame = frame
@@ -1483,18 +1520,28 @@ class eccDefinition:
                     self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] -= 1
                 if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] == 1 \
                     and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] == 1:
+                    if self.extra_kwargs["use_segment"]:
+                        extra_message = (
+                            "This is most likely the case since `use_segment` is "
+                            f"{self.extra_kwargs['use_segment']}, implying that "
+                            "only a small segment of the waveform is being used where "
+                            "the values of omega_gw at the extrema is not changing much.\n")
+                    else:
+                        extra_message = ""
                     debug_message(
-                        "Both numerator and denominator degrees are equal to 1, "
-                        "but the fit is still nonmonotonic. This implies that the omega "
-                        "at the extrema is not varying much and using even the "
-                        "lowest degrees is causing spurious divergences (poles). "
-                        "In such cases, we want the denominator degree to be lowered to 0, "
-                        "which is similar to fitting to a linear polynomial. "
-                        "We can no longer use rational_fit for such cases, and therefore, "
-                        "simply fit the data to a linear polynomial.",
+                        ("Both numerator and denominator degrees are equal to 1, "
+                        "but the fit is still nonmonotonic. Can not lower the degrees further. "
+                        "This may happen when omega at the extrema is not varying much and "
+                        "using even the lowest degrees is causing spurious divergences (poles).\n"
+                        + extra_message +
+                        "In such cases, we fallback to using spline."),
                         debug_level=self.debug_level, important=True)
-                    # fallback to polynomial
-                    rat_fit = lambda x_: np.polyval(np.polyfit(x, y, 1), x_)
+                    # use spline
+                    rat_fit = get_interpolant(x, y)
+                    # since it's no more rational fit, update the degrees to None
+                    self.special_interp_kwargs_for_omega_gw_extrema["num_degree"],\
+                        self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"]\
+                        = None, None
                     break
 
                 debug_message(
@@ -1609,8 +1656,7 @@ class eccDefinition:
         """Check if the first derivative of data is not strictly monotonic.
         """
         dx = x[1] - x[0]
-        dy = np.diff(y)
-        dy_dx = dy/dx
+        dy_dx = np.gradient(y, dx)
         # Tolerate small numerical fluctions where the dy/dx is very
         # flat.
         # For very early in the inspiral, dydx can be almost constant.
@@ -1621,7 +1667,6 @@ class eccDefinition:
         mask = np.abs(1.0 - slope_ratio) < tol
         if np.any(mask):
             slope_ratio[mask] = 1
-        
         is_not_strictly_monotonic = any(slope_ratio < 1)
         return is_not_strictly_monotonic
 

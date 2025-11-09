@@ -478,6 +478,41 @@ def measure_eccentricity(tref_in=None,
             eccentricity is the cause, and set the returned eccentricity and
             mean anomaly to zero.
             USE THIS WITH CAUTION!
+    
+        use_segment : bool, default=True Instead of using the full
+            waveform data, use only a small segment of data around the
+            reference time/frequency. The length of the segment of the
+            data is set by `segment_length_to_use` (see below).  The
+            main reason for using only a short segment is to speed up
+            the computation of eccentricity and mean anomaly
+            measurement.
+
+            Methods like `AmplitudeFits` or `FrequencyFits` finds the
+            extrema in the data one by one, making the process
+            computationally expensive for long waveforms. For these
+            methods, the computation time increases with the inspiral
+            duration. Whereas, using a small segment, makes this
+            computation time almost independent of the inspiral
+            duration.
+
+            The difference between the measured eccentricity and mean
+            anomaly values using the full waveform vs a small segment
+            is typically small, but depends on the
+            `omega_gw_extrema_interpolation_method`. The difference is
+            usually smaller in case of `spline` compared to
+            `rational_fit`. For NR waveforms, the difference is below
+            1%, whereas for model waveforms, it is below 0.01%.  To
+            get an overview of the difference and speed up, see the
+            results in the wiki
+            https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
+
+        segment_length_to_use : float, default=10 Length of the
+            segment in number of orbits to be used for measuring
+            eccentricity and mean anomaly when `use_segment` is
+            True. Smaller value implies better speedup factor while
+            less agreement with the measurement using the full
+            waveform. see the results in the wiki
+            https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
 
     Returns
     -------
