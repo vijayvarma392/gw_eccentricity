@@ -405,11 +405,7 @@ def debug_message(message, debug_level, important=True,
         raise Exception(message)
 
 class SecularTrend:
-    """Fit eccentric data to get the secular trend.
-
-    Re-parameterize A*(T-t)^n in terms of function value and 
-    first derivative at the time t0, and T.
-    """
+    """Fit eccentric data to get the secular trend."""
 
     def __init__(self, times, frequencies):
         """Init."""

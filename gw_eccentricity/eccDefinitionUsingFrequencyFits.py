@@ -90,10 +90,6 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
                 "data": self.data_for_finding_extrema,
                 "t": self.t
             }
-        # use a flag so the the function
-        # `get_segment_of_data_for_finding_extrema` to get relevant
-        # segment of is called only once.
-        self.get_segment_of_data = self.extra_kwargs["use_segment"]
 
     def get_default_kwargs_for_fits_methods(self):
         """Get default kwargs to be used for Fits methods.

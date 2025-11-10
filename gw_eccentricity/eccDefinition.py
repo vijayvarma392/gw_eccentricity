@@ -489,6 +489,13 @@ class eccDefinition:
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp_gw_and_res_omega_gw()
+        # use a flag so that the function
+        # `get_segment_of_data_for_finding_extrema` is called only once to get
+        # the relevant segment of data around the reference point.
+        # The function `get_segment_of_data_for_finding_extrema` is called from
+        # within the function `find_extrema`. This flag is set to False after
+        # `find_extrema` is called for the first time.
+        self.get_segment_of_data = self.extra_kwargs["use_segment"]
 
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
@@ -1659,15 +1666,15 @@ class eccDefinition:
         dy_dx = np.gradient(y, dx)
         # Tolerate small numerical fluctions where the dy/dx is very
         # flat.
-        # For very early in the inspiral, dydx can be almost constant.
-        # The slope of dy/dx will be (1 +- tiny value) due numerical
-        # noise. Therefore, we allow the slope to be below 1 by a
+        # For segments very early in the inspiral, dy/dx can be almost constant.
+        # The ratio of consecutive dy/dx will be nearly 1 +- tiny numerical
+        # fluctuations. Therefore, we allow the ratio to go below 1 by a
         # small value given by the `tol`.
-        slope_ratio = dy_dx[1:]/dy_dx[:-1]
-        mask = np.abs(1.0 - slope_ratio) < tol
+        ratio = dy_dx[1:]/dy_dx[:-1]
+        mask = np.abs(1.0 - ratio) < tol
         if np.any(mask):
-            slope_ratio[mask] = 1
-        is_not_strictly_monotonic = any(slope_ratio < 1)
+            ratio[mask] = 1
+        is_not_strictly_monotonic = any(ratio < 1)
         return is_not_strictly_monotonic
 
     def get_available_omega_gw_extrema_interpolation_methods(self):
