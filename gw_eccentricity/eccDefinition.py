@@ -1976,9 +1976,30 @@ class eccDefinition:
           the t_left and t_right. After that we follow the method
           outlined in the second step.
         """
+        # get the left and right reference time from given given
+        # reference time/frequency
+        t_left, t_right = self._get_reference_bounds()
+        phase_left, phase_right = self._get_phase_bounds(t_left, t_right)
+        # get the start and end indices for the segment of data to use
+        self._get_segment_indices(phase_left, phase_right)
+        # For debugging, keep a copy of full data
+        if self.debug_plots:
+            t_for_debug = np.copy(self.t)
+            amp_for_debug = np.copy(self.amp_gw)
+            omega_for_debug = np.copy(self.omega_gw)
+        # update the amp, phase, omega data so that they contain only
+        # the relevant segment.
+        self._update_waveform_data_segment()
+        # plot for debugging
+        if self.debug_plots:
+            self._plot_debug_segment(
+                t_left, t_right,
+                t_for_debug, amp_for_debug, omega_for_debug)
+
+    def _get_reference_bounds(self):
+        """Get t_left and t_right depending on domain (time or frequency)."""
         if self.domain == "time":
-            t_left = self.tref_in[0]
-            t_right = self.tref_in[-1]
+            t_left, t_right = self.tref_in[0], self.tref_in[-1]
         else:
             t_left = self.get_approximate_tref_for_fref_using_secular_trend(
                 self.fref_in[0])
@@ -1987,135 +2008,168 @@ class eccDefinition:
                     self.fref_in[-1])
             else:
                 t_right = t_left
+        return t_left, t_right
 
-        phase_gw_at_ref_left = self.phase_gw[np.argmin(np.abs(self.t - t_left))]
-        phase_gw_at_ref_right = self.phase_gw[np.argmin(np.abs(self.t - t_right))]
-        k = 1.1 # to account for pericenter advance
-        # calculate the number of orbits between t_left and t_right
-        orbits_between_t_left_and_t_right = (
-            (phase_gw_at_ref_right - phase_gw_at_ref_left) / (4 * k * np.pi))
-        # we want to add half of the `segment_length_to_use` on the left
-        # of t_left and the other half on the right of t_right. In
-        # case of a single reference time or frequency, t_left =
-        # t_right.
-        width_on_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * 4 * k * np.pi
-        # find the start of the segment
-        left_indices = np.where(self.phase_gw >= phase_gw_at_ref_left - width_on_each_side)[0]
-        self.segment_start_index = left_indices[0] if len(left_indices) > 0 else 0
-        if self.segment_start_index == 0:
+    def _get_phase_bounds(self, t_left, t_right):
+        """Get phase_gw values at reference bounds."""
+        phase_left = self.phase_gw[np.argmin(np.abs(self.t - t_left))]
+        phase_right = self.phase_gw[np.argmin(np.abs(self.t - t_right))]
+        return phase_left, phase_right
+
+    def _compute_additional_orbits(self, side, phase_ref, index, orbits_between, FOUR_PI_K):
+        """Compute how many extra orbits to add if near waveform edges."""
+        if side == "left":
             # it could be that the reference time is too close to the
             # left edge of the waveform and we may not have the
             # necessary number of orbits on the left to the reference
-            # time.  In such case, we just add the missing number of
+            # time. In such case, we just add the missing number of
             # orbits on the right so that total number of orbits in
             # the segment matches the `segment_length_to_use`.
             # However, if we are measuring egw for an array of times
             # and the number of orbits between t_left and t_right is
             # already > `segment_length_to_use`, then we do not need
             # to this.
-            additional_orbits_to_add_on_the_right = max(
-                0.5 * self.extra_kwargs["segment_length_to_use"] # required number of orbits on the left
-                - ((phase_gw_at_ref_left - self.phase_gw[self.segment_start_index])/(4 * k * np.pi)) # available number of orbits on the left
-                - orbits_between_t_left_and_t_right,# number of orbits already contained between t_left and t_right
-                0)
+            available_orbits = (phase_ref - self.phase_gw[index]) / FOUR_PI_K
+        else:
+            # same, but now near the right edge of the waveform.
+            available_orbits = (self.phase_gw[index] - phase_ref) / FOUR_PI_K
+        required_orbits = 0.5 * self.extra_kwargs["segment_length_to_use"]
+        return max(required_orbits - available_orbits - orbits_between, 0)
+
+    def _get_segment_indices(self, phase_left, phase_right):
+        """Determine the start and end indices of the data segment."""
+        k = 1.1 # to account for pericenter advance
+        FOUR_PI_K = 4 * k * np.pi
+        # calculate the number of orbits between t_left and t_right
+        orbits_between = (phase_right - phase_left) / FOUR_PI_K
+        # we want to add half of the `segment_length_to_use` on the left
+        # of t_left and the other half on the right of t_right. In
+        # case of a single reference time or frequency, t_left =
+        # t_right.
+        width_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * FOUR_PI_K
+        # find the start of the segment
+        left_phase_target = phase_left - width_each_side
+        self.segment_start_index = max(np.searchsorted(self.phase_gw, left_phase_target) - 1, 0)
+        # adjust right side if near left boundary
+        if self.segment_start_index == 0:
+            additional_orbits_to_add_on_the_right = self._compute_additional_orbits(
+                "left", phase_left, 0, orbits_between, FOUR_PI_K)
         else:
             additional_orbits_to_add_on_the_right = 0
+        # find the end of the segment
         right_indices = np.where(
             self.phase_gw >= (
-                phase_gw_at_ref_right
-                + width_on_each_side
-                + additional_orbits_to_add_on_the_right * 4 * k * np.pi
+                phase_right
+                + width_each_side
+                + additional_orbits_to_add_on_the_right * FOUR_PI_K
             ))[0]
         self.segment_end_index = right_indices[0] if len(right_indices) > 0 else -1
+        # adjust left side if near right boundary
         if self.segment_end_index == -1:
-            # Similar to the left edge case, but now on the right.
-            additional_orbits_to_add_on_the_left = max(
-                0.5 * self.extra_kwargs["segment_length_to_use"]
-                - ((self.phase_gw[self.segment_end_index] - phase_gw_at_ref_right)/(4 * k * np.pi))
-                - orbits_between_t_left_and_t_right, 0)
-            # recompute
+            additional_orbits_to_add_on_the_left = self._compute_additional_orbits(
+                "right", phase_right, -1, orbits_between, FOUR_PI_K)
+            # update start index
             left_indices = np.where(
                 self.phase_gw >= (
-                    phase_gw_at_ref_left
-                    - width_on_each_side
-                    - additional_orbits_to_add_on_the_left * 4 * k * np.pi))[0]
+                    phase_left
+                    - width_each_side
+                    - additional_orbits_to_add_on_the_left * FOUR_PI_K))[0]
             self.segment_start_index = left_indices[0] if len(left_indices) > 0 else 0
-        # For debugging, make some plots
-        if self.debug_plots:
-            style = "APS"
-            use_fancy_plotsettings(style=style)
-            nrows = 2
-            fig, axes = plt.subplots(
-                nrows=nrows,
-                figsize=(
-                    figWidthsTwoColDict[style],
-                    nrows * figHeightsDict[style]),
-                sharex=True)
-            axes[0].plot(self.t, self.amp_gw, label=" Full waveform")
-            axes[1].plot(self.t, self.omega_gw, label=" Full waveform")
-        # update the amp, phase, omega data so that they contain only
-        # the relevant segment.
-        self.t = self.t[self.segment_start_index: self.segment_end_index]
-        self.amp_gw = self.amp_gw[self.segment_start_index: self.segment_end_index]
-        self.phase_gw = self.phase_gw[self.segment_start_index: self.segment_end_index]
-        self.omega_gw = self.omega_gw[self.segment_start_index: self.segment_end_index]
+
+    def _update_waveform_data_segment(self):
+        """Slice all waveform data to retain only the selected segment."""
+        start, end = self.segment_start_index, self.segment_end_index
+        for attr in ["t", "amp_gw", "phase_gw", "omega_gw"]:
+            setattr(self, attr, getattr(self, attr)[start:end])
         if "Residual" in self.method:
-            self.res_amp_gw = self.res_amp_gw[self.segment_start_index: self.segment_end_index]
-            self.res_omega_gw = self.res_omega_gw[self.segment_start_index: self.segment_end_index]
-        # plot data after getting the segments, for debugging.
-        if self.debug_plots:
+            for attr in ["res_amp_gw", "res_omega_gw"]:
+                setattr(self, attr, getattr(self, attr)[start:end])
+
+    def _plot_debug_segment(self, t_left, t_right, t_for_debug, amp_for_debug, omega_for_debug):
+        """Plot full waveform vs selected segment for debugging."""
+        style = "APS"
+        use_fancy_plotsettings(style=style)
+        nrows = 2
+
+        fig, axes = plt.subplots(
+            nrows=nrows,
+            figsize=(figWidthsTwoColDict[style], nrows * figHeightsDict[style]),
+            sharex=True
+        )
+
+        # plot full waveform
+        axes[0].plot(t_for_debug, amp_for_debug, label="Full waveform")
+        axes[1].plot(t_for_debug, omega_for_debug, label="Full waveform")
+
+        # plot selected segment
+        segment_label = (
+            f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            if len(getattr(self, 'tref_in', [])) == 1 or self.domain != "time"
+            else f"{'tref_in' if self.domain=='time' else 'fref_in'} + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+        )
+        axes[0].plot(self.t, self.amp_gw, ls="--", label=segment_label)
+        axes[1].plot(self.t, self.omega_gw, ls="--", label=segment_label)
+
+        # plot reference markers
+        for ax in axes:
             if self.domain == "time":
-                if len(self.tref_in) == 1:
-                    segment_label = f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+                trefs = np.atleast_1d(self.tref_in)
+                if len(trefs) == 1:
+                    # Single reference time
+                    ax.axvline(
+                        trefs[0],
+                        label=f"{labelsDict['t_ref']} = {trefs[0]}",
+                        ls="-",
+                        c=colorsDict["vline"],
+                    )
                 else:
-                    segment_label = f"tref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
-            else:
-                segment_label = f"fref_in + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
-            axes[0].plot(
-                self.t, self.amp_gw,
-                label=segment_label,
-                ls="--")
-            axes[1].plot(
-                self.t, self.omega_gw,
-                label=segment_label,
-                ls="--")
-            for ax in axes:
-                if self.domain == "time":
-                    if len(self.tref_in) == 1:
-                        ax.axvline(self.tref_in,
-                                   label=labelsDict["t_ref"] + f" = {self.tref_in[0]}",
-                                   ls="-", c=colorsDict["vline"])
+                    # First and last only
+                    for i, tref in enumerate([trefs[0], trefs[-1]]):
+                        ax.axvline(
+                            tref,
+                            label=f"{'First' if i == 0 else 'Last'} {labelsDict['t_ref']} = {tref}",
+                            ls="-" if i == 0 else "-.",
+                            c=colorsDict["vline"],
+                        )
+            else:  # frequency domain
+                if ax == axes[1]:  # only plot horizontal lines for omega_gw
+                    frefs = np.atleast_1d(self.fref_in)
+                    if len(frefs) == 1:
+                        # Single frequency reference
+                        ax.axhline(
+                            2 * np.pi * frefs[0],
+                            label=r"$2\pi$" + labelsDict["f_gw_ref"],
+                            ls="-",
+                            c=colorsDict["hline"],
+                        )
                     else:
-                        ax.axvline(self.tref_in[0],
-                                   label="First " + labelsDict["t_ref"] + f" = {self.tref_in[0]}",
-                                   ls="-", c=colorsDict["vline"])
-                        ax.axvline(self.tref_in[-1],
-                                   label="Last " + labelsDict["t_ref"] + f" = {self.tref_in[-1]}",
-                                   ls="-.", c=colorsDict["vline"])
-                else:
-                    if ax == axes[1]:
-                        ax.axhline(self.fref_in[0] * 2 * np.pi,
-                                   label=r"$2\pi$" + labelsDict["f_gw_ref"],
-                                   ls="-", c=colorsDict["hline"])
-                        if len(self.fref_in) == 1:
-                            ax.axvline(t_left, label=f"Approx {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"])
-                        else:
-                            ax.axvline(t_left, label=f"Approx first {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"])
-                            ax.axvline(t_right, label=f"Approx last {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"], ls="-.")
-                            ax.axhline(self.fref_in[-1] * 2 * np.pi,
-                                   label=r"$2\pi$" + labelsDict["f_gw_ref"],
-                                   ls="-.", c=colorsDict["hline"])
-                    else:
-                        continue
-                ax.legend()
-            axes[1].set_xlabel(labelsDict["t"])
-            axes[0].set_ylabel(labelsDict["amp_gw"])
-            axes[1].set_ylabel(labelsDict["omega_gw"])
-            fig.tight_layout()
-            self.save_debug_fig(
-                fig,
-                f"gwecc_get_segment_debug_{self.extra_kwargs['segment_length_to_use']}.pdf")
-            plt.close(fig)
+                        # First and last frequencies only
+                        for i, fref in enumerate([frefs[0], frefs[-1]]):
+                            ax.axhline(
+                                2 * np.pi * fref,
+                                label=r"$2\pi$" + labelsDict["f_gw_ref"] + (" (first)" if i == 0 else " (last)"),
+                                ls="-" if i == 0 else "-.",
+                                c=colorsDict["hline"],
+                            )
+                    # vertical lines at approximate t_ref from secular trend
+                    ax.axvline(t_left, label=f"Approx first {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"])
+                    if len(self.fref_in) > 1:
+                        ax.axvline(t_right, label=f"Approx last {labelsDict['t_ref']} from secular trend", ls="-.", c=colorsDict["vline"])
+
+        # labels
+        axes[0].set_ylabel(labelsDict["amp_gw"])
+        axes[1].set_ylabel(labelsDict["omega_gw"])
+        axes[1].set_xlabel(labelsDict["t"])
+
+        for ax in axes:
+            ax.legend()
+
+        fig.tight_layout()
+        self.save_debug_fig(
+            fig,
+            f"gwecc_get_segment_debug_{self.extra_kwargs['segment_length_to_use']}.pdf"
+        )
+        plt.close(fig)
         
     def get_segment_of_data_for_finding_extrema(self):
         """Get only the relevant segment of `data_for_finding_extrema`.
@@ -2277,6 +2331,9 @@ class eccDefinition:
                                       / (4 * np.pi))
             if approximate_num_orbits >= self.extra_kwargs["segment_length_to_use"]:
                 self.get_amp_phase_omega_gw_segments()
+            else:
+                self.segment_start_index = None
+                self.segment_end_index = None
             
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
