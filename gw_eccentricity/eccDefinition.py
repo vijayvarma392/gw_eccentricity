@@ -19,6 +19,7 @@ from .utils import get_default_spline_kwargs
 from .utils import get_rational_fit
 from .utils import get_default_rational_fit_kwargs
 from .utils import debug_message
+from .utils import SecularTrend
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 
@@ -340,6 +341,43 @@ class eccDefinition:
                 eccentricity is the cause, and set the returned eccentricity
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
+
+            use_segment : bool, default=True
+                Instead of using the full waveform data, use only a
+                small segment of data around the reference
+                time/frequency. The length of the segment of the data
+                is set by `segment_length_to_use` (see below).  The
+                main reason for using only a short segment is to speed
+                up the computation of eccentricity and mean anomaly
+                measurement.
+
+                Methods like `AmplitudeFits` or `FrequencyFits` finds
+                the extrema in the data one by one, making the process
+                computationally expensive for long waveforms. For
+                these methods, the computation time increases with the
+                inspiral duration. Whereas, using a small segment,
+                makes this computation time almost independent of the
+                inspiral duration.
+
+                The difference between the measured eccentricity and
+                mean anomaly values using the full waveform vs a small
+                segment is typically small, but depends on the
+                `omega_gw_extrema_interpolation_method`. The
+                difference is usually smaller in case of `spline`
+                compared to `rational_fit`. For NR waveforms, the
+                difference is below 1%, whereas for model waveforms,
+                it is below 0.01%.  To get an overview of the
+                difference and speed up, see the results in the wiki
+                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
+
+            segment_length_to_use : float, default=10
+                Length of the segment in number of orbits to be used
+                for measuring eccentricity and mean anomaly when
+                `use_segment` is True. Smaller value implies better
+                speedup factor while less agreement with the
+                measurement using the full waveform. see the results
+                in the wiki
+                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
         """
         self.precessing = precessing
         self.frame = frame
@@ -451,6 +489,13 @@ class eccDefinition:
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp_gw_and_res_omega_gw()
+        # use a flag so that the function
+        # `get_segment_of_data_for_finding_extrema` is called only once to get
+        # the relevant segment of data around the reference point.
+        # The function `get_segment_of_data_for_finding_extrema` is called from
+        # within the function `find_extrema`. This flag is set to False after
+        # `find_extrema` is called for the first time.
+        self.get_segment_of_data = self.extra_kwargs["use_segment"]
 
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
@@ -1096,7 +1141,9 @@ class eccDefinition:
             "refine_extrema": False,
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
-            "omega_gw_extrema_interpolation_method": "rational_fit"
+            "omega_gw_extrema_interpolation_method": "rational_fit",
+            "use_segment": True,
+            "segment_length_to_use": 10 # in number of orbits
         }
         return default_extra_kwargs
 
@@ -1480,10 +1527,28 @@ class eccDefinition:
                     self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] -= 1
                 if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] == 1 \
                     and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] == 1:
+                    if self.extra_kwargs["use_segment"]:
+                        extra_message = (
+                            "This is most likely the case since `use_segment` is "
+                            f"{self.extra_kwargs['use_segment']}, implying that "
+                            "only a small segment of the waveform is being used where "
+                            "the values of omega_gw at the extrema is not changing much.\n")
+                    else:
+                        extra_message = ""
                     debug_message(
-                        "Both numerator and denominator degrees are equal to 1 "
-                        "and cannot be lowered further.",
-                        debug_level=self.debug_level, important=False)
+                        ("Both numerator and denominator degrees are equal to 1, "
+                        "but the fit is still nonmonotonic. Can not lower the degrees further. "
+                        "This may happen when omega at the extrema is not varying much and "
+                        "using even the lowest degrees is causing spurious divergences (poles).\n"
+                        + extra_message +
+                        "In such cases, we fallback to using spline."),
+                        debug_level=self.debug_level, important=True)
+                    # use spline
+                    rat_fit = get_interpolant(x, y)
+                    # since it's no more rational fit, update the degrees to None
+                    self.special_interp_kwargs_for_omega_gw_extrema["num_degree"],\
+                        self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"]\
+                        = None, None
                     break
 
                 debug_message(
@@ -1594,11 +1659,22 @@ class eccDefinition:
         return num_degree, denom_degree
 
     def check_if_first_derivative_is_not_strictly_monotonic(
-        self, x, y, tol=1.0):
+            self, x, y, tol=1e-5):
         """Check if the first derivative of data is not strictly monotonic.
         """
-        dy_dx = np.gradient(y, x[1] - x[0])
-        is_not_strictly_monotonic = any(dy_dx[1:]/dy_dx[:-1] < tol)
+        dx = x[1] - x[0]
+        dy_dx = np.gradient(y, dx)
+        # Tolerate small numerical fluctions where the dy/dx is very
+        # flat.
+        # For segments very early in the inspiral, dy/dx can be almost constant.
+        # The ratio of consecutive dy/dx will be nearly 1 +- tiny numerical
+        # fluctuations. Therefore, we allow the ratio to go below 1 by a
+        # small value given by the `tol`.
+        ratio = dy_dx[1:]/dy_dx[:-1]
+        mask = np.abs(1.0 - ratio) < tol
+        if np.any(mask):
+            ratio[mask] = 1
+        is_not_strictly_monotonic = any(ratio < 1)
         return is_not_strictly_monotonic
 
     def get_available_omega_gw_extrema_interpolation_methods(self):
@@ -1652,15 +1728,12 @@ class eccDefinition:
                     spline_kwargs=self.special_interp_kwargs_for_omega_gw_extrema,
                     check_kwargs=False)
             # check monotonicity of the interpolant
-            if (self.check_if_first_derivative_is_not_strictly_monotonic(
+            if self.check_if_first_derivative_is_not_strictly_monotonic(
                     self.t_for_checks,
-                    interpolant(self.t_for_checks)) or
-                self.check_if_first_derivative_is_not_strictly_monotonic(
-                    self.t_for_checks,
-                    interpolant(self.t_for_checks))):
+                    interpolant(self.t_for_checks)):
                 message = ("Nonmonotonic time derivative detected in the "
                            f"{self.omega_gw_extrema_interpolation_method} "
-                           "interpolant through extrema.")
+                           f"interpolant through {extrema_type}.")
                 if self.omega_gw_extrema_interpolation_method == "spline":
                     additional_message = (
                         "Using rational fit by "
@@ -1669,7 +1742,7 @@ class eccDefinition:
                 else:
                     additional_message = ""
                 debug_message(
-                    message+" "+additional_message,
+                    message + " " + additional_message,
                     debug_level=self.debug_level, important=True)
             return interpolant
         else:
@@ -1805,6 +1878,309 @@ class eccDefinition:
             debug_message(f"More than {threshold_fraction * 100}% of the "
                           f"original {extrema_type} was dropped.",
                           self.debug_level, important=False)
+
+    def get_approximate_tref_for_fref_using_secular_trend(
+            self, fref):
+        """Get approximate value of tref that corresponds to a given fref.
+
+        omega_gw is nonmonotonic and therefore, a given reference
+        frequency will typically have more than one points in time
+        (tref) where omega_gw(tref) = 2pi * fref.
+
+        To avoid this issue, we require a monotonic frequency to
+        use. However, at this stage, we do not have the information
+        about the extrema locations, and therefore, do not have the
+        orbit averaged omega_gw or the mean between the omega_gw at
+        the extrema.
+
+        Since we only need to know the reference time approximately,
+        we can use the secular trend of omega_gw as the reference
+        frequency to obtain the tref. We fit omega_gw to the
+        quasicircular PN behaviour of omega_gw using least_square fit.
+        We find that such fits are very close to the orbit averaged
+        frequency. See the example plot here
+        https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment#reference-frequency
+        """
+        # The actual tref will be always between the first and the
+        # last times where omega_gw crosses fref_in. We use only this
+        # segment to build the secular trend of omega_gw.
+        omega_ref = fref * 2 * np.pi
+        left_indices = np.where(self.omega_gw >= omega_ref)[0]
+        right_indices = np.where(self.omega_gw <= omega_ref)[0]
+        # if omega_gw is > omega_ref, then right_indices will be
+        # empty. It implies that the fref, where we want to measure
+        # the eccentricity, is too low. That is, fref is smaller than
+        # the frequency where we can measure eccentricity.
+        if len(right_indices) == 0:
+            left = left_indices[0]
+            right = left
+        # Similarly, if fref is too high, that is, omega_gw <
+        # omega_ref, then left_indices will be empty.
+        elif len(left_indices) == 0:
+            right = right_indices[-1]
+            left = right
+        else:
+            left = left_indices[0]
+            right = right_indices[-1]
+        
+        # check the phase difference between the first and the last crossing
+        # we need at least a few orbits to have a good fit.
+        if (self.phase_gw[right] - self.phase_gw[left])/(4*np.pi) < 5:
+            left_indices = np.where(
+                self.phase_gw >= self.phase_gw[left] - 5 * 4 *np.pi)[0]
+            right_indices = np.where(
+                self.phase_gw >= self.phase_gw[right] + 5 * 4 *np.pi)[0]
+            left = left_indices[0] if len(left_indices) > 1 else 0
+            right = right_indices[0] if len(right_indices) > 1 else -1
+            
+        time = self.t[left:right]
+        omega = self.omega_gw[left:right]
+        # downsample to minimize the computation for the fitting process
+        if len(time) >= 1000:
+            step = len(time) // 1000
+            time = time[::step]
+            omega = omega[::step]
+        # get the secular trend
+        secular_trend = SecularTrend(time, omega)
+        res = secular_trend.least_square_fit()
+        # get the location where the secular trend crosses fref_in
+        idx = np.argmin(np.abs(secular_trend.model(time, *res.x) - omega_ref))
+        return time[idx]
+        
+    def get_amp_phase_omega_gw_segments(self):
+        """Get relevant segment of the data for eccentricity measurement.
+
+        We want to select the relevant segment of the data for the given
+        reference time (tref_in) or reference frequency (fref_in). We will
+        use the phase_gw to obtain the relevant segment. phase_gw changes
+        by approximately 4*pi over one orbit.
+
+        - A single reference time: For measuring egw at a single
+          reference time, we use phase_gw to get a segment of
+          containing `segment_length_to_use` orbits centered around
+          the reference time.
+        - An array of reference times: For measuring egw at an array
+          of reference times, we find the first (t_left) and the last
+          (t_right) reference time in the array. Then we add half of
+          `segment_length_to_use` on the left of t_left and the same
+          on the right of t_right. And use this as the data segment to
+          use for measuring egw.
+        - A single reference frequency: We use the function
+          `get_approximate_tref_for_fref_using_secular_trend` to get
+          the corresponding `t_ref` and use the method as discussed in
+          the first step for a single reference time.
+        - An array of reference frequency: We get the first and the
+          last reference frequency from the array, then for each
+          frequency, we get the reference time using
+          `get_approximate_tref_for_fref_using_secular_trend` to get
+          the t_left and t_right. After that we follow the method
+          outlined in the second step.
+        """
+        # get the left and right reference time from given given
+        # reference time/frequency
+        t_left, t_right = self._get_reference_bounds()
+        phase_left, phase_right = self._get_phase_bounds(t_left, t_right)
+        # get the start and end indices for the segment of data to use
+        self._get_segment_indices(phase_left, phase_right)
+        # For debugging, keep a copy of full data
+        if self.debug_plots:
+            t_for_debug = np.copy(self.t)
+            amp_for_debug = np.copy(self.amp_gw)
+            omega_for_debug = np.copy(self.omega_gw)
+        # update the amp, phase, omega data so that they contain only
+        # the relevant segment.
+        self._update_waveform_data_segment()
+        # plot for debugging
+        if self.debug_plots:
+            self._plot_debug_segment(
+                t_left, t_right,
+                t_for_debug, amp_for_debug, omega_for_debug)
+
+    def _get_reference_bounds(self):
+        """Get t_left and t_right depending on domain (time or frequency)."""
+        if self.domain == "time":
+            t_left, t_right = self.tref_in[0], self.tref_in[-1]
+        else:
+            t_left = self.get_approximate_tref_for_fref_using_secular_trend(
+                self.fref_in[0])
+            if len(self.fref_in) > 1:
+                t_right = self.get_approximate_tref_for_fref_using_secular_trend(
+                    self.fref_in[-1])
+            else:
+                t_right = t_left
+        return t_left, t_right
+
+    def _get_phase_bounds(self, t_left, t_right):
+        """Get phase_gw values at reference bounds."""
+        phase_left = self.phase_gw[np.argmin(np.abs(self.t - t_left))]
+        phase_right = self.phase_gw[np.argmin(np.abs(self.t - t_right))]
+        return phase_left, phase_right
+
+    def _compute_additional_orbits(self, side, phase_ref, index, orbits_between, FOUR_PI_K):
+        """Compute how many extra orbits to add if near waveform edges."""
+        if side == "left":
+            # it could be that the reference time is too close to the
+            # left edge of the waveform and we may not have the
+            # necessary number of orbits on the left to the reference
+            # time. In such case, we just add the missing number of
+            # orbits on the right so that total number of orbits in
+            # the segment matches the `segment_length_to_use`.
+            # However, if we are measuring egw for an array of times
+            # and the number of orbits between t_left and t_right is
+            # already > `segment_length_to_use`, then we do not need
+            # to this.
+            available_orbits = (phase_ref - self.phase_gw[index]) / FOUR_PI_K
+        else:
+            # same, but now near the right edge of the waveform.
+            available_orbits = (self.phase_gw[index] - phase_ref) / FOUR_PI_K
+        required_orbits = 0.5 * self.extra_kwargs["segment_length_to_use"]
+        return max(required_orbits - available_orbits - orbits_between, 0)
+
+    def _get_segment_indices(self, phase_left, phase_right):
+        """Determine the start and end indices of the data segment."""
+        k = 1.1 # to account for pericenter advance
+        FOUR_PI_K = 4 * k * np.pi
+        # calculate the number of orbits between t_left and t_right
+        orbits_between = (phase_right - phase_left) / FOUR_PI_K
+        # we want to add half of the `segment_length_to_use` on the left
+        # of t_left and the other half on the right of t_right. In
+        # case of a single reference time or frequency, t_left =
+        # t_right.
+        width_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * FOUR_PI_K
+        # find the start of the segment
+        left_phase_target = phase_left - width_each_side
+        self.segment_start_index = max(np.searchsorted(self.phase_gw, left_phase_target) - 1, 0)
+        # adjust right side if near left boundary
+        if self.segment_start_index == 0:
+            additional_orbits_to_add_on_the_right = self._compute_additional_orbits(
+                "left", phase_left, 0, orbits_between, FOUR_PI_K)
+        else:
+            additional_orbits_to_add_on_the_right = 0
+        # find the end of the segment
+        right_indices = np.where(
+            self.phase_gw >= (
+                phase_right
+                + width_each_side
+                + additional_orbits_to_add_on_the_right * FOUR_PI_K
+            ))[0]
+        self.segment_end_index = right_indices[0] if len(right_indices) > 0 else -1
+        # adjust left side if near right boundary
+        if self.segment_end_index == -1:
+            additional_orbits_to_add_on_the_left = self._compute_additional_orbits(
+                "right", phase_right, -1, orbits_between, FOUR_PI_K)
+            # update start index
+            left_indices = np.where(
+                self.phase_gw >= (
+                    phase_left
+                    - width_each_side
+                    - additional_orbits_to_add_on_the_left * FOUR_PI_K))[0]
+            self.segment_start_index = left_indices[0] if len(left_indices) > 0 else 0
+
+    def _update_waveform_data_segment(self):
+        """Slice all waveform data to retain only the selected segment."""
+        start, end = self.segment_start_index, self.segment_end_index
+        for attr in ["t", "amp_gw", "phase_gw", "omega_gw"]:
+            setattr(self, attr, getattr(self, attr)[start:end])
+        if "Residual" in self.method:
+            for attr in ["res_amp_gw", "res_omega_gw"]:
+                setattr(self, attr, getattr(self, attr)[start:end])
+
+    def _plot_debug_segment(self, t_left, t_right, t_for_debug, amp_for_debug, omega_for_debug):
+        """Plot full waveform vs selected segment for debugging."""
+        style = "APS"
+        use_fancy_plotsettings(style=style)
+        nrows = 2
+
+        fig, axes = plt.subplots(
+            nrows=nrows,
+            figsize=(figWidthsTwoColDict[style], nrows * figHeightsDict[style]),
+            sharex=True
+        )
+
+        # plot full waveform
+        axes[0].plot(t_for_debug, amp_for_debug, label="Full waveform")
+        axes[1].plot(t_for_debug, omega_for_debug, label="Full waveform")
+
+        # plot selected segment
+        segment_label = (
+            f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            if len(getattr(self, 'tref_in', [])) == 1 or self.domain != "time"
+            else f"{'tref_in' if self.domain=='time' else 'fref_in'} + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+        )
+        axes[0].plot(self.t, self.amp_gw, ls="--", label=segment_label)
+        axes[1].plot(self.t, self.omega_gw, ls="--", label=segment_label)
+
+        # plot reference markers
+        for ax in axes:
+            if self.domain == "time":
+                trefs = np.atleast_1d(self.tref_in)
+                if len(trefs) == 1:
+                    # Single reference time
+                    ax.axvline(
+                        trefs[0],
+                        label=f"{labelsDict['t_ref']} = {trefs[0]}",
+                        ls="-",
+                        c=colorsDict["vline"],
+                    )
+                else:
+                    # First and last only
+                    for i, tref in enumerate([trefs[0], trefs[-1]]):
+                        ax.axvline(
+                            tref,
+                            label=f"{'First' if i == 0 else 'Last'} {labelsDict['t_ref']} = {tref}",
+                            ls="-" if i == 0 else "-.",
+                            c=colorsDict["vline"],
+                        )
+            else:  # frequency domain
+                if ax == axes[1]:  # only plot horizontal lines for omega_gw
+                    frefs = np.atleast_1d(self.fref_in)
+                    if len(frefs) == 1:
+                        # Single frequency reference
+                        ax.axhline(
+                            2 * np.pi * frefs[0],
+                            label=r"$2\pi$" + labelsDict["f_gw_ref"],
+                            ls="-",
+                            c=colorsDict["hline"],
+                        )
+                    else:
+                        # First and last frequencies only
+                        for i, fref in enumerate([frefs[0], frefs[-1]]):
+                            ax.axhline(
+                                2 * np.pi * fref,
+                                label=r"$2\pi$" + labelsDict["f_gw_ref"] + (" (first)" if i == 0 else " (last)"),
+                                ls="-" if i == 0 else "-.",
+                                c=colorsDict["hline"],
+                            )
+                    # vertical lines at approximate t_ref from secular trend
+                    ax.axvline(t_left, label=f"Approx first {labelsDict['t_ref']} from secular trend", c=colorsDict["vline"])
+                    if len(self.fref_in) > 1:
+                        ax.axvline(t_right, label=f"Approx last {labelsDict['t_ref']} from secular trend", ls="-.", c=colorsDict["vline"])
+
+        # labels
+        axes[0].set_ylabel(labelsDict["amp_gw"])
+        axes[1].set_ylabel(labelsDict["omega_gw"])
+        axes[1].set_xlabel(labelsDict["t"])
+
+        for ax in axes:
+            ax.legend()
+
+        fig.tight_layout()
+        self.save_debug_fig(
+            fig,
+            f"gwecc_get_segment_debug_{self.extra_kwargs['segment_length_to_use']}.pdf"
+        )
+        plt.close(fig)
+        
+    def get_segment_of_data_for_finding_extrema(self):
+        """Get only the relevant segment of `data_for_finding_extrema`.
+
+        `data_for_finding_extrema` is initialised right at the begining
+        inside `self.__init__` where it has the full length of the
+        data. Therefore, we need to get the relevant segment befor
+        passing it to the `find_extrema` function.
+        """
+        self.data_for_finding_extrema = self.data_for_finding_extrema[
+            self.segment_start_index: self.segment_end_index]
 
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -1948,6 +2324,17 @@ class eccDefinition:
             self.domain = "frequency"
             self.ref_ndim = np.ndim(fref_in)
             self.fref_in = np.atleast_1d(fref_in)
+
+        # Get amp, phase and omega segments around the reference points
+        if self.extra_kwargs["use_segment"]:
+            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+                                      / (4 * np.pi))
+            if approximate_num_orbits >= self.extra_kwargs["segment_length_to_use"]:
+                self.get_amp_phase_omega_gw_segments()
+            else:
+                self.segment_start_index = None
+                self.segment_end_index = None
+            
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
@@ -2988,6 +3375,13 @@ class eccDefinition:
             Minimum allowed reference frequency, Maximum allowed reference
             frequency.
         """
+        if self.extra_kwargs["use_segment"]:
+            debug_message(
+                (f"`use_segments` is set to {self.extra_kwargs['use_segment']}. "
+                 "fref_bounds will be only for the short segments around the "
+                 "reference point. To obtain the fref bounds for the full "
+                 "waveform, set `use_segments` in `extra_kwargs` to False."),
+                 debug_level=self.debug_level, important=False)
         if self.omega_gw_average is None:
             self.t_for_omega_gw_average, self.omega_gw_average \
                 = self.get_omega_gw_average(method)
