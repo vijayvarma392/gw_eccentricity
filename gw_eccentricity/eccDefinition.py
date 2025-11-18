@@ -342,42 +342,34 @@ class eccDefinition:
                 and mean anomaly to zero.
                 USE THIS WITH CAUTION!
 
-            use_segment : bool, default=True
-                Instead of using the full waveform data, use only a
-                small segment of data around the reference
-                time/frequency. The length of the segment of the data
-                is set by `segment_length_to_use` (see below).  The
-                main reason for using only a short segment is to speed
-                up the computation of eccentricity and mean anomaly
-                measurement.
+            use_only_these_many_orbits : float or None, optional Default
+                is None.
+                If None, the full waveform is used for measuring
+                eccentricity and mean anomaly.
 
-                Methods like `AmplitudeFits` or `FrequencyFits` finds
-                the extrema in the data one by one, making the process
-                computationally expensive for long waveforms. For
-                these methods, the computation time increases with the
-                inspiral duration. Whereas, using a small segment,
-                makes this computation time almost independent of the
-                inspiral duration.
+                If a float is provided, only a short segment of the
+                waveform centered around the reference time/frequency
+                is used. The length of this segment, measured in
+                number of orbits, is given by
+                `use_only_these_many_orbits`. Using a small segment
+                significantly speeds up the computation of
+                eccentricity and mean anomaly, since methods such as
+                `AmplitudeFits` and `FrequencyFits` locate extrema one
+                by one, making them computationally expensive for long
+                waveforms.
 
-                The difference between the measured eccentricity and
-                mean anomaly values using the full waveform vs a small
-                segment is typically small, but depends on the
-                `omega_gw_extrema_interpolation_method`. The
-                difference is usually smaller in case of `spline`
+                The difference between using the full waveform and
+                using a short segment is typically small and depends
+                on the `omega_gw_extrema_interpolation_method`. The
+                discrepancy is usually smaller for the `spline` method
                 compared to `rational_fit`. For NR waveforms, the
-                difference is below 1%, whereas for model waveforms,
-                it is below 0.01%.  To get an overview of the
-                difference and speed up, see the results in the wiki
-                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
-
-            segment_length_to_use : float, default=10
-                Length of the segment in number of orbits to be used
-                for measuring eccentricity and mean anomaly when
-                `use_segment` is True. Smaller value implies better
-                speedup factor while less agreement with the
-                measurement using the full waveform. see the results
-                in the wiki
-                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment.
+                difference is below 1%, and for model waveforms it is
+                below 0.01%. For reliable measurements, it is
+                recommended to use at least 10 orbits; increasing the
+                number of orbits generally decreases the relative
+                error in the measured eccentricity and mean anomaly.
+                See:
+                https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment
         """
         self.precessing = precessing
         self.frame = frame
@@ -495,7 +487,7 @@ class eccDefinition:
         # The function `get_segment_of_data_for_finding_extrema` is called from
         # within the function `find_extrema`. This flag is set to False after
         # `find_extrema` is called for the first time.
-        self.get_segment_of_data = self.extra_kwargs["use_segment"]
+        self.get_segment_of_data = self.extra_kwargs["use_only_these_many_orbits"]
 
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
@@ -1142,8 +1134,7 @@ class eccDefinition:
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
             "omega_gw_extrema_interpolation_method": "rational_fit",
-            "use_segment": True,
-            "segment_length_to_use": 10 # in number of orbits
+            "use_only_these_many_orbits": None
         }
         return default_extra_kwargs
 
@@ -1527,10 +1518,11 @@ class eccDefinition:
                     self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] -= 1
                 if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] == 1 \
                     and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] == 1:
-                    if self.extra_kwargs["use_segment"]:
+                    if (self.extra_kwargs["use_only_these_many_orbits"]
+                        and self.extra_kwargs["use_only_these_many_orbits"] <= 20):
                         extra_message = (
-                            "This is most likely the case since `use_segment` is "
-                            f"{self.extra_kwargs['use_segment']}, implying that "
+                            "This is most likely the case since `use_only_these_many_orbits` is "
+                            f"{self.extra_kwargs['use_only_these_many_orbits']}, implying that "
                             "only a small segment of the waveform is being used where "
                             "the values of omega_gw at the extrema is not changing much.\n")
                     else:
@@ -1948,35 +1940,43 @@ class eccDefinition:
         return time[idx]
         
     def get_amp_phase_omega_gw_segments(self):
-        """Get relevant segment of the data for eccentricity measurement.
+        """Get the relevant data segment for eccentricity measurement.
 
-        We want to select the relevant segment of the data for the given
-        reference time (tref_in) or reference frequency (fref_in). We will
-        use the phase_gw to obtain the relevant segment. phase_gw changes
-        by approximately 4*pi over one orbit.
+        This function extracts the portion of the waveform data needed to
+        measure eccentricity and mean anomaly, based on a reference time
+        (`tref_in`) or reference frequency (`fref_in`). The selection is
+        performed using the gravitational-wave phase (`phase_gw`), which
+        changes by approximately 4*pi over one orbit.
 
-        - A single reference time: For measuring egw at a single
-          reference time, we use phase_gw to get a segment of
-          containing `segment_length_to_use` orbits centered around
-          the reference time.
-        - An array of reference times: For measuring egw at an array
-          of reference times, we find the first (t_left) and the last
-          (t_right) reference time in the array. Then we add half of
-          `segment_length_to_use` on the left of t_left and the same
-          on the right of t_right. And use this as the data segment to
-          use for measuring egw.
-        - A single reference frequency: We use the function
-          `get_approximate_tref_for_fref_using_secular_trend` to get
-          the corresponding `t_ref` and use the method as discussed in
-          the first step for a single reference time.
-        - An array of reference frequency: We get the first and the
-          last reference frequency from the array, then for each
-          frequency, we get the reference time using
-          `get_approximate_tref_for_fref_using_secular_trend` to get
-          the t_left and t_right. After that we follow the method
-          outlined in the second step.
+        The selection procedure depends on whether the reference point
+        (time or frequency) is given as a single value or an array:
+
+        - Single reference time (`tref_in`):
+          The segment is chosen by identifying the region of the waveform
+          containing `use_only_these_many_orbits` orbits centered around
+          the given reference time.
+
+        - Array of reference times:
+          Let `t_left` and `t_right` be the earliest and latest reference
+          times in the array. We extend the interval by half of
+          `use_only_these_many_orbits` orbits to the left of `t_left` and
+          half to the right of `t_right`, and use this padded interval
+          as the data segment for eccentricity measurement.
+
+        - Single reference frequency (`fref_in`):  
+          The corresponding reference time is estimated using
+          `get_approximate_tref_for_fref_using_secular_trend`. The segment
+          is then selected using the same procedure as for a single
+          reference time.
+
+        - Array of reference frequencies:
+          We obtain the reference times associated with the first and last
+          frequencies in the array using
+          `get_approximate_tref_for_fref_using_secular_trend`, defining
+          `t_left` and `t_right`. The data segment is then selected using
+          the same procedure described for an array of reference times.
         """
-        # get the left and right reference time from given given
+        # get the left and right reference time from the given
         # reference time/frequency
         t_left, t_right = self._get_reference_bounds()
         phase_left, phase_right = self._get_phase_bounds(t_left, t_right)
@@ -2019,21 +2019,22 @@ class eccDefinition:
     def _compute_additional_orbits(self, side, phase_ref, index, orbits_between, FOUR_PI_K):
         """Compute how many extra orbits to add if near waveform edges."""
         if side == "left":
-            # it could be that the reference time is too close to the
-            # left edge of the waveform and we may not have the
-            # necessary number of orbits on the left to the reference
-            # time. In such case, we just add the missing number of
-            # orbits on the right so that total number of orbits in
-            # the segment matches the `segment_length_to_use`.
-            # However, if we are measuring egw for an array of times
-            # and the number of orbits between t_left and t_right is
-            # already > `segment_length_to_use`, then we do not need
-            # to this.
+            # The reference time may be too close to the left edge of the
+            # waveform, in which case there may not be enough orbits
+            # available to the left of the reference time. When this happens,
+            # we compensate by adding the missing number of orbits on the
+            # right, ensuring that the total number of orbits in the selected
+            # segment equals `use_only_these_many_orbits`.
+            #
+            # However, if we are measuring egw for an array of reference
+            # times and the number of orbits between t_left and t_right
+            # already exceeds `use_only_these_many_orbits`, then no such
+            # adjustment is needed.
             available_orbits = (phase_ref - self.phase_gw[index]) / FOUR_PI_K
         else:
             # same, but now near the right edge of the waveform.
             available_orbits = (self.phase_gw[index] - phase_ref) / FOUR_PI_K
-        required_orbits = 0.5 * self.extra_kwargs["segment_length_to_use"]
+        required_orbits = 0.5 * self.extra_kwargs["use_only_these_many_orbits"]
         return max(required_orbits - available_orbits - orbits_between, 0)
 
     def _get_segment_indices(self, phase_left, phase_right):
@@ -2042,11 +2043,11 @@ class eccDefinition:
         FOUR_PI_K = 4 * k * np.pi
         # calculate the number of orbits between t_left and t_right
         orbits_between = (phase_right - phase_left) / FOUR_PI_K
-        # we want to add half of the `segment_length_to_use` on the left
+        # we want to add half of the `use_only_these_many_orbits` on the left
         # of t_left and the other half on the right of t_right. In
         # case of a single reference time or frequency, t_left =
         # t_right.
-        width_each_side = (np.ceil(self.extra_kwargs["segment_length_to_use"]/2)) * FOUR_PI_K
+        width_each_side = (np.ceil(self.extra_kwargs["use_only_these_many_orbits"]/2)) * FOUR_PI_K
         # find the start of the segment
         left_phase_target = phase_left - width_each_side
         self.segment_start_index = max(np.searchsorted(self.phase_gw, left_phase_target) - 1, 0)
@@ -2103,9 +2104,9 @@ class eccDefinition:
 
         # plot selected segment
         segment_label = (
-            f"{self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            f"{self.extra_kwargs['use_only_these_many_orbits']} orbits long segment"
             if len(getattr(self, 'tref_in', [])) == 1 or self.domain != "time"
-            else f"{'tref_in' if self.domain=='time' else 'fref_in'} + {self.extra_kwargs['segment_length_to_use']} orbits long segment"
+            else f"{'tref_in' if self.domain=='time' else 'fref_in'} + {self.extra_kwargs['use_only_these_many_orbits']} orbits long segment"
         )
         axes[0].plot(self.t, self.amp_gw, ls="--", label=segment_label)
         axes[1].plot(self.t, self.omega_gw, ls="--", label=segment_label)
@@ -2167,20 +2168,21 @@ class eccDefinition:
         fig.tight_layout()
         self.save_debug_fig(
             fig,
-            f"gwecc_get_segment_debug_{self.extra_kwargs['segment_length_to_use']}.pdf"
+            f"gwecc_get_segment_debug_{self.extra_kwargs['use_only_these_many_orbits']}.pdf"
         )
         plt.close(fig)
         
     def get_segment_of_data_for_finding_extrema(self):
-        """Get only the relevant segment of `data_for_finding_extrema`.
+        """Extract the relevant segment of `data_for_finding_extrema`.
 
-        `data_for_finding_extrema` is initialised right at the begining
-        inside `self.__init__` where it has the full length of the
-        data. Therefore, we need to get the relevant segment befor
-        passing it to the `find_extrema` function.
+        The array `data_for_finding_extrema` is initialized in
+        `__init__` with the full length of the waveform data. Before
+        calling `find_extrema`, we trim this array to include only the
+        segment of interest, as determined by `segment_start_index` and
+        `segment_end_index`.
         """
         self.data_for_finding_extrema = self.data_for_finding_extrema[
-            self.segment_start_index: self.segment_end_index]
+            self.segment_start_index : self.segment_end_index]
 
     def measure_ecc(self, tref_in=None, fref_in=None):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
@@ -2326,10 +2328,10 @@ class eccDefinition:
             self.fref_in = np.atleast_1d(fref_in)
 
         # Get amp, phase and omega segments around the reference points
-        if self.extra_kwargs["use_segment"]:
+        if self.extra_kwargs["use_only_these_many_orbits"]:
             approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
                                       / (4 * np.pi))
-            if approximate_num_orbits >= self.extra_kwargs["segment_length_to_use"]:
+            if approximate_num_orbits >= self.extra_kwargs["use_only_these_many_orbits"]:
                 self.get_amp_phase_omega_gw_segments()
             else:
                 self.segment_start_index = None
@@ -3375,12 +3377,13 @@ class eccDefinition:
             Minimum allowed reference frequency, Maximum allowed reference
             frequency.
         """
-        if self.extra_kwargs["use_segment"]:
+        if self.extra_kwargs["use_only_these_many_orbits"]:
             debug_message(
-                (f"`use_segments` is set to {self.extra_kwargs['use_segment']}. "
+                ("`use_only_these_many_orbits` is set to "
+                 f"{self.extra_kwargs['use_only_these_many_orbits']}. "
                  "fref_bounds will be only for the short segments around the "
                  "reference point. To obtain the fref bounds for the full "
-                 "waveform, set `use_segments` in `extra_kwargs` to False."),
+                 "waveform, set `use_only_these_many_orbits` in `extra_kwargs` to False."),
                  debug_level=self.debug_level, important=False)
         if self.omega_gw_average is None:
             self.t_for_omega_gw_average, self.omega_gw_average \
