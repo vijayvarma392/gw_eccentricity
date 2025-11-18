@@ -22,12 +22,19 @@ parser.add_argument(
     type=str,
     required=True,
     help="omega_gw_extrema_interpolation_method to save the regression data for.")
-parser.add_argument("--no-segment", action="store_false", dest="use_segment", help="Disable use of segment, use full waveform.")
-
+parser.add_argument(
+    "--use_only_these_many_orbits",
+    type=float,
+    default=None,
+    help=(
+        "Length of the segment (in orbits) to use for measurement. "
+        "If not provided, the full waveform is used."
+    )
+)
 args = parser.parse_args()
 
 
-def generate_regression_data(method, interp_method, use_segment):
+def generate_regression_data(method, interp_method, use_only_these_many_orbits):
     """Generate data for regression test using a method."""
     # Load test waveform
     lal_kwargs = {"approximant": "EccentricTD",
@@ -50,7 +57,7 @@ def generate_regression_data(method, interp_method, use_segment):
                         f"{available_methods}")
 
     extra_kwargs = {"omega_gw_extrema_interpolation_method": interp_method,
-                    "use_segment": use_segment}
+                    "use_only_these_many_orbits": use_only_these_many_orbits}
     user_kwargs = extra_kwargs.copy()
     regression_data.update({"extra_kwargs": extra_kwargs})
     # Try evaluating at an array of times
@@ -65,13 +72,13 @@ def generate_regression_data(method, interp_method, use_segment):
     # We save the measured data 3 reference times
     n = len(tref_out)
     times = [tref_out[n//8], tref_out[n//4], tref_out[n//2]]
-    if not use_segment:
+    if not use_only_these_many_orbits:
         dict_tref =  {"time": times,
                       "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
                       "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
     else:
-        # when `use_segment = True`, we evaluate at three different times
-        # using only the relevant segments.
+        # when `use_only_these_many_orbits` is not. None, we evaluate at three 
+        # different times using only the relevant segments.
         eccentricity = []
         mean_anomaly = []
         for tref in times:
@@ -98,13 +105,13 @@ def generate_regression_data(method, interp_method, use_segment):
     meanano_ref = gwecc_dict["mean_anomaly"]
     n = len(fref_out)
     frequencies = [fref_out[n//8], fref_out[n//4], fref_out[n//2]]
-    if not use_segment:
+    if not use_only_these_many_orbits:
         dict_fref = {"frequency": frequencies,
                      "eccentricity": [ecc_ref[n//8], ecc_ref[n//4], ecc_ref[n//2]],
                      "mean_anomaly": [meanano_ref[n//8], meanano_ref[n//4], meanano_ref[n//2]]}
     else:
-        # when `use_segment = True`, we evaluate at three different frequencies
-        # using only the relevant segments.
+        # when `use_only_these_many_orbits` is not None, we evaluate at three 
+        # different frequencies using only the relevant segments.
         eccentricity = []
         mean_anomaly = []
         for fref in frequencies:
@@ -126,9 +133,10 @@ def generate_regression_data(method, interp_method, use_segment):
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
     # save to a json file
-    fl = open(f"{data_dir}/{method}_{interp_method}_use_segment_{use_segment}_regression_data.json", "w")
+    fl = open(f"{data_dir}/{method}_{interp_method}_use_segment_{use_only_these_many_orbits}_regression_data.json", "w")
     json.dump(regression_data, fl)
     fl.close()
 
 # generate regression data
-generate_regression_data(args.method, args.interp_method, args.use_segment)
+generate_regression_data(args.method, args.interp_method,
+                         args.use_only_these_many_orbits)

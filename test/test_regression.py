@@ -31,7 +31,7 @@ def test_regression():
             # Try evaluating at times where regression data are saved
             regression_data_at_tref = regression_data["tref"]
             tref_in = regression_data_at_tref["time"]
-            if not extra_kwargs["use_segment"]:
+            if not extra_kwargs["use_only_these_many_orbits"]:
                 gwecc_dict = measure_eccentricity(
                     tref_in=tref_in,
                     method=method,
@@ -65,7 +65,7 @@ def test_regression():
             # Try evaluating at frequencies where regression data are saved
             regression_data_at_fref = regression_data["fref"]
             fref_in = regression_data_at_fref["frequency"]
-            if not extra_kwargs["use_segment"]:
+            if not extra_kwargs["use_only_these_many_orbits"]:
                 gwecc_dict = measure_eccentricity(
                     fref_in=fref_in,
                     method=method,
