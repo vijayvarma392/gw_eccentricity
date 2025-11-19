@@ -1533,7 +1533,7 @@ class eccDefinition:
                         "This may happen when omega at the extrema is not varying much and "
                         "using even the lowest degrees is causing spurious divergences (poles).\n"
                         + extra_message +
-                        "In such cases, we fallback to using spline."),
+                        "Falling back to using spline."),
                         debug_level=self.debug_level, important=True)
                     # use spline
                     rat_fit = get_interpolant(x, y)
@@ -1875,9 +1875,12 @@ class eccDefinition:
             self, fref):
         """Get approximate value of tref that corresponds to a given fref.
 
-        omega_gw is nonmonotonic and therefore, a given reference
-        frequency will typically have more than one points in time
-        (tref) where omega_gw(tref) = 2pi * fref.
+        When measuring eccentricity at a reference frequency (fref) using only 
+        a short segment of the waveform, we need to figure out the approximate 
+        time (tref) that corresponds to this fref, for selecting the desired
+        segment around this tref. Because omega_gw is nonmonotonic, for a given
+        fref, there will typically be more than one points in time where 
+        omega_gw(tref) = 2pi * fref.
 
         To avoid this issue, we require a monotonic frequency to
         use. However, at this stage, we do not have the information
