@@ -53,15 +53,6 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         else:
             raise Exception("`extrema_type` must be either 'pericenters'"
                             " or 'apocenters'")
-        # We need to get the relevant segment from the full data only
-        # once, whereas `find_extrema` is called twice, once for the
-        # pericenters and then for the apocenters. We handle this
-        # by setting the flag `get_segment_of_data` to False after
-        # `self.get_segment_of_data_for_finding_extrema` is called for
-        # the first time.
-        if self.get_segment_of_data:
-            self.get_segment_of_data_for_finding_extrema()
-            self.get_segment_of_data = False
 
         return find_peaks(
             sign * self.data_for_finding_extrema,

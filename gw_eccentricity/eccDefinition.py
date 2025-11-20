@@ -27,7 +27,8 @@ from .plot_settings import figWidthsTwoColDict, figHeightsDict
 class eccDefinition:
     """Base class to define eccentricity for given waveform data dictionary."""
 
-    def __init__(self, dataDict, num_orbits_to_exclude_before_merger=2,
+    def __init__(self, dataDict, tref_in=None, fref_in=None,
+                 num_orbits_to_exclude_before_merger=2,
                  precessing=False, frame="inertial", debug_level=0,
                  extra_kwargs=None):
         """Init eccDefinition class.
@@ -145,6 +146,32 @@ class eccDefinition:
             - "amplm_zeroecc", "phaselm_zeroecc" and "omegalm_zeroecc":
                 Same as "amplm", "phaselm" and "omegalm", respectively, but
                 for the quasicircular counterpart to the eccentric waveform.
+
+        tref_in : array or float
+            Input reference time at which to measure eccentricity and mean
+            anomaly.
+
+        fref_in : array or float
+            Input reference GW frequency at which to measure the eccentricity
+            and mean anomaly. Only one of *tref_in*/*fref_in* should be
+            provided.
+
+            Given an *fref_in*, we find the corresponding tref_in such that::
+
+                omega_gw_average(tref_in) = 2 * pi * fref_in
+
+            Here, omega_gw_average(t) is a monotonically increasing average
+            frequency obtained from the instantaneous
+            omega_gw(t). omega_gw_average(t) defaults to the orbit averaged
+            omega_gw, but other options are available (see
+            omega_gw_averaging_method below).
+
+            Eccentricity and mean anomaly measurements are returned on a subset
+            of *tref_in*/*fref_in*, called *tref_out*/*fref_out*, which are
+            described below.  If *dataDict* is provided in dimensionless units,
+            *tref_in* should be in units of M and *fref_in* should be in units
+            of cycles/M. If dataDict is provided in MKS units, *t_ref* should
+            be in seconds and *fref_in* should be in Hz.
 
         num_orbits_to_exclude_before_merger:
                 Can be None or a non negative number.  If None, the full
@@ -371,6 +398,20 @@ class eccDefinition:
                 See:
                 https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment
         """
+        # check that only one of tref_in or fref_in is provided
+        if (tref_in is not None) + (fref_in is not None) != 1:
+            raise KeyError("Exactly one of tref_in and fref_in"
+                           " should be specified.")
+        elif tref_in is not None:
+            # Identify whether the reference point is in time or frequency
+            self.domain = "time"
+            # Identify whether the reference point is scalar or array-like
+            self.ref_ndim = np.ndim(tref_in)
+            self.tref_in = np.atleast_1d(tref_in)
+        else:
+            self.domain = "frequency"
+            self.ref_ndim = np.ndim(fref_in)
+            self.fref_in = np.atleast_1d(fref_in)
         self.precessing = precessing
         self.frame = frame
         self.debug_level = debug_level
@@ -406,6 +447,14 @@ class eccDefinition:
             deepcopy(extra_kwargs), self.get_default_extra_kwargs(),
             "extra_kwargs",
             "eccDefinition.get_default_extra_kwargs()")
+        self.debug_plots = self.extra_kwargs["debug_plots"]
+        # Get amp, phase and omega segments around the reference points
+        if self.extra_kwargs["use_only_these_many_orbits"]:
+            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+                                      / (4 * np.pi))
+            if approximate_num_orbits >= self.extra_kwargs["use_only_these_many_orbits"]:
+                self.get_amp_phase_omega_gw_segments()
+        # set extrema finding kwargs
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
             self.get_default_extrema_finding_kwargs(min_width_for_extrema),
@@ -481,14 +530,7 @@ class eccDefinition:
         # compute residual data
         if "amplm_zeroecc" in self.dataDict and "omegalm_zeroecc" in self.dataDict:
             self.compute_res_amp_gw_and_res_omega_gw()
-        # use a flag so that the function
-        # `get_segment_of_data_for_finding_extrema` is called only once to get
-        # the relevant segment of data around the reference point.
-        # The function `get_segment_of_data_for_finding_extrema` is called from
-        # within the function `find_extrema`. This flag is set to False after
-        # `find_extrema` is called for the first time.
-        self.get_segment_of_data = self.extra_kwargs["use_only_these_many_orbits"]
-
+      
     def get_recognized_dataDict_keys(self):
         """Get the list of recognized keys in dataDict."""
         list_of_keys = [
@@ -2085,9 +2127,6 @@ class eccDefinition:
         start, end = self.segment_start_index, self.segment_end_index
         for attr in ["t", "amp_gw", "phase_gw", "omega_gw"]:
             setattr(self, attr, getattr(self, attr)[start:end])
-        if "Residual" in self.method:
-            for attr in ["res_amp_gw", "res_omega_gw"]:
-                setattr(self, attr, getattr(self, attr)[start:end])
 
     def _plot_debug_segment(self, t_left, t_right, t_for_debug, amp_for_debug, omega_for_debug):
         """Plot full waveform vs selected segment for debugging."""
@@ -2174,23 +2213,9 @@ class eccDefinition:
             f"gwecc_get_segment_debug_{self.extra_kwargs['use_only_these_many_orbits']}.pdf"
         )
         plt.close(fig)
-        
-    def get_segment_of_data_for_finding_extrema(self):
-        """Extract the relevant segment of `data_for_finding_extrema`.
 
-        The array `data_for_finding_extrema` is initialized in
-        `__init__` with the full length of the waveform data. Before
-        calling `find_extrema`, we trim this array to include only the
-        segment of interest, as determined by `segment_start_index` and
-        `segment_end_index`.
-        """
-        self.data_for_finding_extrema = self.data_for_finding_extrema[
-            self.segment_start_index : self.segment_end_index]
-
-    def measure_ecc(self, tref_in=None, fref_in=None):
+    def measure_ecc(self):
         """Measure eccentricity and mean anomaly from a gravitational waveform.
-
-        #TODO: We may decide to use invariant angular velocity as omega in the future
         
         Eccentricity is measured using the GW frequency omega_gw(t) =
         d(phase_gw)/dt. Throughout this documentation, we will refer to
@@ -2234,34 +2259,6 @@ class eccDefinition:
         t_pericenters/t_apocenters.
 
         .. _arXiv:2302.11257: https://arxiv.org/abs/2302.11257
-
-        Parameters
-        ----------
-        tref_in : array or float
-            Input reference time at which to measure eccentricity and mean
-            anomaly.
-
-        fref_in : array or float
-            Input reference GW frequency at which to measure the eccentricity
-            and mean anomaly. Only one of *tref_in*/*fref_in* should be
-            provided.
-
-            Given an *fref_in*, we find the corresponding tref_in such that::
-
-                omega_gw_average(tref_in) = 2 * pi * fref_in
-
-            Here, omega_gw_average(t) is a monotonically increasing average
-            frequency obtained from the instantaneous
-            omega_gw(t). omega_gw_average(t) defaults to the orbit averaged
-            omega_gw, but other options are available (see
-            omega_gw_averaging_method below).
-
-            Eccentricity and mean anomaly measurements are returned on a subset
-            of *tref_in*/*fref_in*, called *tref_out*/*fref_out*, which are
-            described below.  If *dataDict* is provided in dimensionless units,
-            *tref_in* should be in units of M and *fref_in* should be in units
-            of cycles/M. If dataDict is provided in MKS units, *t_ref* should
-            be in seconds and *fref_in* should be in Hz.
 
         Returns
         -------
@@ -2314,32 +2311,7 @@ class eccDefinition:
             mean_anomaly
                 Measured mean anomaly at *tref_out*/*fref_out*. Same type as
                 *tref_out*/*fref_out*.
-        """
-        # check that only one of tref_in or fref_in is provided
-        if (tref_in is not None) + (fref_in is not None) != 1:
-            raise KeyError("Exactly one of tref_in and fref_in"
-                           " should be specified.")
-        elif tref_in is not None:
-            # Identify whether the reference point is in time or frequency
-            self.domain = "time"
-            # Identify whether the reference point is scalar or array-like
-            self.ref_ndim = np.ndim(tref_in)
-            self.tref_in = np.atleast_1d(tref_in)
-        else:
-            self.domain = "frequency"
-            self.ref_ndim = np.ndim(fref_in)
-            self.fref_in = np.atleast_1d(fref_in)
-
-        # Get amp, phase and omega segments around the reference points
-        if self.extra_kwargs["use_only_these_many_orbits"]:
-            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
-                                      / (4 * np.pi))
-            if approximate_num_orbits >= self.extra_kwargs["use_only_these_many_orbits"]:
-                self.get_amp_phase_omega_gw_segments()
-            else:
-                self.segment_start_index = None
-                self.segment_end_index = None
-            
+        """            
         # Get the pericenters and apocenters
         pericenters = self.find_extrema("pericenters")
         original_pericenters = pericenters.copy()
