@@ -1947,7 +1947,7 @@ class eccDefinition:
         https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment#reference-frequency
         """
         # The actual tref must lie between the first and the last times where 
-        # omega_gw crosses 2 * pi * fref_in. We use only the segment between
+        # omega_gw crosses 2 * pi * fref. We use only the segment between
         # the first and the last crossings to build the secular trend of 
         # omega_gw.
         omega_ref = 2 * np.pi * fref
@@ -1996,7 +1996,7 @@ class eccDefinition:
         # get the secular trend
         secular_trend = QusicircularFitForMappingFrequencyToTime(time, omega)
         res = secular_trend.least_square_fit()
-        # get the location where the secular trend crosses fref_in
+        # get the location where the secular trend crosses omega_ref
         idx = np.argmin(np.abs(secular_trend.model(time, *res.x) - omega_ref))
         return time[idx]
         
