@@ -479,6 +479,33 @@ def measure_eccentricity(tref_in=None,
             mean anomaly to zero.
             USE THIS WITH CAUTION!
 
+        use_only_these_many_orbits : float or None, optional Default
+            is None.
+            If None, the full waveform is used for measuring
+            eccentricity and mean anomaly.
+
+            If a float is provided, only a short segment of the
+            waveform centered around the reference time/frequency is
+            used. The length of this segment, measured in number of
+            orbits, is given by `use_only_these_many_orbits`. Using a
+            small segment significantly speeds up the computation of
+            eccentricity and mean anomaly, since methods such as
+            `AmplitudeFits` and `FrequencyFits` locate extrema one by
+            one, making them computationally expensive for long
+            waveforms.
+
+            The difference between using the full waveform and using a
+            short segment is typically small and depends on the
+            `omega_gw_extrema_interpolation_method`. The discrepancy
+            is usually smaller for the `spline` method compared to
+            `rational_fit`. For NR waveforms, the difference is below
+            1%, and for model waveforms it is below 0.01%. For
+            reliable measurements, it is recommended to use at least
+            10 orbits; increasing the number of orbits generally
+            decreases the relative error in the measured eccentricity
+            and mean anomaly.  See:
+            https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment
+        
     Returns
     -------
     A dictionary containing the following keys
@@ -535,10 +562,9 @@ def measure_eccentricity(tref_in=None,
 
     if method in available_methods:
         gwecc_object = available_methods[method](
-            dataDict, num_orbits_to_exclude_before_merger,
+            dataDict, tref_in, fref_in, num_orbits_to_exclude_before_merger,
             precessing, frame, debug_level, extra_kwargs)
-        return_dict = gwecc_object.measure_ecc(
-            tref_in=tref_in, fref_in=fref_in)
+        return_dict = gwecc_object.measure_ecc()
         return_dict.update({"gwecc_object": gwecc_object})
         return return_dict
     else:

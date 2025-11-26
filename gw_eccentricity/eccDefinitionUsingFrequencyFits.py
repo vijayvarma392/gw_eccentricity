@@ -177,6 +177,7 @@ class eccDefinitionUsingFrequencyFits(eccDefinition):
             sign = -1
         else:
             raise Exception(f"extrema_type='{extrema_type}' unknown.")
+        
         # The fit function assume the merger to be at t=0. So we align the time
         # axis such that merger occurs at t=0.
         # After the peaks are found, the time is reshifted to to its original

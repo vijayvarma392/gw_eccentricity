@@ -30,7 +30,7 @@ class eccDefinitionUsingAmplitude(eccDefinition):
         to return the appropriate data that is to be used. For example,
         in residual amplitude method, this function would return
         residual amp_gw, whereas for frequency method, it would
-        return omega22 and so on.
+        return omega_gw and so on.
         """
         return self.amp_gw
 
