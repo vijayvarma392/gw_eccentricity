@@ -404,8 +404,16 @@ def debug_message(message, debug_level, important=True,
         # raise Exception
         raise Exception(message)
 
-class SecularTrend:
-    """Fit eccentric data to get the secular trend."""
+class QusicircularFitForMappingFrequencyToTime:
+    """Fit eccentric frequency to qausicircular frequency.
+    
+    Fitting nonmonotonic eccentric frequency to quasicircular monotonic
+    frequency provides an inexpensive way to obtain an approximate map between
+    a given orbit averaged frequency and the corresponding time in the
+    evolution of the binary. This is useful when we want the frequency to time
+    map without actually constructing an orbit averaged frequency which
+    requires one to find the extrema in the eccentric frequency first.
+    """
 
     def __init__(self, times, frequencies):
         """Init."""

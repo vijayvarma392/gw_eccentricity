@@ -19,7 +19,7 @@ from .utils import get_default_spline_kwargs
 from .utils import get_rational_fit
 from .utils import get_default_rational_fit_kwargs
 from .utils import debug_message
-from .utils import SecularTrend
+from .utils import QusicircularFitForMappingFrequencyToTime
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 
@@ -450,10 +450,18 @@ class eccDefinition:
         self.debug_plots = self.extra_kwargs["debug_plots"]
         # Get amp, phase and omega segments around the reference points
         if self.extra_kwargs["use_only_these_many_orbits"]:
-            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+            approx_total_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
                                       / (4 * np.pi))
-            if approximate_num_orbits >= self.extra_kwargs["use_only_these_many_orbits"]:
+            if approx_total_num_orbits >= self.extra_kwargs["use_only_these_many_orbits"]:
                 self.get_amp_phase_omega_gw_segments()
+            else:
+                debug_message(
+                    "Approximate total number of orbits in the waveform is "
+                    f"{int(approx_total_num_orbits)}, which is less than the "
+                    f"requested {self.extra_kwargs['use_only_these_many_orbits']} "
+                    "orbits for eccentricity measurement. Using the full "
+                    "waveform instead.",
+                    debug_level=self.debug_level, important=True)
         # set extrema finding kwargs
         self.extrema_finding_kwargs = check_kwargs_and_set_defaults(
             self.extra_kwargs['extrema_finding_kwargs'],
@@ -1560,7 +1568,7 @@ class eccDefinition:
                     self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] -= 1
                 if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] == 1 \
                     and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] == 1:
-                    if (self.extra_kwargs["use_only_these_many_orbits"]
+                    if (self.extra_kwargs["use_only_these_many_orbits"] is not None
                         and self.extra_kwargs["use_only_these_many_orbits"] <= 20):
                         extra_message = (
                             "This is most likely the case since `use_only_these_many_orbits` is "
@@ -1680,13 +1688,13 @@ class eccDefinition:
         
         # assign degree based on the number of extrema if user provided
         # degree is None.
-        approximate_num_orbits = max(len(self.pericenters_location),
+        approx_total_num_orbits = max(len(self.pericenters_location),
                                      len(self.apocenters_location))
-        if approximate_num_orbits <= 20:
+        if approx_total_num_orbits <= 20:
             num_degree, denom_degree =  3, 3
-        elif approximate_num_orbits <= 40:
+        elif approx_total_num_orbits <= 40:
             num_degree, denom_degree = 4, 4
-        elif approximate_num_orbits <= 60:
+        elif approx_total_num_orbits <= 60:
             num_degree, denom_degree = 5, 5
         else:
             num_degree, denom_degree = 6, 6
@@ -1832,9 +1840,9 @@ class eccDefinition:
             # `num_orbits_to_remove_before_merger` orbits before the merger,
             # phase_gw[-1] corresponds to the phase of the (2, 2) mode
             # `num_orbits_to_remove_before_merger` orbits before the merger.
-            approximate_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
+            approx_total_num_orbits = ((self.phase_gw[-1] - self.phase_gw[0])
                                       / (4 * np.pi))
-            if approximate_num_orbits > 5:
+            if approx_total_num_orbits > 5:
                 # The waveform is sufficiently long but the extrema finding
                 # method fails to find enough number of extrema. This may
                 # happen if the eccentricity is too small and, therefore, the
@@ -1847,7 +1855,7 @@ class eccDefinition:
                and self.return_zero_if_small_ecc_failure:
                 debug_message(
                     "The waveform has approximately "
-                    f"{approximate_num_orbits:.2f}"
+                    f"{approx_total_num_orbits:.2f}"
                     f" orbits but number of {extrema_type} found is "
                     f"{num_extrema}. Since `return_zero_if_small_ecc_failure` is set to "
                     f"{self.return_zero_if_small_ecc_failure}, no exception is raised. "
@@ -1938,35 +1946,43 @@ class eccDefinition:
         frequency. See the example plot here
         https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment#reference-frequency
         """
-        # The actual tref will be always between the first and the
-        # last times where omega_gw crosses fref_in. We use only this
-        # segment to build the secular trend of omega_gw.
-        omega_ref = fref * 2 * np.pi
+        # The actual tref must lie between the first and the last times where 
+        # omega_gw crosses 2 * pi * fref_in. We use only the segment between
+        # the first and the last crossings to build the secular trend of 
+        # omega_gw.
+        omega_ref = 2 * np.pi * fref
+        # find the first and the last crossing
+        # left_indices: indices where omega_gw >= omega_ref
+        # right_indices: indices where omega_gw <= omega_ref
         left_indices = np.where(self.omega_gw >= omega_ref)[0]
         right_indices = np.where(self.omega_gw <= omega_ref)[0]
-        # if omega_gw is > omega_ref, then right_indices will be
-        # empty. It implies that the fref, where we want to measure
-        # the eccentricity, is too low. That is, fref is smaller than
-        # the frequency where we can measure eccentricity.
+        # Case 1: if fref is too low, that is, omega_gw > omega_ref, then
+        # right_indices will be empty. In this case, we set both left and right
+        # to the first index where omega_gw >= omega_ref.
         if len(right_indices) == 0:
             left = left_indices[0]
             right = left
-        # Similarly, if fref is too high, that is, omega_gw <
-        # omega_ref, then left_indices will be empty.
+        # Case 2: if fref is too high, that is, omega_gw < omega_ref, then
+        # left_indices will be empty. In this case, we set both left and right
+        # to the last index where omega_gw <= omega_ref.
         elif len(left_indices) == 0:
             right = right_indices[-1]
             left = right
+        # Case 3: omega_gw crosses omega_ref at least once. This is the
+        # normal case where both left_indices and right_indices are non-empty.
         else:
             left = left_indices[0]
             right = right_indices[-1]
         
         # check the phase difference between the first and the last crossing
         # we need at least a few orbits to have a good fit.
+        # If the number of orbits within the segment is less than 5 orbits,
+        # add 5 more orbits to it.
         if (self.phase_gw[right] - self.phase_gw[left])/(4*np.pi) < 5:
             left_indices = np.where(
-                self.phase_gw >= self.phase_gw[left] - 5 * 4 *np.pi)[0]
+                self.phase_gw >= self.phase_gw[left] - 2.5 * 4 *np.pi)[0]
             right_indices = np.where(
-                self.phase_gw >= self.phase_gw[right] + 5 * 4 *np.pi)[0]
+                self.phase_gw >= self.phase_gw[right] + 2.5 * 4 *np.pi)[0]
             left = left_indices[0] if len(left_indices) > 1 else 0
             right = right_indices[0] if len(right_indices) > 1 else -1
             
@@ -1978,7 +1994,7 @@ class eccDefinition:
             time = time[::step]
             omega = omega[::step]
         # get the secular trend
-        secular_trend = SecularTrend(time, omega)
+        secular_trend = QusicircularFitForMappingFrequencyToTime(time, omega)
         res = secular_trend.least_square_fit()
         # get the location where the secular trend crosses fref_in
         idx = np.argmin(np.abs(secular_trend.model(time, *res.x) - omega_ref))
