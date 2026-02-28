@@ -1,11 +1,11 @@
 """Useful functions for the project."""
 import numpy as np
 import argparse
-from polyrat import StabilizedSKRationalApproximation
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate import PchipInterpolator
 from scipy.optimize import least_squares
 import warnings
+from .rational_fit import RationalFit
 
 
 def amplitude_using_all_modes(mode_dict, data_type="hlm"):
@@ -322,12 +322,10 @@ def get_interpolant(oldX,
 def get_default_rational_fit_kwargs():
     """Get default kwargs for rational fit."""
     default_rational_fit_kwargs = {
-        "num_degree": None,
-        "denom_degree": None,
-        "norm": 2,
-        "maxiter": 20,
+        "degrees": None,
+        "max_iterations": 20,
         "verbose": False,
-        "xtol": 1e-07,
+        "tol": 1e-7
     }
     return default_rational_fit_kwargs
 
@@ -335,8 +333,7 @@ def get_default_rational_fit_kwargs():
 def get_rational_fit(x, y, rational_fit_kwargs=None, check_kwargs=True):
     """Get rational fit for the data set (x, y).
 
-    We use `polyrat.StabilizedSKRationalApproximation` to obtain
-    rational fit to the data.
+    Using the stabilized Santhanan-Koerner rational approximation.
     """
     if check_kwargs:
         rational_fit_kwargs = check_kwargs_and_set_defaults(
@@ -346,15 +343,17 @@ def get_rational_fit(x, y, rational_fit_kwargs=None, check_kwargs=True):
             "utils.get_default_rational_fit_kwargs"
         )
     # We use a rational approximation based on Stabilized Sanathanan-Koerner Iteration
-    # described in arXiv:2009.10803 and implemented in `polyrat.StabilizedSKRationalApproximation`.
-    rat = StabilizedSKRationalApproximation(**rational_fit_kwargs)
-    # The input x-axis data must be 2-dimensional
-    rat.fit(x.reshape(-1, 1), y)
-    # Using a lambda function to change the input 1-d data to
-    # float64 and reshape to 2-d as required by the fit.
-    # Ensure also that the input and output types are the same.
-    return lambda t: (rat(np.atleast_2d(t).astype('float64').reshape(-1, 1)).item() if np.isscalar(t)\
-                      else rat(np.atleast_2d(t).astype('float64').reshape(-1, 1)))
+    # described in arXiv:2009.10803
+    rat = RationalFit(
+        x, y, degrees=(rational_fit_kwargs["degrees"])
+    )
+    rat.fit(
+        max_iterations=rational_fit_kwargs["max_iterations"],
+        tol=rational_fit_kwargs["tol"],
+        verbose=rational_fit_kwargs["verbose"]
+    )
+    
+    return rat
 
 
 def debug_message(message, debug_level, important=True,
