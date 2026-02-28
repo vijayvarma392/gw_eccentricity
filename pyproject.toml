@@ -29,8 +29,7 @@ dependencies = [
   "h5py",
   "lalsuite",
   "sxs",
-  "scri",
-  "polyrat",
+  "scri"
 ]
 
 [project.urls]
