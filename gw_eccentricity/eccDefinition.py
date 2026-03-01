@@ -250,7 +250,9 @@ class eccDefinition:
                       oscillatory behavior, particularly near the merger,
                       especially for noisy NR data.
         
-                - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+                - `rational_fit`: Uses Rational Approximation Using a
+                    Stabilized Sanathanan-Koerner Iteration based on
+                    https://arxiv.org/abs/2009.10803
                     - Can handle both clean and noisy data, e.g., waveform
                         modes from numerical simulations.
                     - Better monotonic behaviour, particularly near the merger.
