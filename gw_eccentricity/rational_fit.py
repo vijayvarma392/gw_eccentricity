@@ -6,7 +6,7 @@ import numpy as np
 def _arnoldi_basis(x, degree, w=None):
     """Arnoldi basis on nodes x upto degree.
     
-    Typical polynomial basis (Vandermonde): {1, x, x^2, ..., x^m} is not 
+    Typical mononomial basis (Vandermonde): {1, x, x^2, ..., x^m} is not 
     suitable for rational functions with higher degrees. Instead, we use the 
     Arnoldi process to generate an orthonormal basis 
     {v_0(x), v_1(x), ..., v_m(x)} that is better suited for rational
@@ -43,19 +43,25 @@ def _arnoldi_basis(x, degree, w=None):
     V[:, 0] /= v0_norm  # Normalize the first basis function
 
     for k in range(degree):
-        # Compute the next basis function
-        v = V[:, k] * x  # Multiply the current basis by x
+        v = V[:, k] * x  # Multiply current basis vector by x to get the next candidate
 
-        # Orthogonalize against previous basis functions
-        for j in range(k + 1):
-            H[j, k] = np.dot(V[:, j], v)  # Projection onto v_j
-            v -= H[j, k] * V[:, j]  # Remove the component in the direction of v_j
+        # Orthogonalize v against all previous basis vectors using
+        # Modified Gram–Schmidt (MGS) with DGKS reorthogonalization.
+        # The second pass reduces loss of orthogonality caused by
+        # floating-point roundoff, yielding orthogonality close to
+        # machine precision.
+        for _ in range(2):
+            h = V[:, :k+1].T @ v   # Project v onto all previous basis vectors at once
+            H[:k+1, k] += h        # Accumulate projections into Hessenberg matrix
+            v -= V[:, :k+1] @ h    # Subtract components along previous basis vectors
 
-        H[k + 1, k] = np.linalg.norm(v)  # Norm of the new basis function
-        if H[k + 1, k] > 1e-14:  # Avoid division by zero
-            V[:, k + 1] = v / H[k + 1, k]  # Normalize to get v_{k+1}
+        # Compute the norm of the remaining orthogonal component
+        H[k+1, k] = np.linalg.norm(v)
+
+        if H[k+1, k] > 1e-14:
+            V[:, k+1] = v / H[k+1, k]  # Normalize to get the next orthonormal basis vector
         else:
-            break  # If the new basis function is negligible, stop
+            break  # Basis is complete — v is negligible, no new direction to add
 
     return V, H, v0_norm
 
