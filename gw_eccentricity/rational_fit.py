@@ -98,10 +98,9 @@ def _eval_arnoldi_basis(x, H, degree, v0_norm):
     # Build higher degree basis functions using the stored Hessenberg
     # matrix H
     for k in range(degree):
-        v = V[:, k] * x
         v = V[:, k] * x - V[:, :k+1] @ H[:k+1, k]
-        if H[k + 1, k] < 1e-14: # If the new basis function is negligible, stop
-            break 
+        if H[k + 1, k] < 1e-14:
+            break
         V[:, k + 1] = v / H[k + 1, k]
     return V
 
@@ -168,7 +167,7 @@ class RationalFit:
     See https://arxiv.org/abs/2009.10803.
     """
 
-    def __init__(self, x, y, degrees):
+    def __init__(self, x, y, degrees, verbose=False):
         """Initialize.
         
         parameters:
@@ -179,6 +178,8 @@ class RationalFit:
             The target values at the nodes.
         degrees: (int, int)
             The degrees of the numerator and denominator of the rational function.
+        verbose: bool, default=False
+            If True, print more details.
         """
         if len(x) != len(y):
             raise ValueError("x and y must have the same length.")
@@ -200,11 +201,12 @@ class RationalFit:
         self.x = x
         self.y = y
         self.degrees = degrees
+        self.verbose = verbose
         self.x_min, self.x_max = np.min(x), np.max(x)  # For scaling x
         self.a = None  # Coefficients for numerator basis functions, updated in fit() method
         self.b = None  # Coefficients for denominator basis functions, updated in fit() method
 
-    def fit(self, max_iterations=100, tol=1e-7, verbose=False):
+    def fit(self, max_iterations=100, tol=1e-7):
         """Fit using Stabilized Sanathanan-Koerner iteration.
 
         Solves the classical Sanathanan-Koerner iteration with Arnoldi basis 
@@ -233,8 +235,6 @@ class RationalFit:
         tol: float, default=1e-7
             Tolerance for convergence based on residual error between the
             rational approximation and the target values.
-        verbose: bool, default=False
-            If True, print iteration details.
         """
         # Scale x to [-1, 1] for better numerical stability
         x_scaled = _scale_x(self.x, self.x_min, self.x_max)
@@ -249,6 +249,9 @@ class RationalFit:
         # History containers
         history = []
 
+        if self.verbose:
+            print("=========================================================================")
+            print(f"Fitting for degree={self.degrees}")
         for iteration in range(max_iterations):
             # weight w^(k) = 1 / q^(k-1)
             w = 1.0 / q
@@ -297,12 +300,12 @@ class RationalFit:
                 "fit_error": fit_error}
             history.append(hist_dict)
 
-            if verbose:
+            if self.verbose:
                 print(f"Iteration {iteration}: fit error = {fit_error:.2e}")
 
             # Check for convergence
             if fit_error < tol:
-                if verbose:
+                if self.verbose:
                     print(f"Converged at iteration {iteration} with fit error "
                           f"{fit_error:.2e}.")
                 break
@@ -376,3 +379,4 @@ class RationalFit:
             raise ValueError(
                 "Model is not fitted yet. Call fit() first.")
         return self.predict(x_new)
+

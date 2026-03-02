@@ -343,14 +343,14 @@ def get_rational_fit(x, y, rational_fit_kwargs=None, check_kwargs=True):
             "utils.get_default_rational_fit_kwargs"
         )
     # We use a rational approximation based on Stabilized Sanathanan-Koerner Iteration
-    # described in arXiv:2009.10803
+    # described in arXiv:2009.10803. See the implementation in rational_fit.py
     rat = RationalFit(
-        x, y, degrees=(rational_fit_kwargs["degrees"])
+        x, y, degrees=rational_fit_kwargs["degrees"],
+        verbose=rational_fit_kwargs["verbose"]
     )
     rat.fit(
         max_iterations=rational_fit_kwargs["max_iterations"],
-        tol=rational_fit_kwargs["tol"],
-        verbose=rational_fit_kwargs["verbose"]
+        tol=rational_fit_kwargs["tol"]
     )
     
     return rat
