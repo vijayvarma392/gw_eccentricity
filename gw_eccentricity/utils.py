@@ -325,7 +325,7 @@ def get_default_rational_fit_kwargs():
         "degrees": None,
         "max_iterations": 20,
         "verbose": False,
-        "tol": 1e-7
+        "tol": 1e-07
     }
     return default_rational_fit_kwargs
 

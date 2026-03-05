@@ -1,6 +1,12 @@
-"""Rational fit."""
+"""Module for stabilized Sanathanan–Koerner rational approximation.
+
+This module provides an implementation of the Stabilized
+Sanathanan–Koerner iterative algorithm for rational function
+approximations. See https://arxiv.org/abs/2009.10803.
+"""
 import warnings
 import numpy as np
+import scipy.linalg
 
 
 def _arnoldi_basis(x, degree, w=None):
@@ -105,6 +111,59 @@ def _eval_arnoldi_basis(x, H, degree, v0_norm):
     return V
 
 
+def _solve_using_varpro(P, Q, Y):
+    """Solve the linearized problem using variable projection.
+
+    We consider the system
+
+        y_i q(x_i) = p(x_i),
+
+    where the numerator and denominator are expanded in basis matrices P and Q
+    (both shape (M, m) and (M, n) respectively).
+
+    Parameters
+    ----------
+    P : ndarray, shape (M, m)
+        Arnoldi basis for the numerator.
+    Q : ndarray, shape (M, n)
+        Arnoldi basis for the denominator.
+    Y : 1d array of length M
+        Target values at the nodes.
+
+    Returns
+    -------
+    a : ndarray, shape (m,)
+        Coefficients for the numerator basis.
+    b : ndarray, shape (n,)
+        Coefficients for the denominator basis.
+    cond : float
+        A heuristic condition number for the linear system.
+    """
+    # ensure input shapes are as expected
+    Y = np.atleast_1d(Y)
+    if Y.ndim != 1:
+        raise ValueError("Y must be a one-dimensional real array")
+
+    # QR factorization of the numerator basis
+    Q_P, R_P = np.linalg.qr(P, mode='reduced')
+
+    # form the projected matrix A = diag(Y) Q - Q_P (Q_P^T diag(Y) Q)
+    A = Y[:, None] * Q
+    A -= Q_P @ (Q_P.T @ A)
+
+    _, s, VH = np.linalg.svd(A, full_matrices=False)
+    with np.errstate(divide='ignore'):
+        cond = s[0] / s[-1]
+    b = VH.T[:, -1]
+
+    # recover numerator coefficients
+    Qb = Q @ b
+    xcoef = Q_P.T @ (Y * Qb)
+    a = scipy.linalg.solve_triangular(R_P, xcoef)
+
+    return a, b, cond
+
+
 def _scale_x(x, x_min, x_max):
     """Scale x for numerical stability of the fit."""
     return (x - x_min) / (x_max - x_min) * 2 - 1
@@ -207,43 +266,44 @@ class RationalFit:
         self.b = None  # Coefficients for denominator basis functions, updated in fit() method
 
     def fit(self, max_iterations=100, tol=1e-7):
-        """Fit using Stabilized Sanathanan-Koerner iteration.
+        """Fit using Stabilized Sanathanan–Koerner iteration.
 
-        Solves the classical Sanathanan-Koerner iteration with Arnoldi basis 
-        for better stability. 
-        
+        Solves the Classical Santhanan-Koerner iteration with Arnoldi basis
+        for better stability.
+
         At each iteration k, we
-        - generate the Arnoldi polynomial basis functions using w[k]=1/q[k-1] as
-          the starting vector, see _arnoldi_basis. Note that we use the
-          denominator from the previous iteration as the weight because we want
-          to solve the weighted least square problem.
-        - Our system to solve is y * Q * b = P * a, where P and Q are the 
-          Arnoldi basis matrices for the numerator and denominator,
-          respectively.
-        - We can project out the numerator subspace from y * Q to get
-          a least squares problem in b. The system to solve becomes
-          (y * Q - P * (P^T * (y * Q))) * b = 0 using a = P^T * (y * Q).
-        - We then solve for b using least squares, and reconstruct a using 
-          a = P^T * (y * Q * b).        
-        - we then compute p = P * a and q = Q * b to get the rational
-          approximation r = p / q, and check for convergence.
 
-        parameters:
-        -----------
-        max_iterations: int, default=100
-            Maximum number of iterations for the fitting process.
-        tol: float, default=1e-7
-            Tolerance for convergence based on residual error between the
-            rational approximation and the target values.
+        - compute weight w^(k) = 1/q^(k-1) from the previous denominator
+          estimate;
+        - build Arnoldi bases P (numerator) and Q (denominator) using
+          the current weight;
+        - solve the linearized system yQb = Pa by variable projection to
+          obtain denominator coefficients b and numerator coefficients a;
+        - update the denominator via
+          q^(k) = abs(q^(k-1) * (Q @ b)) and replace any zeros by 1;
+        - compute the current rational approximation and measure the change
+          from the preceding fit as the convergence criterion.
+
+        A linear algebra error during coefficient computation aborts the
+        iteration.  The final a/b pair stored on the object is the one
+        for which the weighted residual norm was lowest.
+
+        Parameters
+        ----------
+        max_iterations : int, default 100
+            Maximum number of iterations to attempt.
+        tol : float, default 1e-7
+            Tolerance on the change in fit between iterations; measured as the
+            2-norm of the difference in rational approximations.
         """
         # Scale x to [-1, 1] for better numerical stability
         x_scaled = _scale_x(self.x, self.x_min, self.x_max)
         m, n = self.degrees
 
-        # Initialize denominator q^(0) = 1 (constant function)
+        # Initialize denominator
         q = np.ones_like(self.x)
 
-        # To keep track of fitting error
+        # To keep track of fitting error (previous iterate)
         fit_old = np.zeros_like(self.y)
 
         # History containers
@@ -260,59 +320,50 @@ class RationalFit:
             V, H, v0_norm = _arnoldi_basis(x_scaled, max(m, n), w)
             P, Q = V[:, :m+1], V[:, :n+1]
 
-            # Generate yQ by multiplying y with the denominator basis 
-            # matrix Q, so that the system to solve becomes
-            # yQ * b = P * a
-            yQ = self.y[:, np.newaxis] * Q
-            # Now project out the numerator subspace from yQ
-            # using P^T * yQ * b = a, and then find by solving
-            # (yQ - P * (P^T *yQ)) b = 0
-            yQ_projected = yQ -  P @ (P.T @ yQ)
-            
-            # Separate the first column (constant/base) from the rest
-            target = -yQ_projected[:, 0]
-            others = yQ_projected[:, 1:]
+            # compute coefficients using variable projection
+            try:
+                a, b, cond = _solve_using_varpro(P, Q, self.y)
+            except np.linalg.LinAlgError as e:  # stop if the linear solve fails
+                if self.verbose:
+                    print(e)
+                break
+            b = b.ravel()
+            a = a.ravel()
 
-            # Solve for the remaining coefficients
-            b_rest, _, _, _ = np.linalg.lstsq(others, target, rcond=1e-12)
+            # update denominator in the stabilized way
+            Qb = Q @ b
+            q = np.abs(q * Qb)
+            q[q == 0.0] = 1.0
 
-            # Reconstruct b with the first coefficient forced to 1.0
-            b = np.concatenate(([1.0], b_rest))
-            a = P.T @ (self.y * (Q @ b))
+            # compute current approximation and norms (unweighted)
+            p = P @ a
+            r = p / Qb
+            res_norm = np.linalg.norm(r - self.y)
+            delta_fit = np.linalg.norm(r - fit_old)
 
-            # Update denominator
-            q = Q @ b
-
-            # compute error
-            p = P @ a  # Numerator
-            r = p / q  # Rational approximation
-            res_error = np.linalg.norm(r - self.y) / np.linalg.norm(self.y)
-            fit_error = np.linalg.norm(r - fit_old)
-
-            # save history
             hist_dict = {
                 "iteration": iteration,
                 "a": a.copy(),
                 "b": b.copy(),
                 "v0_norm": v0_norm,
                 "H": H.copy(),
-                "res_error": res_error,
-                "fit_error": fit_error}
+                "res_norm": res_norm,
+                "delta_fit": delta_fit,
+                "cond": cond}
             history.append(hist_dict)
 
             if self.verbose:
-                print(f"Iteration {iteration}: fit error = {fit_error:.2e}")
+                print(f"Iteration {iteration}: delta_fit = {delta_fit:.2e}, res_norm = {res_norm:.2e}")
 
-            # Check for convergence
-            if fit_error < tol:
+            if delta_fit < tol:
                 if self.verbose:
-                    print(f"Converged at iteration {iteration} with fit error "
-                          f"{fit_error:.2e}.")
+                    print(f"Converged at iteration {iteration} (delta_fit={delta_fit:.2e}).")
                 break
-            # Update fit_old for the next iteration
+
             fit_old = r
 
-        hist_best = min(history, key=lambda h: h["res_error"])
+        # pick the iterate that minimized the weighted residual norm
+        hist_best = min(history, key=lambda h: h["res_norm"])
         self.a, self.b = hist_best["a"], hist_best["b"]
         self.H = hist_best["H"]
         # Store the norm of the initial weight vector w for later use in 
