@@ -71,7 +71,6 @@ All of these can be installed through pip or conda.
 * [lalsuite](https://pypi.org/project/lalsuite)
 * [sxs](https://github.com/sxs-collaboration/sxs)
 * [scri](https://github.com/moble/scri)
-* [polyrat](https://pypi.org/project/polyrat/)
 
 # Usage
 See example notebooks:

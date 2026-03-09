@@ -22,6 +22,7 @@ from .utils import debug_message
 from .utils import QusicircularFitForMappingFrequencyToTime
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
+from .rational_fit import is_underdetermined, get_reduced_degrees
 
 
 class eccDefinition:
@@ -249,7 +250,9 @@ class eccDefinition:
                       oscillatory behavior, particularly near the merger,
                       especially for noisy NR data.
         
-                - `rational_fit`: Uses `polyrat.StabilizedSKRationalApproximation`.
+                - `rational_fit`: Uses Rational Approximation Using a
+                    Stabilized Sanathanan-Koerner Iteration based on
+                    https://arxiv.org/abs/2009.10803
                     - Can handle both clean and noisy data, e.g., waveform
                         modes from numerical simulations.
                     - Better monotonic behaviour, particularly near the merger.
@@ -1477,198 +1480,132 @@ class eccDefinition:
         return pericenters, apocenters
 
     def get_rational_fit_for_extrema(self, x, y, data_name=None):
-        """Get rational fit with adaptive numerator and denominator degree.
+     """Get rational fit with adaptive numerator and denominator degree.
 
-        We fit the extrema of omega_gw using a rational function of
-        the form P/Q, where P and Q are polynomials of degrees n and
-        m, respectively. The fitting procedure adaptively selects the
-        optimal degrees for P and Q. For simplicity, we vary n and m
-        simultaneously, with a minimum value of 1 for both. There is
-        no fixed maximum; instead, the upper limit on n and m is
-        determined by the highest degree that still yields a monotonic
-        fit.
-        
-        It first checks for nonmonotonicity in the fit's derivative
-        and lowers the degrees if necessary. Only if the fit for the
-        initial degree was monotonic (no reduction of degree needed),
-        it attempts to increase the degrees to find a higher-degree
-        fit. If increasing the degrees causes nonmonotonicity, it
-        reverts to the previous valid monotonic fit.
+     We fit the extrema of omega_gw using a rational function of
+     the form P/Q, where P and Q are polynomials of degrees n and
+     m, respectively. The fitting procedure adaptively selects the
+     optimal degrees for P and Q. For simplicity, we vary n and m
+     simultaneously, with a minimum value of 1 for both. There is
+     no fixed maximum; instead, the upper limit on n and m is
+     determined by the highest degree that still yields a monotonic
+     fit.
 
-        The initial degrees for the rational fit can be specified through
-        `special_interp_kwargs_for_omega_gw_extrema` in `extra_kwargs` with the key
-        "rational_fit". (See `special_interp_kwargs_for_omega_gw_extrema` under
-        `extra_kwargs` for more details) Default values are provided by
-        `get_default_rational_fit_kwargs`, where both degrees are set to
-        `None`. If both degrees remain `None`, appropriate starting values are
-        determined using `self.get_approximate_degree_for_rational_fit`.
-        """
-        # make sure that data_name is not None. A data_name is needed to
-        # update the optimal values of the numerator and denominator degrees
-        # used to build the final rational fit
-        if data_name is None:
-            raise Exception(
-                "Please provide a data_name for which to build a "
-                "rational fit. `data_name` can not be None. For example, "
-                "it can be 'apocenters', 'pericenters' or 'omega_gw_average'.")
-        # Set initial degrees for the rational fit if not already specified. If
-        # either `num_degree` or `denom_degree` is specified, use that value to
-        # set the other. If both are unspecified, we use the following
-        # procedure to set appropriate values for `num_degree` and
-        # `denom_degree`.
-        
-        # The optimal degrees for the numerator and denominator can vary with
-        # the eccentricity and duration of the waveform. To estimate these
-        # values, we first count the approximate number of orbits, then use a
-        # predefined mapping from orbit count to optimal degrees, provided by
-        # `get_approximate_degree_for_rational_fit`. 
-        
-        # While this provides a good initial estimate, it may not be optimal,
-        # as the ideal degree can change based on the eccentricity which we do
-        # not know apriori. The true optimal values are determined through
-        # further iterations.
-        if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] is None \
-            and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] is None:
-            self.special_interp_kwargs_for_omega_gw_extrema["num_degree"], \
-                self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] = \
-                self.get_approximate_degree_for_rational_fit()
-        # If only one of num_degree/denom_degree is given, it sets the
-        # other one to match it.
-        elif self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] is None:
-            self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] \
-                = self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"]
-        elif self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] is None:
-            self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] \
-                = self.special_interp_kwargs_for_omega_gw_extrema["num_degree"]
+     It first checks for nonmonotonicity in the fit's derivative
+     and lowers the degrees if necessary. Only if the fit for the
+     initial degree was monotonic (no reduction of degree needed),
+     it attempts to increase the degrees to find a higher-degree
+     fit. If increasing the degrees causes nonmonotonicity, it
+     reverts to the previous valid monotonic fit.
 
-        rat_fit = get_rational_fit(
-            x, y, rational_fit_kwargs=self.special_interp_kwargs_for_omega_gw_extrema,
-            check_kwargs=False)
-        x_test = np.arange(x[0], x[-1], self.t[1] - self.t[0])
-        # save the degrees for checks at each step of iterations for finding
-        # the optimal degrees
-        old_num_degree = self.special_interp_kwargs_for_omega_gw_extrema["num_degree"]
-        old_denom_degree = self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"]
+     The initial degrees for the rational fit can be specified through
+     `special_interp_kwargs_for_omega_gw_extrema` in `extra_kwargs` with the key
+     "rational_fit". (See `special_interp_kwargs_for_omega_gw_extrema` under
+     `extra_kwargs` for more details) Default values are provided by
+     `get_default_rational_fit_kwargs`, where both degrees are set to
+     `None`. If both degrees remain `None`, appropriate starting values are
+     determined using `self.get_approximate_degree_for_rational_fit`.
+     """
+     if data_name is None:
+         raise ValueError(
+             "Please provide a data_name for which to build a "
+             "rational fit. `data_name` can not be None. For example, "
+             "it can be 'apocenters', 'pericenters' or 'omega_gw_average'.")
 
-        # Check for nonmonotonicity
-        fit_is_nonmonotonic = self.check_if_first_derivative_is_not_strictly_monotonic(
-            x_test, rat_fit(x_test), 1.0)
-        # update nonmonotonicity history
-        self.rational_fit_nonmonotonicity_history[data_name].update(
-                    {(self.special_interp_kwargs_for_omega_gw_extrema['num_degree'],
-                      self.special_interp_kwargs_for_omega_gw_extrema['num_degree']):
-                      fit_is_nonmonotonic})
-        
-        # If fit is nonmonotonic lower degrees
-        if fit_is_nonmonotonic:
-            while fit_is_nonmonotonic:
-                if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] > 1:
-                    self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] -= 1
-                if self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] > 1:
-                    self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] -= 1
-                if self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] == 1 \
-                    and self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] == 1:
-                    if (self.extra_kwargs["use_only_these_many_orbits"] is not None
-                        and self.extra_kwargs["use_only_these_many_orbits"] <= 20):
-                        extra_message = (
-                            "This is most likely the case since `use_only_these_many_orbits` is "
-                            f"{self.extra_kwargs['use_only_these_many_orbits']}, implying that "
-                            "only a small segment of the waveform is being used where "
-                            "the values of omega_gw at the extrema is not changing much.\n")
-                    else:
-                        extra_message = ""
-                    debug_message(
-                        ("Both numerator and denominator degrees are equal to 1, "
-                        "but the fit is still nonmonotonic. Can not lower the degrees further. "
-                        "This may happen when omega at the extrema is not varying much and "
-                        "using even the lowest degrees is causing spurious divergences (poles).\n"
-                        + extra_message +
-                        "Falling back to using spline."),
-                        debug_level=self.debug_level, important=True)
-                    # use spline
-                    rat_fit = get_interpolant(x, y)
-                    # since it's no more rational fit, update the degrees to None
-                    self.special_interp_kwargs_for_omega_gw_extrema["num_degree"],\
-                        self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"]\
-                        = None, None
-                    break
+     # Work on a local copy so we only update self at the end on success
+     kwargs = deepcopy(self.special_interp_kwargs_for_omega_gw_extrema)
 
-                debug_message(
-                    "Lowering degrees to "
-                    "num_degree="
-                    f"{self.special_interp_kwargs_for_omega_gw_extrema['num_degree']}, "
-                    "denom_degree="
-                    f"{self.special_interp_kwargs_for_omega_gw_extrema['denom_degree']} "
-                    "and retrying.", debug_level=self.debug_level, important=False)
+     # If degrees are None, estimate from approximate number of orbits
+     if kwargs["degrees"] is None:
+         kwargs["degrees"] = self.get_approximate_degree_for_rational_fit()
 
-                # build new fit and check monotonicity
-                rat_fit = get_rational_fit(
-                    x, y,
-                    rational_fit_kwargs=self.special_interp_kwargs_for_omega_gw_extrema,
-                    check_kwargs=False)
-                fit_is_nonmonotonic \
-                    = self.check_if_first_derivative_is_not_strictly_monotonic(
-                    x_test, rat_fit(x_test), 1.0)
-                # update nonmonotonicity history
-                self.rational_fit_nonmonotonicity_history[data_name].update(
-                    {(self.special_interp_kwargs_for_omega_gw_extrema['num_degree'],
-                      self.special_interp_kwargs_for_omega_gw_extrema['num_degree']):
-                      fit_is_nonmonotonic})
-        # If fit with initial degree is monotonic, try increasing the degree
-        # for a better fit
-        else:
-            last_monotonic_rat_fit = rat_fit  # Track last monotonic fit
-            last_monotonic_num_degree = old_num_degree
-            last_monotonic_denom_degree = old_denom_degree
+     # If underdetermined, reduce degrees until well-determined
+     if is_underdetermined(kwargs["degrees"], len(x)):
+         kwargs["degrees"] = get_reduced_degrees(kwargs["degrees"], len(x))
 
-            while not fit_is_nonmonotonic:
-                # Increase the degrees for both numerator and denominator
-                new_num_degree \
-                    = self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] + 1
-                new_denom_degree \
-                    = self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] + 1
-                self.special_interp_kwargs_for_omega_gw_extrema["num_degree"],\
-                    self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] \
-                    = new_num_degree, new_denom_degree
-                # build new fit and check monotonicity
-                new_rat_fit = get_rational_fit(
-                    x, y,
-                    rational_fit_kwargs=self.special_interp_kwargs_for_omega_gw_extrema,
-                    check_kwargs=False)
-                fit_is_nonmonotonic \
-                    = self.check_if_first_derivative_is_not_strictly_monotonic(
-                        x_test, new_rat_fit(x_test), 1.0)
-                # update nonmonotonicity history
-                self.rational_fit_nonmonotonicity_history[data_name].update(
-                    {(self.special_interp_kwargs_for_omega_gw_extrema['num_degree'],
-                      self.special_interp_kwargs_for_omega_gw_extrema['num_degree']):
-                      fit_is_nonmonotonic})
-                if fit_is_nonmonotonic:
-                    # Revert to previous fit and degrees if nonmonotonicity is
-                    # detected
-                    debug_message(
-                        "Increasing degrees caused nonmonotonicity. "
-                        "Reverting to last monotonic fit with "
-                        f"num_degree={last_monotonic_num_degree} and "
-                        f"denom_degree={last_monotonic_denom_degree}.",
-                        debug_level=self.debug_level, important=False)
-                    self.special_interp_kwargs_for_omega_gw_extrema["num_degree"] \
-                        = last_monotonic_num_degree
-                    self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"] \
-                        = last_monotonic_denom_degree
-                    rat_fit = last_monotonic_rat_fit
-                    break
+     # Generate test points once — fixed for the duration of this method
+     x_test = np.arange(x[0], x[-1], self.t[1] - self.t[0])
 
-                last_monotonic_rat_fit = new_rat_fit
-                last_monotonic_num_degree = new_num_degree
-                last_monotonic_denom_degree = new_denom_degree
-                rat_fit = new_rat_fit
+     # Initial fit
+     rat_fit = get_rational_fit(x, y, rational_fit_kwargs=kwargs, check_kwargs=False)
+     m, n = kwargs["degrees"]
+     fit_is_nonmonotonic = self.check_if_first_derivative_is_not_strictly_monotonic(
+         x_test, rat_fit(x_test), 1.0)
+     self.rational_fit_nonmonotonicity_history[data_name][(m, n)] = fit_is_nonmonotonic
 
-        # update final degrees used to build the fit
-        self.rational_fit_degrees[data_name] = (
-            self.special_interp_kwargs_for_omega_gw_extrema["num_degree"],
-            self.special_interp_kwargs_for_omega_gw_extrema["denom_degree"])
-        return rat_fit
+     # Lower degrees if initial fit is nonmonotonic
+     if fit_is_nonmonotonic:
+         while fit_is_nonmonotonic:
+             m, n = kwargs["degrees"]
+             if m <= 1 and n <= 1:
+                 if (self.extra_kwargs["use_only_these_many_orbits"] is not None
+                         and self.extra_kwargs["use_only_these_many_orbits"] <= 20):
+                     extra_message = (
+                         "This is most likely the case since `use_only_these_many_orbits` is "
+                         f"{self.extra_kwargs['use_only_these_many_orbits']}, implying that "
+                         "only a small segment of the waveform is being used where "
+                         "the values of omega_gw at the extrema is not changing much.\n")
+                 else:
+                     extra_message = ""
+                 debug_message(
+                     "Both numerator and denominator degrees are equal to 1, "
+                     "but the fit is still nonmonotonic. Can not lower the degrees further. "
+                     "This may happen when omega at the extrema is not varying much and "
+                     "using even the lowest degrees is causing spurious divergences (poles).\n"
+                     + extra_message
+                     + "Falling back to using spline.",
+                     debug_level=self.debug_level, important=True)
+                 rat_fit = get_interpolant(x, y)
+                 kwargs["degrees"] = None
+                 break
+             # lower degrees by 1
+             kwargs["degrees"] = (max(m - 1, 1), max(n - 1, 1))
+             m, n = kwargs["degrees"]
+             debug_message(
+                 f"Lowering degrees to num_degree={m}, denom_degree={n} and retrying.",
+                 debug_level=self.debug_level, important=False)
+
+             rat_fit = get_rational_fit(x, y, rational_fit_kwargs=kwargs, check_kwargs=False)
+             fit_is_nonmonotonic = self.check_if_first_derivative_is_not_strictly_monotonic(
+                 x_test, rat_fit(x_test), 1.0)
+             self.rational_fit_nonmonotonicity_history[data_name][(m, n)] = fit_is_nonmonotonic
+
+     # Raise degrees while monotonic, revert if nonmonotonicity detected
+     else:
+         last_monotonic_fit = rat_fit
+         last_monotonic_degrees = kwargs["degrees"]
+
+         while not fit_is_nonmonotonic:
+             m, n = kwargs["degrees"]
+             kwargs["degrees"] = (m + 1, n + 1)
+
+             if is_underdetermined(kwargs["degrees"], len(x)):
+                 kwargs["degrees"] = last_monotonic_degrees
+                 rat_fit = last_monotonic_fit
+                 break
+
+             rat_fit = get_rational_fit(x, y, rational_fit_kwargs=kwargs, check_kwargs=False)
+             fit_is_nonmonotonic = self.check_if_first_derivative_is_not_strictly_monotonic(
+                 x_test, rat_fit(x_test), 1.0)
+             m, n = kwargs["degrees"]
+             self.rational_fit_nonmonotonicity_history[data_name][(m, n)] = fit_is_nonmonotonic
+
+             if fit_is_nonmonotonic:
+                 debug_message(
+                     f"Increasing degrees caused nonmonotonicity. Reverting to last "
+                     f"monotonic fit with degrees={last_monotonic_degrees}.",
+                     debug_level=self.debug_level, important=False)
+                 kwargs["degrees"] = last_monotonic_degrees
+                 rat_fit = last_monotonic_fit
+                 break
+
+             last_monotonic_fit = rat_fit
+             last_monotonic_degrees = kwargs["degrees"]
+
+     # Persist the final kwargs and degrees
+     self.special_interp_kwargs_for_omega_gw_extrema = kwargs
+     self.rational_fit_degrees[data_name] = kwargs["degrees"]
+     return rat_fit
 
     def get_approximate_degree_for_rational_fit(self):
         """Get approximate degree based on the number of extrema.
