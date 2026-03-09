@@ -23,6 +23,7 @@ from .utils import QusicircularFitForMappingFrequencyToTime
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 from .rational_fit import is_underdetermined, get_reduced_degrees
+from .spin_filter import check_and_filter_spin_induced_oscillation, get_default_kwargs_for_filtering
 
 
 class eccDefinition:
@@ -445,6 +446,23 @@ class eccDefinition:
         # (2, 2) mode values. See `get_amp_phase_omega_gw` for more details.
         self.amp_gw, self.phase_gw, self.omega_gw \
             = self.get_amp_phase_omega_gw(self.dataDict)
+        # filter spin induced oscillation if required
+        if self.precessing:
+            filter_kwargs = check_kwargs_and_set_defaults(
+                extra_kwargs.get("filter_kwargs", {}) if extra_kwargs is not None else {},
+                get_default_kwargs_for_filtering(),
+                "filter_kwargs",
+                "spin_filter.get_default_kwargs_for_filtering()")
+            filtered_data = check_and_filter_spin_induced_oscillation(
+                data_dict=deepcopy(self.dataDict),
+                data_tag="",
+                t_merger=self.t_merger,
+                filter_kwargs=filter_kwargs)
+            self.amp_gw, self.omega_gw, self.amp_gw_unfiltered, self.omega_gw_unfiltered\
+            = filtered_data["amp_gw"], filtered_data["omega_gw"], filtered_data["amp_gw_unfiltered"], filtered_data["omega_gw_unfiltered"]
+            self.amp_gw_filter_segment_results = filtered_data["amp_gw_filter_segment_results"]
+            self.omega_gw_filter_segment_results = filtered_data["omega_gw_filter_segment_results"]
+            extra_kwargs["filter_kwargs"] = filter_kwargs
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
             deepcopy(extra_kwargs), self.get_default_extra_kwargs(),
@@ -502,7 +520,6 @@ class eccDefinition:
             "utils.get_default_spline_kwargs()")
         self.available_averaging_methods \
             = self.get_available_omega_gw_averaging_methods()
-        self.debug_plots = self.extra_kwargs["debug_plots"]
         self.return_zero_if_small_ecc_failure \
             = self.extra_kwargs["return_zero_if_small_ecc_failure"]
         # check if there are unrecognized keys in the dataDict
@@ -1187,7 +1204,8 @@ class eccDefinition:
             "kwargs_for_fits_methods": {},  # Gets overriden in fits methods
             "return_zero_if_small_ecc_failure": False,
             "omega_gw_extrema_interpolation_method": "rational_fit",
-            "use_only_these_many_orbits": None
+            "use_only_these_many_orbits": None,
+            "filter_kwargs": {}
         }
         return default_extra_kwargs
 
