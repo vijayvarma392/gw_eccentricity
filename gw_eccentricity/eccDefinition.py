@@ -22,7 +22,7 @@ from .utils import debug_message
 from .utils import QusicircularFitForMappingFrequencyToTime
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
-from .rational_fit import is_underdetermined, suggest_degrees
+from .rational_fit import is_underdetermined, get_reduced_degrees
 
 
 class eccDefinition:
@@ -1521,7 +1521,7 @@ class eccDefinition:
 
      # If underdetermined, reduce degrees until well-determined
      if is_underdetermined(kwargs["degrees"], len(x)):
-         kwargs["degrees"] = suggest_degrees(kwargs["degrees"], len(x))
+         kwargs["degrees"] = get_reduced_degrees(kwargs["degrees"], len(x))
 
      # Generate test points once — fixed for the duration of this method
      x_test = np.arange(x[0], x[-1], self.t[1] - self.t[0])

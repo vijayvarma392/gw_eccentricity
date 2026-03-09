@@ -174,8 +174,8 @@ def is_underdetermined(degrees, n_points):
     return degrees[0] + degrees[1] + 1 >= n_points
 
 
-def suggest_degrees(degrees, n_points):
-    """Suggest best degrees for rational fit given the number of data points.
+def get_reduced_degrees(degrees, n_points):
+    """Get reduced degrees for rational fit given the number of data points.
     
     If the system is underdetermined (m + n + 1 >= n_points), iteratively 
     lower degrees by 1, alternating between denominator first, then numerator,
@@ -191,7 +191,7 @@ def suggest_degrees(degrees, n_points):
     returns:
     --------
     (int, int)
-        The suggested (numerator_degree, denominator_degree).
+        The reduced (numerator_degree, denominator_degree).
     """
     m, n = degrees
     reduce_denom = True  # Start by reducing denominator
