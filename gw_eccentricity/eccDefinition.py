@@ -23,7 +23,7 @@ from .utils import QusicircularFitForMappingFrequencyToTime
 from .plot_settings import use_fancy_plotsettings, colorsDict, labelsDict
 from .plot_settings import figWidthsTwoColDict, figHeightsDict
 from .rational_fit import is_underdetermined, get_reduced_degrees
-from .spin_filter import check_and_filter_spin_induced_oscillation, get_default_kwargs_for_filtering
+from .spin_filter import check_and_filter_spin_induced_oscillations, get_default_kwargs_for_filtering
 
 
 class eccDefinition:
@@ -453,7 +453,7 @@ class eccDefinition:
                 get_default_kwargs_for_filtering(),
                 "filter_kwargs",
                 "spin_filter.get_default_kwargs_for_filtering()")
-            filtered_data = check_and_filter_spin_induced_oscillation(
+            filtered_data = check_and_filter_spin_induced_oscillations(
                 data_dict=deepcopy(self.dataDict),
                 data_tag="",
                 t_merger=self.t_merger,

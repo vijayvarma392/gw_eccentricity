@@ -630,7 +630,51 @@ class FilterSpinInducedOscillations:
 
 
 def get_default_kwargs_for_filtering():
-    """Default kwargs for filtering spin-induced oscillations."""
+    """Default kwargs for filtering spin-induced oscillations.
+    
+    Returns:
+    --------
+    dict
+        Dictionary containing allowed filter parameters and their default
+        values:
+        
+        - "filter_threshold": Threshold for the mode asymmetry to be considered
+          significant compared to the (2, 2) mode in the coprecessing frame.
+          Default is 0.2, meaning that if the maximum amplitude of the
+          asymmetry is greater than 20% of the maximum amplitude of the
+          residual, the filtering will be applied. The residual is the obtained
+          by subtracting a fitted secular trend from the (2, 2) mode in the
+          coprecessing frame. Setting this threshold too low may lead to the
+          filter being applied to data where the spin-induced oscillations are
+          not significant, and in high eccentricity cases, it may even lead to
+          removal of eccentric higher harmonics.
+        - "debug_plots": Whether to generate debug plots to visualize the
+          filtering process.
+        - "padding_length": Length of zero-padding to apply on either side of
+          the data segment before performing FFT-based filtering. This helps
+          mitigate edge effects in the FFT.
+        - "alpha": Factor determining how much to advance the segment center
+          for each iteration of filtering, in units of the local delta T between
+          crossings. A smaller alpha means more overlap between segments and
+          potentially smoother results, but also more computational cost.
+        - "segment_size": Size of each segment to filter, defined in terms of
+          the local delta T between crossings. This allows the filter to adapt
+          to the changing frequency of the signal.
+        - "data_type_for_filter_requirement_check": Data type ("amp" or "omega")
+          to use for checking if filter requirements are met. If None, defaults
+          to the same data type being filtered.
+        - "data_type_for_fspin_estimate": Data type ("amp" or "omega") to use
+          for estimating the frequency of spin-induced oscillations. If None,
+          defaults to the same data type being filtered.
+        - "verbose": Whether to print detailed information about the filtering
+          process.
+        - "taper_width": Width of the cosine taper used in the low-pass filter,
+          as a fraction of the cutoff frequency. This controls how smoothly the
+          filter transitions from passing frequencies below cutoff to attenuating
+          frequencies above cutoff.
+        - "do_not_filter": If True, skip filtering even if requirements are met,
+          and return original data. Useful for testing and debugging.
+    """
     return {
         "filter_threshold": 0.2,
         "debug_plots": False,
@@ -645,13 +689,42 @@ def get_default_kwargs_for_filtering():
     }
 
 
-def check_and_filter_spin_induced_oscillation(data_dict, data_tag, t_merger, filter_kwargs):
+def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger, filter_kwargs):
     """Get filtered amp_gw, omega_gw after removing spin-induced oscillations.
     
     Parameters:
     -----------
-    
+    data_dict : dict
+        Dictionary containing the data to be filtered. Should contain the
+        coprecessing frame data for the (2, 2) and (2, -2) modes under the keys
+        "{data_type}lm{data_tag}[(2, 2)]" and "{data_type}lm{data_tag}[(2,
+        -2)]" respectively, where data_type is either "amp" or "omega".
+    data_tag : str
+        Tag to identify the data. Either "" for eccentric data or "_zeroecc"
+        for zero-eccentricity data.
+    t_merger : float
+        Time of merger. Used to fit the secular trend of the data, which is 
+        necessary for effectively identifying and filtering the spin-induced
+        oscillations.
+    filter_kwargs : dict
+        Dictionary containing the filter parameters. See the allowed keys and
+        their default values in the get_default_kwargs_for_filtering function.
 
+    Returns:
+    --------
+    filter_data_dict : dict
+        Dictionary containing the filtered data and related diagnostics.
+        For each data_type in ["amp", "omega"], the dictionary will contain
+        the following keys:
+        - "{data_type}_gw{data_tag}_unfiltered": The unfiltered data.
+        - "{data_type}_gw{data_tag}": The filtered data.
+        - "{data_type}_gw{data_tag}_filter_segment_results": The results of the
+          filter segments.
+
+        When filtering is not applied (either because the requirements are not
+        met or because do_not_filter=True), the "{data_type}_gw{data_tag}" key 
+        will contain the original data, and the
+        "{data_type}_gw{data_tag}_filter_segment_results" key will be None.
     """
     filter_data_dict = {}
     for data_type in ["amp", "omega"]:
