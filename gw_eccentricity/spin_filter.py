@@ -884,17 +884,23 @@ def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger, fi
             filter_data_dict[f"{base_key}_filter_segment_results"] = None
 
     # Get the phase from the best available omega_gw
+    # set the original phase as the anti-symmetric combination of the (2, 2) 
+    # and (2, -2) modes in the coprecessing frame.
+    filter_data_dict[f"phase_gw{data_tag}_original"] = (
+        0.5 * (data_dict[f"phaselm{data_tag}"][(2, 2)]
+               - data_dict[f"phaselm{data_tag}"][(2, -2)]))
+    # if filtered omega is available, get the phase by integrating the 
+    # filtered omega.
     if filter_data_dict[f"omega_gw{data_tag}_filtered"] is not None:
-        filter_data_dict[f"phase_gw{data_tag}"] = (
-            np.cumsum(filter_data_dict[f"omega_gw{data_tag}"])
+        filter_data_dict[f"phase_gw{data_tag}_filtered"] = (
+            np.cumsum(filter_data_dict[f"omega_gw{data_tag}_filtered"])
             * (filter_obj.t[1] - filter_obj.t[0]))
-        filter_data_dict[f"phase_gw{data_tag}_original"] = (
-            0.5 * (data_dict[f"phaselm{data_tag}"][(2, 2)]
-                   - data_dict[f"phaselm{data_tag}"][(2, -2)]))
+        # set the phase to the filtered phase.
+        filter_data_dict[f"phase_gw{data_tag}"] \
+            = filter_data_dict[f"phase_gw{data_tag}_filtered"].copy()
     else:
-        filter_data_dict[f"phase_gw{data_tag}"] = (
-            0.5 * (data_dict[f"phaselm{data_tag}"][(2, 2)]
-                   - data_dict[f"phaselm{data_tag}"][(2, -2)]))
-        filter_data_dict[f"phase_gw{data_tag}_original"] = None
+        filter_data_dict[f"phase_gw{data_tag}"] \
+            = filter_data_dict[f"phase_gw{data_tag}_original"].copy()
+        filter_data_dict[f"phase_gw{data_tag}_filtered"] = None
 
     return filter_data_dict

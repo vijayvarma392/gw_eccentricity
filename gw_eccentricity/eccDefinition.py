@@ -459,7 +459,6 @@ class eccDefinition:
                 t_merger=self.t_merger,
                 filter_kwargs=filter_kwargs)
             for key in filtered_data.keys():
-                print(key)
                 setattr(self, key, filtered_data[key])
             extra_kwargs["filter_kwargs"] = filter_kwargs
         # Sanity check various kwargs and set default values
