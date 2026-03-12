@@ -458,10 +458,9 @@ class eccDefinition:
                 data_tag="",
                 t_merger=self.t_merger,
                 filter_kwargs=filter_kwargs)
-            self.amp_gw, self.omega_gw, self.amp_gw_unfiltered, self.omega_gw_unfiltered\
-            = filtered_data["amp_gw"], filtered_data["omega_gw"], filtered_data["amp_gw_unfiltered"], filtered_data["omega_gw_unfiltered"]
-            self.amp_gw_filter_segment_results = filtered_data["amp_gw_filter_segment_results"]
-            self.omega_gw_filter_segment_results = filtered_data["omega_gw_filter_segment_results"]
+            for key in filtered_data.keys():
+                print(key)
+                setattr(self, key, filtered_data[key])
             extra_kwargs["filter_kwargs"] = filter_kwargs
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
@@ -1712,7 +1711,7 @@ class eccDefinition:
             extrema = self.apocenters_location
         else:
             raise Exception("extrema_type must be either "
-                            "'pericenrers' or 'apocenters'.")
+                            "'pericenters' or 'apocenters'.")
         if len(extrema) >= 2:
             method = self.available_omega_gw_extrema_interpolation_methods[
                 self.omega_gw_extrema_interpolation_method]
@@ -2335,6 +2334,14 @@ class eccDefinition:
         self.check_if_dropped_too_many_extrema(original_apocenters,
                                                self.apocenters_location,
                                                "apocenters", 0.5)
+        
+        # if precessing and filtering was applied, then we may have bad
+        # extrema at the start of the data. Therefore, we drop extrema at
+        # the start of the data in such cases
+        if self.precessing and self.omega_gw_filtered is not None:
+            self.pericenters_location = self.pericenters_location[1:]
+            self.apocenters_location = self.apocenters_location[1:]
+
         # check that pericenters and apocenters are appearing alternately
         self.check_pericenters_and_apocenters_appear_alternately()
         # check extrema separation
