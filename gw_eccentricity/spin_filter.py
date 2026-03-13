@@ -1,6 +1,4 @@
 """Module to filter spin-induced oscillations."""
-from unittest import result
-
 import numpy as np
 from copy import deepcopy
 from scipy.interpolate import interp1d
@@ -10,6 +8,7 @@ from scipy.signal.windows import tukey
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from warnings import warn
 from .plot_settings import (
     use_fancy_plotsettings, labelsDict, figWidthsTwoColDict, figHeightsDict
     )
@@ -113,11 +112,11 @@ def _pn_fit_for_secular_trend(t, x, kind, t_merger):
     
     power = -3.0/8.0 if kind == "omega" else -1.0/4.0
     A_guess = np.mean(x) # typical amplitude of the data
-
+    
     def residuals(params):
-        t_merger, A, power = params
-        model = _pn_model(t, t_merger, A, power)
-        return x - model
+        t_merger_p, A, power = params
+        model = _pn_model(t, t_merger_p, A, power)
+        return (x - model)
     
     initial_guess = [t_merger, A_guess, power]
     result = least_squares(residuals, initial_guess)
@@ -204,6 +203,148 @@ class FilterSegmentResult:
     f_ecc: np.float64
     f_spin_guess: np.float64
     f_cutoff: np.float64
+
+
+def _get_fcut_fecc_fspin(t, data, f_spin_guess,
+                         fspin_lo_frac, fspin_hi_frac,
+                         fecc_lo_frac, fecc_hi_frac, verbose):
+    """Get f_cutoff, f_ecc, and f_spin from the amplitude spectrum.
+
+    The amplitude spectrum of the residual signal has two peaks: one at
+    the eccentricity-induced oscillation frequency f_ecc and one at the
+    spin-induced oscillation frequency f_spin. We identify both peaks
+    using the f_spin_guess as a prior, then set f_cutoff to the trough
+    between them so the low-pass filter removes spin-induced oscillations
+    while preserving the eccentricity signal.
+
+    Parameters
+    ----------
+    t : np.ndarray
+        Time array of the segment.
+    data : np.ndarray
+        Residual signal with secular trend removed.
+    f_spin_guess : float
+        Rough estimate of f_spin from the intersection timescale.
+    fspin_lo_frac : float
+        Lower bound for f_spin search as a fraction of f_spin_guess.
+        Default value is set in ``get_default_kwargs_for_filtering``.
+    fspin_hi_frac : float
+        Upper bound for f_spin search as a fraction of f_spin_guess.
+        Default value is set in ``get_default_kwargs_for_filtering``.
+    fecc_lo_frac : float
+        Lower bound for f_ecc search as a fraction of f_spin.
+        Default value is set in ``get_default_kwargs_for_filtering``.
+    fecc_hi_frac : float
+        Upper bound for f_ecc search as a fraction of f_spin.
+        Default value is set in ``get_default_kwargs_for_filtering``.
+
+    Returns
+    -------
+    f_cutoff : float
+        Cutoff frequency for the low-pass filter, set to the trough
+        between f_ecc and f_spin in the amplitude spectrum.
+    f_ecc : float
+        Eccentricity-induced oscillation frequency.
+    f_spin : float
+        Spin-induced oscillation frequency.
+    freqs : np.ndarray
+        Frequency array corresponding to the FFT of the input data.
+    spectrum : np.ndarray
+        Normalised amplitude spectrum ``|FFT(data)| / len(data)``.
+    """
+    fd = np.fft.rfft(data)
+    freqs = np.fft.rfftfreq(len(data), d=t[1] - t[0])
+    spectrum = np.abs(fd) / len(data)
+
+    # f_spin: argmax in [fspin_lo_frac, fspin_hi_frac] * f_spin_guess
+    mask_spin = ((freqs >= fspin_lo_frac * f_spin_guess)
+                & (freqs <= fspin_hi_frac * f_spin_guess))
+    if np.any(mask_spin):
+        f_spin = freqs[mask_spin][np.argmax(spectrum[mask_spin])]
+        if verbose:
+            print(f"✓ f_spin={f_spin:.5f}")
+    else:
+        f_spin = f_spin_guess
+        if verbose:
+            print(f"? No spin peak found in "
+                f"[{fspin_lo_frac}*f_spin_guess, {fspin_hi_frac}*f_spin_guess], "
+                f"using f_spin_guess={f_spin_guess:.5f} directly")
+
+    # f_ecc: argmax in [fecc_lo_frac, fecc_hi_frac] * f_spin
+    mask_ecc = ((freqs >= fecc_lo_frac * f_spin)
+                & (freqs <= fecc_hi_frac * f_spin))
+    if np.any(mask_ecc):
+        f_ecc = freqs[mask_ecc][np.argmax(spectrum[mask_ecc])]
+        if verbose:
+            print(f"✓ f_ecc={f_ecc:.5f}, ratio f_spin/f_ecc={f_spin/f_ecc:.2f}")
+    else:
+        f_ecc = f_spin / 2.5
+        if verbose:
+            print(f"? No eccentricity peak found in "
+                f"[{fecc_lo_frac}*f_spin, {fecc_hi_frac}*f_spin], "
+                f"setting f_ecc=f_spin/2.5={f_ecc:.5f}")
+
+    # f_cutoff: argmin in [f_ecc, f_spin]
+    mask_trough = (freqs >= f_ecc) & (freqs <= f_spin)
+    if np.any(mask_trough):
+        f_cutoff = freqs[mask_trough][np.argmin(spectrum[mask_trough])]
+        if verbose:
+            print(f"✓ f_cutoff={f_cutoff:.5f} (trough between f_ecc and f_spin)")
+    else:
+        f_cutoff = 0.5 * (f_spin + f_ecc)
+        if verbose:
+            print(f"? No trough found between f_ecc and f_spin, "
+                f"setting f_cutoff={f_cutoff:.5f}")
+
+    return f_cutoff, f_ecc, f_spin, freqs, spectrum
+
+
+def _make_lowpass_mask(frequencies, f_cutoff, taper_width):
+    """Build a smooth low-pass mask using a cosine taper around f_cutoff.
+
+    Instead of a hard cutoff (Gibbs ringing), the mask transitions
+    smoothly from 1 to 0 over a frequency range of taper_width * f_cutoff
+    centred on f_cutoff.
+
+    Parameters
+    ----------
+    frequencies : np.ndarray
+        FFT frequency axis.
+    f_cutoff : float
+        Cutoff frequency — mask is 1 below and 0 above.
+    taper_width : float, optional, default=0.2
+        Width of the cosine taper as a fraction of f_cutoff.
+
+    Returns
+    -------
+    np.ndarray
+        Smooth mask of the same length as frequencies.
+    """
+    f_low  = f_cutoff * (1 - taper_width)
+    f_high = f_cutoff * (1 + taper_width)
+
+    mask = np.ones(len(frequencies))
+    # cosine taper in the transition band [f_low, f_high]
+    taper_region = np.logical_and(frequencies >= f_low, frequencies <= f_high)
+    mask[taper_region] = 0.5 * (
+        1 + np.cos(np.pi * (frequencies[taper_region] - f_low) / (f_high - f_low))
+    )
+    mask[frequencies > f_high] = 0.0
+
+    return mask
+
+
+def _condition_data_for_fft(data, padding_length):
+    """Condition the data for FFT."""
+    # apply windowing
+    windowed_data = (np.hamming(len(data)) * data)
+    # apply zero-padding
+    padded_data_with_window = np.pad(windowed_data, (padding_length, padding_length),
+                            mode='constant', constant_values=0)
+    padded_data_no_window = np.pad(
+            data, (padding_length, padding_length), mode='constant', constant_values=0)
+    
+    return padded_data_with_window, padded_data_no_window
 
 
 class FilterSpinInducedOscillations:
@@ -302,8 +443,8 @@ class FilterSpinInducedOscillations:
             )
         if self.t_cross.size > 100:
                 if self.verbose:
-                    print(
-                        f"⚠️ Warning: {self.t_cross.size} crossing "
+                    warn(
+                        f"{self.t_cross.size} crossing "
                         f"points found, which may be due to noise or numerical"
                         "artifacts. Consider removing noise or applying a "
                         "preliminary smoothing to the data.")
@@ -337,197 +478,6 @@ class FilterSpinInducedOscillations:
             t, data, self.data_type, self.t_merger)
         secular = secular_trend(t)
         return secular, data - secular
-    
-    def _condition_data_for_filtering(self, data, padding_length):
-        """Condition the data for filtering."""
-        # apply windowing
-        windowed_data = (np.hamming(len(data)) * data)
-        # apply zero-padding
-        padded_data_with_window = np.pad(windowed_data, (padding_length, padding_length),
-                             mode='constant', constant_values=0)
-        padded_data_no_window = np.pad(
-                data, (padding_length, padding_length), mode='constant', constant_values=0)
-        
-        return padded_data_with_window, padded_data_no_window
-    
-    # def _get_cutoff_frequency(self, t, data, f_spin_guess):
-    #     """Get cutoff frequency for the low-pass filter based on the spin frequency guess."""
-    #     fd = np.fft.rfft(data)
-    #     frequencies = np.fft.rfftfreq(len(data), d=t[1] - t[0])
-        
-    #     # The amplitude spectrum will have two peaks, one at the spin-induced
-    #     # oscillation frequency and one at the eccentric oscillation frequency.
-    #     # We want to set the cutoff frequency to be between these two peaks to 
-    #     # filter out the spin-induced oscillations while preserving the eccentric
-    #     # oscillations. We can use the f_spin_guess to identify the spin-induced
-    #     # peak and then set the cutoff frequency at the trough between the two
-    #     # peaks or slightly above the spin-induced peak.
-
-    #     # estimate distance between peaks based on f_spin_guess
-    #     df = frequencies[1] - frequencies[0]
-    #     distance = int(f_spin_guess / df / 5)
-
-    #     peaks, _ = find_peaks(np.abs(fd), distance=distance)
-    #     troughs, _ = find_peaks(-np.abs(fd), distance=distance)
-    #     f_peaks = frequencies[peaks]
-    #     f_spin = f_peaks[f_peaks > 0.75 * f_spin_guess][0]
-    #     f_eccs = f_peaks[np.logical_and(
-    #         f_peaks > f_spin_guess / 4.0,
-    #         f_peaks < f_spin_guess / 2.0
-    #     )]
-    #     if len(f_eccs) > 0:
-    #             if self.verbose:
-    #                 print(f"✓ Found eccentricity peak at {f_eccs[0]:.5f}, "
-    #                       f"spin peak at {f_spin:.5f}")
-    #             f_ecc = f_eccs[0]
-    #     else:
-    #         if self.verbose:
-    #             print(f"? No clear eccentricity peak found, setting "
-    #                   f"f_ecc = f_spin / 2.5\n"
-    #                   f"f_spin={f_spin:.5f}, f_ecc={f_spin/2.5:.5f}")
-    #         f_ecc = f_spin / 2.5
-
-    #     f_troughs = frequencies[troughs]
-    #     f_cutoff_candidates = f_troughs[
-    #         np.logical_and(f_troughs > f_ecc, f_troughs < f_spin)]
-    #     if len(f_cutoff_candidates) > 0:
-    #         f_cutoff = f_cutoff_candidates[0]
-    #         if self.verbose:
-    #             print(f"✓ Setting cutoff frequency to trough at {f_cutoff:.5f}")
-    #     else:
-    #         f_cutoff = max(f_spin / 1.5, 0.5 * (f_spin + f_ecc))
-    #         if self.verbose:
-    #             print(f"? No clear trough found between spin and eccentricity "
-    #                   f"peaks, setting cutoff to {f_cutoff:.5f}")
-
-    #     return f_cutoff, f_spin, f_ecc, frequencies, np.abs(fd)/len(data)
-
-    def _get_fcut_fecc_fspin(self, t, data, f_spin_guess,
-                             fspin_lo_frac, fspin_hi_frac,
-                             fecc_lo_frac, fecc_hi_frac):
-        """Get f_cutoff, f_ecc, and f_spin from the amplitude spectrum.
-
-        The amplitude spectrum of the residual signal has two peaks: one at
-        the eccentricity-induced oscillation frequency f_ecc and one at the
-        spin-induced oscillation frequency f_spin. We identify both peaks
-        using the f_spin_guess as a prior, then set f_cutoff to the trough
-        between them so the low-pass filter removes spin-induced oscillations
-        while preserving the eccentricity signal.
-
-        Parameters
-        ----------
-        t : np.ndarray
-            Time array of the segment.
-        data : np.ndarray
-            Residual signal with secular trend removed.
-        f_spin_guess : float
-            Rough estimate of f_spin from the intersection timescale.
-        fspin_lo_frac : float
-            Lower bound for f_spin search as a fraction of f_spin_guess.
-            Default value is set in ``get_default_kwargs_for_filtering``.
-        fspin_hi_frac : float
-            Upper bound for f_spin search as a fraction of f_spin_guess.
-            Default value is set in ``get_default_kwargs_for_filtering``.
-        fecc_lo_frac : float
-            Lower bound for f_ecc search as a fraction of f_spin.
-            Default value is set in ``get_default_kwargs_for_filtering``.
-        fecc_hi_frac : float
-            Upper bound for f_ecc search as a fraction of f_spin.
-            Default value is set in ``get_default_kwargs_for_filtering``.
-
-        Returns
-        -------
-        f_cutoff : float
-            Cutoff frequency for the low-pass filter, set to the trough
-            between f_ecc and f_spin in the amplitude spectrum.
-        f_ecc : float
-            Eccentricity-induced oscillation frequency.
-        f_spin : float
-            Spin-induced oscillation frequency.
-        freqs : np.ndarray
-            Frequency array corresponding to the FFT of the input data.
-        spectrum : np.ndarray
-            Normalised amplitude spectrum ``|FFT(data)| / len(data)``.
-        """
-        fd = np.fft.rfft(data)
-        freqs = np.fft.rfftfreq(len(data), d=t[1] - t[0])
-        spectrum = np.abs(fd) / len(data)
-
-        # f_spin: argmax in [fspin_lo_frac, fspin_hi_frac] * f_spin_guess
-        mask_spin = ((freqs >= fspin_lo_frac * f_spin_guess)
-                    & (freqs <= fspin_hi_frac * f_spin_guess))
-        if np.any(mask_spin):
-            f_spin = freqs[mask_spin][np.argmax(spectrum[mask_spin])]
-            if self.verbose:
-                print(f"✓ f_spin={f_spin:.5f}")
-        else:
-            f_spin = f_spin_guess
-            if self.verbose:
-                print(f"? No spin peak found in "
-                    f"[{fspin_lo_frac}*f_spin_guess, {fspin_hi_frac}*f_spin_guess], "
-                    f"using f_spin_guess={f_spin_guess:.5f} directly")
-
-        # f_ecc: argmax in [fecc_lo_frac, fecc_hi_frac] * f_spin
-        mask_ecc = ((freqs >= fecc_lo_frac * f_spin)
-                    & (freqs <= fecc_hi_frac * f_spin))
-        if np.any(mask_ecc):
-            f_ecc = freqs[mask_ecc][np.argmax(spectrum[mask_ecc])]
-            if self.verbose:
-                print(f"✓ f_ecc={f_ecc:.5f}, ratio f_spin/f_ecc={f_spin/f_ecc:.2f}")
-        else:
-            f_ecc = f_spin / 2.5
-            if self.verbose:
-                print(f"? No eccentricity peak found in "
-                    f"[{fecc_lo_frac}*f_spin, {fecc_hi_frac}*f_spin], "
-                    f"setting f_ecc=f_spin/2.5={f_ecc:.5f}")
-
-        # f_cutoff: argmin in [f_ecc, f_spin]
-        mask_trough = (freqs >= f_ecc) & (freqs <= f_spin)
-        if np.any(mask_trough):
-            f_cutoff = freqs[mask_trough][np.argmin(spectrum[mask_trough])]
-            if self.verbose:
-                print(f"✓ f_cutoff={f_cutoff:.5f} (trough between f_ecc and f_spin)")
-        else:
-            f_cutoff = 0.5 * (f_spin + f_ecc)
-            if self.verbose:
-                print(f"? No trough found between f_ecc and f_spin, "
-                    f"setting f_cutoff={f_cutoff:.5f}")
-
-        return f_cutoff, f_ecc, f_spin, freqs, spectrum
-    
-    def _make_lowpass_mask(self, frequencies, f_cutoff, taper_width):
-        """Build a smooth low-pass mask using a cosine taper around f_cutoff.
-
-        Instead of a hard cutoff (Gibbs ringing), the mask transitions
-        smoothly from 1 to 0 over a frequency range of taper_width * f_cutoff
-        centred on f_cutoff.
-
-        Parameters
-        ----------
-        frequencies : np.ndarray
-            FFT frequency axis.
-        f_cutoff : float
-            Cutoff frequency — mask is 1 below and 0 above.
-        taper_width : float, optional, default=0.2
-            Width of the cosine taper as a fraction of f_cutoff.
-
-        Returns
-        -------
-        np.ndarray
-            Smooth mask of the same length as frequencies.
-        """
-        f_low  = f_cutoff * (1 - taper_width)
-        f_high = f_cutoff * (1 + taper_width)
-
-        mask = np.ones(len(frequencies))
-        # cosine taper in the transition band [f_low, f_high]
-        taper_region = np.logical_and(frequencies >= f_low, frequencies <= f_high)
-        mask[taper_region] = 0.5 * (
-            1 + np.cos(np.pi * (frequencies[taper_region] - f_low) / (f_high - f_low))
-        )
-        mask[frequencies > f_high] = 0.0
-
-        return mask
 
     def _filter_segment(self, t_mid, padding_length, taper_width, f_spin_lo_frac,
                         f_spin_hi_frac, fecc_lo_frac, fecc_hi_frac):
@@ -539,19 +489,19 @@ class FilterSpinInducedOscillations:
         # get the secular and residual from the data
         secular, residual = self._get_secular_and_residual(t_seg, data_seg)
         # condition data for proper fft
-        residual_windowed, residual_no_window = self._condition_data_for_filtering(
+        residual_windowed, residual_no_window = _condition_data_for_fft(
             residual, padding_length=padding_length)
         # get the cutoff frequency from amplitude spectrum
-        f_cutoff, f_ecc, f_spin, freq_spectrum, amp_spectrum = self._get_fcut_fecc_fspin(
-            t_seg, residual_windowed, f_spin_guess,
-            f_spin_lo_frac, f_spin_hi_frac, fecc_lo_frac, fecc_hi_frac)
+        f_cutoff, f_ecc, f_spin, freq_spectrum, amp_spectrum = _get_fcut_fecc_fspin(
+            t_seg, residual_windowed, f_spin_guess, f_spin_lo_frac,
+            f_spin_hi_frac, fecc_lo_frac, fecc_hi_frac, self.verbose)
         
         # lowpass filter to remove the faster spin-induced oscillation
         fd = np.fft.rfft(residual_no_window)
         frequencies = np.fft.rfftfreq(
             len(residual_no_window), d=t_seg[1] - t_seg[0])
         # fd[frequencies > f_cutoff] = 0
-        mask = self._make_lowpass_mask(frequencies, f_cutoff, taper_width)
+        mask = _make_lowpass_mask(frequencies, f_cutoff, taper_width)
         residual_smooth = np.fft.irfft(
                 fd * mask, n=len(residual_no_window))[padding_length:-padding_length]
 
@@ -729,13 +679,13 @@ class FilterSpinInducedOscillations:
 
 def get_default_kwargs_for_filtering():
     """Default kwargs for filtering spin-induced oscillations.
-    
-    Returns:
-    --------
+
+    Returns
+    -------
     dict
         Dictionary containing allowed filter parameters and their default
         values:
-        
+
         - "filter_threshold": Threshold for the mode asymmetry to be considered
           significant compared to the (2, 2) mode in the coprecessing frame.
           Default is 0.2, meaning that if the maximum amplitude of the
@@ -746,11 +696,6 @@ def get_default_kwargs_for_filtering():
           filter being applied to data where the spin-induced oscillations are
           not significant, and in high eccentricity cases, it may even lead to
           removal of eccentric higher harmonics.
-        - "debug_plots": Whether to generate debug plots to visualize the
-          filtering process.
-        - "padding_length": Length of zero-padding to apply on either side of
-          the data segment before performing FFT-based filtering. This helps
-          mitigate edge effects in the FFT.
         - "alpha": Factor determining how much to advance the segment center
           for each iteration of filtering, in units of the local delta T between
           crossings. A smaller alpha means more overlap between segments and
@@ -766,32 +711,46 @@ def get_default_kwargs_for_filtering():
           defaults to the same data type being filtered.
         - "verbose": Whether to print detailed information about the filtering
           process.
+        - "debug_plots": Whether to generate debug plots to visualize the
+          filtering process.
+        - "do_not_filter": If True, skip filtering even if requirements are met,
+          and return original data. Useful for testing and debugging.
+        - "padding_length": Length of zero-padding to apply on either side of
+          the data segment before performing FFT-based filtering. This helps
+          mitigate edge effects in the FFT.
         - "taper_width": Width of the cosine taper used in the low-pass filter,
           as a fraction of the cutoff frequency. This controls how smoothly the
           filter transitions from passing frequencies below cutoff to attenuating
           frequencies above cutoff.
-        - "do_not_filter": If True, skip filtering even if requirements are met,
-          and return original data. Useful for testing and debugging.
+        - "f_spin_lo_frac": Lower bound for the spin-frequency search window,
+          as a fraction of ``f_spin_guess``.
+        - "f_spin_hi_frac": Upper bound for the spin-frequency search window,
+          as a fraction of ``f_spin_guess``.
+        - "fecc_lo_frac": Lower bound for the eccentricity-frequency search
+          window, as a fraction of ``f_spin``.
+        - "fecc_hi_frac": Upper bound for the eccentricity-frequency search
+          window, as a fraction of ``f_spin``.
     """
     return {
         "filter_threshold": 0.2,
-        "debug_plots": False,
-        "padding_length": 2*10**4,
         "alpha": 2,
-        "f_spin_lo_frac": 0.75,
-        "f_spin_hi_frac": 1.25,
-        "fecc_lo_frac": 0.25,
-        "fecc_hi_frac": 0.5,
         "segment_size": 15,
         "data_type_for_filter_requirement_check": None,
         "data_type_for_fspin_estimate": None,
         "verbose": False,
+        "debug_plots": False,
+        "do_not_filter": False,
+        "padding_length": 2*10**4,
         "taper_width": 0.2,
-        "do_not_filter": False
+        "f_spin_lo_frac": 0.75,
+        "f_spin_hi_frac": 1.25,
+        "fecc_lo_frac": 0.25,
+        "fecc_hi_frac": 0.5
     }
 
 
-def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger, filter_kwargs):
+def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger,
+                                               filter_kwargs):
     """Get filtered amp_gw, omega_gw after removing spin-induced oscillations.
     
     Parameters
@@ -853,7 +812,7 @@ def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger, fi
 
         if filter_obj.filtering_required and filter_kwargs["do_not_filter"]:
             if filter_kwargs["verbose"]:
-                print(f"⚠️ Warning: Filter requirements are met for {data_type}, but "
+                warn(f"Filter requirements are met for {data_type}, but "
                       "filtering is skipped due to do_not_filter=True. Returning "
                       "original data.")
 
