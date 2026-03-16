@@ -446,20 +446,36 @@ class eccDefinition:
         # (2, 2) mode values. See `get_amp_phase_omega_gw` for more details.
         self.amp_gw, self.phase_gw, self.omega_gw \
             = self.get_amp_phase_omega_gw(self.dataDict)
-        # filter spin induced oscillation if required
+        # Filter spin induced oscillation if required.
+        # For precessing systems, the mode asymmetry between the positive and
+        # negative m modes in the coprecessing frame can cause oscillations in
+        # amp_gw, phase_gw and omega_gw. These oscillations occur at the
+        # timescale smaller than the orbital timescale. For larger eccentricities,
+        # these oscillations do not affect the eccentricity measurement, but for
+        # smaller eccentricities, they can cause significant issues. 
+        # To mitigate this issue, we first check whether these sub orbitalscale
+        # oscillations due to spin-precession is significant enough to cause
+        # issues. If yes, then we apply a low pass filter to remove these
+        # oscillations. The details of the filtering procedure are described in
+        # `spin_filter.py`.
         if self.precessing:
+            # set kwargs for filtering.
             filter_kwargs = check_kwargs_and_set_defaults(
                 extra_kwargs.get("filter_kwargs", {}) if extra_kwargs is not None else {},
                 get_default_kwargs_for_filtering(),
                 "filter_kwargs",
                 "spin_filter.get_default_kwargs_for_filtering()")
+            # check if filtering is required and filter if necessary.
             filtered_data = check_and_filter_spin_induced_oscillations(
                 data_dict=deepcopy(self.dataDict),
                 data_tag="",
                 t_merger=self.t_merger,
                 filter_kwargs=filter_kwargs)
+            # make the data from filtering process available for future
+            # diagnostics and debugging.
             for key in filtered_data.keys():
                 setattr(self, key, filtered_data[key])
+            # update the extra_kwargs
             extra_kwargs["filter_kwargs"] = filter_kwargs
         # Sanity check various kwargs and set default values
         self.extra_kwargs = check_kwargs_and_set_defaults(
@@ -865,7 +881,7 @@ class eccDefinition:
             if num_orbits_to_exclude_before_merger < 0:
                 raise ValueError(
                     "num_orbits_to_exclude_before_merger must be non-negative."
-                    " Given value was {num_orbits}")
+                    f" Given value was {num_orbits_to_exclude_before_merger}")
             index_num_orbits_earlier_than_merger \
                 = self.get_index_at_num_orbits_earlier_than_merger(
                     phase_gw,
