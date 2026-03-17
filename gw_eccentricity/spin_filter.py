@@ -4,11 +4,10 @@ from copy import deepcopy
 from scipy.interpolate import interp1d
 from scipy.optimize import least_squares
 from scipy.signal import find_peaks
-from scipy.signal.windows import tukey
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from warnings import warn
+from gw_eccentricity.utils import debug_message
 from .plot_settings import (
     use_fancy_plotsettings, labelsDict, figWidthsTwoColDict, figHeightsDict
     )
@@ -86,7 +85,7 @@ def _pn_model(t, t_merger, A, power):
     return A * (t_merger - t)**power
 
 
-def _pn_fit_for_secular_trend(t, x, kind, t_merger):
+def _pn_fit_for_secular_trend(t, x, data_type, t_merger):
     """Fit a post-Newtonian model to the secular trend of the signal.
     
     Parameters
@@ -95,7 +94,7 @@ def _pn_fit_for_secular_trend(t, x, kind, t_merger):
         Time array.
     x : array-like
         Signal array.
-    kind : str
+    data_type : str
         Type of data to fit, one of ["omega", "amp"].
     t_merger : float
         Time of the merger of the binary, used as a reference for fitting.
@@ -105,12 +104,13 @@ def _pn_fit_for_secular_trend(t, x, kind, t_merger):
     function
         Fitted function for the secular trend.
     """
-    allowed_kinds = ["omega", "amp"]
-    if kind not in allowed_kinds:
+    allowed_data_types = ["omega", "amp"]
+    if data_type not in allowed_data_types:
         raise ValueError(
-            f"Unknown fit kind: {kind}. Allowed kinds are: {allowed_kinds}")
+            f"Unknown fit data type: {data_type}. "
+            f"Allowed data types are: {allowed_data_types}")
     
-    power = -3.0/8.0 if kind == "omega" else -1.0/4.0
+    power = -3.0/8.0 if data_type == "omega" else -1.0/4.0
     A_guess = np.mean(x) # typical amplitude of the data
     
     def residuals(params):
@@ -166,8 +166,17 @@ def check_filter_requirement(t, data_copr_22, data_copr_2m2,
     secular_trend = _pn_fit_for_secular_trend(t, data_copr_22, data_type, t_merger)
     residual = data_copr_22 - secular_trend(t)
 
-    max_res_amp = np.max(np.abs(residual[:-10000]))
-    max_asym_amp = np.max(np.abs(asymmetry[:-10000]))
+    # find an estimate of distance between the peaks
+    _, _, delta_T = _find_intersection_points(
+        t, data_copr_22, combination_sign * data_copr_2m2)
+    distance = int(2 * delta_T[-1]/(t[1] - t[0]))
+
+    res_peaks = find_peaks(residual, distance=distance)[0]
+    asym_peaks = find_peaks(asymmetry, distance=distance)[0]
+
+    max_res_amp = np.mean(residual[res_peaks])
+    max_asym_amp = np.mean(asymmetry[asym_peaks])
+
     ratio = max_asym_amp / max_res_amp
 
     if debug_plots:
@@ -176,13 +185,20 @@ def check_filter_requirement(t, data_copr_22, data_copr_2m2,
             figsize=(figWidthsTwoColDict[style], figHeightsDict[style]))
         ax.plot(t, asymmetry, label="Asymmetry")
         ax.plot(t, residual, label="Residual")
+        ax.plot(t[asym_peaks], asymmetry[asym_peaks], "o", label="Asymmetry peaks")
+        ax.plot(t[res_peaks], residual[res_peaks], "x", label="Residual peaks")
+        ax.axhline(threshold * max_res_amp,
+                   label=fr"Threshold = {threshold:.1f} $\times$ Avg Max Residual Amp",
+                   c="tab:red", ls="--")
+        ax.axhline(max_asym_amp, label="Avg Max asymmetry Amp", c="tab:orange", ls="--")
+        ax.axhline(max_res_amp, label="Avg Max residual Amp", c="tab:green", ls="--")
         ax.set_xlabel(labelsDict["t"])
-        ax.legend()
+        ax.legend(ncols=3, loc="upper left")
         ax.set_title(f"Max asymmetry amplitude: {max_asym_amp:.3e}, "
                      f"Max residual amplitude: {max_res_amp:.3e}, "
                      f"Ratio: {ratio:.3f}")
         fig.tight_layout()
-        fig.savefig("debug_filter_requirement.png", dpi=300)
+        fig.savefig(f"debug_filter_requirement_{data_type}.png", dpi=300)
         plt.close(fig)
 
     return ratio > threshold
@@ -276,7 +292,15 @@ def _get_fcut_fecc_fspin(t, data, f_spin_guess,
     if np.any(mask_ecc):
         f_ecc = freqs[mask_ecc][np.argmax(spectrum[mask_ecc])]
         if verbose:
-            print(f"✓ f_ecc={f_ecc:.5f}, ratio f_spin/f_ecc={f_spin/f_ecc:.2f}")
+            spin_ratio = f_spin / f_ecc
+            if spin_ratio < 3.0:
+                print(f"✓ f_ecc={f_ecc:.5f}, ratio f_spin/f_ecc={f_spin/f_ecc:.2f}")
+            else:
+                print(
+                    f"⚠️ f_ecc={f_ecc:.5f}, ratio f_spin/f_ecc={f_spin/f_ecc:.2f} "
+                    "is quite large, which may indicate that the identified "
+                    "f_ecc is not the true eccentricity peak. This segment may not "
+                    "be reliable for eccentricity estimation.")
     else:
         f_ecc = f_spin / 2.5
         if verbose:
@@ -349,37 +373,62 @@ def _condition_data_for_fft(data, padding_length):
 
 class FilterSpinInducedOscillations:
     """Class to filter spin-induced oscillations from a signal."""
-    def __init__(self, data_dict, data_type, t_merger=None,
-                 segment_size=10,
-                 data_type_for_fspin_estimate=None,
-                 data_type_for_filter_requirement_check=None,
-                 data_tag="",
-                 debug_plots=False,
-                 filter_threshold=0.2,
-                 verbose=0):
+    def __init__(
+            self, data_dict, data_type, segment_size, filter_threshold,
+            data_type_for_fspin_estimate,
+            data_type_for_filter_requirement_check,
+            debug_plots,
+            debug_level,
+            data_tag="",
+            t_merger=None):
         """Initialize the filter.
 
         Parameters
         ----------
         t : array-like
             Time array.
-        data_copr_22 : array-like
-            Coprecessing frame data for the (2, 2) mode.
-        data_copr_2m2 : array-like
-            Coprecessing frame data for the (2, -2) mode.
-        t_merger : float
-            Time of the merger of the binary, used as a reference for fitting
-            the secular trend.
-        segment_size : float, optional, default=10
-            Size of the segments to filter, defined in terms of the local delta T
-            between crossings. This allows the filter to adapt to the changing
-            frequency of the signal, which is crucial for effectively filtering
-            the spin-induced oscillations without distorting the underlying
-            secular trend.
-        use_this_data_for_fspin_estimate : str, optional, default="amp"
-            Data to use for estimating frequency of the spin induced oscillations.
-        debug_plots : bool, optional, default=False
+        data_dict : dict
+            Dictionary containing data in the coprecessing frame, with keys
+            "t", "amplm{data_tag}", "omegalm{data_tag}", "phaselm{data_tag}"
+            where data_tag is an optional string appended to the keys.
+            See ``data_tag`` parameter.
+        data_type : str
+            Type of data to filter, one of ["amp", "omega"].
+        segment_size : float
+            Size of each segment for local filtering, in units of the local
+            delta T between crossings, meaning each segment
+            will be segment_size * delta_T wide.
+            Default value is set in ``get_default_kwargs_for_filtering``.
+        filter_threshold : float
+            Threshold for checking filter requirement, defined as the minimum
+            ratio of the mode asymmetry to the residual for the filter to be
+            applied. Default value is set in
+            ``get_default_kwargs_for_filtering``.
+        data_type_for_fspin_estimate : str or None
+            Type of data to use for estimating f_spin from the crossing timescale.
+            If None, set it to ``data_type``.
+            Default value is set in ``get_default_kwargs_for_filtering``.
+        data_type_for_filter_requirement_check : str or None
+            Type of data to use for checking the filter requirement.
+            If None, set it to ``data_type``.
+            Default value is set in ``get_default_kwargs_for_filtering``.
+        debug_plots : bool
             Whether to generate debug plots to visualize the filtering process.
+            Default value is set in ``get_default_kwargs_for_filtering``.
+        debug_level : int
+            Level of debug information to print. Higher values mean more verbose output.
+            Default value is set in ``get_default_kwargs_for_filtering``.
+        data_tag : str, optional, default=""
+            Optional string tag appended to the keys in data_dict to specify which
+            dataset to use. For example, if data_tag="_zeroecc", the filter will
+            use data_dict["amplm{data_tag}"] = data_dict["amplm_zeroecc"] for the
+            amplitude data. Default is "" (empty string), meaning it will look for
+            keys like "amplm" and "omegalm" without any additional tag.
+         t_merger : float or None, optional, default=None
+            Time of the merger of the binary, used as a reference for fitting 
+            the secular trend.
+            If None, it will be set to the time corresponding to the peak of 
+            the symmetrized amplitude of the (2, 2) and (2, -2) modes.
         """
         _allowed_data_type = ["amp", "omega"]
         _allowed_data_tags = ["", "_zeroecc"]
@@ -413,7 +462,7 @@ class FilterSpinInducedOscillations:
         self.segment_size = segment_size
         self.debug_plots = debug_plots
         self.filter_threshold = filter_threshold
-        self.verbose = verbose
+        self.debug_level = debug_level
         if t_merger is None:
             t_merger = self.t[np.argmax(data_dict["amplm" + data_tag][(2, 2)] + data_dict["amplm" + data_tag][(2, -2)])]
         self.t_merger = t_merger
@@ -442,12 +491,11 @@ class FilterSpinInducedOscillations:
                * (1 if self.data_type_for_fspin_estimate == "amp" else -1))
             )
         if self.t_cross.size > 100:
-                if self.verbose:
-                    warn(
+            debug_message(
                         f"{self.t_cross.size} crossing "
                         f"points found, which may be due to noise or numerical"
                         "artifacts. Consider removing noise or applying a "
-                        "preliminary smoothing to the data.")
+                        "preliminary smoothing to the data.", level=self.debug_level)
         self.delta_T_interp = _build_delta_T_interpolant(self.t_mid, self.delta_T)
    
     def _make_segment(self, t_mid):
@@ -494,7 +542,7 @@ class FilterSpinInducedOscillations:
         # get the cutoff frequency from amplitude spectrum
         f_cutoff, f_ecc, f_spin, freq_spectrum, amp_spectrum = _get_fcut_fecc_fspin(
             t_seg, residual_windowed, f_spin_guess, f_spin_lo_frac,
-            f_spin_hi_frac, fecc_lo_frac, fecc_hi_frac, self.verbose)
+            f_spin_hi_frac, fecc_lo_frac, fecc_hi_frac, self.debug_level)
         
         # lowpass filter to remove the faster spin-induced oscillation
         fd = np.fft.rfft(residual_no_window)
@@ -556,7 +604,7 @@ class FilterSpinInducedOscillations:
 
         iter = 0
         while t_s < self.t[-1]:
-            if self.verbose:
+            if self.debug_level > 0:
                 print(f"========== iter = {iter}: segment center at = {t_s} =================")
             result = self._filter_segment(
                 t_s, padding_length, taper_width, f_spin_lo_frac, f_spin_hi_frac,
@@ -709,8 +757,9 @@ def get_default_kwargs_for_filtering():
         - "data_type_for_fspin_estimate": Data type ("amp" or "omega") to use
           for estimating the frequency of spin-induced oscillations. If None,
           defaults to the same data type being filtered.
-        - "verbose": Whether to print detailed information about the filtering
-          process.
+        - "debug_level": Level of debug information to print. Higher values
+          result in more detailed output. See under `utils.debug_message` for
+          more details on the debug levels and their meanings.
         - "debug_plots": Whether to generate debug plots to visualize the
           filtering process.
         - "do_not_filter": If True, skip filtering even if requirements are met,
@@ -737,7 +786,7 @@ def get_default_kwargs_for_filtering():
         "segment_size": 15,
         "data_type_for_filter_requirement_check": None,
         "data_type_for_fspin_estimate": None,
-        "verbose": False,
+        "debug_level": 0,
         "debug_plots": False,
         "do_not_filter": False,
         "padding_length": 2*10**4,
@@ -804,20 +853,21 @@ def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger,
             data_type_for_fspin_estimate=filter_kwargs["data_type_for_fspin_estimate"],
             debug_plots=filter_kwargs["debug_plots"],
             filter_threshold=filter_kwargs["filter_threshold"],
-            verbose=filter_kwargs["verbose"],
+            debug_level=filter_kwargs["debug_level"],
         )
 
         original = filter_obj.data.copy()
         base_key = f"{data_type}_gw{data_tag}"
 
         if filter_obj.filtering_required and filter_kwargs["do_not_filter"]:
-            if filter_kwargs["verbose"]:
-                warn(f"Filter requirements are met for {data_type}, but "
-                      "filtering is skipped due to do_not_filter=True. Returning "
-                      "original data.")
+                debug_message(
+                    f"Filter requirements are met for {data_type}, but "
+                    "filtering is skipped due to do_not_filter=True. Returning "
+                    "original data.", debug_level=filter_kwargs["debug_level"],
+                    important=True)
 
         if filter_obj.filtering_required and not filter_kwargs["do_not_filter"]:
-            if filter_kwargs["verbose"]:
+            if filter_kwargs["debug_level"] > 0:
                 print(f"✅ Filter requirements are met for {data_type}, applying filter.")
 
             filtered = filter_obj.apply_filter(
@@ -834,7 +884,7 @@ def check_and_filter_spin_induced_oscillations(data_dict, data_tag, t_merger,
             filter_data_dict[f"{base_key}_filtered"]               = filtered
             filter_data_dict[f"{base_key}_filter_segment_results"] = filter_obj.filter_segment_results
 
-            if filter_kwargs["verbose"]:
+            if filter_kwargs["debug_level"] > 0:
                 print(f"✅ Finished filtering {data_type}.")
         else:
             filter_data_dict[base_key]                             = original
