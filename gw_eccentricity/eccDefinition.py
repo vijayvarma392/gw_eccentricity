@@ -460,8 +460,10 @@ class eccDefinition:
         # `spin_filter.py`.
         if self.precessing:
             # set kwargs for filtering.
+            user_filter_kwargs = extra_kwargs.get(
+                "filter_kwargs", {}) if extra_kwargs is not None else {}
             filter_kwargs = check_kwargs_and_set_defaults(
-                extra_kwargs.get("filter_kwargs", {}) if extra_kwargs is not None else {},
+                user_filter_kwargs,
                 get_default_kwargs_for_filtering(),
                 "filter_kwargs",
                 "spin_filter.get_default_kwargs_for_filtering()")
