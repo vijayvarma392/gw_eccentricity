@@ -65,6 +65,15 @@ def _build_delta_T_interpolant(t_mid, delta_t):
 
 def _pn_model(t, t_merger, A, power):
     """Post-Newtonian model for secular trend.
+
+    In the leading Post-Newtonian order, the frequency and amplitude of the
+    (2, 2) mode of gravitational waves from a binary on a quasicircular orbit
+    evolve as power laws of the time to merger, t_merger - t. See equations
+    (484), (485) and (521a) in Blanchet, Living Reviews in Relativity (2024)
+    27:4, https://doi.org/10.1007/s41114-024-00050-z
+    
+    We can use this to fit the secular trend on these quantities for binaries
+    on eccentric orbits.
     
     Parameters
     ----------
@@ -87,6 +96,13 @@ def _pn_model(t, t_merger, A, power):
 
 def _pn_fit_for_secular_trend(t, x, data_type, t_merger):
     """Fit a post-Newtonian model to the secular trend of the signal.
+
+    In the leading Post-Newtonian order, the frequency and amplitude of the
+    (2, 2) mode of gravitational waves from a binary on a quasicircular orbit
+    evolve as power laws of the time to merger, t_merger - t. For frequency,
+    the power is -3/8, and for amplitude, the power is -1/4. See equations
+    (484), (485) and (521a) in Blanchet, Living Reviews in Relativity (2024)
+    27:4, https://doi.org/10.1007/s41114-024-00050-z
     
     Parameters
     ----------
@@ -110,6 +126,8 @@ def _pn_fit_for_secular_trend(t, x, data_type, t_merger):
             f"Unknown fit data type: {data_type}. "
             f"Allowed data types are: {allowed_data_types}")
     
+    # See equations (484), (485) and (521a) in Blanchet, Living Reviews in 
+    # Relativity (2024) 27:4, https://doi.org/10.1007/s41114-024-00050-z
     power = -3.0/8.0 if data_type == "omega" else -1.0/4.0
     A_guess = np.mean(x) # typical amplitude of the data
     
@@ -131,7 +149,7 @@ def check_filter_requirement(t, data_copr_22, data_copr_2m2,
     
     We set the requirement for filtering to True when the mode asymmetry
     becomes greater than a threshold fraction of (2, 2) mode in the
-    coprecessing frame.
+    coprecessing frame. For details, see Section 2.7.3 in https://arxiv.org/abs/2507.08345
 
     Parameters
     ----------
@@ -232,6 +250,7 @@ def _get_fcut_fecc_fspin(t, data, f_spin_guess,
     using the f_spin_guess as a prior, then set f_cutoff to the trough
     between them so the low-pass filter removes spin-induced oscillations
     while preserving the eccentricity signal.
+    For details, see Section 2.7.1 in https://arxiv.org/abs/2507.08345
 
     Parameters
     ----------
@@ -484,6 +503,12 @@ class FilterSpinInducedOscillations:
             return None
 
         # build interpolant for the delta T between crossings
+        # the time between crossings gives us an estimate of the timescale of
+        # the spin-induced oscillations, which we can use to adaptively choose
+        # the segment size for local filtering and to get a prior for the 
+        # spin-induced oscillation frequency in the amplitude spectrum.
+        # See Section 2.7.1 in https://arxiv.org/abs/2507.08345 for details on
+        # using the crossing timescale to estimate f_spin.
         self.t_cross, self.t_mid, self.delta_T = _find_intersection_points(
             t=self.t,
             x=data_dict[self.data_type_for_fspin_estimate + "lm" + self.data_tag][(2, 2)],
@@ -529,7 +554,15 @@ class FilterSpinInducedOscillations:
 
     def _filter_segment(self, t_mid, padding_length, taper_width, f_spin_lo_frac,
                         f_spin_hi_frac, fecc_lo_frac, fecc_hi_frac):
-        """Filter a single segment of the data centered at t_mid."""
+        """Filter a single segment of the data centered at t_mid.
+        
+        Given a segment of data we remove the spin-induced oscillations by
+        low-pass filtering the residual after removing the secular trend.
+        See Section 2.7.2 in https://arxiv.org/abs/2507.08345 for details on
+        the filtering procedure, including how we identify the spin-induced
+        oscillation frequency from the amplitude spectrum of the residual and
+        how we choose the cutoff frequency for the low-pass filter.
+        """
         # get data segment
         t_seg, data_seg = self._make_segment(t_mid)
         # get the estimated spin oscillation frequency
@@ -568,7 +601,13 @@ class FilterSpinInducedOscillations:
             f_cutoff=f_cutoff)
 
     def _combine_segments(self, results):
-        """Combine the filtered segments back into a single signal."""
+        """Combine the filtered segments back into a single signal.
+        
+        To remove edge effects from the local filtering, we combine the
+        filtered segments, which overlap in time, using a weighted average with
+        a Hanning window. 
+        For more details, see Section 2.7.2 in https://arxiv.org/abs/2507.08345
+        """
         y_full = np.zeros_like(self.t)
         w_full = np.zeros_like(self.t)
 
@@ -599,6 +638,7 @@ class FilterSpinInducedOscillations:
         # We start at the start of the data and then advance by 
         # dt = alpha * delta_T_spin, where delta_T_spin is the timescale of
         # the local spin-induced oscillations.
+        # For more details, see Section 2.7.2 in https://arxiv.org/abs/2507.08345
         t_s = self.t[0]
         results = []
 
