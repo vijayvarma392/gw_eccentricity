@@ -1,5 +1,4 @@
 """Reconstruct eccentricity posterior from Bilby generated posterior."""
-import os
 import bilby
 import pandas as pd
 from .post_process import PostProcess
@@ -13,20 +12,9 @@ class PostProcessForBilby(PostProcess):
     """
 
     def __init__(self, *args, **kwargs):
-        """Init for PostProcessForBilby class.
-
-        Notes
-        -----
-        ``super().__init__()`` calls ``self.get_posterior()``, which sets
-        ``self.bilby_result`` as a side effect. Therefore
-        ``self.bilby_result`` is safe to access after the super().__init__
-        call returns.
-        """
+        """Init for PostProcessForBilby class."""
         super().__init__(*args, **kwargs)
         self.posterior_type = "Bilby"
-        # self.bilby_result is set inside get_posterior(),
-        # which is called by super().__init__() above.
-        self.posterior_meta_data = self.bilby_result.meta_data
 
     def get_bilby_result(self):
         """Get Bilby result object for the given posterior file.
@@ -41,21 +29,48 @@ class PostProcessForBilby(PostProcess):
         FileNotFoundError
             If the posterior file does not exist.
         """
-        if not os.path.exists(self.posterior_file):
-            raise FileNotFoundError(
-                f"Cannot find Bilby posterior file: {self.posterior_file}")
-        return bilby.result.read_in_result(filename=self.posterior_file)
-
+        if not hasattr(self, "posteriror_result"):
+            try:
+                self.posterior_result = bilby.result.read_in_result(
+                    filename=self.posterior_file)
+            except FileNotFoundError:
+                raise FileNotFoundError(
+                    f"Cannot find Bilby posterior file: {self.posterior_file}")
+        return self.posterior_result
+    
     def get_posterior(self):
-        """Get posterior DataFrame from Bilby result file.
-
-        Sets ``self.bilby_result`` as a side effect so that
-        ``__init__`` can access Bilby metadata after this call returns.
-
+        """Get the posterior.
+        
         Returns
         -------
         posterior : pandas.DataFrame
-            DataFrame of posterior samples.
+            Posterior samples as a pandas DataFrame.
+
+        Sets the following attributes:
+        - posterior_result: Bilby result object.
+        - posterior_meta_data: Meta data from the Bilby result object.
+        - posterior: Posterior samples as a pandas DataFrame.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the posterior file does not exist.
         """
-        self.bilby_result = self.get_bilby_result()
-        return self.bilby_result.posterior  # already a DataFrame
+        self.posterior_result = self.get_bilby_result()
+        self.posterior_meta_data = self.posterior_result.meta_data
+        self.posterior = self.posterior_result.posterior
+        return self.posterior
+
+    def get_injection(self):
+        """Get the injection parameters from injection file."""
+        if self.injection_file is None:
+            raise ValueError("Injection file is not provided.")
+        try:
+            injection = pd.read_csv(self.injection_file, sep=" ")
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Cannot find injection file: {self.injection_file}")
+        # add other params from result
+        injection["minimum_frequency"] = self.posterior.iloc[0]["minimum_frequency"]
+        injection["mean_per_ano"] = 0 #self.posterior.iloc[0]["mean_per_ano"]
+        return injection

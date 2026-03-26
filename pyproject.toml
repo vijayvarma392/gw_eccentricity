@@ -35,6 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 posterior = [
+  "joblib",
   "tqdm",
   "pandas",
   "bilby"
