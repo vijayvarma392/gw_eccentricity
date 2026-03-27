@@ -26,10 +26,19 @@ requires-python = ">=3.8"
 dependencies = [
   "numpy",
   "scipy",
+  "matplotlib",
   "h5py",
   "lalsuite",
   "sxs",
   "scri"
+]
+
+[project.optional-dependencies]
+posterior = [
+  "joblib",
+  "tqdm",
+  "pandas",
+  "bilby"
 ]
 
 [project.urls]
