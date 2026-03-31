@@ -3,10 +3,7 @@ from mpi4py import MPI
 import pandas as pd
 import numpy as np
 import bilby
-
 from gw_eccentricity.posterior.postprocess import postprocess_sample
-import sys
-sys.path.append("/Users/arif/teobresums_reviewed/Python/")
 from teob_backward_evolution import teob_data_dict_generator
 
 comm = MPI.COMM_WORLD
@@ -18,12 +15,18 @@ STOP = None
 
 
 def master(posterior, config):
+    save_every = config.get("save_every")
+    if save_every is not None and save_every <= 0:
+        raise ValueError("save_every must be a positive integer or None")
+
     samples = config["samples"]
     if samples is None:
         samples = list(posterior.index)
     elif isinstance(samples, (int, np.integer)):
         samples = [samples]
-    param_list = posterior.loc[samples].to_dict(orient="records")
+    selected_posterior = posterior.loc[samples]
+    row_indices = list(selected_posterior.index)
+    param_list = selected_posterior.to_dict(orient="records")
 
     # send initial jobs
     for i, worker in enumerate(range(1, size)):
@@ -34,14 +37,22 @@ def master(posterior, config):
 
     next_idx = size - 1
     results = [None] * len(param_list)
+    chunk_results = []
+    chunk_id = 0
 
     completed = 0
     while completed < len(param_list):
         worker_rank, idx, res = comm.recv(source=MPI.ANY_SOURCE)
 
-        res.update({"params": param_list[idx]})
+        res.update({"sample_index": row_indices[idx]})
         results[idx] = res
+        chunk_results.append(res)
         completed += 1
+
+        if save_every is not None and len(chunk_results) >= save_every:
+            chunk_id += 1
+            save_chunk_results(chunk_results, selected_posterior, config, chunk_id)
+            chunk_results = []
 
         if next_idx < len(param_list):
             comm.send((next_idx, param_list[next_idx]), dest=worker_rank)
@@ -52,7 +63,16 @@ def master(posterior, config):
         if completed % 100 == 0:
             print(f"Completed {completed}/{len(param_list)}")
 
-    save_results(results, config)
+    if save_every is not None and chunk_results:
+        chunk_id += 1
+        save_chunk_results(chunk_results, selected_posterior, config, chunk_id)
+
+    results_df = pd.DataFrame(results)
+    combined_df = selected_posterior.copy()
+    combined_df["sample_index"] = row_indices
+    combined_df = combined_df.merge(results_df, on="sample_index", how="left")
+
+    save_results(combined_df, config)
 
 
 def worker(config):
@@ -82,14 +102,31 @@ def get_bilby_posterior(config):
     return posterior
 
 
-def save_results(results, config):
+def save_chunk_results(chunk_results, selected_posterior, config, chunk_id):
+    chunk_df = pd.DataFrame(chunk_results)
+    chunk_merged = selected_posterior.merge(chunk_df, left_index=True, right_on="sample_index", how="inner")
+
+    output_path = (
+        f"{config['output_dir']}/eccentricity_results_chunk_{chunk_id:04d}.{config['output_format']}"
+    )
+    if config["output_format"] == "json":
+        chunk_merged.to_json(output_path)
+    elif config["output_format"] == "csv":
+        chunk_merged.to_csv(output_path, index=False)
+    elif config["output_format"] == "parquet":
+        chunk_merged.to_parquet(output_path)
+    else:
+        raise ValueError(f"Unsupported output format: {config['output_format']}")
+
+
+def save_results(results_df, config):
     output_path = f"{config['output_dir']}/eccentricity_results.{config['output_format']}"
     if config["output_format"] == "json":
-        pd.DataFrame(results).to_json(output_path)
+        results_df.to_json(output_path)
     elif config["output_format"] == "csv":
-        pd.DataFrame(results).to_csv(output_path, index=False)
+        results_df.to_csv(output_path, index=False)
     elif config["output_format"] == "parquet":
-        pd.DataFrame(results).to_parquet(output_path)
+        results_df.to_parquet(output_path)
     else:
         raise ValueError(f"Unsupported output format: {config['output_format']}")
 
@@ -99,7 +136,8 @@ if __name__ == "__main__":
         "posterior_path": "/Users/arif/Desktop/TEOB_chi0_9_ecc0_3_samples.hdf5",
         "output_dir": ".",
         "output_format": "csv",
-        "samples": range(100), # set to None to process all samples
+        "save_every": 100, # set to None to save only at the end, or a positive integer to save intermediate results every N samples
+        "samples": range(1000), # set to None to process all samples
         "fref": 10,
         "data_dict_generator": teob_data_dict_generator,
         "data_dict_generator_extra_kwargs": {"backwards": "yes", "ode_tmax": 1.0},

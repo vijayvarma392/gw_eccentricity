@@ -38,7 +38,9 @@ posterior = [
   "mpi4py",
   "pyarrow",
   "pandas",
-  "bilby"
+  "bilby",
+  "joblib",
+  "tqdm"
 ]
 
 [project.urls]

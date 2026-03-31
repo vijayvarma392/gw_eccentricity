@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+sys.path.append("/Users/arif/teobresums_reviewed/Python/")
 import EOBRun_module as EOB
 import argparse
 
