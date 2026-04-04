@@ -9,10 +9,10 @@ CMD=(
 	--output-dir "/Users/arif/Desktop/"
 	--output-format csv
 	--save-every none
-	--samples 0:1000
+	--samples 0:100
 	--fref 10
 	--method AmplitudeFits
-	--data-dict-generator "/Users/arif/gw_eccentricity/gw_eccentricity/posterior/examples/teob_backward_evolution.py:teob_data_dict_generator"
+	--data-dict-generator "/Users/arif/gw_eccentricity/gw_eccentricity/postprocess/examples/teob_backward_evolution.py:teob_data_dict_generator"
 	--data-dict-generator-extra-kwargs '{"backwards":"yes","ode_tmax":1}'
 	--gw-eccentricity-kwargs '{}'
 )

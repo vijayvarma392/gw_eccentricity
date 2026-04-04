@@ -12,7 +12,7 @@ import pandas as pd
 from mpi4py import MPI
 
 import bilby
-from gw_eccentricity.posterior.postprocess import postprocess_sample
+from gw_eccentricity.postprocess.core import postprocess_sample, PostProcessResults
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -100,8 +100,9 @@ def load_callable(import_path, arg_name):
 # Core work unit
 # ---------------------------------------------------------------------------
 
-def run_postprocess(params, config):
+def run_postprocess(sample_index, params, config):
     return postprocess_sample(
+        sample_index=sample_index,
         params=params,
         fref=config["fref"],
         data_dict_generator=config["data_dict_generator"],
@@ -111,14 +112,13 @@ def run_postprocess(params, config):
     )
 
 
-def _safe_run(idx, params, config):
-    """Run postprocessing, catching any exception so workers never hang master."""
-    try:
-        return run_postprocess(params, config)
-    except Exception as exc:
-        tb = traceback.format_exc()
-        print(f"[ERROR] rank {rank}, sample index {idx}: {exc}\n{tb}", flush=True)
-        return {"error": str(exc), "traceback": tb}
+def run_postprocess_batch(sample_indices, params_list, config):
+    """Process a batch of samples."""
+    results = []
+    for sample_index, params in zip(sample_indices, params_list):
+        res = run_postprocess(sample_index, params, config)
+        results.append(res)
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +137,7 @@ def write_df(df, path, fmt):
 
 
 def save_chunk(chunk_results, selected_posterior, config, chunk_id):
-    chunk_df = pd.DataFrame(chunk_results)
+    chunk_df = PostProcessResults(chunk_results).to_dataframe()
     merged = selected_posterior.merge(
         chunk_df, left_index=True, right_on="sample_index", how="left"
     )
@@ -161,7 +161,7 @@ def save_final(results, row_indices, selected_posterior, config):
             f"{'...' if len(missing_indices) > 10 else ''}"
         )
 
-    results_df = pd.DataFrame([r for r in results if r is not None])
+    results_df = PostProcessResults([r for r in results if r is not None]).to_dataframe()
     combined = selected_posterior.copy()
     combined["sample_index"] = row_indices
     combined = combined.merge(results_df, on="sample_index", how="left")
@@ -231,8 +231,7 @@ def master(posterior, config):
     # ---- single-process fast path (no mpirun) --------------------------------
     if size == 1:
         for idx, params in enumerate(param_list):
-            res = _safe_run(idx, params, config)
-            res["sample_index"] = row_indices[idx]
+            res = run_postprocess(row_indices[idx], params, config)
             results[idx] = res
             chunk_results.append(res)
             progress.tick()
@@ -250,33 +249,47 @@ def master(posterior, config):
         return
 
     # ---- MPI master/worker loop ----------------------------------------------
-    # Prime workers: send one job each (or _STOP if fewer jobs than workers).
-    next_idx = 0
+    # Map sample_index to position for efficient lookup
+    sample_index_to_pos = {idx: pos for pos, idx in enumerate(row_indices)}
+
+    batch_size = 50  # Process 50 samples per batch to reduce MPI overhead
+
+    # Prime workers: send one batch each (or _STOP if fewer batches than workers).
+    next_pos = 0
     for worker_rank in range(1, size):
-        if next_idx < n:
-            comm.send((next_idx, param_list[next_idx]), dest=worker_rank)
-            next_idx += 1
+        if next_pos < n:
+            end_pos = min(next_pos + batch_size, n)
+            batch_indices = row_indices[next_pos:end_pos]
+            batch_params = param_list[next_pos:end_pos]
+            comm.send((batch_indices, batch_params), dest=worker_rank)
+            next_pos = end_pos
         else:
             comm.send(_STOP, dest=worker_rank)
 
     completed = 0
     while completed < n:
-        worker_rank, idx, res = comm.recv(source=MPI.ANY_SOURCE)
+        worker_rank, batch_indices, batch_results = comm.recv(source=MPI.ANY_SOURCE)
 
-        res["sample_index"] = row_indices[idx]
-        results[idx] = res
-        chunk_results.append(res)
-        completed += 1
-        progress.tick()
+        # Process all results in the batch
+        for sample_index, res in zip(batch_indices, batch_results):
+            pos = sample_index_to_pos[sample_index]
+            results[pos] = res
+            chunk_results.append(res)
+            completed += 1
+            progress.tick()
 
-        if save_every and len(chunk_results) >= save_every:
-            chunk_id += 1
-            save_chunk(chunk_results, selected_posterior, config, chunk_id)
-            chunk_results = []
+            if save_every and len(chunk_results) >= save_every:
+                chunk_id += 1
+                save_chunk(chunk_results, selected_posterior, config, chunk_id)
+                chunk_results = []
 
-        if next_idx < n:
-            comm.send((next_idx, param_list[next_idx]), dest=worker_rank)
-            next_idx += 1
+        # Send next batch to the freed worker
+        if next_pos < n:
+            end_pos = min(next_pos + batch_size, n)
+            batch_indices = row_indices[next_pos:end_pos]
+            batch_params = param_list[next_pos:end_pos]
+            comm.send((batch_indices, batch_params), dest=worker_rank)
+            next_pos = end_pos
         else:
             comm.send(_STOP, dest=worker_rank)
 
@@ -292,9 +305,9 @@ def worker(config):
         msg = comm.recv(source=MASTER)
         if msg == _STOP:
             break
-        idx, params = msg
-        res = _safe_run(idx, params, config)
-        comm.send((rank, idx, res), dest=MASTER)
+        sample_indices, params_list = msg
+        results = run_postprocess_batch(sample_indices, params_list, config)
+        comm.send((rank, sample_indices, results), dest=MASTER)
 
 
 # ---------------------------------------------------------------------------

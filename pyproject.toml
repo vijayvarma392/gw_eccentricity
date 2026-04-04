@@ -34,10 +34,10 @@ dependencies = [
 ]
 
 [project.scripts]
-gw-eccentricity-postprocess = "gw_eccentricity.posterior.postprocess_cli:main"
+gw-eccentricity-postprocess = "gw_eccentricity.postprocess.postprocess_cli:main"
 
 [project.optional-dependencies]
-posterior = [
+postprocess = [
   "mpi4py",
   "pyarrow",
   "pandas",

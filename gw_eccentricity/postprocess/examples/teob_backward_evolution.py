@@ -3,14 +3,13 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append("/Users/arif/teobresums_reviewed/Python/")
 import EOBRun_module as EOB
-import argparse
+
 
 def teob_data_dict_generator(params, kwargs=None):
     """Generate a data dictionary.
 
-    For a given sample index, posterior, and additional keyword arguments.
-    The returned is used by gw_eccentricity to measure eccentricity from the
-    waveform modes.
+    Generate teobresums-dali waveform modes to be used by
+    gw_eccentricity.
     """
     if kwargs is None:
         kwargs = {}
