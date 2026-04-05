@@ -4,15 +4,12 @@ import importlib
 import importlib.util
 import json
 import time
-import traceback
 from pathlib import Path
-
-import numpy as np
+from typing import TypedDict, Callable
 import pandas as pd
 from mpi4py import MPI
-
 import bilby
-from gw_eccentricity.postprocess.core import postprocess_sample, PostProcessResults
+from gw_eccentricity.postprocess.core import postprocess_sample, PostProcessResults, PostProcessResult
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -20,6 +17,22 @@ size = comm.Get_size()
 
 MASTER = 0
 _STOP = "STOP"
+
+
+class PostProcessConfig(TypedDict):
+    """Configuration dictionary for postprocessing."""
+    posterior_type: str
+    posterior_path: str
+    output_dir: str
+    output_format: str
+    save_every: int | None
+    samples: list[int] | None
+    fref: float
+    method: str
+    batch_size: int
+    data_dict_generator: Callable
+    data_dict_generator_extra_kwargs: dict
+    gw_eccentricity_kwargs: dict
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +113,10 @@ def load_callable(import_path, arg_name):
 # Core work unit
 # ---------------------------------------------------------------------------
 
-def run_postprocess(sample_index, params, config):
+def run_postprocess(
+        sample_index: int, 
+        params: dict, config: 
+        PostProcessConfig) -> PostProcessResult:
     return postprocess_sample(
         sample_index=sample_index,
         params=params,
@@ -112,7 +128,11 @@ def run_postprocess(sample_index, params, config):
     )
 
 
-def run_postprocess_batch(sample_indices, params_list, config):
+def run_postprocess_batch(
+        sample_indices: list[int],
+        params_list: list[dict],
+        config: PostProcessConfig
+        ) -> list[PostProcessResult]:
     """Process a batch of samples."""
     results = []
     for sample_index, params in zip(sample_indices, params_list):
@@ -121,11 +141,23 @@ def run_postprocess_batch(sample_indices, params_list, config):
     return results
 
 
+def extract_batch_data(
+        to_process_batch: list) -> tuple[list[int], list[dict]]:
+    """Extract sample indices and params from to_process tuples.
+
+    to_process items are (position, sample_index, params) tuples.
+    Returns (sample_indices, params_list).
+    """
+    sample_indices = [item[1] for item in to_process_batch]
+    params_list = [item[2] for item in to_process_batch]
+    return sample_indices, params_list
+
+
 # ---------------------------------------------------------------------------
 # I/O helpers
 # ---------------------------------------------------------------------------
 
-def write_df(df, path, fmt):
+def write_df(df: pd.DataFrame, path: str, fmt: str) -> None:
     if fmt == "json":
         df.to_json(path)
     elif fmt == "csv":
@@ -136,23 +168,26 @@ def write_df(df, path, fmt):
         raise ValueError(f"Unsupported output format: {fmt!r}")
 
 
-def save_chunk(chunk_results, selected_posterior, config, chunk_id):
-    chunk_df = PostProcessResults(chunk_results).to_dataframe()
-    merged = selected_posterior.merge(
-        chunk_df, left_index=True, right_on="sample_index", how="left"
-    )
-    dropped = merged["sample_index"].isna().sum()
-    if dropped:
-        print(f"[WARNING] chunk {chunk_id}: {dropped} rows missing after merge")
-    path = (
-        f"{config['output_dir']}/eccentricity_results_chunk_{chunk_id:04d}"
-        f".{config['output_format']}"
-    )
-    write_df(merged, path, config["output_format"])
-    print(f"  → chunk {chunk_id} saved: {path}", flush=True)
+def load_checkpoint(checkpoint_path: str) -> pd.DataFrame | None:
+    """Load checkpoint if it exists."""
+    if not Path(checkpoint_path).exists():
+        return None
+    return pd.read_parquet(checkpoint_path)
 
 
-def save_final(results, row_indices, selected_posterior, config):
+def save_checkpoint(results: list, config: PostProcessConfig) -> None:
+    """Save results to checkpoint file (parquet format)."""
+    results_df = PostProcessResults(results).to_dataframe()
+    checkpoint_path = f"{config['output_dir']}/checkpoint.parquet"
+    results_df.to_parquet(checkpoint_path)
+    print(f"  → checkpoint saved: {checkpoint_path}", flush=True)
+
+
+def save_final(
+        results: list, 
+        row_indices: list, 
+        selected_posterior: pd.DataFrame, 
+        config: PostProcessConfig) -> None:
     missing_indices = [row_indices[i] for i, r in enumerate(results) if r is None]
     if missing_indices:
         print(
@@ -206,12 +241,12 @@ class _Progress:
 # Master / worker
 # ---------------------------------------------------------------------------
 
-def master(posterior, config):
-    save_every = config.get("save_every")
-    if save_every is not None and save_every <= 0:
-        raise ValueError("save_every must be a positive integer or None")
-
+def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
     Path(config["output_dir"]).mkdir(parents=True, exist_ok=True)
+
+    # Load checkpoint if it exists
+    checkpoint_path = f"{config['output_dir']}/checkpoint.parquet"
+    checkpoint_df = load_checkpoint(checkpoint_path)
 
     samples = config["samples"]
     if samples is None:
@@ -221,86 +256,126 @@ def master(posterior, config):
     param_list = selected_posterior.to_dict(orient="records")
     n = len(param_list)
 
-    print(f"Processing {n} samples across {size} rank(s).", flush=True)
+    # Determine which samples to process
+    processed_indices = set()
+    if checkpoint_df is not None:
+        processed_indices = set(checkpoint_df["sample_index"].dropna().unique())
 
-    progress = _Progress(n)
+    to_process = [
+        (i, idx, params) for i, (idx, params) in enumerate(zip(row_indices, param_list))
+        if idx not in processed_indices
+    ]
+
+    # Initialize results array and position mapping (only if needed)
     results = [None] * n
-    chunk_results = []
-    chunk_id = 0
+
+    # Build sample_index_to_pos only when needed (checkpoint reconstruction or MPI)
+    sample_index_to_pos = None
+    if checkpoint_df is not None or size > 1:
+        sample_index_to_pos = {idx: pos for pos, idx in enumerate(row_indices)}
+
+    if checkpoint_df is not None and sample_index_to_pos is not None:
+        for row_dict in checkpoint_df.to_dict('records'):
+            sample_idx = row_dict["sample_index"]
+            if sample_idx in sample_index_to_pos:
+                pos = sample_index_to_pos[sample_idx]
+                res = PostProcessResult(
+                    sample_index=int(sample_idx),
+                    status=row_dict["status"],
+                    egw=row_dict.get("egw"),
+                    lgw=row_dict.get("lgw"),
+                    error_message=row_dict.get("error_message"),
+                )
+                results[pos] = res
+
+    n_to_process = len(to_process)
+    print(
+        f"Total samples: {n}, Already processed: {len(processed_indices)}, "
+        f"Remaining: {n_to_process}",
+        flush=True,
+    )
+
+    if n_to_process == 0:
+        print("All samples already processed.", flush=True)
+        save_final(results, row_indices, selected_posterior, config)
+        # Signal workers to stop if running MPI
+        if size > 1:
+            for worker_rank in range(1, size):
+                comm.send(_STOP, dest=worker_rank)
+        return
+
+    print(f"Processing {n_to_process} samples across {size} rank(s).", flush=True)
+
+    progress = _Progress(n_to_process)
+    checkpoint_interval = config.get("save_every")  # None = don't checkpoint during processing
+    samples_since_checkpoint = 0
 
     # ---- single-process fast path (no mpirun) --------------------------------
     if size == 1:
-        for idx, params in enumerate(param_list):
-            res = run_postprocess(row_indices[idx], params, config)
+        for idx, sample_idx, params in to_process:
+            res = run_postprocess(sample_idx, params, config)
             results[idx] = res
-            chunk_results.append(res)
+            samples_since_checkpoint += 1
             progress.tick()
 
-            if save_every and len(chunk_results) >= save_every:
-                chunk_id += 1
-                save_chunk(chunk_results, selected_posterior, config, chunk_id)
-                chunk_results = []
+            if checkpoint_interval and samples_since_checkpoint >= checkpoint_interval:
+                save_checkpoint(results, config)
+                samples_since_checkpoint = 0
 
-        if save_every and chunk_results:
-            chunk_id += 1
-            save_chunk(chunk_results, selected_posterior, config, chunk_id)
+        if checkpoint_interval and samples_since_checkpoint > 0:
+            save_checkpoint(results, config)
 
         save_final(results, row_indices, selected_posterior, config)
         return
 
     # ---- MPI master/worker loop ----------------------------------------------
-    # Map sample_index to position for efficient lookup
-    sample_index_to_pos = {idx: pos for pos, idx in enumerate(row_indices)}
-
-    batch_size = 50  # Process 50 samples per batch to reduce MPI overhead
+    batch_size = config["batch_size"]  # Get batch size from config
 
     # Prime workers: send one batch each (or _STOP if fewer batches than workers).
-    next_pos = 0
+    next_batch_idx = 0
     for worker_rank in range(1, size):
-        if next_pos < n:
-            end_pos = min(next_pos + batch_size, n)
-            batch_indices = row_indices[next_pos:end_pos]
-            batch_params = param_list[next_pos:end_pos]
+        if next_batch_idx < len(to_process):
+            end_idx = min(next_batch_idx + batch_size, len(to_process))
+            batch = to_process[next_batch_idx:end_idx]
+            batch_indices, batch_params = extract_batch_data(batch)
             comm.send((batch_indices, batch_params), dest=worker_rank)
-            next_pos = end_pos
+            next_batch_idx = end_idx
         else:
             comm.send(_STOP, dest=worker_rank)
 
     completed = 0
-    while completed < n:
+    while completed < n_to_process:
         worker_rank, batch_indices, batch_results = comm.recv(source=MPI.ANY_SOURCE)
 
         # Process all results in the batch
         for sample_index, res in zip(batch_indices, batch_results):
             pos = sample_index_to_pos[sample_index]
             results[pos] = res
-            chunk_results.append(res)
+            samples_since_checkpoint += 1
             completed += 1
             progress.tick()
 
-            if save_every and len(chunk_results) >= save_every:
-                chunk_id += 1
-                save_chunk(chunk_results, selected_posterior, config, chunk_id)
-                chunk_results = []
+            if checkpoint_interval and samples_since_checkpoint >= checkpoint_interval:
+                save_checkpoint(results, config)
+                samples_since_checkpoint = 0
 
         # Send next batch to the freed worker
-        if next_pos < n:
-            end_pos = min(next_pos + batch_size, n)
-            batch_indices = row_indices[next_pos:end_pos]
-            batch_params = param_list[next_pos:end_pos]
+        if next_batch_idx < len(to_process):
+            end_idx = min(next_batch_idx + batch_size, len(to_process))
+            batch = to_process[next_batch_idx:end_idx]
+            batch_indices, batch_params = extract_batch_data(batch)
             comm.send((batch_indices, batch_params), dest=worker_rank)
-            next_pos = end_pos
+            next_batch_idx = end_idx
         else:
             comm.send(_STOP, dest=worker_rank)
 
-    if save_every and chunk_results:
-        chunk_id += 1
-        save_chunk(chunk_results, selected_posterior, config, chunk_id)
+    if checkpoint_interval and samples_since_checkpoint > 0:
+        save_checkpoint(results, config)
 
     save_final(results, row_indices, selected_posterior, config)
 
 
-def worker(config):
+def worker(config: PostProcessConfig) -> None:
     while True:
         msg = comm.recv(source=MASTER)
         if msg == _STOP:
@@ -314,7 +389,7 @@ def worker(config):
 # Config
 # ---------------------------------------------------------------------------
 
-def build_config_from_cli():
+def build_config_from_cli() -> PostProcessConfig:
     parser = argparse.ArgumentParser(
         description="Run eccentricity postprocessing in parallel using MPI"
     )
@@ -335,7 +410,7 @@ def build_config_from_cli():
         type=parse_int_or_none,
         default=None,
         metavar="N",
-        help="Save intermediate chunk files every N samples (or 'none')",
+        help="Save results to file every N samples (or 'none')",
     )
     parser.add_argument(
         "--samples",
@@ -345,6 +420,13 @@ def build_config_from_cli():
     )
     parser.add_argument("--fref", type=float, default=10.0)
     parser.add_argument("--method", default="AmplitudeFits")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        metavar="N",
+        help="Number of samples per batch for MPI communication (default: 100)",
+    )
     parser.add_argument(
         "--data-dict-generator",
         required=True,
@@ -376,6 +458,7 @@ def build_config_from_cli():
         "samples": parse_samples(args.samples),
         "fref": args.fref,
         "method": args.method,
+        "batch_size": args.batch_size,
         "data_dict_generator": load_callable(
             args.data_dict_generator, "data-dict-generator"
         ),
@@ -393,7 +476,7 @@ def build_config_from_cli():
 # Entry point
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     # Each rank parses CLI independently — callables cannot be bcast'd.
     config = build_config_from_cli()
 
