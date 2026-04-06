@@ -2,6 +2,7 @@
 import bilby
 import pandas as pd
 from .postprocess import PostProcess
+from .core import filter_posterior_columns
 
 
 class PostProcessForBilby(PostProcess):
@@ -17,13 +18,16 @@ class PostProcessForBilby(PostProcess):
         self.posterior_result = None
         super().__init__(*args, **kwargs)
     
-    def get_posterior(self):
+    def get_posterior(self, parameter_columns: list[str] | None = None
+                      ) -> pd.DataFrame:
         """Get the posterior.
         
         Returns
         -------
         posterior : pandas.DataFrame
             Posterior samples as a pandas DataFrame.
+            If `parameter_columns` is provided, only the specified columns will
+            be returned. Otherwise, the full posterior will be returned.
 
         Raises
         ------
@@ -37,7 +41,11 @@ class PostProcessForBilby(PostProcess):
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"Cannot find Bilby posterior file: {self.posterior_file}")
-        return self.posterior_result.posterior
+        posterior = self.posterior_result.posterior
+        if parameter_columns is not None:
+            return filter_posterior_columns(posterior, parameter_columns)
+        else:
+            return posterior
 
     def get_injection(self):
         """Get the injection parameters from injection file."""

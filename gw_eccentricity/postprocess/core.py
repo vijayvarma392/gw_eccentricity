@@ -80,6 +80,31 @@ class FrefBoundsResults:
         return max(summary['fref_min']), min(summary['fref_max'])
 
 
+def filter_posterior_columns(
+        posterior: pd.DataFrame,
+        parameter_columns: list[str]
+) -> pd.DataFrame:
+    """Filter posterior DataFrame to only include columns used by
+    ``data_dict_generator``.
+
+    Parameters
+    ----------
+    posterior : pd.DataFrame
+        Full posterior DataFrame.
+    parameter_columns : list[str]
+        Column names required by the data_dict_generator.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame with only the requested columns.
+    """
+    missing = [k for k in parameter_columns if k not in posterior.columns]
+    if missing:
+        raise ValueError(f"Columns not found in posterior: {missing}")
+    return posterior[parameter_columns].copy()
+
+
 def get_data_dict(
         params: dict,
         data_dict_generator: callable,

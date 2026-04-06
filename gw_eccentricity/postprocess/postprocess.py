@@ -22,6 +22,7 @@ class PostProcess:
     """
 
     def __init__(self, posterior_file, data_dict_generator,
+                 parameter_columns=None,
                  data_dict_generator_extra_kwargs=None, injection_file=None):
         """Init for PostProcess class.
 
@@ -50,8 +51,10 @@ class PostProcess:
             Path to file containing the injection parameters.
         """
         self.posterior_file = posterior_file
-        self.posterior = self.get_posterior()
-        if not isinstance(self.posterior, pd.core.frame.DataFrame):
+        self.parameter_columns = parameter_columns
+        self.posterior = self.get_posterior(
+            parameter_columns=self.parameter_columns)
+        if not isinstance(self.posterior, pd.DataFrame):
             raise TypeError(
                 f"{self.posterior} should be a pandas DataFrame "
                 f"and not a {type(self.posterior)}.")
@@ -67,10 +70,18 @@ class PostProcess:
                                            else {})
         self.injection_file = injection_file
 
-    def get_posterior(self):
+    def get_posterior(self, parameter_columns: list[str] | None = None
+                      ) -> pd.DataFrame:
         """Get the posterior from posterior file.
 
-        The returned posterior should be a Pandas DataFrame.
+        The returned posterior should be a Pandas DataFrame. If
+        `parameter_columns` is provided, the returned DataFrame should only
+        contain the columns specified in `parameter_columns`, which should be
+        the columns required by the ``data_dict_generator`` to generate the
+        waveform modes for the samples in the posterior. If `parameter_columns`
+        is not provided, the returned DataFrame should contain all columns in the
+        posterior file, and the caller is expected to filter the columns before
+        passing the sample parameters to the ``data_dict_generator``.
         """
         raise NotImplementedError(
             "Please override this function to fetch the posterior samples "
@@ -156,6 +167,37 @@ class PostProcess:
         if fig is None or ax is None:
             fig, ax = plt.subplots(figsize=figsize)
         ax.hist(self.posterior["eccentricity"], **kwargs)
+        ax.set_xlabel("Eccentricity")
+        ax.set_ylabel("Number of samples")
+        return fig, ax
+    
+    def plot_mean_per_ano_posterior(self, fig=None, ax=None, figsize=(6, 4),
+                                    **kwargs):
+        """Plot the mean per ano posterior as a histogram.
+
+        Parameters
+        ----------
+        fig : object, default=None
+            Figure object to add the plot to. If None, a new figure is created.
+        ax : object, default=None
+            Axis object to add the plot to. If None, a new axis is created.
+        figsize : tuple, default=(6, 4)
+            Figure size, used only when creating a new figure.
+        **kwargs : dict, optional
+            Extra arguments passed to ``matplotlib.pyplot.Axes.hist``.
+
+        Returns
+        -------
+        fig, ax : tuple
+            Returned when ``fig`` or ``ax`` is None (new objects were created).
+        ax : object
+            Returned when both ``fig`` and ``ax`` were provided by the caller.
+        """
+        if fig is None or ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+        ax.hist(self.posterior["mean_per_ano"], **kwargs)
+        ax.set_xlabel("Mean periastron anomaly (radians)")
+        ax.set_ylabel("Number of samples")
         return fig, ax
 
     def postprocess(self, fref, samples=None, method="Amplitude",
@@ -210,7 +252,7 @@ class PostProcess:
                 "postprocess_result is empty. Run postprocess first.")
         return self.postprocess_result.get_summary()
 
-    def get_egw_posterior(self):
+    def get_gw_eccentricity_posterior(self):
         """Return eccentricity and mean anomaly from the post-processed result.
 
         Returns
@@ -257,13 +299,54 @@ class PostProcess:
             Returned when both ``fig`` and ``ax`` were provided by the caller.
         """
         use_fancy_plotsettings(style=style, usetex=usetex)
-        egw_posterior = self.get_egw_posterior()
+        egw_posterior = self.get_gw_eccentricity_posterior()["egw"]
         if fig is None or ax is None:
             figsize = (figWidthsTwoColDict[style] if two_col else figWidthsOneColDict[style], 
                        figHeightsDict[style])
             fig, ax = plt.subplots(figsize=figsize)
-        ax.hist(egw_posterior["egw"], **kwargs)
+        ax.hist(egw_posterior, **kwargs)
         ax.set_xlabel(labelsDict["eccentricity"])
+        ax.set_ylabel("Number of samples")
+        return fig, ax
+    
+    def plot_lgw_posterior(self, fig=None, ax=None,
+                           usetex=False,
+                           style="Notebook",
+                           two_col=False,
+                           **kwargs):
+        """Plot the mean anomaly posterior from gw_eccentricity as a histogram.
+
+        Parameters
+        ----------
+        fig : object, default=None
+            Figure object to add the plot to. If None, a new figure is created.
+        ax : object, default=None
+            Axis object to add the plot to. If None, a new axis is created.
+        usetex : bool, default=False
+            Whether to use LaTeX for text rendering.
+        style : str, default="Notebook"
+            Plot style to use. See plot_settings.use_fancy_plotsettings for
+            available styles.
+        two_col : bool, default=False
+            Whether to use a two-column layout for the figure.
+        **kwargs : dict, optional
+            Extra arguments passed to ``matplotlib.pyplot.Axes.hist``.
+
+        Returns
+        -------
+        fig, ax : tuple
+            Returned when ``fig`` or ``ax`` is None (new objects were created).
+        ax : object
+            Returned when both ``fig`` and ``ax`` were provided by the caller.
+        """
+        use_fancy_plotsettings(style=style, usetex=usetex)
+        lgw_posterior = self.get_gw_eccentricity_posterior()["lgw"]
+        if fig is None or ax is None:
+            figsize = (figWidthsTwoColDict[style] if two_col else figWidthsOneColDict[style], 
+                       figHeightsDict[style])
+            fig, ax = plt.subplots(figsize=figsize)
+        ax.hist(lgw_posterior, **kwargs)
+        ax.set_xlabel(labelsDict["mean_anomaly"])
         ax.set_ylabel("Number of samples")
         return fig, ax
 
