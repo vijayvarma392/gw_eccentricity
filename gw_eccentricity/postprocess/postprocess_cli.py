@@ -221,9 +221,6 @@ def save_final(
 
     path = f"{config['output_dir']}/eccentricity_results.{config['output_format']}"
     write_df(combined, path, config["output_format"])
-
-    path = f"{config['output_dir']}/eccentricity_results.{config['output_format']}"
-    write_df(combined, path, config["output_format"])
     logger.info("Final results saved: %s", path)
 
 
@@ -265,12 +262,45 @@ class _Progress:
 # ---------------------------------------------------------------------------
 
 def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
+    """Coordinate postprocessing from rank 0.
+
+    High-level flow
+    ---------------
+    1. Create output directory and load checkpoint data if available.
+    2. Select requested posterior samples and build a positional view of work.
+    3. Load checkpointed results and skip already processed samples.
+    4. Run remaining work either:
+       - locally (single-process path), or
+       - via MPI master/worker batching (multi-rank path).
+    5. Periodically write checkpoint snapshots when ``save_every`` is set.
+    6. Merge final results back onto the selected posterior rows and write
+       output in the requested format.
+
+    Notes
+    -----
+        - ``results`` is always aligned to ``selected_posterior`` order, not to
+            execution order.
+        - Checkpoint replay treats all previously recorded sample indices as
+            skippable work (both ``success`` and ``fail`` statuses are terminal).
+        - In MPI mode, workers receive batches of
+        ``(sample_indices, params_list)`` and return matching batch results.
+    """
     Path(config["output_dir"]).mkdir(parents=True, exist_ok=True)
 
-    # Load checkpoint if it exists
+    # Stage 1: resume state from checkpoint if available.
     checkpoint_path = f"{config['output_dir']}/checkpoint.parquet"
     checkpoint_df = load_checkpoint(checkpoint_path)
+    if checkpoint_df is not None:
+        required_columns = {"sample_index", "status"}
+        missing_columns = required_columns.difference(checkpoint_df.columns)
+        if missing_columns:
+            logger.warning(
+                "Ignoring checkpoint due to missing columns %s in %s",
+                sorted(missing_columns), checkpoint_path,
+            )
+            checkpoint_df = None
 
+    # Stage 2: select the subset of posterior samples requested by the user.
     samples = config["samples"]
     if samples is None:
         samples = list(posterior.index)
@@ -279,11 +309,11 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
     param_list = selected_posterior.to_dict(orient="records")
     n = len(param_list)
 
-    # Determine which samples to process (only skip previously successful ones)
+    # Stage 3: compute pending work; any prior recorded status is skipped.
     processed_indices = set()
     if checkpoint_df is not None:
         processed_indices = set(
-            checkpoint_df.loc[checkpoint_df["status"] == "success", "sample_index"]
+            checkpoint_df.loc[:, "sample_index"]
             .dropna().unique()
         )
 
@@ -292,14 +322,16 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
         if idx not in processed_indices
     ]
 
-    # Initialize results array and position mapping (only if needed)
+    # ``results[pos]`` is the canonical storage, where ``pos`` follows
+    # ``selected_posterior`` row order.
     results = [None] * n
 
-    # Build sample_index_to_pos only when needed (checkpoint reconstruction or MPI)
+    # Build index->position map only when needed (checkpoint replay or MPI).
     sample_index_to_pos = None
     if checkpoint_df is not None or size > 1:
         sample_index_to_pos = {idx: pos for pos, idx in enumerate(row_indices)}
 
+    # Load prior checkpoint rows into the positional ``results`` array.
     if checkpoint_df is not None and sample_index_to_pos is not None:
         for row_dict in checkpoint_df.to_dict('records'):
             sample_idx = row_dict["sample_index"]
@@ -335,7 +367,7 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
     checkpoint_interval = config.get("save_every")  # None = don't checkpoint during processing
     samples_since_checkpoint = 0
 
-    # ---- single-process fast path (no mpirun) --------------------------------
+    # Stage 4A: single-process fast path (no mpirun).
     if size == 1:
         for idx, sample_idx, params in to_process:
             res = run_postprocess(sample_idx, params, config)
@@ -353,10 +385,10 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
         save_final(results, row_indices, selected_posterior, config)
         return
 
-    # ---- MPI master/worker loop ----------------------------------------------
+    # Stage 4B: MPI master/worker scheduling with dynamic batch dispatch.
     batch_size = config["batch_size"]  # Get batch size from config
 
-    # Prime workers: send one batch each (or _STOP if fewer batches than workers).
+    # Prime workers: each worker gets one batch; idle workers are stopped.
     next_batch_idx = 0
     for worker_rank in range(1, size):
         if next_batch_idx < len(to_process):
@@ -370,6 +402,7 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
 
     completed = 0
     while completed < n_to_process:
+        # Receive any completed batch, record results, then refill that worker.
         worker_rank, batch_indices, batch_results = comm.recv(source=MPI.ANY_SOURCE)
 
         # Process all results in the batch
