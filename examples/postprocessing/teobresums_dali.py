@@ -1,3 +1,13 @@
+"""Example code for generating TEOBResumS-DALI waveforms to be used by
+gw_eccentricity when postprocessing bilby posterior samples.
+
+We use teob_data_dict_generator as the data_dict_generator for postprocessing
+the bilby posterior samples in example notebook postprocess_for_bilby.ipynb and
+in the script postprocess.sh
+
+Thanks to Danilo Chiaramello for helping with the implementation of
+the backward evolution in teob_data_dict_generator.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
@@ -59,51 +69,3 @@ def teob_data_dict_generator(params, kwargs=None):
     return {"t": t,
             "amplm": {(2,2): A22},
             "phaselm": {(2,2): p22}}
-
-if __name__ == "__main__":
-    # Thanks to Danilo Chiaramello for providing this example code for testing
-    # the backward evolution in TEOBResumS.
-
-    par = {
-            'M'                  : 70.,
-            'q'                  : 1.,
-            'chi1z'              : 0.2, 
-            'chi2z'              : 0.2,
-            'distance'           : 500.,
-            'initial_frequency'  : 10.,
-            'use_geometric_units': "no",
-            'use_mode_lm'        : [0, 1, 4, 8],
-            'arg_out'            : "yes",        # Output dynamics and hlm in addition to h+, hx
-            'ecc'                : 0.3,
-            'anomaly'            : 0.,
-            'time_shift_TD'      : "no",         # This is so the model doesn't shift the time axis to set the amplitude peak at t = 0
-            'interp_uniform_grid': "yes",
-        }
-
-    # forward integration
-    u_f, _, _, hlm_f, _ = EOB.EOBRunPy(par)
-    plt.plot(u_f, hlm_f['1'][0], ls='--', label='forward')
-
-    # backward integration
-    par['backwards'] = "yes"
-
-    # This is in physical units if not using geometric; maximum time for the backward evolution.
-    # It's important to set it explicitly because the default value is very large
-    # (as a merger would normally be expected to terminate the evolution), which isn't necessary
-    # Might need to be adjusted
-    par['ode_tmax']  = 1.0
-
-    u_b, _, _, hlm_b, _ = EOB.EOBRunPy(par)
-    plt.plot(u_b, hlm_b['1'][0], ls='-.', label='backward')
-
-    # flip the backward waveform and join them
-    A22_b = hlm_b['1'][0][::-1]
-    p22_b = np.unwrap(hlm_b['1'][1][::-1])
-    A22   = np.concatenate((A22_b, hlm_f['1'][0][1:]))
-    p22   = np.concatenate((p22_b, hlm_f['1'][1][1:]))
-    t     = u_f[1:] + u_b[-1]
-    t     = np.concatenate((u_b, t))
-
-    plt.plot(t, A22, ls='-', label='forward + backward')
-    plt.legend()
-    plt.savefig('backward_evo_test.png')
