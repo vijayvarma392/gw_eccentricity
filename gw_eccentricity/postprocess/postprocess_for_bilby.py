@@ -56,6 +56,7 @@ class PostProcessForBilby(PostProcess):
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Cannot find injection file: {self.injection_file}")
-        # add minimum frequency to the params from result
-        injection["minimum_frequency"] = self.posterior.iloc[0]["minimum_frequency"]
+        if "minimum_frequency" not in injection:
+            # add minimum frequency to the injection from the posterior if not present
+            injection["minimum_frequency"] = self.posterior.iloc[0]["minimum_frequency"]
         return injection
