@@ -16,7 +16,7 @@
 # About
 
 **gw_eccentricity** provides methods to measure eccentricity and mean anomaly
-from gravitational waveforms.
+from gravitational waveforms of binaries on generic bound orbits.
 
 These methods are described in the following paper: <br/>
 - [1] Md Arif Shaikh, Vijay Varma, Harald Pfeiffer, Antoni Ramos-Buades and
