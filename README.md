@@ -44,11 +44,21 @@ the main branch at the top of this page.
 ```shell
 pip install gw_eccentricity
 ```
+or
+```shell
+pip install "gw_eccentricity[postprocess]"
+```
+to additionally install the functionality for postprocessing posterior samples from
+parameter estimation pipelines.
 
 ## Conda
 **gw_eccentricity** can be installed using `conda` also:
 ```shell
 conda install -c conda-forge gw_eccentricity
+```
+or
+```shell
+conda install -c conda-forge gw_eccentricity gw_eccentricity-postprocess
 ```
 
 ## From source
@@ -77,7 +87,13 @@ See example notebooks:
 * [gw_eccentricity demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/gw_eccentricity_demo.ipynb) for how to use the package, along with diagnostic plots.
 * [Load waveforms demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/load_waveform_demo.ipynb) for loading waveform data into a dictionary format suitable for gw_eccentricity, including for LAL, SXS, and LVCNR waveforms.
   - [TEOBResumS-Dali demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_TEOBResumS-DALI_demo.ipynb) for the same for `TEOBResumS-Dali`.
-  - [SEOBNRv5EHM demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_SEOBNRv5EHM_demo.ipynb) for the same for `SEOBNRv5EHM`.
+  - [SEOBNRv5EHM
+    demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_SEOBNRv5EHM_demo.ipynb)
+    for the same for `SEOBNRv5EHM`.
+## Postprocessing posterior samples
+See the example notebooks and scripts
+[here](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/postprocessing)
+for postprocessing posterior from parameter estimation pipelines.
 
 # Making contributions
 See this
