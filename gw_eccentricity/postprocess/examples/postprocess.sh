@@ -6,12 +6,13 @@ NPROCS=${NPROCS:-1}
 CMD=(
 	gw-eccentricity-postprocess
 	--posterior-path "/Users/arif/Desktop/TEOB_chi0_9_ecc0_1_samples.hdf5"
+	--parameter-columns "mass_1,mass_2,spin_1z,spin_2z,luminosity_distance,minimum_frequency,eccentricity,mean_per_ano"
 	--output-dir "/Users/arif/Desktop/"
 	--output-format csv
 	--save-every none
-	--samples 1:1000
+	--samples 0:1000
 	--fref 10
-	--method AmplitudeFits
+	--method Amplitude
 	--data-dict-generator "/Users/arif/gw_eccentricity/gw_eccentricity/postprocess/examples/teob_backward_evolution.py:teob_data_dict_generator"
 	--data-dict-generator-extra-kwargs '{"backwards":"yes","ode_tmax":1}'
 	--gw-eccentricity-kwargs '{}'

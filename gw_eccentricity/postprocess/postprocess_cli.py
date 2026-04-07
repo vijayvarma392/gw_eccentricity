@@ -3,6 +3,7 @@ import argparse
 import importlib
 import importlib.util
 import json
+import logging
 import time
 from pathlib import Path
 from typing import TypedDict, Callable
@@ -10,6 +11,8 @@ import pandas as pd
 from mpi4py import MPI
 import bilby
 from gw_eccentricity.postprocess.core import postprocess_sample, PostProcessResults, PostProcessResult
+
+logger = logging.getLogger(__name__)
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -23,6 +26,7 @@ class PostProcessConfig(TypedDict):
     """Configuration dictionary for postprocessing."""
     posterior_type: str
     posterior_path: str
+    parameter_columns: list[str] | None
     output_dir: str
     output_format: str
     save_every: int | None
@@ -177,38 +181,60 @@ def load_checkpoint(checkpoint_path: str) -> pd.DataFrame | None:
 
 def save_checkpoint(results: list, config: PostProcessConfig) -> None:
     """Save results to checkpoint file (parquet format)."""
-    results_df = PostProcessResults(results).to_dataframe()
+    results_df = PostProcessResults([r for r in results if r is not None]).to_dataframe()
     checkpoint_path = f"{config['output_dir']}/checkpoint.parquet"
     results_df.to_parquet(checkpoint_path)
-    print(f"  → checkpoint saved: {checkpoint_path}", flush=True)
+    logger.info("Checkpoint saved: %s", checkpoint_path)
 
 
 def save_final(
-        results: list, 
-        row_indices: list, 
-        selected_posterior: pd.DataFrame, 
+        results: list,
+        row_indices: list,
+        selected_posterior: pd.DataFrame,
         config: PostProcessConfig) -> None:
     missing_indices = [row_indices[i] for i, r in enumerate(results) if r is None]
     if missing_indices:
-        print(
-            f"[WARNING] {len(missing_indices)} results missing "
-            f"(worker errors?): {missing_indices[:10]}"
-            f"{'...' if len(missing_indices) > 10 else ''}"
+        logger.warning(
+            "%d results missing (worker errors?): %s%s",
+            len(missing_indices),
+            missing_indices[:10],
+            "..." if len(missing_indices) > 10 else ""
         )
 
-    results_df = PostProcessResults([r for r in results if r is not None]).to_dataframe()
+    valid_results = [r for r in results if r is not None]
+    n_success = sum(1 for r in valid_results if r.status == "success")
+    n_fail = sum(1 for r in valid_results if r.status == "fail")
+    logger.info("Results before saving: %d success, %d failed, %d missing",
+                n_success, n_fail, len(missing_indices))
+
+    results_df = PostProcessResults(valid_results).to_dataframe()
+
+    # Ensure sample_index types match for merge
+    results_df["sample_index"] = results_df["sample_index"].astype(int)
     combined = selected_posterior.copy()
-    combined["sample_index"] = row_indices
+    combined["sample_index"] = pd.array(row_indices, dtype=int)
     combined = combined.merge(results_df, on="sample_index", how="left")
+
+    n_merged_success = (combined["status"] == "success").sum()
+    n_merged_fail = (combined["status"] == "fail").sum()
+    logger.info("Results after merge: %d success, %d failed", n_merged_success, n_merged_fail)
 
     path = f"{config['output_dir']}/eccentricity_results.{config['output_format']}"
     write_df(combined, path, config["output_format"])
-    print(f"\nFinal results saved: {path}", flush=True)
+
+    path = f"{config['output_dir']}/eccentricity_results.{config['output_format']}"
+    write_df(combined, path, config["output_format"])
+    logger.info("Final results saved: %s", path)
 
 
-def get_bilby_posterior(posterior_path):
+def get_bilby_posterior(posterior_path: str, 
+                        parameter_columns: list[str] | None = None
+                        ) -> pd.DataFrame:
     res = bilby.result.read_in_result(posterior_path)
-    return res.posterior
+    posterior = res.posterior
+    if parameter_columns is not None:
+        posterior = posterior[parameter_columns]
+    return posterior
 
 
 # ---------------------------------------------------------------------------
@@ -228,12 +254,9 @@ class _Progress:
             elapsed = time.monotonic() - self.t0
             rate = self.completed / elapsed if elapsed > 0 else float("inf")
             eta = (self.total - self.completed) / rate if rate > 0 else float("inf")
-            print(
-                f"  Completed {self.completed}/{self.total}"
-                f" | {elapsed:.0f}s elapsed"
-                f" | ETA {eta:.0f}s"
-                f" | {rate:.1f} samples/s",
-                flush=True,
+            logger.info(
+                "Completed %d/%d | %ds elapsed | ETA %ds | %.1f samples/s",
+                self.completed, self.total, elapsed, eta, rate,
             )
 
 
@@ -256,10 +279,13 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
     param_list = selected_posterior.to_dict(orient="records")
     n = len(param_list)
 
-    # Determine which samples to process
+    # Determine which samples to process (only skip previously successful ones)
     processed_indices = set()
     if checkpoint_df is not None:
-        processed_indices = set(checkpoint_df["sample_index"].dropna().unique())
+        processed_indices = set(
+            checkpoint_df.loc[checkpoint_df["status"] == "success", "sample_index"]
+            .dropna().unique()
+        )
 
     to_process = [
         (i, idx, params) for i, (idx, params) in enumerate(zip(row_indices, param_list))
@@ -289,14 +315,13 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
                 results[pos] = res
 
     n_to_process = len(to_process)
-    print(
-        f"Total samples: {n}, Already processed: {len(processed_indices)}, "
-        f"Remaining: {n_to_process}",
-        flush=True,
+    logger.info(
+        "Total samples: %d, Already processed: %d, Remaining: %d",
+        n, len(processed_indices), n_to_process,
     )
 
     if n_to_process == 0:
-        print("All samples already processed.", flush=True)
+        logger.info("All samples already processed.")
         save_final(results, row_indices, selected_posterior, config)
         # Signal workers to stop if running MPI
         if size > 1:
@@ -304,7 +329,7 @@ def master(posterior: pd.DataFrame, config: PostProcessConfig) -> None:
                 comm.send(_STOP, dest=worker_rank)
         return
 
-    print(f"Processing {n_to_process} samples across {size} rank(s).", flush=True)
+    logger.info("Processing %d samples across %d rank(s).", n_to_process, size)
 
     progress = _Progress(n_to_process)
     checkpoint_interval = config.get("save_every")  # None = don't checkpoint during processing
@@ -400,6 +425,11 @@ def build_config_from_cli() -> PostProcessConfig:
         "--posterior-path", required=True, help="Path to bilby result file"
     )
     parser.add_argument(
+        "--parameter-columns",
+        default=None,
+        help="Comma-separated list of parameter columns to load from the posterior (default: all)",
+    )
+    parser.add_argument(
         "--output-dir", default=".", help="Directory for output files"
     )
     parser.add_argument(
@@ -452,6 +482,10 @@ def build_config_from_cli() -> PostProcessConfig:
     return {
         "posterior_type": args.posterior_type,
         "posterior_path": args.posterior_path,
+        "parameter_columns": (
+            [col.strip() for col in args.parameter_columns.split(",")]
+            if args.parameter_columns else None
+        ),
         "output_dir": args.output_dir,
         "output_format": args.output_format,
         "save_every": args.save_every,
@@ -477,12 +511,19 @@ def build_config_from_cli() -> PostProcessConfig:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s : %(message)s",
+        datefmt="%H:%M:%S",
+    )
     # Each rank parses CLI independently — callables cannot be bcast'd.
     config = build_config_from_cli()
 
     if rank == MASTER:
         if config["posterior_type"] == "bilby":
-            posterior = get_bilby_posterior(config["posterior_path"])
+            posterior = get_bilby_posterior(
+                config["posterior_path"], config["parameter_columns"]
+            )
         else:
             raise ValueError(f"Unsupported posterior type: {config['posterior_type']!r}")
         master(posterior, config)

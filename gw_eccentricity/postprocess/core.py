@@ -191,7 +191,7 @@ def get_fref_bounds_for_sample(
             fref_max=fref_bounds[1]
         )
     except Exception as e:
-        logger.warning(f"Sample {params} failed to get fref bounds: {e}")
+        logger.warning(f" Sample {params} failed to get fref bounds: {e}")
         return FrefBoundsResult(
             sample_index=sample_index,
             status="fail",
@@ -253,7 +253,7 @@ def postprocess_sample(
             lgw=res["mean_anomaly"]
         )
     except Exception as e:
-        logger.warning(f"Sample {params} failed: {e}")
+        logger.warning(f" Sample {params} failed: {e}")
         return PostProcessResult(
             sample_index=sample_index,
             status="fail",
