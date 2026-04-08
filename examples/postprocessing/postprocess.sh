@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Initialize conda
+source ~/anaconda3/etc/profile.d/conda.sh
+
+# Activate your env
+conda activate gw_eccentricity_postprocess
+
 NPROCS=${NPROCS:-1}
 
 CMD=(

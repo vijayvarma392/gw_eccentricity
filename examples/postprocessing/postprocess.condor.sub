@@ -11,9 +11,6 @@
 universe = vanilla
 executable = postprocess.sh
 
-# Run from this shell environment so gw-eccentricity-postprocess is found.
-getenv = True
-
 # Set process count consumed by postprocess.sh (NPROCS env var).
 environment = "NPROCS=4"
 

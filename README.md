@@ -68,6 +68,10 @@ git clone git@github.com:vijayvarma392/gw_eccentricity.git
 cd gw_eccentricity
 pip install .
 ```
+or
+```
+pip install .["postprocess"]
+```
 
 If you do not have root permissions, replace the last step with
 `pip install --user .`
