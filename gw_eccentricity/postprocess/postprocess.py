@@ -87,7 +87,7 @@ class PostProcess:
             "Please override this function to fetch the posterior samples "
             f"from {self.posterior_file}.")
     
-    def get_injection(self):
+    def get_injection_params(self):
         """Get the injection parameters from injection file.
         
         The returned object should be a dict containing the parameters for the
@@ -109,30 +109,33 @@ class PostProcess:
         """
         if self.injection_file is None:
             raise ValueError("injection_file is not provided.")
-        injection = self.get_injection()
+        injection_params = self.get_injection_params()
         data_dict = get_data_dict(
-            params=injection,
+            params=injection_params,
             data_dict_generator=self.data_dict_generator,
             extra_kwargs=self.data_dict_generator_extra_kwargs)
         return data_dict
     
-    def get_injection_eccentricity(self, fref, method="Amplitude", 
-                                   gw_eccentricity_kwargs=None, debug=False):
-        """Get the eccentricity of the injection.
+    def get_injection_egw_and_lgw(self, tref=None, fref=None, method="Amplitude", 
+                                  gw_eccentricity_kwargs=None, debug=False):
+        """Get the ``egw`` and ``lgw`` of the injection.
 
         Returns
         -------
-        eccentricity : float
+        egw : float
             Eccentricity of the injection, measured using the data dict for the
             injection.
-        mean_anomaly : float
+        lgw : float
             Mean anomaly of the injection, measured using the data dict for the
             injection.
         """
+        if not ((tref is None) ^ (fref is None)):
+            raise ValueError("Provide exactly one of tref or fref, but not both.")
         if gw_eccentricity_kwargs is None:
             gw_eccentricity_kwargs = {}
         data_dict = self.get_injection_data_dict()
         result = measure_eccentricity(
+            tref_in=tref,
             fref_in=fref,
             dataDict=data_dict,
             method=method,
@@ -173,7 +176,7 @@ class PostProcess:
     
     def plot_mean_per_ano_posterior(self, fig=None, ax=None, figsize=(6, 4),
                                     **kwargs):
-        """Plot the mean per ano posterior as a histogram.
+        """Plot the mean periastron anomaly posterior as a histogram.
 
         Parameters
         ----------
@@ -200,13 +203,20 @@ class PostProcess:
         ax.set_ylabel("Number of samples")
         return fig, ax
 
-    def postprocess(self, fref, samples=None, method="Amplitude",
-                    gw_eccentricity_kwargs=None, n_jobs=-1):
+    def postprocess(self,
+                    tref: float | None = None,
+                    fref: float | None = None,
+                    samples: list | None = None,
+                    method: str = "Amplitude",
+                    gw_eccentricity_kwargs: dict | None = None,
+                    n_jobs: int = -1):
         """Post-process to build the egw posterior.
 
         Parameters
         ----------
-        fref : float
+        tref : float | None
+            Reference time where eccentricity and mean anomaly are to be measured.
+        fref : float | None
             Reference frequency where eccentricity and mean anomaly are to be measured.
         samples : array-like, default=None
             Indices of samples to process. Default is all samples.
@@ -222,6 +232,10 @@ class PostProcess:
         postprocess_result : PostProcessResults
             Container with per-sample result objects, in the same order as ``samples``.
         """
+        # Provide either fref or tref, but not both
+        if not ((tref is None) ^ (fref is None)):
+            raise ValueError("Provide exactly one of tref or fref, but not both.")
+
         samples = list(self.posterior.index if samples is None else samples)
         param_list = self.posterior.loc[samples].to_dict(orient="records")
         data_dict_generator = self.data_dict_generator
@@ -230,7 +244,7 @@ class PostProcess:
         results_list = Parallel(
             n_jobs=n_jobs, pre_dispatch="2*n_jobs")(
             delayed(postprocess_sample)(
-                sample_index, params, fref, data_dict_generator, data_dict_generator_extra_kwargs,
+                sample_index, params, tref, fref, data_dict_generator, data_dict_generator_extra_kwargs,
                 method, gw_eccentricity_kwargs
             )
             for sample_index, params in tqdm(zip(samples, param_list), desc="Postprocessing samples")

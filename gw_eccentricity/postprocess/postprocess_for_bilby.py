@@ -47,7 +47,7 @@ class PostProcessForBilby(PostProcess):
         else:
             return posterior
 
-    def get_injection(self):
+    def get_injection_params(self):
         """Get the injection parameters from injection file."""
         if self.injection_file is None:
             raise ValueError("Injection file is not provided.")

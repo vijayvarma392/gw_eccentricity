@@ -18,6 +18,7 @@ CMD=(
 	--save-every none
 	--samples 0:1000
 	--fref 10
+	--tref none
 	--method Amplitude
 	--data-dict-generator "/Users/arif/gw_eccentricity/examples/postprocessing/teobresums_dali.py:teob_data_dict_generator"
 	--data-dict-generator-extra-kwargs '{"backwards":"yes","ode_tmax":1}'

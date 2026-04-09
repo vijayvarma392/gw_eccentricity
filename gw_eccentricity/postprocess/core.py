@@ -202,7 +202,8 @@ def get_fref_bounds_for_sample(
 def postprocess_sample(
         sample_index: int,
         params: dict,
-        fref: float,
+        tref: float | None,
+        fref: float | None,
         data_dict_generator: callable,
         data_dict_generator_extra_kwargs: dict | None = None,
         method: str = "Amplitude",
@@ -212,13 +213,29 @@ def postprocess_sample(
     A wrapper around ``gw_eccentricity.measure_eccentricity`` to measure
     eccentricity from the waveform modes for a sample with given ``params``.
 
+    Eccentricity can be measured either at a reference time ``tref`` or
+    a reference frequency ``fref``. It can not accept both at the same time.
+
+    Allowed reference times where eccentricity can be measured is determined
+    by the bounds [tref_min, tref_max] where:
+
+    - tref_min is the max(time of first pericenter, time of first apocenter)
+    - tref_max is the min(time of last pericenter, time of last apocenter)
+
+    Allowed reference frequencies where eccentricity can be measured is determined
+    by the bounds [fref_min, fref_max] which are the min and max values of the
+    omega_gw_average, respectively (See eccDefinition.get_omega_gw_average).
+    One can get these bounds by running ``get_fref_bounds_for_sample``.
+
     Parameters
     ----------
     sample_index : int
         Index of the sample in the posterior.
     params : dict
         Dictionary containing the parameters for the sample.
-    fref : float
+    tref : float | None
+        Reference time where eccentricity is to be measured.
+    fref : float | None
         Reference frequency where eccentricity is to be measured.
     data_dict_generator : function
         data_dict is generated using function call as below::
@@ -236,6 +253,8 @@ def postprocess_sample(
         with keys: ``status``, ``egw``, ``lgw``, and on failure
         ``error_message``.
     """
+    if not ((tref is None) ^ (fref is None)):
+        raise ValueError("Provide exactly one of tref or fref, but not both.")
     try:
         data_dict = get_data_dict(
             params,
@@ -243,6 +262,7 @@ def postprocess_sample(
             data_dict_generator_extra_kwargs)
         res = measure_eccentricity(
             dataDict=data_dict,
+            tref_in=tref,
             fref_in=fref,
             method=method,
             **(gw_eccentricity_kwargs or {}))

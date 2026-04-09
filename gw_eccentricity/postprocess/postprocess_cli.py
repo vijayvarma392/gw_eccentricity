@@ -31,7 +31,8 @@ class PostProcessConfig(TypedDict):
     output_format: str
     save_every: int | None
     samples: list[int] | None
-    fref: float
+    fref: float | None
+    tref: float | None
     method: str
     batch_size: int
     data_dict_generator: Callable
@@ -124,6 +125,7 @@ def run_postprocess(
     return postprocess_sample(
         sample_index=sample_index,
         params=params,
+        tref=config["tref"],
         fref=config["fref"],
         data_dict_generator=config["data_dict_generator"],
         data_dict_generator_extra_kwargs=config["data_dict_generator_extra_kwargs"],
@@ -481,7 +483,8 @@ def build_config_from_cli() -> PostProcessConfig:
         metavar="SPEC",
         help="Sample selection: all|none, int, comma list (1,5,9), or range (0:100[:step])",
     )
-    parser.add_argument("--fref", type=float, default=10.0)
+    parser.add_argument("--fref", type=float, default=None)
+    parser.add_argument("--tref", type=float, default=None)
     parser.add_argument("--method", default="AmplitudeFits")
     parser.add_argument(
         "--batch-size",
@@ -511,6 +514,10 @@ def build_config_from_cli() -> PostProcessConfig:
 
     args = parser.parse_args()
 
+    # Should specify either fref or tref, but not both
+    if not ((args.tref is None) ^ (args.fref is None)):
+        parser.error("Provide exactly one of --fref or --tref, but not both.")
+
     # Each rank loads its own callable — callables cannot survive comm.bcast.
     return {
         "posterior_type": args.posterior_type,
@@ -524,6 +531,7 @@ def build_config_from_cli() -> PostProcessConfig:
         "save_every": args.save_every,
         "samples": parse_samples(args.samples),
         "fref": args.fref,
+        "tref": args.tref,
         "method": args.method,
         "batch_size": args.batch_size,
         "data_dict_generator": load_callable(
