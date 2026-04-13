@@ -1,14 +1,15 @@
 """gw_eccentricity wrapper to call different eccDefinition methods.
 
 Measure eccentricity and mean anomaly from gravitational waves.
-See our paper https://arxiv.org/abs/2302.11257 and
-https://pypi.org/project/gw_eccentricity for more details.
+See our paper 
+- https://arxiv.org/abs/2302.11257
+- https://arxiv.org/abs/2507.08345
+and https://pypi.org/project/gw_eccentricity for more details.
 """
 __copyright__ = "Copyright (C) 2023 Md Arif Shaikh, Vijay Varma, Harald Pfeiffer"
 __email__ = "arifshaikh.astro@gmail.com, vijay.varma392@gmail.com"
-__status__ = "testing"
 __author__ = "Md Arif Shaikh, Vijay Varma, Harald Pfeiffer"
-__version__ = "2.0.3"
+__version__ = "2.1.0"
 __license__ = """
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

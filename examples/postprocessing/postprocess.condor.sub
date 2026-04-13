@@ -1,0 +1,30 @@
+# HTCondor submit file for running postprocess.sh
+#
+# Usage:
+#   cd gw_eccentricity/postprocess/examples
+#   chmod +x postprocess.sh
+#   condor_submit postprocess.condor.sub
+#
+# Adjust NPROCS/request_cpus as needed. postprocess.sh will run with MPI
+# only when NPROCS > 1.
+
+universe = vanilla
+executable = postprocess.sh
+
+# Set process count consumed by postprocess.sh (NPROCS env var).
+environment = "NPROCS=4"
+
+# Resource requests (edit for your cluster).
+request_cpus = 4
+request_memory = 8 GB
+request_disk = 4 GB
+
+# Logs
+log = postprocess.$(Cluster).log
+output = postprocess.$(Cluster).$(Process).out
+error = postprocess.$(Cluster).$(Process).err
+
+# Keep files on shared filesystem; set to YES and configure transfer_* if needed.
+should_transfer_files = NO
+
+queue 1
