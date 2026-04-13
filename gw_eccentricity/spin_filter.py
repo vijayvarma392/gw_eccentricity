@@ -520,7 +520,7 @@ class FilterSpinInducedOscillations:
                         f"{self.t_cross.size} crossing "
                         f"points found, which may be due to noise or numerical"
                         "artifacts. Consider removing noise or applying a "
-                        "preliminary smoothing to the data.", level=self.debug_level)
+                        "preliminary smoothing to the data.", debug_level=self.debug_level)
         self.delta_T_interp = _build_delta_T_interpolant(self.t_mid, self.delta_T)
    
     def _make_segment(self, t_mid):
