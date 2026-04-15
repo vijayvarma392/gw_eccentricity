@@ -102,6 +102,7 @@ See example notebooks:
 * [Load waveforms demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/load_waveform_demo.ipynb) for loading waveform data into a dictionary format suitable for gw_eccentricity, including for LAL, SXS, and LVCNR waveforms.
   - [TEOBResumS-Dali demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_TEOBResumS-DALI_demo.ipynb) for the same for `TEOBResumS-Dali`.
   - [SEOBNRv5EHM demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_SEOBNRv5EHM_demo.ipynb) for the same for `SEOBNRv5EHM`.
+  - [ESIGMAHM demo](https://github.com/vijayvarma392/gw_eccentricity/blob/main/examples/egw_from_ESIGMAHM_demo.ipynb) for the same for `ESIGMAHM`.
 
 ## Postprocessing posterior samples
 See the example notebooks and scripts
