@@ -1,4 +1,5 @@
 """Module to reconstruct eccentricity posterior using gw_eccentricity."""
+from __future__ import annotations
 import matplotlib.pyplot as plt
 import pandas as pd
 from joblib import Parallel, delayed
