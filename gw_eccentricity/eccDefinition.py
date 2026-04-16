@@ -459,9 +459,12 @@ class eccDefinition:
         # oscillations. The details of the filtering procedure are described in
         # `spin_filter.py`.
         if self.precessing:
+            # set extra_kwargs to empty dict if it is None to avoid issues when
+            # trying to access or set keys in extra_kwargs.
+            if extra_kwargs is None:
+                extra_kwargs = {}
             # set kwargs for filtering.
-            user_filter_kwargs = extra_kwargs.get(
-                "filter_kwargs", {}) if extra_kwargs is not None else {}
+            user_filter_kwargs = extra_kwargs.get("filter_kwargs", {})
             filter_kwargs = check_kwargs_and_set_defaults(
                 user_filter_kwargs,
                 get_default_kwargs_for_filtering(),
