@@ -401,6 +401,19 @@ class eccDefinition:
                 error in the measured eccentricity and mean anomaly.
                 See:
                 https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment
+
+            filter_kwargs: dict
+                A dictionary of kwargs to control filtering of spin-induced
+                oscillations from the waveform data. For spin-precessing
+                systems, spin-induced oscillations can introduce suborbital scale
+                oscillations even in the coprecessing frame,
+                leading to inaccurate eccentricity measurements. Filtering them
+                out before measuring eccentricity helps mitigate this effect.
+                Only used when `precessing=True`.
+                Defaults are set using
+                `spin_filter.get_default_kwargs_for_filtering()`. See
+                `spin_filter.get_default_kwargs_for_filtering` for the full
+                list of allowed keys and their descriptions.
         """
         # check that only one of tref_in or fref_in is provided
         if (tref_in is not None) + (fref_in is not None) != 1:
