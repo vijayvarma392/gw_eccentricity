@@ -1,4 +1,5 @@
 """Reconstruct eccentricity posterior from Bilby generated posterior."""
+from __future__ import annotations
 import bilby
 import pandas as pd
 from .postprocess import PostProcess

@@ -1,4 +1,5 @@
 """Run eccentricity postprocessing in parallel using MPI."""
+from __future__ import annotations
 import argparse
 import importlib
 import importlib.util
