@@ -743,7 +743,8 @@ def load_lvcnr_waveform(**kwargs):
     return return_dict
 
 
-def download_sxs_waveform(sxs_id, lev, data_dir, extrap_order=2):
+def download_sxs_waveform(sxs_id, lev, data_dir, extrap_order=2,
+                          catalog_tag=""):
     """Download SXS catalog waveform files to a local directory.
 
     Downloads the files required by ``load_waveform(origin="SXSCatalog")``:
@@ -767,6 +768,12 @@ def download_sxs_waveform(sxs_id, lev, data_dir, extrap_order=2):
     extrap_order : int, optional
         Waveform extrapolation order.  Default is 2, which selects the
         ``Strain_N2.h5`` / ``Strain_N2.json`` file pair.
+    catalog_tag : str, optional
+        Git tag of the SXS catalog release to use, e.g. ``"v3.0.0"``.
+        When provided the catalog is fetched directly from that tagged
+        release, bypassing the GitHub API call that discovers the latest
+        release.  This avoids GitHub API rate-limit errors in CI.
+        Defaults to ``""`` which fetches the latest release.
 
     Returns
     -------
@@ -777,7 +784,7 @@ def download_sxs_waveform(sxs_id, lev, data_dir, extrap_order=2):
 
     Notes
     -----
-    Files that already exist on disk are skipped, that is not re-downloaded. 
+    Files that already exist on disk are skipped, that is not re-downloaded.
     The SXS simulations catalogue is loaded via the ``sxs`` Python package to
     retrieve direct download URLs for each file.
     """
@@ -789,8 +796,10 @@ def download_sxs_waveform(sxs_id, lev, data_dir, extrap_order=2):
         os.path.expanduser(data_dir), sxs_id_safe, f"Lev{lev}")
     os.makedirs(target_dir, exist_ok=True)
 
-    # Load the simulations catalogue to resolve file URLs
-    simulations = sxs.Simulations.load(download=True)
+    # Load the simulations catalogue to resolve file URLs.
+    # Pass `tag` when provided to skip the GitHub API call that discovers
+    # the latest release (avoids rate-limit errors in CI environments).
+    simulations = sxs.Simulations.load(download=True, tag=catalog_tag)
     if sxs_id not in simulations:
         raise ValueError(
             f"'{sxs_id}' not found in the SXS simulations catalogue.  "
