@@ -98,6 +98,14 @@ jobs:
         run: |
           pip install .
 
+      - name: Download SXS NR data for precessing tests
+        shell: bash -l {0}
+        run: |
+          python - <<'EOF'
+          from gw_eccentricity.load_data import download_sxs_waveform
+          download_sxs_waveform("SXS:BBH:2859", 4, "/tmp/gwecc_test_data")
+          EOF
+
       - name: Run test suite
         shell: bash -l {0}
         run: |
