@@ -12,7 +12,7 @@ def get_seob_datadict(q=5.0, chi1z=0.4, chi2z=0.3,
     ----------
     q            : mass ratio
     chi1z, chi2z : aligned spin components
-    omega_start  : initial GW frequency (dimensionless)
+    omega_start  : initial orbital frequency in geometric units
     ecc          : initial eccentricity
     mean_ano     : initial mean anomaly
     include_zero_ecc : if True, also add t_zeroecc/hlm_zeroecc keys built
