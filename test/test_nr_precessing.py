@@ -4,7 +4,8 @@ import json
 import numpy as np
 import pytest
 from gw_eccentricity import measure_eccentricity
-from gw_eccentricity.load_data import load_waveform, get_coprecessing_data_dict
+from gw_eccentricity.load_data import (
+    load_waveform, get_coprecessing_data_dict, download_sxs_waveform)
 
 # ---------------------------------------------------------------------------
 # SXS test cases
@@ -44,18 +45,24 @@ def _ref_ecc(sxs_id, lev):
 
 
 # ---------------------------------------------------------------------------
-# Fixtures — check data is present, skip if not
+# Fixtures — download data on first run, skip only if sxs_id is a placeholder
 # ---------------------------------------------------------------------------
 
+def _ensure_data(sxs_id, lev):
+    """Download SXS waveform if not already present; skip if sxs_id is a placeholder."""
+    if "xxxx" in sxs_id:
+        pytest.skip(
+            f"SXS ID {sxs_id} is a placeholder — no suitable simulation available yet")
+    if not os.path.isfile(os.path.join(_data_dir(sxs_id, lev), "Strain_N2.h5")):
+        download_sxs_waveform(sxs_id, lev, DATA_DIR)
+
+
 def _make_fixture(key):
-    """Return a module-scoped fixture that loads one SXS case by key."""
+    """Return a module-scoped fixture that downloads and loads one SXS case."""
     @pytest.fixture(scope="module")
     def _fixture():
         sxs_id, lev = SXS_CASES[key]
-        data_dir = _data_dir(sxs_id, lev)
-        if not os.path.isfile(os.path.join(data_dir, "Strain_N2.h5")):
-            pytest.skip(
-                f"SXS data not found at {data_dir} — run download_sxs_waveform first")
+        _ensure_data(sxs_id, lev)
         return _load(sxs_id, lev), _ref_ecc(sxs_id, lev)
     return _fixture
 
@@ -66,12 +73,10 @@ quasicircular_dataDict = _make_fixture("quasicircular")
 
 @pytest.fixture(scope="module", params=list(SXS_CASES.keys()))
 def sxs_dataDict(request):
-    """Module-scoped dataDict for each SXS case; skips if data not downloaded."""
+    """Module-scoped dataDict for each SXS case; downloads data if not present."""
     key = request.param
     sxs_id, lev = SXS_CASES[key]
-    data_dir = _data_dir(sxs_id, lev)
-    if not os.path.isfile(os.path.join(data_dir, "Strain_N2.h5")):
-        pytest.skip(f"SXS data not found at {data_dir} — run download_sxs_waveform first")
+    _ensure_data(sxs_id, lev)
     return key, _load(sxs_id, lev), _ref_ecc(sxs_id, lev)
 
 
