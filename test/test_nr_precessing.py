@@ -1,5 +1,6 @@
 """Tests for precessing=True with frame="inertial" and frame="coprecessing"."""
 import os
+import sys
 import json
 import numpy as np
 import pytest
@@ -49,11 +50,14 @@ def _ref_ecc(sxs_id, lev):
 # ---------------------------------------------------------------------------
 
 def _ensure_data(sxs_id, lev):
-    """Download SXS waveform if not already present; skip if sxs_id is a placeholder."""
+    """Download SXS waveform if not already present; skip if sxs_id is a placeholder
+    or if running on Python < 3.10 where the sxs download API is not fully supported."""
     if "xxxx" in sxs_id:
         pytest.skip(
             f"SXS ID {sxs_id} is a placeholder — no suitable simulation available yet")
     if not os.path.isfile(os.path.join(_data_dir(sxs_id, lev), "Strain_N2.h5")):
+        if sys.version_info < (3, 10):
+            pytest.skip("NR precessing tests require Python >= 3.10 for SXS download support")
         download_sxs_waveform(sxs_id, lev, DATA_DIR)
 
 
