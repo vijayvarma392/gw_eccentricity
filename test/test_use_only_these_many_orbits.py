@@ -17,7 +17,7 @@ SEGMENT_VS_FULL_RTOL = 1e-4
 
 @pytest.fixture(scope="module")
 def dataDict():
-    dd = get_seob_datadict(omega_start=0.005, include_zero_ecc=True)
+    dd = get_seob_datadict(omega_start=0.009, include_zero_ecc=True)
     # Verify the waveform is genuinely longer than the segment so that
     # use_only_these_many_orbits actually truncates rather than uses the full waveform.
     phase = np.unwrap(np.angle(dd["hlm"][(2, 2)]))
