@@ -1,4 +1,16 @@
-"""Tests for precessing=True with frame="inertial" and frame="coprecessing"."""
+"""Tests for handling spin-precessing waveforms.
+
+When precessing=True and frame="inertial", the code should internally
+transforms the waveform modes to a coprecessing frame before measuring
+eccentricity. This test suite verifies that:
+1. The transformation completes successfully and returns positive eccentricity.
+2. The eccentricity evolution is physically reasonable (e.g., monotonically
+decreasing).
+3. The results are consistent between frame="inertial" and
+frame="coprecessing".
+4. The initial eccentricity is within a reasonable range of the SXS metadata
+reference value.
+"""
 import os
 import sys
 import json
@@ -88,20 +100,22 @@ def sxs_dataDict(request):
 # Test: frame="inertial" triggers internal coprecessing transform
 # ---------------------------------------------------------------------------
 
-def test_inertial_frame_gives_finite_eccentricity(sxs_dataDict):
-    """measure_eccentricity with precessing=True, frame='inertial' returns finite result."""
+def test_inertial_frame_gives_positive_eccentricity(sxs_dataDict):
+    """measure_eccentricity with precessing=True, frame='inertial' returns finite positive eccentricity."""
     key, dataDict, _ = sxs_dataDict
     t = dataDict["t"]
-    t_mid = t[len(t) // 2]
+    # 10 points spanning 5%–95% of the waveform, avoiding junk-radiation edges
+    t_arr = np.linspace(t[len(t) // 20], t[19 * len(t) // 20], 10)
 
     result = measure_eccentricity(
-        tref_in=t_mid,
+        tref_in=t_arr,
         method="AmplitudeFits",
         dataDict=dataDict,
         precessing=True,
         frame="inertial")
-    assert np.isfinite(result["eccentricity"]).all(), (
-        f"Non-finite eccentricity for {key} with frame='inertial'")
+    ecc = result["eccentricity"]
+    assert np.isfinite(ecc).all() and np.all(ecc > 0), (
+        f"Eccentricity not finite and positive for {key} with frame='inertial'")
 
 
 # ---------------------------------------------------------------------------
@@ -112,10 +126,11 @@ def test_coprecessing_frame_matches_inertial(sxs_dataDict):
     """frame='coprecessing' and frame='inertial' agree to within numerical precision."""
     key, dataDict, _ = sxs_dataDict
     t = dataDict["t"]
-    t_mid = t[len(t) // 2]
+    # 10 points spanning 5%–95% of the waveform, avoiding junk-radiation edges
+    t_arr = np.linspace(t[len(t) // 20], t[19 * len(t) // 20], 10)
 
     result_inertial = measure_eccentricity(
-        tref_in=t_mid,
+        tref_in=t_arr,
         method="AmplitudeFits",
         dataDict=dataDict,
         precessing=True,
@@ -123,7 +138,7 @@ def test_coprecessing_frame_matches_inertial(sxs_dataDict):
 
     coprec_dataDict = get_coprecessing_data_dict(dataDict)
     result_coprec = measure_eccentricity(
-        tref_in=t_mid,
+        tref_in=t_arr,
         method="AmplitudeFits",
         dataDict=coprec_dataDict,
         precessing=True,
@@ -164,7 +179,8 @@ def test_spin_filter_gives_monotonic_eccentricity(quasicircular_dataDict):
         frame="inertial")
 
     ecc = result["eccentricity"]
-    assert np.isfinite(ecc).all(), "Non-finite eccentricity for quasicircular case"
+    assert np.isfinite(ecc).all() and np.all(ecc > 0), (
+        "Eccentricity not finite and positive for quasicircular case")
 
     # use the built-in monotonicity check which populates decc_dt_for_checks
     obj = result["gwecc_object"]
@@ -201,7 +217,8 @@ def test_eccentric_precessing_eccentricity_value(eccentric_dataDict):
         frame="inertial")
 
     ecc = result["eccentricity"]
-    assert np.isfinite(ecc).all(), "Non-finite eccentricity for eccentric case"
+    assert np.isfinite(ecc).all() and np.all(ecc > 0), (
+        "Eccentricity not finite and positive for eccentric case")
 
     ecc_initial = float(ecc[0])
     np.testing.assert_allclose(
