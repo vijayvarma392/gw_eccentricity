@@ -2379,6 +2379,21 @@ class eccDefinition:
         self.tmax = min(self.t_pericenters[-1], self.t_apocenters[-1])
         self.tmin = max(self.t_pericenters[0], self.t_apocenters[0])
         
+        # t_for_checks depends only on tmin/tmax (already set above).
+        # Build it early so get_omega_gw_extrema_interpolant can use it when
+        # converting fref_in → tref_in via mean_of_extrema_interpolants.
+        self.t_for_checks = self.dataDict["t"][
+            np.logical_and(self.dataDict["t"] >= self.tmin,
+                           self.dataDict["t"] <= self.tmax)]
+
+        # Build omega_gw extrema interpolants before the fref_in conversion so
+        # that compute_mean_of_extrema_interpolants is available as an
+        # averaging method in compute_tref_in_and_fref_out_from_fref_in.
+        self.omega_gw_pericenters_interp \
+            = self.get_omega_gw_extrema_interpolant("pericenters")
+        self.omega_gw_apocenters_interp \
+            = self.get_omega_gw_extrema_interpolant("apocenters")
+
         if self.domain == "frequency":
             # get the tref_in and fref_out from fref_in
             self.tref_in, self.fref_out \
@@ -2387,10 +2402,6 @@ class eccDefinition:
         self.tref_out = self.tref_in[
             np.logical_and(self.tref_in <= self.tmax,
                            self.tref_in >= self.tmin)]
-        # set time for checks and diagnostics
-        self.t_for_checks = self.dataDict["t"][
-            np.logical_and(self.dataDict["t"] >= self.tmin,
-                           self.dataDict["t"] <= self.tmax)]
 
         # Sanity checks
         # check that fref_out and tref_out are of the same length
@@ -2427,11 +2438,6 @@ class eccDefinition:
            or self.tref_out[-1] > self.t_pericenters[-1]:
             raise Exception("Reference time must be within two pericenters.")
 
-        # Build omega_gw extrema interpolants
-        self.omega_gw_pericenters_interp \
-            = self.get_omega_gw_extrema_interpolant("pericenters")
-        self.omega_gw_apocenters_interp \
-            = self.get_omega_gw_extrema_interpolant("apocenters")
         # compute eccentricity at self.tref_out
         self.eccentricity = self.compute_eccentricity(self.tref_out)
         # Compute mean anomaly at tref_out

@@ -104,7 +104,8 @@ def _eval_arnoldi_basis(x, H, degree, v0_norm):
     # Build higher degree basis functions using the stored Hessenberg
     # matrix H
     for k in range(degree):
-        v = V[:, k] * x - V[:, :k+1] @ H[:k+1, k]
+        with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
+            v = V[:, k] * x - V[:, :k+1] @ H[:k+1, k]
         if H[k + 1, k] < 1e-14:
             break
         V[:, k + 1] = v / H[k + 1, k]
@@ -405,8 +406,9 @@ class RationalFit:
         
         # Compute the numerator and denominator at x_new using the
         # fitted coefficients
-        p = P @ self.a
-        q = Q @ self.b
+        with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
+            p = P @ self.a
+            q = Q @ self.b
 
         # Return the rational function values at x_new
         r = p / q
