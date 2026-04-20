@@ -1,3 +1,5 @@
+"""Core postprocessing functions for measuring eccentricity from waveform modes."""
+from __future__ import annotations
 from dataclasses import dataclass
 import logging
 import pandas as pd
