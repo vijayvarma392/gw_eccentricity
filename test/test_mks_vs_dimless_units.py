@@ -5,6 +5,13 @@ import numpy as np
 from lal import MTSUN_SI
 
 
+# rational_fit introduces ~2x more floating-point noise than spline due to its
+# iterative QR algorithm, pushing unit-conversion differences to ~2e-7.
+# rtol=1e-6 comfortably covers both methods while still catching real unit bugs.
+# (numpy assert_allclose default is 1e-7)
+UNIT_CONSISTENCY_RTOL = 1e-6
+
+
 def test_mks_vs_dimless_units():
     """ Tests that the measure_eccentricity interface is working for both
     MKS and dimensionless units.
@@ -38,9 +45,7 @@ def test_mks_vs_dimless_units():
                        "D": 1})
     dataDictMKS = load_data.load_waveform(**lal_kwargs)
 
-    # use different omega_gw_extrema_interpolation methods
-    # TODO: Add rational_fit to the list
-    omega_gw_extrema_interpolation_methods = ["spline"]
+    omega_gw_extrema_interpolation_methods = ["spline", "rational_fit"]
 
     # List of all available methods
     available_methods = gw_eccentricity.get_available_methods()
@@ -74,6 +79,7 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 [tref_out],
                 [tref_out_MKS * sec_to_dimless],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("tref_out at a single dimensionless and MKS"
                          " time are inconsistent.\n"
                          "x = Dimensionless, y = MKS converted to dimless"))
@@ -81,12 +87,14 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 [ecc_ref],
                 [ecc_ref_MKS],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Eccentricity at a single dimensionless and MKS"
                          " time gives different results.\n"
                          "x = Dimensionless, y = MKS"))
             np.testing.assert_allclose(
                 [meanano_ref],
                 [meanano_ref_MKS],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Mean anomaly at a single dimensionless and MKS"
                          " time gives different results.\n"
                          "x = Dimensionless, y = MKS"))
@@ -115,6 +123,7 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 [tref_out],
                 [tref_out_MKS * sec_to_dimless],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("tref_out array for dimensionless and MKS"
                          " tref_in are inconsistent.\n"
                          "x = Dimensionless, y = MKS converted to dimless"))
@@ -122,6 +131,7 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 ecc_ref,
                 ecc_ref_MKS,
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Eccentricity at dimensionless and MKS array of"
                          " times are different\n."
                          "x = Dimensionless, y = MKS"))
@@ -130,6 +140,7 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 np.unwrap(meanano_ref),
                 np.unwrap(meanano_ref_MKS),
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Mean anomaly at dimensionless and MKS array of"
                          " times are different.\n"
                          "x = Dimensionless, y = MKS"))
@@ -160,6 +171,7 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 [fref_out],
                 [fref_out_MKS / sec_to_dimless],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("fref_out for a single dimensionless and MKS"
                          " fref_in are inconsistent.\n"
                          "x = Dimensionless, y = MKS converted to dimless"))
@@ -167,12 +179,14 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 [ecc_ref],
                 [ecc_ref_MKS],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Eccentricity at a single dimensionless and MKS"
                          " frequency gives different results.\n"
                          "x = Dimensionless, y = MKS"))
             np.testing.assert_allclose(
                 [meanano_ref],
                 [meanano_ref_MKS],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Mean anomaly at a single dimensionless and MKS"
                          " frequency gives different results.\n"
                          "x = Dimensionless, y = MKS"))
@@ -203,6 +217,7 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 [fref_out],
                 [fref_out_MKS / sec_to_dimless],
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("fref_out for an array of dimensionless and MKS"
                          " fref_in are inconsistent.\n"
                          "x = Dimensionless, y = MKS converted to dimless"))
@@ -210,12 +225,14 @@ def test_mks_vs_dimless_units():
             np.testing.assert_allclose(
                 ecc_ref,
                 ecc_ref_MKS,
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Eccentricity at dimensionless and MKS array of"
                          " frequencies are different.\n"
                          "x = Dimensionless, y = MKS"))
             np.testing.assert_allclose(
                 np.unwrap(meanano_ref),
                 np.unwrap(meanano_ref_MKS),
+                rtol=UNIT_CONSISTENCY_RTOL,
                 err_msg=("Mean anomaly at dimensionless and MKS array of"
                          " frequencies are different.\n"
                          "x = Dimensionless, y = MKS"))

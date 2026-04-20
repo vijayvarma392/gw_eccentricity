@@ -743,6 +743,87 @@ def load_lvcnr_waveform(**kwargs):
     return return_dict
 
 
+def download_sxs_waveform(sxs_id, lev, data_dir, extrap_order=2,
+                          catalog_tag=""):
+    """Download SXS catalog waveform files to a local directory.
+
+    Downloads the files required by ``load_waveform(origin="SXSCatalog")``:
+
+    - ``Strain_N{extrap_order}.h5``
+    - ``Strain_N{extrap_order}.json``
+    - ``metadata.json``
+    - ``Horizons.h5``
+
+    Parameters
+    ----------
+    sxs_id : str
+        SXS simulation identifier, e.g. ``"SXS:BBH:3726"``.
+    lev : int
+        Resolution level, e.g. ``3``.
+    data_dir : str
+        Root directory.  Files are placed inside
+        ``<data_dir>/<sxs_id_safe>/Lev<lev>/``, where ``sxs_id_safe``
+        is ``sxs_id`` with ``":"`` replaced by ``"_"``
+        (e.g. ``"SXS_BBH_3726"``).
+    extrap_order : int, optional
+        Waveform extrapolation order.  Default is 2, which selects the
+        ``Strain_N2.h5`` / ``Strain_N2.json`` file pair.
+    catalog_tag : str, optional
+        Git tag of the SXS catalog release to use, e.g. ``"v3.0.0"``.
+        When provided the catalog is fetched directly from that tagged
+        release, bypassing the GitHub API call that discovers the latest
+        release.  This avoids GitHub API rate-limit errors in CI.
+        Defaults to ``""`` which fetches the latest release.
+
+    Returns
+    -------
+    str
+        Full path to the directory that now contains the downloaded
+        files.  Pass this as ``data_dir`` to
+        ``load_waveform(origin="SXSCatalog", data_dir=...)``.
+
+    Notes
+    -----
+    Files that already exist on disk are skipped, that is not re-downloaded.
+    The SXS simulations catalogue is loaded via the ``sxs`` Python package to
+    retrieve direct download URLs for each file.
+    """
+    from sxs.utilities import download_file
+
+    # Build target directory
+    sxs_id_safe = sxs_id.replace(":", "_")
+    target_dir = os.path.join(
+        os.path.expanduser(data_dir), sxs_id_safe, f"Lev{lev}")
+    os.makedirs(target_dir, exist_ok=True)
+
+    # Load the simulations catalogue to resolve file URLs.
+    # Pass `tag` when provided to skip the GitHub API call that discovers
+    # the latest release (avoids rate-limit errors in CI environments).
+    simulations = sxs.Simulations.load(download=True, tag=catalog_tag)
+    if sxs_id not in simulations:
+        raise ValueError(
+            f"'{sxs_id}' not found in the SXS simulations catalogue.  "
+            "Check the SXS ID and that the catalogue is up to date.")
+
+    sim_files = simulations[sxs_id].get("files", {})
+
+    filenames = [
+        f"Strain_N{extrap_order}.h5",
+        f"Strain_N{extrap_order}.json",
+        "metadata.json",
+        "Horizons.h5",
+    ]
+
+    for filename in filenames:
+        dest = os.path.join(target_dir, filename)
+        if os.path.exists(dest):
+            continue  # already present, skip
+        url = sim_files[f"Lev{lev}:{filename}"]["link"]
+        download_file(url, dest, progress=False)
+
+    return target_dir
+
+
 def load_sxs_catalogformat(**kwargs):
     """Load modes from sxs waveform files in sxs catalog format.
 

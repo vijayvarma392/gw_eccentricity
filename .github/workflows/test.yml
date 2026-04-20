@@ -19,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
-        python-version: ['3.9']
+        python-version: ['3.9', '3.10']
 
     steps:
       - name: Check out repository code
@@ -97,6 +97,18 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install .
+
+      - name: Download SXS NR data for precessing tests
+        if: matrix.python-version != '3.9'
+        shell: bash -l {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'EOF'
+          from gw_eccentricity.load_data import download_sxs_waveform
+          download_sxs_waveform("SXS:BBH:2859", 4, "/tmp/gwecc_test_data",
+                                catalog_tag="v3.0.0")
+          EOF
 
       - name: Run test suite
         shell: bash -l {0}
