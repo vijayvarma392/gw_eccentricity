@@ -407,8 +407,11 @@ class eccDefinition:
                 oscillations from the waveform data. For spin-precessing
                 systems, spin-induced oscillations can introduce suborbital scale
                 oscillations even in the coprecessing frame,
-                leading to inaccurate eccentricity measurements. Filtering them
-                out before measuring eccentricity helps mitigate this effect.
+                leading to inaccurate eccentricity measurements.
+                For small eccentricity (below ~1e-2) and high spin-precession,
+                the spin-induced oscillations my become non-negligible compared
+                to the eccentric modulations. Filtering them out before
+                measuring eccentricity helps mitigate this effect.
                 Only used when `precessing=True`.
                 Defaults are set using
                 `spin_filter.get_default_kwargs_for_filtering()`. See
