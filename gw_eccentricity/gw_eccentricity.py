@@ -508,7 +508,23 @@ def measure_eccentricity(tref_in=None,
             decreases the relative error in the measured eccentricity
             and mean anomaly.  See:
             https://github.com/vijayvarma392/gw_eccentricity/wiki/Full-waveform-vs-short-segment
-        
+
+        filter_kwargs: dict
+            A dictionary of kwargs to control filtering of spin-induced
+            oscillations from the waveform data. For spin-precessing
+            systems, spin-induced oscillations can introduce suborbital scale
+            oscillations even in the coprecessing frame, leading to inaccurate
+            eccentricity measurements.
+            For small eccentricity (below ~1e-2) and high spin-precession,
+            the spin-induced oscillations may become non-negligible compared
+            to the eccentric modulations. Filtering them out
+            before measuring eccentricity helps mitigate this effect.
+            Only used when `precessing=True`.
+            Defaults are set using
+            `spin_filter.get_default_kwargs_for_filtering()`. See
+            `spin_filter.get_default_kwargs_for_filtering` for the full
+            list of allowed keys and their descriptions.
+
     Returns
     -------
     A dictionary containing the following keys
