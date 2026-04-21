@@ -409,7 +409,7 @@ class eccDefinition:
                 oscillations even in the coprecessing frame,
                 leading to inaccurate eccentricity measurements.
                 For small eccentricity (below ~1e-2) and high spin-precession,
-                the spin-induced oscillations my become non-negligible compared
+                the spin-induced oscillations may become non-negligible compared
                 to the eccentric modulations. Filtering them out before
                 measuring eccentricity helps mitigate this effect.
                 Only used when `precessing=True`.
