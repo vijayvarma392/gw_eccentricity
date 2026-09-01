@@ -9,6 +9,13 @@ on:
     branches:
       - main
 
+# Unlike a pin installed into the job environment, this reaches the isolated
+# build environments pip creates for source distributions -- which is where the
+# pygsl_lite build (pulled in by pyseobnr) picks up its setuptools.
+# See ci/constraints.txt.
+env:
+  PIP_CONSTRAINT: ${{ github.workspace }}/ci/constraints.txt
+
 jobs:
   build:
     name: build (${{ matrix.os }}, ${{ matrix.python-version }})
@@ -60,12 +67,17 @@ jobs:
         run: |
           brew install libconfig
           brew install gsl
+          # pyseobnr pulls in pygsl_lite, which is only published as a source
+          # distribution and swigs its GSL bindings at build time.
+          brew install swig
 
       - name: Install GSL for ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgsl-dev
+          # swig too: pyseobnr pulls in pygsl_lite, which is only published as
+          # a source distribution and swigs its GSL bindings at build time.
+          sudo apt-get install -y libgsl-dev swig
 
       - name: Install Teobresums-Dali for ubuntu
         if: matrix.os == 'ubuntu-latest'

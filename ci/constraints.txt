@@ -1,0 +1,20 @@
+# Constraints applied to every pip install in CI, including the isolated
+# build environments pip creates for source distributions (PIP_CONSTRAINT is
+# honoured there, which is the whole point of this file: a pin in the job
+# environment is not, since pip installs a fresh setuptools into the build env
+# from PyPI).
+#
+# pyseobnr depends on pygsl_lite, which is only published as a source
+# distribution and whose build calls distutils' spawn() with positional
+# arguments:
+#
+#     spawn(cmd, 1, 1)
+#
+# setuptools made those arguments keyword-only after 78.1.1, so a newer
+# setuptools in the build environment fails the build with
+#
+#     TypeError: spawn() takes 1 positional argument but 3 were given
+#
+# 78.1.1 is verified to still accept them, hence the bound below. Drop this
+# once pygsl_lite stops calling spawn() positionally.
+setuptools<79
