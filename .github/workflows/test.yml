@@ -103,6 +103,13 @@ jobs:
 
       - name: Install pyseobnr
         run: |
+          # pygsl_lite (a pyseobnr dependency) is published only as a source
+          # distribution and its build calls distutils' spawn() positionally,
+          # which setuptools dropped after 78.1.1. Build it without isolation
+          # so it uses the setuptools pinned here rather than a fresh one pip
+          # would install into an isolated build environment.
+          pip install "setuptools<79" wheel numpy
+          pip install --no-build-isolation pygsl_lite
           pip install pyseobnr
 
       - name: Install pipenv
