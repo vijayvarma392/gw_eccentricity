@@ -109,7 +109,14 @@ jobs:
           # so it uses the setuptools pinned here rather than a fresh one pip
           # would install into an isolated build environment.
           pip install "setuptools<79" wheel numpy
-          pip install --no-build-isolation pygsl_lite
+          # Without build isolation pygsl_lite reports its version as 0.0.0,
+          # which makes pip reject every sdist it fetches from the index as
+          # having inconsistent metadata. Installing the sdist as a local file
+          # skips that check.
+          PYGSL_URL=$(python -c "import json, urllib.request; d = json.load(urllib.request.urlopen('https://pypi.org/pypi/pygsl_lite/0.1.8/json')); print(next(u['url'] for u in d['urls'] if u['packagetype'] == 'sdist'))")
+          curl -sSL "$PYGSL_URL" -o pygsl_lite.tar.gz
+          pip install --no-build-isolation ./pygsl_lite.tar.gz
+          rm -f pygsl_lite.tar.gz
           pip install pyseobnr
 
       - name: Install pipenv
