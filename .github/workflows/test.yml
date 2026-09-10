@@ -102,6 +102,15 @@ jobs:
           python setup.py build_ext --inplace
 
       - name: Install pyseobnr
+        env:
+          # pygsl_lite's SWIG typemaps call PyInt_FromLong, which does not
+          # exist in Python 3. gcc only warns about the implicit declaration,
+          # so the ubuntu build survives it; clang makes it an error. Map the
+          # name to its Python 3 equivalent instead of silencing the warning.
+          # ARCHFLAGS: homebrew's gsl is arm64-only, but the framework Python
+          # asks for a universal2 build, whose x86_64 half cannot link it.
+          CFLAGS: ${{ matrix.os == 'macos-latest' && '-DPyInt_FromLong=PyLong_FromLong' || '' }}
+          ARCHFLAGS: ${{ matrix.os == 'macos-latest' && '-arch arm64' || '' }}
         run: |
           # pygsl_lite (a pyseobnr dependency) is published only as a source
           # distribution and its build calls distutils' spawn() positionally,
